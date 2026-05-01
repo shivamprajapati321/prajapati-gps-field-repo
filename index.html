@@ -540,11 +540,23 @@ body.pwa-installed .ios-install-hint { display: none !important; }
   position: absolute;
   bottom: 0; left: 0; right: 0;
   padding: 18px 26px 28px;
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   background: linear-gradient(to top, rgba(0,0,0,0.85), transparent);
   z-index: 5;
+}
+.controls-left {
+  display: flex;
+  justify-content: flex-start;
+}
+.controls-center {
+  display: flex;
+  justify-content: center;
+}
+.controls-right {
+  display: flex;
+  justify-content: flex-end;
 }
 .side-btn {
   width: 44px; height: 44px;
@@ -555,9 +567,29 @@ body.pwa-installed .ios-install-hint { display: none !important; }
   color: #fff;
   cursor: pointer;
   flex-direction: column;
+  font-family: 'Poppins', sans-serif;
 }
 .side-btn.done {
   background: #34c759;
+}
+.side-btn.done:disabled {
+  background: rgba(52, 199, 89, 0.3);
+  cursor: not-allowed;
+}
+.side-btn.done.done-ready {
+  background: #34c759;
+  animation: doneReady 1.2s ease-in-out infinite;
+  box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.7);
+}
+@keyframes doneReady {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.7);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 12px rgba(52, 199, 89, 0);
+    transform: scale(1.08);
+  }
 }
 .side-btn:disabled { opacity: 0.4; }
 .side-btn span { font-size: 8px; }
@@ -578,6 +610,10 @@ body.pwa-installed .ios-install-hint { display: none !important; }
   border: 2px solid #000;
 }
 .shutter:active { transform: scale(0.95); }
+.shutter:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 
 #hiddenCanvas { display: none; }
 
@@ -786,22 +822,33 @@ body.pwa-installed .ios-install-hint { display: none !important; }
     </div>
   </div>
   
-  <!-- ═══ Bottom Controls ═══ -->
+  <!-- ═══ Bottom Controls - 3 column grid - shutter always centered ═══ -->
   <div class="bottom-controls">
-    <button class="side-btn" id="cancelBtn">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round">
-        <path d="M19 12H5M12 19l-7-7 7-7"/>
-      </svg>
-    </button>
     
-    <button class="shutter" id="shutterBtn"></button>
+    <!-- LEFT: Cancel/Back button -->
+    <div class="controls-left">
+      <button class="side-btn" id="cancelBtn" title="Cancel">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+      </button>
+    </div>
     
-    <button class="side-btn done" id="doneBtn" style="display: none;">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round">
-        <polyline points="20 6 9 17 4 12"/>
-      </svg>
-      <span>Done</span>
-    </button>
+    <!-- CENTER: Shutter (always center, never moves) -->
+    <div class="controls-center">
+      <button class="shutter" id="shutterBtn" title="Take photo"></button>
+    </div>
+    
+    <!-- RIGHT: Done button (always visible but disabled until appropriate) -->
+    <div class="controls-right">
+      <button class="side-btn done" id="doneBtn" disabled title="Complete vehicle">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        <span>Done</span>
+      </button>
+    </div>
+    
   </div>
 </div>
 
@@ -1275,8 +1322,10 @@ function goToCameraScreen() {
       state.realGps.lat.toFixed(6) + '°, ' + state.realGps.lng.toFixed(6) + '°';
   }
   
-  // Done button visibility
-  document.getElementById('doneBtn').style.display = 'none';
+  // Done button - always present, but disabled until all photos done
+  var doneBtn = document.getElementById('doneBtn');
+  doneBtn.disabled = true;
+  doneBtn.classList.remove('done-ready');
   
   // ─── Start camera ───
   navigator.mediaDevices.getUserMedia({
@@ -1372,6 +1421,20 @@ document.getElementById('cancelBtn').addEventListener('click', function() {
   goToVehicleScreen();
 });
 document.getElementById('doneBtn').addEventListener('click', function() {
+  // Confirmation if not all photos taken
+  var done = state.photosThisSession;
+  var total = state.expectedPhotoCount;
+  
+  if (done < total) {
+    // Show confirmation - team accidentally clicking Done early
+    var msg = done + ' of ' + total + ' photos liye hain.\n\n'
+            + 'Vehicle complete karna hai?\n\n'
+            + (total - done) + ' photo baki hai.';
+    if (!confirm(msg)) {
+      return; // User cancelled - continue taking photos
+    }
+  }
+  
   finishVehicleSession();
 });
 
@@ -1827,14 +1890,20 @@ function uploadPhoto(blob) {
         
         showToast('✓ Saved (' + done + '/' + total + ')', 'success');
         
-        // Show done button after first photo
-        if (done >= 1) {
-          document.getElementById('doneBtn').style.display = 'flex';
+        // Done button: enable when ALL photos taken (no early click risk)
+        var doneBtn = document.getElementById('doneBtn');
+        if (done >= total) {
+          // All photos done - enable Done with full green
+          doneBtn.disabled = false;
+          doneBtn.classList.add('done-ready');
+        } else {
+          // Photos pending - keep disabled (50% opacity)
+          doneBtn.disabled = true;
         }
         
         // Auto-complete when expected count reached
         if (done >= total) {
-          setTimeout(finishVehicleSession, 1000);
+          setTimeout(finishVehicleSession, 1500);
         }
       } else {
         showToast('Upload fail: ' + (result.error || 'unknown'), 'error');
