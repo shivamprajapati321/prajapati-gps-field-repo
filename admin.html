@@ -362,6 +362,14 @@ input:focus, select:focus, textarea:focus { border-color: #1a2980; }
       <div class="toggle" id="manualToggle"></div>
     </div>
     
+    <div class="toggle-row">
+      <div class="toggle-info">
+        <div class="title">Auto Vehicle Number (OCR)</div>
+        <div class="desc">Camera reads plate automatically - skip vehicle entry</div>
+      </div>
+      <div class="toggle" id="autoVehicleToggle"></div>
+    </div>
+    
     <div id="manualFields" class="manual-section">
       <div class="field-group">
         <label>Anchor Address (Photos pe yeh dikhega)</label>
@@ -510,8 +518,11 @@ function renderCampaigns() {
     var brandingTag = '<span class="tag ' + (c.branding_mode || 'full') + '">' 
       + (c.branding_mode || 'full').toUpperCase() + '</span>';
     var manualTag = c.manual_gps_enabled 
-      ? '<span class="tag manual-on">Manual GPS ON</span>'
+      ? '<span class="tag manual-on">Manual GPS</span>'
       : '<span class="tag manual-off">Real GPS</span>';
+    var autoVehicleTag = c.auto_vehicle_enabled
+      ? '<span class="tag manual-on">Auto OCR</span>'
+      : '';
     
     card.innerHTML = 
       '<div class="campaign-row">' +
@@ -519,7 +530,7 @@ function renderCampaigns() {
         '<div class="campaign-key">' + c.key + '</div>' +
       '</div>' +
       '<div class="campaign-meta">' +
-        brandingTag + manualTag +
+        brandingTag + manualTag + autoVehicleTag +
         '<span style="color:#888;font-size:11px;">' + 
         (c.client_name || '-') + ' · Hood: ' + (c.hood_photo_count || 3) + 
         ' · Back: ' + (c.back_panel_photo_count || 1) + '</span>' +
@@ -553,6 +564,10 @@ function openEditor(campaign) {
   toggle.classList.toggle('on', manualOn);
   document.getElementById('manualFields').classList.toggle('active', manualOn);
   
+  // Auto vehicle (OCR) toggle
+  var autoVehicleOn = !!campaign.auto_vehicle_enabled;
+  document.getElementById('autoVehicleToggle').classList.toggle('on', autoVehicleOn);
+  
   // Manual fields
   document.getElementById('anchorAddress').value = campaign.anchor_address || '';
   document.getElementById('anchorCity').value = campaign.default_city || '';
@@ -578,6 +593,10 @@ document.getElementById('manualToggle').onclick = function() {
   document.getElementById('manualFields').classList.toggle('active', this.classList.contains('on'));
 };
 
+document.getElementById('autoVehicleToggle').onclick = function() {
+  this.classList.toggle('on');
+};
+
 document.getElementById('cancelEditBtn').onclick = function() {
   document.getElementById('editModal').classList.remove('active');
   state.editingCampaign = null;
@@ -588,6 +607,7 @@ document.getElementById('saveBtn').onclick = function() {
   
   var selectedMode = document.querySelector('.mode-option.selected').dataset.mode;
   var manualOn = document.getElementById('manualToggle').classList.contains('on');
+  var autoVehicleOn = document.getElementById('autoVehicleToggle').classList.contains('on');
   
   var updates = {
     branding_mode: selectedMode,
@@ -595,7 +615,8 @@ document.getElementById('saveBtn').onclick = function() {
       ? document.getElementById('customBrand').value.trim() : null,
     custom_website: selectedMode === 'custom' 
       ? document.getElementById('customWebsite').value.trim() : null,
-    manual_gps_enabled: manualOn
+    manual_gps_enabled: manualOn,
+    auto_vehicle_enabled: autoVehicleOn
   };
   
   if (manualOn) {
