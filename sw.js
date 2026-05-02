@@ -1,99 +1,88 @@
-// ═══════════════════════════════════════════════════════════════
-//  Prajapati GPS Camera - Service Worker
-//  Provides offline support and faster loading
-// ═══════════════════════════════════════════════════════════════
+// Prajapati GPS Field PWA - Silent Auto-Update Service Worker
+// Version is auto-bumped on every deploy. NO USER NOTIFICATION EVER.
 
-const CACHE_VERSION = 'prajapati-gps-v2.3';
-const RUNTIME_CACHE = 'prajapati-runtime-v1';
+const VERSION = 'v__BUILD_TIMESTAMP__'; // Auto-replaced on Vercel deploy
+const CACHE_NAME = `prajapati-gps-${VERSION}`;
 
-// Files to cache on install
-const CORE_FILES = [
+// Files to cache for offline use
+const CACHE_FILES = [
   '/',
   '/index.html',
-  '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png'
+  '/manifest.json'
 ];
 
-// ─── Install: Cache core files ───
+// Install: cache fresh files immediately
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing v' + CACHE_VERSION);
+  console.log('[SW] Installing', VERSION);
   event.waitUntil(
-    caches.open(CACHE_VERSION)
-      .then((cache) => cache.addAll(CORE_FILES))
-      .then(() => self.skipWaiting())
-      .catch((err) => console.warn('[SW] Install error:', err))
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(CACHE_FILES))
+      .then(() => self.skipWaiting()) // CRITICAL: take over immediately
   );
 });
 
-// ─── Activate: Clean old caches ───
+// Activate: delete old caches, take control
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating v' + CACHE_VERSION);
+  console.log('[SW] Activating', VERSION);
   event.waitUntil(
-    caches.keys().then((keys) => {
+    caches.keys().then(keys => {
       return Promise.all(
         keys
-          .filter((key) => key !== CACHE_VERSION && key !== RUNTIME_CACHE)
-          .map((key) => caches.delete(key))
+          .filter(key => key.startsWith('prajapati-gps-') && key !== CACHE_NAME)
+          .map(key => {
+            console.log('[SW] Deleting old cache:', key);
+            return caches.delete(key);
+          })
       );
-    }).then(() => self.clients.claim())
+    }).then(() => self.clients.claim()) // CRITICAL: control all open tabs
   );
 });
 
-// ─── Fetch: Network-first for API, cache-first for static ───
+// Fetch strategy: Network-first for HTML (always get latest), cache for everything else
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   
   // Skip non-GET requests
-  if (event.request.method !== 'GET') {
+  if (event.request.method !== 'GET') return;
+  
+  // Skip Supabase API calls (always fresh)
+  if (url.hostname.includes('supabase.co') || url.hostname.includes('supabase.in')) {
     return;
   }
   
-  // API requests (Supabase) - network only, no caching
-  if (url.hostname.includes('supabase.co') || 
-      url.hostname.includes('nominatim.openstreetmap.org')) {
-    return; // Let browser handle normally
+  // HTML files: Network-first (always check for new version)
+  if (event.request.mode === 'navigate' || event.request.destination === 'document') {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          // Update cache with fresh HTML
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+          return response;
+        })
+        .catch(() => caches.match(event.request)) // Offline: use cache
+    );
+    return;
   }
   
-  // Same-origin static files - cache-first strategy
-  if (url.origin === location.origin) {
-    event.respondWith(
-      caches.match(event.request).then((cached) => {
-        if (cached) {
-          // Return cached, update in background
-          fetch(event.request).then((fresh) => {
-            if (fresh && fresh.status === 200) {
-              caches.open(CACHE_VERSION).then((cache) => {
-                cache.put(event.request, fresh.clone());
-              });
-            }
-          }).catch(() => {});
-          return cached;
+  // Other assets: Cache-first (faster), then network
+  event.respondWith(
+    caches.match(event.request).then(cached => {
+      if (cached) return cached;
+      return fetch(event.request).then(response => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
         }
-        
-        // Not cached - fetch and cache
-        return fetch(event.request).then((response) => {
-          if (response && response.status === 200) {
-            const clone = response.clone();
-            caches.open(CACHE_VERSION).then((cache) => {
-              cache.put(event.request, clone);
-            });
-          }
-          return response;
-        }).catch(() => {
-          // Offline fallback
-          return caches.match('/index.html');
-        });
-      })
-    );
-  }
+        return response;
+      });
+    })
+  );
 });
 
-// ─── Message: Allow client to skip waiting ───
+// Listen for skip waiting message (force immediate activation)
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
 });
-
-console.log('[SW] Service worker loaded');
