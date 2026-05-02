@@ -815,11 +815,70 @@ body.pwa-installed .ios-install-hint { display: none !important; }
   </div>
 </div>
 
+<div id="hiddenCanvas"></div>
+
+<!-- DEBUG PANEL - Shows on screen, no console needed -->
+<div id="debugPanel" style="
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.92);
+  color: #00ff00;
+  font-family: monospace;
+  font-size: 10px;
+  padding: 8px 10px;
+  z-index: 99999;
+  max-height: 200px;
+  overflow-y: auto;
+  border-bottom: 2px solid #00ff00;
+  display: none;
+">
+  <div style="display:flex; justify-content:space-between; margin-bottom:4px; align-items:center;">
+    <strong style="color:#ffff00;">🐛 DEBUG MODE</strong>
+    <span onclick="document.getElementById('debugPanel').style.display='none'" style="cursor:pointer; background:#ff0000; color:#fff; padding:2px 8px; border-radius:3px;">✕</span>
+  </div>
+  <div id="debugLog"></div>
+</div>
+
 <canvas id="hiddenCanvas"></canvas>
 <div id="toast"></div>
 
 <script>
 "use strict";
+
+// ─── DEBUG MODE - On-screen logs ───
+function debugLog(label, data) {
+  var panel = document.getElementById('debugPanel');
+  var log = document.getElementById('debugLog');
+  if (!panel || !log) return;
+  
+  panel.style.display = 'block';
+  
+  var time = new Date().toLocaleTimeString();
+  var dataStr = '';
+  try {
+    dataStr = typeof data === 'object' ? JSON.stringify(data, null, 2) : String(data);
+  } catch (e) {
+    dataStr = '[Circular]';
+  }
+  
+  var entry = document.createElement('div');
+  entry.style.borderBottom = '1px dashed #444';
+  entry.style.paddingBottom = '3px';
+  entry.style.marginBottom = '3px';
+  entry.innerHTML = '<span style="color:#888;">' + time + '</span> ' 
+    + '<span style="color:#ffff00;">' + label + '</span><br>'
+    + '<span style="color:#00ffff;">' + dataStr.replace(/</g, '&lt;') + '</span>';
+  log.appendChild(entry);
+  panel.scrollTop = panel.scrollHeight;
+}
+
+// Show debug panel by default in this debug build
+window.addEventListener('load', function() {
+  document.getElementById('debugPanel').style.display = 'block';
+  debugLog('App Started', { time: new Date().toString() });
+});
 
 var CONFIG = {
   supabaseUrl: 'https://fpbktcgtspqsqpaytslv.supabase.co',
@@ -1246,10 +1305,22 @@ function getCampaignFromAPI(lat, lng, city) {
       campaign_key: campaignKeyValue,
       fetch_url: fetchUrl
     });
+    debugLog('1. Campaign loaded from RPC', {
+      id: state.campaign.id,
+      campaign_key: state.campaign.campaign_key,
+      campaign_name: state.campaign.campaign_name,
+      ALL_FIELDS: Object.keys(state.campaign).join(', ')
+    });
+    debugLog('2. Will fetch settings from URL', fetchUrl);
     
     api(fetchUrl)
       .then(function(rows) {
         console.log('[DEBUG] Settings fetch response:', rows);
+        debugLog('3. Settings API response', {
+          rows_count: rows ? rows.length : 0,
+          first_row: rows && rows[0] ? rows[0] : 'NO ROWS'
+        });
+        
         if (rows && rows.length > 0) {
           state.campaign.auto_vehicle_enabled = !!rows[0].auto_vehicle_enabled;
           state.campaign.manual_gps_enabled = !!rows[0].manual_gps_enabled;
@@ -1264,17 +1335,25 @@ function getCampaignFromAPI(lat, lng, city) {
             manual_gps: state.campaign.manual_gps_enabled,
             branding: state.campaign.branding_mode
           });
+          debugLog('4. FINAL FLAGS APPLIED', {
+            auto_vehicle_enabled: state.campaign.auto_vehicle_enabled,
+            manual_gps_enabled: state.campaign.manual_gps_enabled,
+            branding_mode: state.campaign.branding_mode
+          });
         } else {
           console.warn('[Campaign] No settings row returned - using defaults');
+          debugLog('4. NO ROWS - using defaults', 'auto_vehicle=false');
           state.campaign.auto_vehicle_enabled = false;
           state.campaign.manual_gps_enabled = false;
           state.campaign.branding_mode = 'full';
         }
         // ONLY enable Start button AFTER all flags loaded
         document.getElementById('startBtn').disabled = false;
+        debugLog('5. Start button ENABLED', 'Ready');
       })
       .catch(function(err) {
         console.error('[Campaign] Settings fetch FAILED:', err);
+        debugLog('ERROR - Settings fetch FAILED', err.message || String(err));
         state.campaign.auto_vehicle_enabled = false;
         state.campaign.manual_gps_enabled = false;
         state.campaign.branding_mode = 'full';
@@ -1290,14 +1369,23 @@ function getCampaignFromAPI(lat, lng, city) {
 document.getElementById('startBtn').addEventListener('click', function() {
   if (!state.selectedMode || !state.campaign) return;
   
+  // ─── DEBUG: Show what's about to happen ───
+  debugLog('6. START CLICKED - checking flag', {
+    auto_vehicle_enabled: state.campaign.auto_vehicle_enabled,
+    type_of_value: typeof state.campaign.auto_vehicle_enabled,
+    will_skip_vehicle_screen: state.campaign.auto_vehicle_enabled === true
+  });
+  
   // ─── AUTO VEHICLE MODE: Skip vehicle entry screen ───
   if (state.campaign.auto_vehicle_enabled === true) {
+    debugLog('7. SKIPPING vehicle screen - going to camera', 'AUTO_OCR mode');
     state.currentVehicle = 'AUTO_OCR'; // Placeholder - real plate read by backend
     state.photosThisSession = 0;
     goToCameraScreen();
     return;
   }
   
+  debugLog('7. NOT auto vehicle - showing vehicle screen', 'manual entry mode');
   goToVehicleScreen();
 });
 
