@@ -1460,6 +1460,18 @@ function capturePhoto() {
 function drawGPSStamp(ctx, w, h) {
   if (!state.realGps) return;
   
+  // Determine branding mode (default 'full' for backward compatibility)
+  var brandingMode = state.brandingMode || 'full';
+  var customLogo = state.customLogo || null;
+  var customBrand = state.customBrand || 'PRAJAPATI';
+  var customWebsite = state.customWebsite || 'prajapatiadvertising.co.in';
+  
+  // Use server-returned coords/address if available (for manual GPS mode)
+  var displayLat = state.serverGps ? state.serverGps.lat : state.realGps.lat;
+  var displayLng = state.serverGps ? state.serverGps.lng : state.realGps.lng;
+  var displayAddress = state.serverAddress ? state.serverAddress.full : (state.realAddress ? state.realAddress.full : '');
+  var displayCity = state.serverAddress ? state.serverAddress.city : (state.realAddress ? state.realAddress.city : 'India');
+  
   var scale = w / 1080;
   var fontSize = Math.max(28 * scale, 22);
   var margin = 30 * scale;
@@ -1478,7 +1490,9 @@ function drawGPSStamp(ctx, w, h) {
   ctx.textAlign = 'left';
   ctx.fillText(state.currentVehicle, margin + 25 * scale, margin + vehBannerH / 2);
   
-  if (logoImg && logoImg.complete && logoImg.naturalWidth > 0) {
+  // ─── BRANDING MODE: Show logo only if NOT clean mode ───
+  if (brandingMode !== 'clean') {
+    if (logoImg && logoImg.complete && logoImg.naturalWidth > 0 && brandingMode === 'full') {
     var logoTargetW = 320 * scale;
     var logoAspect = logoImg.naturalHeight / logoImg.naturalWidth;
     var logoTargetH = logoTargetW * logoAspect;
@@ -1508,10 +1522,11 @@ function drawGPSStamp(ctx, w, h) {
     ctx.font = 'bold ' + (fontSize * 0.95) + 'px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('PRAJAPATI', logoX + logoBgW / 2, logoY + logoBgH / 2 - 10 * scale);
+    ctx.fillText(customBrand, logoX + logoBgW / 2, logoY + logoBgH / 2 - 10 * scale);
     ctx.font = (fontSize * 0.65) + 'px sans-serif';
     ctx.fillText('ADVERTISING', logoX + logoBgW / 2, logoY + logoBgH / 2 + 12 * scale);
   }
+  } // End: if brandingMode !== 'clean'
   
   var badgeY = margin + (logoImg ? 90 : 80) * scale;
   var badgeRight = w - margin;
@@ -1555,7 +1570,7 @@ function drawGPSStamp(ctx, w, h) {
   var mapX = margin + 25 * scale;
   var mapY = y + 25 * scale;
   
-  drawStylizedMap(ctx, mapX, mapY, mapSize, state.realGps.lat, state.realGps.lng);
+  drawStylizedMap(ctx, mapX, mapY, mapSize, displayLat, displayLng);
   
   var textX = mapX + mapSize + 30 * scale;
   var textY = y + 50 * scale;
@@ -1564,14 +1579,14 @@ function drawGPSStamp(ctx, w, h) {
   ctx.font = 'bold ' + (fontSize * 1.3) + 'px sans-serif';
   ctx.textBaseline = 'top';
   ctx.textAlign = 'left';
-  var city = state.realAddress && state.realAddress.city ? state.realAddress.city : 'India';
-  ctx.fillText(city + ', Maharashtra 🇮🇳', textX, textY);
+  var stampCity = displayCity || 'India';
+  ctx.fillText(stampCity + ', Maharashtra 🇮🇳', textX, textY);
   
   textY += fontSize * 1.7;
   
   ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
   ctx.font = (fontSize * 0.85) + 'px sans-serif';
-  var addr = state.realAddress && state.realAddress.full ? state.realAddress.full : '';
+  var addr = displayAddress || '';
   var maxAddrLen = Math.floor((w - textX - margin - 50 * scale) / (fontSize * 0.45));
   if (addr.length > maxAddrLen) addr = addr.substring(0, maxAddrLen) + '...';
   ctx.fillText(addr, textX, textY);
@@ -1581,7 +1596,7 @@ function drawGPSStamp(ctx, w, h) {
   ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
   ctx.font = (fontSize * 0.85) + 'px monospace';
   ctx.fillText(
-    '📍 Lat ' + state.realGps.lat.toFixed(6) + '°  Lng ' + state.realGps.lng.toFixed(6) + '°',
+    '📍 Lat ' + displayLat.toFixed(6) + '°  Lng ' + displayLng.toFixed(6) + '°',
     textX, textY
   );
   
@@ -1603,23 +1618,29 @@ function drawGPSStamp(ctx, w, h) {
   
   var stripY = y + stampHeight - 35 * scale;
   
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(margin + 20 * scale, stripY);
-  ctx.lineTo(w - margin - 20 * scale, stripY);
-  ctx.stroke();
-  
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-  ctx.font = 'bold ' + (fontSize * 0.7) + 'px sans-serif';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('✓ Verified by Prajapati Advertising', margin + 25 * scale, stripY + 18 * scale);
-  
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-  ctx.font = (fontSize * 0.65) + 'px sans-serif';
-  ctx.textAlign = 'right';
-  ctx.fillText('prajapatiadvertising.co.in', w - margin - 25 * scale, stripY + 18 * scale);
+  // ─── BRANDING MODE: Show verified strip only if NOT clean mode ───
+  if (brandingMode !== 'clean') {
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(margin + 20 * scale, stripY);
+    ctx.lineTo(w - margin - 20 * scale, stripY);
+    ctx.stroke();
+    
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.font = 'bold ' + (fontSize * 0.7) + 'px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    var verifyText = brandingMode === 'custom' 
+      ? '✓ Verified by ' + customBrand 
+      : '✓ Verified by Prajapati Advertising';
+    ctx.fillText(verifyText, margin + 25 * scale, stripY + 18 * scale);
+    
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.font = (fontSize * 0.65) + 'px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(customWebsite, w - margin - 25 * scale, stripY + 18 * scale);
+  }
   
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
@@ -1780,7 +1801,8 @@ function uploadPhoto(blob) {
       address: state.realAddress ? state.realAddress.full : null,
       city: state.realAddress ? state.realAddress.city : null,
       image_base64: base64,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      photo_index: state.photosThisSession + 1
     };
     
     fetch(CONFIG.uploadEndpoint, {
@@ -1795,6 +1817,20 @@ function uploadPhoto(blob) {
     .then(function(r) { return r.json(); })
     .then(function(result) {
       if (result.ok) {
+        // Store final data from server (used for next stamp rendering)
+        if (result.final_lat && result.final_lng) {
+          state.serverGps = { lat: result.final_lat, lng: result.final_lng };
+        }
+        if (result.final_address) {
+          state.serverAddress = { full: result.final_address, city: result.final_city };
+        }
+        if (result.branding_mode) {
+          state.brandingMode = result.branding_mode;
+          state.customLogo = result.custom_logo_url;
+          state.customBrand = result.custom_brand_name;
+          state.customWebsite = result.custom_website;
+        }
+        
         state.photosThisSession++;
         var done = state.photosThisSession;
         var total = state.expectedPhotoCount;
