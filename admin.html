@@ -547,7 +547,7 @@ function editCampaign(id) {
   document.getElementById('campaignFormTitle').textContent = 'Edit: ' + (c.name || c.key);
   document.getElementById('cName').value = c.name || '';
   document.getElementById('cKey').value = c.key || '';
-  document.getElementById('cKey').disabled = true; // can't change key after creation
+  document.getElementById('cKey').disabled = true;
   document.getElementById('cClient').value = c.client_name || '';
   document.getElementById('cHood').value = c.hood_photo_count || 3;
   document.getElementById('cBack').value = c.back_panel_photo_count || 1;
@@ -615,7 +615,6 @@ function saveCampaign() {
   btn.textContent = 'Saving...';
   
   if (state.editingCampaignId) {
-    // Update
     fetch(CONFIG.supabaseUrl + '/rest/v1/trial_campaigns?id=eq.' + state.editingCampaignId, {
       method: 'PATCH',
       headers: {
@@ -641,7 +640,6 @@ function saveCampaign() {
       showToast('Update failed: ' + err.message, 'error');
     });
   } else {
-    // Insert - include key
     data.key = key;
     fetch(CONFIG.supabaseUrl + '/rest/v1/trial_campaigns', {
       method: 'POST',
@@ -700,7 +698,6 @@ function deleteCampaign(id, name) {
   })
   .then(function(r) {
     if (!r.ok) {
-      // If FK constraint, suggest deactivate
       showToast('Delete failed - photos linked. Try Deactivate instead', 'error');
       return;
     }
@@ -891,7 +888,6 @@ function loadAssignments() {
   listEl.innerHTML = '<div class="spinner"></div>';
   var date = document.getElementById('assignDate').value || todayStr();
   
-  // Load all data in parallel
   Promise.all([
     api('/rest/v1/trial_team_members?active=eq.true&order=name&select=*'),
     api('/rest/v1/trial_campaigns?active=eq.true&order=name&select=*'),
@@ -902,7 +898,6 @@ function loadAssignments() {
     var campaigns = results[1] || [];
     var assignments = results[2] || [];
     
-    // Map member_phone -> assignment
     var assignMap = {};
     assignments.forEach(function(a) { assignMap[a.member_phone] = a; });
     
@@ -941,7 +936,6 @@ function loadAssignments() {
 
 function saveAssignment(phone, campaignKey, date) {
   if (!campaignKey) {
-    // Delete existing assignment
     fetch(CONFIG.supabaseUrl + '/rest/v1/trial_daily_assignments?member_phone=eq.' + phone + '&assignment_date=eq.' + date, {
       method: 'DELETE',
       headers: {
@@ -957,7 +951,6 @@ function saveAssignment(phone, campaignKey, date) {
     return;
   }
   
-  // Upsert
   fetch(CONFIG.supabaseUrl + '/rest/v1/trial_daily_assignments?on_conflict=member_phone,assignment_date', {
     method: 'POST',
     headers: {
@@ -982,11 +975,10 @@ function saveAssignment(phone, campaignKey, date) {
 }
 
 // ============================================================
-//  TAB 4: PHOTOS BROWSER
+//  TAB 4: PHOTOS BROWSER  ← FIXED: photo_url → public_url
 // ============================================================
 
 function initPhotosTab() {
-  // Populate filter dropdowns
   var campSel = document.getElementById('photoCampaign');
   var memSel = document.getElementById('photoMember');
   
@@ -1033,7 +1025,6 @@ function loadPhotos() {
     .then(function(photos) {
       photos = photos || [];
       
-      // Stats
       var statsEl = document.getElementById('photoStats');
       var uniqueVehicles = {};
       photos.forEach(function(p) { if (p.vehicle_number) uniqueVehicles[p.vehicle_number] = true; });
@@ -1052,8 +1043,10 @@ function loadPhotos() {
       var html = '<div class="photos-grid">';
       photos.forEach(function(p) {
         var time = p.captured_at ? new Date(p.captured_at).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'}) : '';
-        html += '<div class="photo-item" onclick="openPhotoModal(\'' + escapeHtml(p.photo_url || '') + '\')">' +
-          '<img class="photo-img" src="' + escapeHtml(p.photo_url || '') + '" loading="lazy" alt="">' +
+        // ✅ FIX: public_url use kar rahe hain (database column ka actual naam)
+        var imgUrl = p.public_url || '';
+        html += '<div class="photo-item" onclick="openPhotoModal(\'' + escapeHtml(imgUrl) + '\')">' +
+          '<img class="photo-img" src="' + escapeHtml(imgUrl) + '" loading="lazy" alt="">' +
           '<div class="photo-meta">' +
             '<div class="vehicle">' + escapeHtml(p.vehicle_number || '-') + '</div>' +
             '<div class="info">' + escapeHtml(p.mode || '') + ' · ' + time + '</div>' +
