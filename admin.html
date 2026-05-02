@@ -3,407 +3,281 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Prajapati GPS Admin</title>
+<title>Prajapati GPS - Admin Panel</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body {
-  font-family: 'Poppins', sans-serif;
-  background: #f4f6f9;
-  color: #1a2980;
-  min-height: 100vh;
-}
-.header {
-  background: #1a2980;
-  color: #fff;
-  padding: 16px 24px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-.header h1 { font-size: 18px; font-weight: 600; }
-.header .badge {
-  background: rgba(255,255,255,0.2);
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 12px;
-}
-.container {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 24px 16px;
-}
-.login-box {
-  background: #fff;
-  border-radius: 12px;
-  padding: 32px 24px;
-  max-width: 400px;
-  margin: 60px auto;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-}
-.login-box h2 { font-size: 20px; margin-bottom: 8px; }
-.login-box p { font-size: 13px; color: #666; margin-bottom: 20px; }
-input, select, textarea {
-  width: 100%;
-  padding: 10px 14px;
-  font-size: 14px;
-  border: 1px solid #dde;
-  border-radius: 8px;
-  font-family: inherit;
-  outline: none;
-  margin-bottom: 8px;
-}
+body { font-family: 'Poppins', sans-serif; background: #f4f6f9; color: #1a2980; min-height: 100vh; }
+.header { background: #1a2980; color: #fff; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+.header h1 { font-size: 17px; font-weight: 600; }
+.header .sub { font-size: 11px; opacity: 0.85; margin-top: 2px; }
+.header-right { display: flex; gap: 10px; align-items: center; }
+.user-badge { background: rgba(255,255,255,0.15); padding: 5px 12px; border-radius: 16px; font-size: 12px; }
+.logout-btn { background: rgba(255,255,255,0.15); color: #fff; border: none; padding: 5px 14px; border-radius: 16px; font-size: 11px; cursor: pointer; font-family: inherit; }
+.logout-btn:hover { background: rgba(255,255,255,0.25); }
+.tabs-bar { background: #fff; border-bottom: 1px solid #e8e8ee; padding: 0 14px; display: flex; gap: 2px; overflow-x: auto; position: sticky; top: 0; z-index: 10; }
+.tab { padding: 11px 16px; font-size: 13px; font-weight: 500; color: #888; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; }
+.tab:hover { color: #1a2980; }
+.tab.active { color: #1a2980; border-bottom-color: #1a2980; }
+.container { max-width: 1100px; margin: 0 auto; padding: 18px 14px; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.login-box { background: #fff; border-radius: 12px; padding: 32px 26px; max-width: 380px; margin: 80px auto; box-shadow: 0 4px 20px rgba(0,0,0,0.08); text-align: center; }
+.login-box .logo-circle { width: 54px; height: 54px; background: #1a2980; border-radius: 13px; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 22px; font-weight: 700; }
+.login-box h2 { font-size: 19px; margin-bottom: 4px; }
+.login-box p { font-size: 12px; color: #666; margin-bottom: 20px; }
+input, select, textarea { width: 100%; padding: 9px 12px; font-size: 13px; border: 1px solid #dde; border-radius: 6px; font-family: inherit; outline: none; }
 input:focus, select:focus, textarea:focus { border-color: #1a2980; }
-.btn {
-  background: #1a2980;
-  color: #fff;
-  border: none;
-  padding: 11px 22px;
-  font-size: 14px;
-  font-weight: 600;
-  border-radius: 8px;
-  cursor: pointer;
-  font-family: inherit;
-  width: 100%;
-}
-.btn.green {
-  background: linear-gradient(135deg, #34c759, #00a843);
-}
+textarea { resize: vertical; min-height: 56px; }
+label { display: block; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: #555; margin-bottom: 4px; }
+.field { margin-bottom: 11px; }
+.field-row { display: grid; gap: 8px; }
+.field-row.cols-2 { grid-template-columns: 1fr 1fr; }
+.field-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+.helper { font-size: 10px; color: #888; margin-top: 3px; }
+.btn { background: #1a2980; color: #fff; border: none; padding: 9px 18px; font-size: 13px; font-weight: 600; border-radius: 6px; cursor: pointer; font-family: inherit; }
 .btn:hover { opacity: 0.92; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.section-title {
-  font-size: 14px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #888;
-  margin: 24px 0 12px;
-}
-
-.campaign-list {
-  display: grid;
-  gap: 12px;
-}
-.campaign-card {
-  background: #fff;
-  border-radius: 10px;
-  padding: 16px 20px;
-  border: 1px solid #e8e8ee;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.campaign-card:hover {
-  border-color: #1a2980;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(26,41,128,0.08);
-}
-.campaign-card.editing {
-  border-color: #1a2980;
-  box-shadow: 0 4px 12px rgba(26,41,128,0.12);
-}
-.campaign-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
-}
-.campaign-name { font-size: 15px; font-weight: 600; }
-.campaign-key {
-  font-size: 11px;
-  color: #888;
-  font-family: monospace;
-  background: #f0f2f7;
-  padding: 2px 8px;
-  border-radius: 6px;
-}
-.campaign-meta { font-size: 12px; color: #666; margin-top: 4px; }
-
-.tag {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 500;
-  margin-right: 6px;
-}
-.tag.full { background: #DAE9F1; color: #185FA5; }
-.tag.clean { background: #EAF3DE; color: #1D9E75; }
-.tag.custom { background: #FAEEDA; color: #BA7517; }
-.tag.manual-on { background: #FCEBEB; color: #A32D2D; }
-.tag.manual-off { background: #f0f2f7; color: #888; }
-
-.modal {
-  background: #fff;
-  border-radius: 12px;
-  padding: 24px;
-  margin: 20px 0;
-  border: 2px solid #1a2980;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.12);
-  display: none;
-}
-.modal.active { display: block; }
-.modal h3 {
-  font-size: 16px;
-  margin-bottom: 6px;
-}
-.modal .sub {
-  font-size: 12px;
-  color: #888;
-  margin-bottom: 18px;
-}
-
-.field-group {
-  margin-bottom: 14px;
-}
-.field-group label {
-  display: block;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  color: #555;
-  margin-bottom: 5px;
-}
-
-.mode-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-.mode-option {
-  background: #f4f6f9;
-  border: 2px solid transparent;
-  border-radius: 8px;
-  padding: 12px;
-  cursor: pointer;
-  text-align: center;
-}
-.mode-option.selected {
-  border-color: #1a2980;
-  background: #DAE9F1;
-}
-.mode-option .mode-label {
-  font-size: 13px;
-  font-weight: 600;
-  margin-bottom: 2px;
-}
-.mode-option .mode-desc {
-  font-size: 10px;
-  color: #888;
-}
-
-.toggle-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 14px;
-  background: #f4f6f9;
-  border-radius: 8px;
-  margin-bottom: 14px;
-}
+.btn-secondary { background: #f0f2f7; color: #555; }
+.btn-success { background: linear-gradient(135deg, #34c759, #00a843); }
+.btn-danger { background: #ef4444; }
+.btn-sm { padding: 5px 12px; font-size: 11px; }
+.btn-block { width: 100%; }
+.btn-icon { padding: 5px 10px; font-size: 11px; background: #f0f2f7; color: #555; border: none; border-radius: 4px; cursor: pointer; font-family: inherit; }
+.btn-icon:hover { background: #e8e8ee; }
+.btn-icon.danger { background: #fee; color: #c33; }
+.btn-icon.danger:hover { background: #fdd; }
+.card { background: #fff; border-radius: 10px; padding: 13px 15px; margin-bottom: 8px; border: 1px solid #e8e8ee; }
+.card:hover { border-color: #1a2980; box-shadow: 0 4px 12px rgba(26,41,128,0.08); }
+.card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; gap: 8px; }
+.card-title { font-size: 14px; font-weight: 600; }
+.card-key { font-size: 10px; color: #888; font-family: monospace; background: #f0f2f7; padding: 2px 7px; border-radius: 4px; }
+.card-meta { font-size: 11px; color: #666; line-height: 1.5; }
+.card-actions { display: flex; gap: 5px; margin-top: 8px; flex-wrap: wrap; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 9px; font-size: 9px; font-weight: 600; margin-right: 3px; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.3px; }
+.tag-full { background: #DAE9F1; color: #185FA5; }
+.tag-clean { background: #EAF3DE; color: #1D9E75; }
+.tag-custom { background: #FAEEDA; color: #BA7517; }
+.tag-on { background: #FCEBEB; color: #A32D2D; }
+.tag-off { background: #f0f2f7; color: #888; }
+.tag-info { background: #E5F2F8; color: #0E6BA8; }
+.tag-success { background: #EAF3DE; color: #1D9E75; }
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+.section-header h2 { font-size: 14px; font-weight: 600; }
+.section-header .count { font-size: 11px; color: #888; margin-left: 6px; font-weight: 400; }
+.form-card { background: #fff; border-radius: 10px; padding: 16px; border: 2px solid #1a2980; box-shadow: 0 6px 24px rgba(0,0,0,0.12); margin-bottom: 14px; display: none; }
+.form-card.active { display: block; }
+.form-card h3 { font-size: 14px; margin-bottom: 4px; }
+.form-card .form-sub { font-size: 11px; color: #888; margin-bottom: 12px; }
+.form-section { border-top: 1px solid #f0f2f7; padding-top: 10px; margin-top: 10px; }
+.form-section-title { font-size: 10px; font-weight: 600; text-transform: uppercase; color: #1a2980; margin-bottom: 6px; letter-spacing: 0.4px; }
+.mode-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+.mode-option { background: #f4f6f9; border: 2px solid transparent; border-radius: 6px; padding: 8px; cursor: pointer; text-align: center; }
+.mode-option.selected { border-color: #1a2980; background: #DAE9F1; }
+.mode-option .mode-label { font-size: 12px; font-weight: 600; }
+.mode-option .mode-desc { font-size: 9px; color: #888; margin-top: 1px; }
+.toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 11px; background: #f4f6f9; border-radius: 6px; margin-bottom: 6px; }
 .toggle-info { flex: 1; }
-.toggle-info .title { font-size: 13px; font-weight: 600; }
-.toggle-info .desc { font-size: 11px; color: #888; margin-top: 2px; }
-.toggle {
-  width: 44px;
-  height: 24px;
-  background: #ccc;
-  border-radius: 12px;
-  position: relative;
-  cursor: pointer;
-  transition: background 0.2s;
-  flex-shrink: 0;
-}
+.toggle-info .title { font-size: 12px; font-weight: 600; }
+.toggle-info .desc { font-size: 10px; color: #888; margin-top: 1px; }
+.toggle { width: 36px; height: 20px; background: #ccc; border-radius: 10px; position: relative; cursor: pointer; transition: background 0.2s; flex-shrink: 0; }
 .toggle.on { background: #34c759; }
-.toggle::after {
-  content: '';
-  width: 18px;
-  height: 18px;
-  background: #fff;
-  border-radius: 50%;
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  transition: left 0.2s;
-}
-.toggle.on::after { left: 23px; }
-
-.manual-section {
-  background: #FFF8E8;
-  border: 1px solid #F5E1A8;
-  border-radius: 8px;
-  padding: 14px;
-  margin-bottom: 14px;
-  display: none;
-}
-.manual-section.active { display: block; }
-.coord-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
-}
-
-.action-row {
-  display: flex;
-  gap: 10px;
-  margin-top: 14px;
-}
-.btn-secondary {
-  background: #f0f2f7;
-  color: #555;
-}
-.btn-danger {
-  background: #ef4444;
-  color: #fff;
-}
-
-.toast {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  background: #1a2980;
-  color: #fff;
-  padding: 14px 20px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  display: none;
-  z-index: 1000;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
-}
+.toggle::after { content: ''; width: 14px; height: 14px; background: #fff; border-radius: 50%; position: absolute; top: 3px; left: 3px; transition: left 0.2s; }
+.toggle.on::after { left: 19px; }
+.expandable-fields { background: #FFF8E8; border: 1px solid #F5E1A8; border-radius: 6px; padding: 11px; margin-bottom: 6px; display: none; }
+.expandable-fields.active { display: block; }
+.action-row { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+.toast { position: fixed; top: 14px; right: 14px; background: #1a2980; color: #fff; padding: 11px 16px; border-radius: 6px; font-size: 12px; font-weight: 500; display: none; z-index: 1000; box-shadow: 0 4px 16px rgba(0,0,0,0.2); max-width: 280px; }
 .toast.show { display: block; }
 .toast.success { background: #34c759; }
 .toast.error { background: #ef4444; }
-
-.empty-state {
-  text-align: center;
-  padding: 40px 20px;
-  color: #888;
-}
-.spinner {
-  width: 30px;
-  height: 30px;
-  border: 3px solid #ddd;
-  border-top-color: #1a2980;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 30px auto;
-}
+.empty-state { text-align: center; padding: 36px 18px; color: #888; font-size: 13px; }
+.spinner { width: 26px; height: 26px; border: 3px solid #ddd; border-top-color: #1a2980; border-radius: 50%; animation: spin 1s linear infinite; margin: 26px auto; }
 @keyframes spin { to { transform: rotate(360deg); } }
+.photos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
+.photo-item { background: #fff; border-radius: 8px; overflow: hidden; border: 1px solid #e8e8ee; cursor: pointer; }
+.photo-item:hover { border-color: #1a2980; }
+.photo-img { width: 100%; aspect-ratio: 1; object-fit: cover; background: #f0f2f7; display: block; }
+.photo-meta { padding: 7px 10px; font-size: 10px; }
+.photo-meta .vehicle { font-weight: 600; font-family: monospace; }
+.photo-meta .info { color: #888; font-size: 9px; margin-top: 2px; }
+.filter-bar { background: #fff; border-radius: 8px; padding: 11px; margin-bottom: 12px; display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 7px; align-items: end; border: 1px solid #e8e8ee; }
+@media (max-width: 700px) { .filter-bar { grid-template-columns: 1fr 1fr; } }
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 14px; }
+.stat-box { background: #fff; border-radius: 8px; padding: 11px 13px; border: 1px solid #e8e8ee; }
+.stat-box .label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 3px; }
+.stat-box .value { font-size: 20px; font-weight: 700; color: #1a2980; }
+.photo-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; z-index: 999; padding: 20px; overflow: auto; }
+.photo-modal.active { display: flex; align-items: center; justify-content: center; }
+.photo-modal img { max-width: 100%; max-height: 80vh; border-radius: 8px; }
+.photo-modal-close { position: absolute; top: 14px; right: 14px; background: rgba(255,255,255,0.2); color: #fff; border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 18px; }
+.assign-row { display: grid; grid-template-columns: 1.5fr 2fr auto; gap: 8px; align-items: center; padding: 10px 12px; background: #fff; border-radius: 8px; border: 1px solid #e8e8ee; margin-bottom: 6px; }
+.assign-row .member-name { font-size: 13px; font-weight: 500; }
+.assign-row .member-phone { font-size: 10px; color: #888; font-family: monospace; }
+.assign-row select { font-size: 12px; }
+@media (max-width: 600px) {
+  .header h1 { font-size: 14px; }
+  .header .sub { display: none; }
+  .container { padding: 14px 10px; }
+  .tab { padding: 10px 12px; font-size: 12px; }
+  .assign-row { grid-template-columns: 1fr; gap: 4px; }
+}
 </style>
 </head>
 <body>
 
 <div class="header">
-  <h1>Prajapati GPS - Admin Panel</h1>
-  <div class="badge" id="adminBadge" style="display:none;">Admin</div>
+  <div>
+    <h1>Prajapati GPS - Admin</h1>
+    <div class="sub" id="adminUserSub">-</div>
+  </div>
+  <div class="header-right">
+    <div class="user-badge" id="userBadge" style="display:none;"></div>
+    <button class="logout-btn" id="logoutBtn" style="display:none;" onclick="logout()">Logout</button>
+  </div>
 </div>
 
-<!-- Login Screen -->
 <div id="loginScreen" class="container">
   <div class="login-box">
+    <div class="logo-circle">P</div>
     <h2>Admin Login</h2>
-    <p>Owner/Admin number daalo</p>
-    <input type="tel" id="loginPhone" placeholder="10 digit number" maxlength="10">
-    <button class="btn" id="loginBtn">Login →</button>
+    <p>Owner ya admin number daalo</p>
+    <input type="tel" id="loginPhone" placeholder="10 digit number" maxlength="10" inputmode="numeric">
+    <button class="btn btn-block" id="loginBtn" style="margin-top:10px;">Login →</button>
   </div>
 </div>
 
-<!-- Main Dashboard -->
-<div id="mainScreen" class="container" style="display:none;">
-  
-  <div class="section-title">All Campaigns</div>
-  <div id="campaignList" class="campaign-list">
-    <div class="spinner"></div>
+<div id="tabsBar" class="tabs-bar" style="display:none;">
+  <div class="tab active" data-tab="campaigns" onclick="switchTab('campaigns')">Campaigns</div>
+  <div class="tab" data-tab="members" onclick="switchTab('members')">Team Members</div>
+  <div class="tab" data-tab="assignments" onclick="switchTab('assignments')">Daily Assignments</div>
+  <div class="tab" data-tab="photos" onclick="switchTab('photos')">Photos</div>
+</div>
+
+<div id="mainContainer" class="container" style="display:none;">
+
+  <div id="tab-campaigns" class="tab-content active">
+    <div class="section-header">
+      <h2>Campaigns <span class="count" id="campaignsCount"></span></h2>
+      <button class="btn" onclick="openCampaignForm()">+ Add New Campaign</button>
+    </div>
+    <div id="campaignFormCard" class="form-card">
+      <h3 id="campaignFormTitle">New Campaign</h3>
+      <div class="form-sub">Saari settings configure karo</div>
+      <div class="form-section-title">Basic Info</div>
+      <div class="field-row cols-2">
+        <div class="field"><label>Campaign Name *</label><input type="text" id="cName" placeholder="iNVENT Diagnostics"></div>
+        <div class="field"><label>Campaign Key *</label><input type="text" id="cKey" placeholder="lowercase_no_spaces" maxlength="40"></div>
+      </div>
+      <div class="field"><label>Client Name</label><input type="text" id="cClient" placeholder="Client company name"></div>
+      <div class="form-section">
+        <div class="form-section-title">Photos & Quantity</div>
+        <div class="field-row cols-3">
+          <div class="field"><label>Hood Photos</label><input type="number" id="cHood" value="3" min="1" max="10"></div>
+          <div class="field"><label>Back Panel</label><input type="number" id="cBack" value="1" min="1" max="10"></div>
+          <div class="field"><label>Target Rickshaws</label><input type="number" id="cTarget" value="100" min="1"></div>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-title">Location</div>
+        <div class="field"><label>Active Cities (comma separated)</label><textarea id="cCities" placeholder="Pune, Mumbai, Nashik"></textarea></div>
+        <div class="field-row cols-3">
+          <div class="field"><label>Default City</label><input type="text" id="cDefCity" placeholder="Pune"></div>
+          <div class="field"><label>Default Lat</label><input type="number" step="0.000001" id="cDefLat" placeholder="18.482150"></div>
+          <div class="field"><label>Default Lng</label><input type="number" step="0.000001" id="cDefLng" placeholder="73.803163"></div>
+        </div>
+        <div class="field"><label>Detection Radius (km)</label><input type="number" step="0.1" id="cRadius" value="50" min="0.1"><div class="helper">For GPS-based campaign auto-detection</div></div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-title">Branding Mode</div>
+        <div class="mode-grid">
+          <div class="mode-option selected" data-mode="full" onclick="selectMode(this)"><div class="mode-label">Full</div><div class="mode-desc">Prajapati branding</div></div>
+          <div class="mode-option" data-mode="clean" onclick="selectMode(this)"><div class="mode-label">Clean</div><div class="mode-desc">No branding</div></div>
+          <div class="mode-option" data-mode="custom" onclick="selectMode(this)"><div class="mode-label">Custom</div><div class="mode-desc">Agency logo</div></div>
+        </div>
+        <div id="customFields" style="display:none;">
+          <div class="field-row cols-2">
+            <div class="field"><label>Brand Name</label><input type="text" id="cBrand" placeholder="Agency name"></div>
+            <div class="field"><label>Website</label><input type="text" id="cWebsite" placeholder="agency.com"></div>
+          </div>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-title">Advanced Features</div>
+        <div class="toggle-row">
+          <div class="toggle-info"><div class="title">Manual GPS Mode</div><div class="desc">Backend random coords within radius</div></div>
+          <div class="toggle" id="manualToggle" onclick="toggleManualGps(this)"></div>
+        </div>
+        <div id="manualFields" class="expandable-fields">
+          <div class="field"><label>Anchor Address (Photos pe yeh dikhega)</label><textarea id="cAnchorAddr" placeholder="Shop No 5, MG Road, Pune 411001"></textarea></div>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-info"><div class="title">Auto Vehicle (OCR)</div><div class="desc">Camera reads plate automatically</div></div>
+          <div class="toggle" id="autoVehicleToggle" onclick="this.classList.toggle('on')"></div>
+        </div>
+      </div>
+      <div class="action-row">
+        <button class="btn btn-secondary" onclick="closeCampaignForm()">Cancel</button>
+        <button class="btn btn-success" id="saveCampaignBtn" onclick="saveCampaign()">Save Campaign</button>
+      </div>
+    </div>
+    <div id="campaignsList"><div class="spinner"></div></div>
   </div>
-  
-  <!-- Edit Modal (inline) -->
-  <div id="editModal" class="modal">
-    <h3 id="editTitle">Edit Campaign</h3>
-    <p class="sub">Branding mode aur manual GPS settings</p>
-    
-    <div class="field-group">
-      <label>Branding Mode</label>
-      <div class="mode-grid">
-        <div class="mode-option selected" data-mode="full">
-          <div class="mode-label">Full</div>
-          <div class="mode-desc">Prajapati branding</div>
-        </div>
-        <div class="mode-option" data-mode="clean">
-          <div class="mode-label">Clean</div>
-          <div class="mode-desc">No branding</div>
-        </div>
-        <div class="mode-option" data-mode="custom">
-          <div class="mode-label">Custom</div>
-          <div class="mode-desc">Agency logo</div>
-        </div>
+
+  <div id="tab-members" class="tab-content">
+    <div class="section-header">
+      <h2>Team Members <span class="count" id="membersCount"></span></h2>
+      <button class="btn" onclick="openMemberForm()">+ Add Member</button>
+    </div>
+    <div id="memberFormCard" class="form-card">
+      <h3 id="memberFormTitle">New Member</h3>
+      <div class="form-sub">Team member details</div>
+      <div class="field-row cols-2">
+        <div class="field"><label>Full Name *</label><input type="text" id="mName" placeholder="Member name"></div>
+        <div class="field"><label>Phone (10 digits) *</label><input type="tel" id="mPhone" maxlength="10" placeholder="9876543210"></div>
+      </div>
+      <div class="field-row cols-2">
+        <div class="field"><label>Role *</label><select id="mRole"><option value="field">Field</option><option value="sales">Sales</option><option value="operations">Operations</option><option value="admin">Admin</option><option value="owner">Owner</option></select></div>
+        <div class="field"><label>City</label><input type="text" id="mCity" placeholder="Pune"></div>
+      </div>
+      <div class="action-row">
+        <button class="btn btn-secondary" onclick="closeMemberForm()">Cancel</button>
+        <button class="btn btn-success" id="saveMemberBtn" onclick="saveMember()">Save Member</button>
       </div>
     </div>
-    
-    <div id="customFields" style="display:none;">
-      <div class="field-group">
-        <label>Custom Brand Name</label>
-        <input type="text" id="customBrand" placeholder="Agency name">
-      </div>
-      <div class="field-group">
-        <label>Custom Website</label>
-        <input type="text" id="customWebsite" placeholder="agency.com">
-      </div>
-    </div>
-    
-    <div class="toggle-row">
-      <div class="toggle-info">
-        <div class="title">Manual GPS Mode</div>
-        <div class="desc">Backend only - team cannot toggle</div>
-      </div>
-      <div class="toggle" id="manualToggle"></div>
-    </div>
-    
-    <div class="toggle-row">
-      <div class="toggle-info">
-        <div class="title">Auto Vehicle Number (OCR)</div>
-        <div class="desc">Camera reads plate automatically - skip vehicle entry</div>
-      </div>
-      <div class="toggle" id="autoVehicleToggle"></div>
-    </div>
-    
-    <div id="manualFields" class="manual-section">
-      <div class="field-group">
-        <label>Anchor Address (Photos pe yeh dikhega)</label>
-        <textarea id="anchorAddress" rows="2" placeholder="Shop No 5, MG Road, Pune 411001"></textarea>
-      </div>
-      <div class="field-group">
-        <label>City Name</label>
-        <input type="text" id="anchorCity" placeholder="Pune">
-      </div>
-      <div class="coord-row">
-        <div class="field-group">
-          <label>Anchor Lat</label>
-          <input type="number" step="0.000001" id="anchorLat" placeholder="18.482150">
-        </div>
-        <div class="field-group">
-          <label>Anchor Lng</label>
-          <input type="number" step="0.000001" id="anchorLng" placeholder="73.803163">
-        </div>
-        <div class="field-group">
-          <label>Radius (km)</label>
-          <input type="number" step="0.05" id="radiusKm" placeholder="0.2" value="0.2">
-        </div>
-      </div>
-      <div style="font-size:11px; color:#888; padding-top:6px; border-top:1px solid #F5E1A8;">
-        Backend random coords generate karega within this radius. Team ko visible nahi.
-      </div>
-    </div>
-    
-    <div class="action-row">
-      <button class="btn btn-secondary" id="cancelEditBtn">Cancel</button>
-      <button class="btn green" id="saveBtn">Save Settings</button>
-    </div>
+    <div id="membersList"><div class="spinner"></div></div>
   </div>
-  
+
+  <div id="tab-assignments" class="tab-content">
+    <div class="section-header">
+      <h2>Daily Assignments</h2>
+      <input type="date" id="assignDate" style="max-width:160px;" onchange="loadAssignments()">
+    </div>
+    <div class="card" style="background:#FFF8E8; border-color:#F5E1A8; padding:11px 14px; margin-bottom:12px;">
+      <div style="font-size:11px; color:#854F0B; line-height:1.5;">
+        <strong>How it works:</strong> Date select karo, har member ke liye campaign assign karo. Field app mein members ko same campaign milega.
+      </div>
+    </div>
+    <div id="assignmentsList"><div class="spinner"></div></div>
+  </div>
+
+  <div id="tab-photos" class="tab-content">
+    <div class="section-header"><h2>Photos Browser</h2></div>
+    <div class="stats-grid" id="photoStats"></div>
+    <div class="filter-bar">
+      <div><label>Date</label><input type="date" id="photoDate"></div>
+      <div><label>Campaign</label><select id="photoCampaign"><option value="">All</option></select></div>
+      <div><label>Member</label><select id="photoMember"><option value="">All</option></select></div>
+      <button class="btn" onclick="loadPhotos()">Filter</button>
+    </div>
+    <div id="photosList"><div class="empty-state">Filter karo aur photos load karo</div></div>
+  </div>
+
+</div>
+
+<div class="photo-modal" id="photoModal" onclick="closePhotoModal()">
+  <button class="photo-modal-close">✕</button>
+  <img id="photoModalImg" src="" alt="">
 </div>
 
 <div class="toast" id="toast"></div>
@@ -419,9 +293,12 @@ var CONFIG = {
 var state = {
   admin: null,
   campaigns: [],
-  editingCampaign: null
+  members: [],
+  editingCampaignId: null,
+  editingMemberId: null
 };
 
+// ─── UTILITIES ───
 function showToast(msg, type) {
   var t = document.getElementById('toast');
   t.textContent = msg;
@@ -440,15 +317,33 @@ function api(path, options) {
     options.body = JSON.stringify(options.body);
   }
   return fetch(CONFIG.supabaseUrl + path, options).then(function(r) {
-    if (!r.ok) throw new Error('API ' + r.status);
-    return r.json();
+    if (!r.ok) {
+      return r.text().then(function(text) {
+        throw new Error('API ' + r.status + ': ' + text);
+      });
+    }
+    return r.status === 204 ? null : r.json();
   });
+}
+
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, function(c) {
+    return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+  });
+}
+
+function todayStr() {
+  return new Date().toISOString().split('T')[0];
 }
 
 // ─── LOGIN ───
 document.getElementById('loginBtn').addEventListener('click', loginAdmin);
 document.getElementById('loginPhone').addEventListener('keypress', function(e) {
   if (e.key === 'Enter') loginAdmin();
+});
+document.getElementById('loginPhone').addEventListener('input', function(e) {
+  this.value = this.value.replace(/\D/g, '');
 });
 
 function loginAdmin() {
@@ -457,222 +352,739 @@ function loginAdmin() {
     showToast('10 digit number daalo', 'error');
     return;
   }
+  var btn = document.getElementById('loginBtn');
+  btn.disabled = true;
+  btn.textContent = 'Loading...';
   
   api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*')
     .then(function(members) {
+      btn.disabled = false;
+      btn.textContent = 'Login →';
       if (!members || members.length === 0) {
         showToast('Number registered nahi hai', 'error');
         return;
       }
-      
       var member = members[0];
-      // Only admin/owner roles allowed
       if (member.role !== 'admin' && member.role !== 'owner') {
         showToast('Sirf admin/owner login kar sakte hain', 'error');
         return;
       }
-      
       state.admin = member;
       localStorage.setItem('prajapati_admin_phone', phone);
-      
-      document.getElementById('loginScreen').style.display = 'none';
-      document.getElementById('mainScreen').style.display = 'block';
-      document.getElementById('adminBadge').style.display = 'block';
-      document.getElementById('adminBadge').textContent = member.name;
-      
-      loadCampaigns();
+      enterDashboard();
     })
     .catch(function(err) {
+      btn.disabled = false;
+      btn.textContent = 'Login →';
       console.error(err);
       showToast('Login error', 'error');
     });
 }
 
-// ─── LOAD CAMPAIGNS ───
+function logout() {
+  if (!confirm('Logout karna hai?')) return;
+  localStorage.removeItem('prajapati_admin_phone');
+  state.admin = null;
+  document.getElementById('mainContainer').style.display = 'none';
+  document.getElementById('tabsBar').style.display = 'none';
+  document.getElementById('userBadge').style.display = 'none';
+  document.getElementById('logoutBtn').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'block';
+  document.getElementById('loginPhone').value = '';
+}
+
+function enterDashboard() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('mainContainer').style.display = 'block';
+  document.getElementById('tabsBar').style.display = 'flex';
+  document.getElementById('userBadge').style.display = 'block';
+  document.getElementById('userBadge').textContent = state.admin.name + ' (' + state.admin.role + ')';
+  document.getElementById('logoutBtn').style.display = 'block';
+  document.getElementById('adminUserSub').textContent = 'Welcome ' + state.admin.name;
+  
+  document.getElementById('assignDate').value = todayStr();
+  document.getElementById('photoDate').value = todayStr();
+  
+  loadCampaigns();
+}
+
+// ─── TABS ───
+function switchTab(tabName) {
+  document.querySelectorAll('.tab').forEach(function(t) {
+    t.classList.toggle('active', t.dataset.tab === tabName);
+  });
+  document.querySelectorAll('.tab-content').forEach(function(c) {
+    c.classList.remove('active');
+  });
+  document.getElementById('tab-' + tabName).classList.add('active');
+  
+  if (tabName === 'campaigns') loadCampaigns();
+  else if (tabName === 'members') loadMembers();
+  else if (tabName === 'assignments') loadAssignments();
+  else if (tabName === 'photos') initPhotosTab();
+}
+
+// ============================================================
+//  TAB 1: CAMPAIGNS
+// ============================================================
+
 function loadCampaigns() {
+  var listEl = document.getElementById('campaignsList');
+  listEl.innerHTML = '<div class="spinner"></div>';
+  
   api('/rest/v1/trial_campaigns?select=*&order=name')
     .then(function(campaigns) {
-      state.campaigns = campaigns;
+      state.campaigns = campaigns || [];
+      document.getElementById('campaignsCount').textContent = '(' + state.campaigns.length + ')';
       renderCampaigns();
     })
     .catch(function(err) {
       console.error(err);
+      listEl.innerHTML = '<div class="empty-state">Load failed - retry karo</div>';
       showToast('Campaigns load error', 'error');
     });
 }
 
 function renderCampaigns() {
-  var list = document.getElementById('campaignList');
-  list.innerHTML = '';
-  
+  var list = document.getElementById('campaignsList');
   if (state.campaigns.length === 0) {
-    list.innerHTML = '<div class="empty-state">Koi campaign nahi mila</div>';
+    list.innerHTML = '<div class="empty-state">Koi campaign nahi - "+ Add New" se banao</div>';
     return;
   }
   
+  var html = '';
   state.campaigns.forEach(function(c) {
-    var card = document.createElement('div');
-    card.className = 'campaign-card';
-    card.dataset.id = c.id;
-    
-    var brandingTag = '<span class="tag ' + (c.branding_mode || 'full') + '">' 
-      + (c.branding_mode || 'full').toUpperCase() + '</span>';
+    var brandingMode = c.branding_mode || 'full';
+    var brandingTag = '<span class="tag tag-' + brandingMode + '">' + brandingMode.toUpperCase() + '</span>';
     var manualTag = c.manual_gps_enabled 
-      ? '<span class="tag manual-on">Manual GPS</span>'
-      : '<span class="tag manual-off">Real GPS</span>';
-    var autoVehicleTag = c.auto_vehicle_enabled
-      ? '<span class="tag manual-on">Auto OCR</span>'
+      ? '<span class="tag tag-on">Manual GPS</span>'
+      : '<span class="tag tag-off">Real GPS</span>';
+    var ocrTag = c.auto_vehicle_enabled
+      ? '<span class="tag tag-on">Auto OCR</span>'
       : '';
+    var activeTag = c.active 
+      ? '<span class="tag tag-success">ACTIVE</span>'
+      : '<span class="tag tag-off">INACTIVE</span>';
+    var cities = Array.isArray(c.active_cities) ? c.active_cities.join(', ') : '';
     
-    card.innerHTML = 
-      '<div class="campaign-row">' +
-        '<div class="campaign-name">' + (c.name || c.key) + '</div>' +
-        '<div class="campaign-key">' + c.key + '</div>' +
+    html += '<div class="card">' +
+      '<div class="card-header">' +
+        '<div>' +
+          '<div class="card-title">' + escapeHtml(c.name || c.key) + '</div>' +
+          '<div class="card-meta" style="margin-top:3px;">' + escapeHtml(c.client_name || '-') + '</div>' +
+        '</div>' +
+        '<div class="card-key">' + escapeHtml(c.key) + '</div>' +
       '</div>' +
-      '<div class="campaign-meta">' +
-        brandingTag + manualTag + autoVehicleTag +
-        '<span style="color:#888;font-size:11px;">' + 
-        (c.client_name || '-') + ' · Hood: ' + (c.hood_photo_count || 3) + 
-        ' · Back: ' + (c.back_panel_photo_count || 1) + '</span>' +
-      '</div>';
-    
-    card.onclick = function() { openEditor(c); };
-    list.appendChild(card);
+      '<div class="card-meta">' +
+        'Hood: ' + (c.hood_photo_count || 3) + ' · Back: ' + (c.back_panel_photo_count || 1) + 
+        ' · Target: ' + (c.target_count || 100) + 
+        (cities ? ' · ' + escapeHtml(cities.substring(0, 60)) : '') +
+      '</div>' +
+      '<div style="margin-top:6px;">' + activeTag + brandingTag + manualTag + ocrTag + '</div>' +
+      '<div class="card-actions">' +
+        '<button class="btn-icon" onclick="editCampaign(\'' + c.id + '\')">Edit</button>' +
+        '<button class="btn-icon" onclick="toggleCampaignActive(\'' + c.id + '\', ' + (!c.active) + ')">' + 
+          (c.active ? 'Deactivate' : 'Activate') + '</button>' +
+        '<button class="btn-icon danger" onclick="deleteCampaign(\'' + c.id + '\', \'' + escapeHtml(c.name || c.key) + '\')">Delete</button>' +
+      '</div>' +
+    '</div>';
   });
+  list.innerHTML = html;
 }
 
-// ─── EDIT CAMPAIGN ───
-function openEditor(campaign) {
-  state.editingCampaign = campaign;
+function openCampaignForm() {
+  state.editingCampaignId = null;
+  document.getElementById('campaignFormTitle').textContent = 'New Campaign';
+  document.getElementById('cName').value = '';
+  document.getElementById('cKey').value = '';
+  document.getElementById('cKey').disabled = false;
+  document.getElementById('cClient').value = '';
+  document.getElementById('cHood').value = '3';
+  document.getElementById('cBack').value = '1';
+  document.getElementById('cTarget').value = '100';
+  document.getElementById('cCities').value = '';
+  document.getElementById('cDefCity').value = '';
+  document.getElementById('cDefLat').value = '';
+  document.getElementById('cDefLng').value = '';
+  document.getElementById('cRadius').value = '50';
+  document.getElementById('cBrand').value = '';
+  document.getElementById('cWebsite').value = '';
+  document.getElementById('cAnchorAddr').value = '';
   
-  document.getElementById('editTitle').textContent = 'Edit: ' + (campaign.name || campaign.key);
+  document.querySelectorAll('.mode-option').forEach(function(el) {
+    el.classList.toggle('selected', el.dataset.mode === 'full');
+  });
+  document.getElementById('customFields').style.display = 'none';
+  document.getElementById('manualToggle').classList.remove('on');
+  document.getElementById('manualFields').classList.remove('active');
+  document.getElementById('autoVehicleToggle').classList.remove('on');
   
-  // Set branding mode
-  var mode = campaign.branding_mode || 'full';
+  document.getElementById('campaignFormCard').classList.add('active');
+  document.getElementById('campaignFormCard').scrollIntoView({behavior:'smooth'});
+}
+
+function closeCampaignForm() {
+  document.getElementById('campaignFormCard').classList.remove('active');
+  state.editingCampaignId = null;
+}
+
+function selectMode(el) {
+  document.querySelectorAll('.mode-option').forEach(function(o) { o.classList.remove('selected'); });
+  el.classList.add('selected');
+  document.getElementById('customFields').style.display = el.dataset.mode === 'custom' ? 'block' : 'none';
+}
+
+function toggleManualGps(el) {
+  el.classList.toggle('on');
+  document.getElementById('manualFields').classList.toggle('active', el.classList.contains('on'));
+}
+
+function editCampaign(id) {
+  var c = state.campaigns.find(function(x) { return x.id === id; });
+  if (!c) return;
+  
+  state.editingCampaignId = id;
+  document.getElementById('campaignFormTitle').textContent = 'Edit: ' + (c.name || c.key);
+  document.getElementById('cName').value = c.name || '';
+  document.getElementById('cKey').value = c.key || '';
+  document.getElementById('cKey').disabled = true; // can't change key after creation
+  document.getElementById('cClient').value = c.client_name || '';
+  document.getElementById('cHood').value = c.hood_photo_count || 3;
+  document.getElementById('cBack').value = c.back_panel_photo_count || 1;
+  document.getElementById('cTarget').value = c.target_count || 100;
+  document.getElementById('cCities').value = Array.isArray(c.active_cities) ? c.active_cities.join(', ') : '';
+  document.getElementById('cDefCity').value = c.default_city || '';
+  document.getElementById('cDefLat').value = c.default_lat || '';
+  document.getElementById('cDefLng').value = c.default_lng || '';
+  document.getElementById('cRadius').value = c.detection_radius_km || 50;
+  document.getElementById('cBrand').value = c.custom_brand_name || '';
+  document.getElementById('cWebsite').value = c.custom_website || '';
+  document.getElementById('cAnchorAddr').value = c.anchor_address || '';
+  
+  var mode = c.branding_mode || 'full';
   document.querySelectorAll('.mode-option').forEach(function(el) {
     el.classList.toggle('selected', el.dataset.mode === mode);
   });
-  
-  // Custom fields
-  document.getElementById('customBrand').value = campaign.custom_brand_name || '';
-  document.getElementById('customWebsite').value = campaign.custom_website || '';
   document.getElementById('customFields').style.display = mode === 'custom' ? 'block' : 'none';
   
-  // Manual GPS toggle
-  var manualOn = !!campaign.manual_gps_enabled;
-  var toggle = document.getElementById('manualToggle');
-  toggle.classList.toggle('on', manualOn);
+  var manualOn = !!c.manual_gps_enabled;
+  document.getElementById('manualToggle').classList.toggle('on', manualOn);
   document.getElementById('manualFields').classList.toggle('active', manualOn);
+  document.getElementById('autoVehicleToggle').classList.toggle('on', !!c.auto_vehicle_enabled);
   
-  // Auto vehicle (OCR) toggle
-  var autoVehicleOn = !!campaign.auto_vehicle_enabled;
-  document.getElementById('autoVehicleToggle').classList.toggle('on', autoVehicleOn);
-  
-  // Manual fields
-  document.getElementById('anchorAddress').value = campaign.anchor_address || '';
-  document.getElementById('anchorCity').value = campaign.default_city || '';
-  document.getElementById('anchorLat').value = campaign.default_lat || '';
-  document.getElementById('anchorLng').value = campaign.default_lng || '';
-  document.getElementById('radiusKm').value = campaign.detection_radius_km || 0.2;
-  
-  document.getElementById('editModal').classList.add('active');
-  document.getElementById('editModal').scrollIntoView({ behavior: 'smooth' });
+  document.getElementById('campaignFormCard').classList.add('active');
+  document.getElementById('campaignFormCard').scrollIntoView({behavior:'smooth'});
 }
 
-document.querySelectorAll('.mode-option').forEach(function(el) {
-  el.onclick = function() {
-    document.querySelectorAll('.mode-option').forEach(function(o) { o.classList.remove('selected'); });
-    el.classList.add('selected');
-    document.getElementById('customFields').style.display = 
-      el.dataset.mode === 'custom' ? 'block' : 'none';
-  };
-});
-
-document.getElementById('manualToggle').onclick = function() {
-  this.classList.toggle('on');
-  document.getElementById('manualFields').classList.toggle('active', this.classList.contains('on'));
-};
-
-document.getElementById('autoVehicleToggle').onclick = function() {
-  this.classList.toggle('on');
-};
-
-document.getElementById('cancelEditBtn').onclick = function() {
-  document.getElementById('editModal').classList.remove('active');
-  state.editingCampaign = null;
-};
-
-document.getElementById('saveBtn').onclick = function() {
-  if (!state.editingCampaign) return;
+function saveCampaign() {
+  var name = document.getElementById('cName').value.trim();
+  var key = document.getElementById('cKey').value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+  
+  if (!name) { showToast('Campaign name zaroori hai', 'error'); return; }
+  if (!key) { showToast('Campaign key zaroori hai', 'error'); return; }
   
   var selectedMode = document.querySelector('.mode-option.selected').dataset.mode;
   var manualOn = document.getElementById('manualToggle').classList.contains('on');
-  var autoVehicleOn = document.getElementById('autoVehicleToggle').classList.contains('on');
+  var autoOn = document.getElementById('autoVehicleToggle').classList.contains('on');
   
-  var updates = {
+  var citiesText = document.getElementById('cCities').value.trim();
+  var citiesArr = citiesText ? citiesText.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
+  
+  var data = {
+    name: name,
+    client_name: document.getElementById('cClient').value.trim() || null,
+    hood_photo_count: parseInt(document.getElementById('cHood').value) || 3,
+    back_panel_photo_count: parseInt(document.getElementById('cBack').value) || 1,
+    target_count: parseInt(document.getElementById('cTarget').value) || 100,
+    active_cities: citiesArr,
+    default_city: document.getElementById('cDefCity').value.trim() || null,
+    default_lat: parseFloat(document.getElementById('cDefLat').value) || null,
+    default_lng: parseFloat(document.getElementById('cDefLng').value) || null,
+    detection_radius_km: parseFloat(document.getElementById('cRadius').value) || 50,
     branding_mode: selectedMode,
-    custom_brand_name: selectedMode === 'custom' 
-      ? document.getElementById('customBrand').value.trim() : null,
-    custom_website: selectedMode === 'custom' 
-      ? document.getElementById('customWebsite').value.trim() : null,
+    custom_brand_name: selectedMode === 'custom' ? document.getElementById('cBrand').value.trim() : null,
+    custom_website: selectedMode === 'custom' ? document.getElementById('cWebsite').value.trim() : null,
     manual_gps_enabled: manualOn,
-    auto_vehicle_enabled: autoVehicleOn
+    auto_vehicle_enabled: autoOn,
+    anchor_address: manualOn ? document.getElementById('cAnchorAddr').value.trim() : null,
+    active: true
   };
   
-  if (manualOn) {
-    var lat = parseFloat(document.getElementById('anchorLat').value);
-    var lng = parseFloat(document.getElementById('anchorLng').value);
-    var radius = parseFloat(document.getElementById('radiusKm').value);
-    
-    if (isNaN(lat) || isNaN(lng)) {
-      showToast('Anchor lat/lng zaroori hai', 'error');
-      return;
-    }
-    
-    updates.default_lat = lat;
-    updates.default_lng = lng;
-    updates.detection_radius_km = radius || 0.2;
-    updates.anchor_address = document.getElementById('anchorAddress').value.trim();
-    updates.default_city = document.getElementById('anchorCity').value.trim();
+  var btn = document.getElementById('saveCampaignBtn');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+  
+  if (state.editingCampaignId) {
+    // Update
+    fetch(CONFIG.supabaseUrl + '/rest/v1/trial_campaigns?id=eq.' + state.editingCampaignId, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': CONFIG.supabaseKey,
+        'Authorization': 'Bearer ' + CONFIG.supabaseKey,
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify(data)
+    })
+    .then(function(r) {
+      btn.disabled = false;
+      btn.textContent = 'Save Campaign';
+      if (!r.ok) return r.text().then(function(t) { throw new Error(t); });
+      showToast('Campaign updated', 'success');
+      closeCampaignForm();
+      loadCampaigns();
+    })
+    .catch(function(err) {
+      btn.disabled = false;
+      btn.textContent = 'Save Campaign';
+      console.error(err);
+      showToast('Update failed: ' + err.message, 'error');
+    });
+  } else {
+    // Insert - include key
+    data.key = key;
+    fetch(CONFIG.supabaseUrl + '/rest/v1/trial_campaigns', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': CONFIG.supabaseKey,
+        'Authorization': 'Bearer ' + CONFIG.supabaseKey,
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify(data)
+    })
+    .then(function(r) {
+      btn.disabled = false;
+      btn.textContent = 'Save Campaign';
+      if (!r.ok) return r.text().then(function(t) { throw new Error(t); });
+      showToast('Campaign created', 'success');
+      closeCampaignForm();
+      loadCampaigns();
+    })
+    .catch(function(err) {
+      btn.disabled = false;
+      btn.textContent = 'Save Campaign';
+      console.error(err);
+      showToast('Create failed: ' + (err.message.indexOf('duplicate') > -1 ? 'Key already exists' : err.message), 'error');
+    });
   }
-  
-  this.disabled = true;
-  this.textContent = 'Saving...';
-  
-  fetch(CONFIG.supabaseUrl + '/rest/v1/trial_campaigns?id=eq.' + state.editingCampaign.id, {
+}
+
+function toggleCampaignActive(id, newActive) {
+  fetch(CONFIG.supabaseUrl + '/rest/v1/trial_campaigns?id=eq.' + id, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
       'apikey': CONFIG.supabaseKey,
-      'Authorization': 'Bearer ' + CONFIG.supabaseKey,
-      'Prefer': 'return=representation'
+      'Authorization': 'Bearer ' + CONFIG.supabaseKey
     },
-    body: JSON.stringify(updates)
+    body: JSON.stringify({ active: newActive })
   })
   .then(function(r) {
-    if (!r.ok) throw new Error('Update failed');
-    return r.json();
-  })
-  .then(function() {
-    showToast('Saved successfully', 'success');
-    document.getElementById('editModal').classList.remove('active');
-    state.editingCampaign = null;
+    if (!r.ok) throw new Error('Failed');
+    showToast(newActive ? 'Activated' : 'Deactivated', 'success');
     loadCampaigns();
+  })
+  .catch(function() { showToast('Update failed', 'error'); });
+}
+
+function deleteCampaign(id, name) {
+  if (!confirm('Delete "' + name + '"?\n\nYeh permanent hai - photos remain but campaign hide ho jayega.')) return;
+  
+  fetch(CONFIG.supabaseUrl + '/rest/v1/trial_campaigns?id=eq.' + id, {
+    method: 'DELETE',
+    headers: {
+      'apikey': CONFIG.supabaseKey,
+      'Authorization': 'Bearer ' + CONFIG.supabaseKey
+    }
+  })
+  .then(function(r) {
+    if (!r.ok) {
+      // If FK constraint, suggest deactivate
+      showToast('Delete failed - photos linked. Try Deactivate instead', 'error');
+      return;
+    }
+    showToast('Campaign deleted', 'success');
+    loadCampaigns();
+  })
+  .catch(function() { showToast('Delete failed', 'error'); });
+}
+
+// ============================================================
+//  TAB 2: TEAM MEMBERS
+// ============================================================
+
+function loadMembers() {
+  var listEl = document.getElementById('membersList');
+  listEl.innerHTML = '<div class="spinner"></div>';
+  
+  api('/rest/v1/trial_team_members?select=*&order=name')
+    .then(function(members) {
+      state.members = members || [];
+      document.getElementById('membersCount').textContent = '(' + state.members.length + ')';
+      renderMembers();
+    })
+    .catch(function(err) {
+      console.error(err);
+      listEl.innerHTML = '<div class="empty-state">Load failed</div>';
+    });
+}
+
+function renderMembers() {
+  var list = document.getElementById('membersList');
+  if (state.members.length === 0) {
+    list.innerHTML = '<div class="empty-state">Koi member nahi - "+ Add Member" se banao</div>';
+    return;
+  }
+  
+  var html = '';
+  state.members.forEach(function(m) {
+    var roleColor = m.role === 'admin' || m.role === 'owner' ? 'tag-info' : 'tag-success';
+    var activeTag = m.active 
+      ? '<span class="tag tag-success">ACTIVE</span>' 
+      : '<span class="tag tag-off">INACTIVE</span>';
+    
+    html += '<div class="card">' +
+      '<div class="card-header">' +
+        '<div>' +
+          '<div class="card-title">' + escapeHtml(m.name) + '</div>' +
+          '<div class="card-meta" style="margin-top:3px; font-family:monospace;">' + escapeHtml(m.phone) + '</div>' +
+        '</div>' +
+        '<div>' + activeTag + ' <span class="tag ' + roleColor + '">' + (m.role || 'field').toUpperCase() + '</span></div>' +
+      '</div>' +
+      '<div class="card-meta">' +
+        (m.city ? '📍 ' + escapeHtml(m.city) : '') +
+      '</div>' +
+      '<div class="card-actions">' +
+        '<button class="btn-icon" onclick="editMember(\'' + m.id + '\')">Edit</button>' +
+        '<button class="btn-icon" onclick="toggleMemberActive(\'' + m.id + '\', ' + (!m.active) + ')">' + 
+          (m.active ? 'Deactivate' : 'Activate') + '</button>' +
+      '</div>' +
+    '</div>';
+  });
+  list.innerHTML = html;
+}
+
+function openMemberForm() {
+  state.editingMemberId = null;
+  document.getElementById('memberFormTitle').textContent = 'New Member';
+  document.getElementById('mName').value = '';
+  document.getElementById('mPhone').value = '';
+  document.getElementById('mPhone').disabled = false;
+  document.getElementById('mRole').value = 'field';
+  document.getElementById('mCity').value = '';
+  document.getElementById('memberFormCard').classList.add('active');
+  document.getElementById('memberFormCard').scrollIntoView({behavior:'smooth'});
+}
+
+function closeMemberForm() {
+  document.getElementById('memberFormCard').classList.remove('active');
+  state.editingMemberId = null;
+}
+
+function editMember(id) {
+  var m = state.members.find(function(x) { return x.id === id; });
+  if (!m) return;
+  state.editingMemberId = id;
+  document.getElementById('memberFormTitle').textContent = 'Edit: ' + m.name;
+  document.getElementById('mName').value = m.name || '';
+  document.getElementById('mPhone').value = m.phone || '';
+  document.getElementById('mPhone').disabled = true;
+  document.getElementById('mRole').value = m.role || 'field';
+  document.getElementById('mCity').value = m.city || '';
+  document.getElementById('memberFormCard').classList.add('active');
+  document.getElementById('memberFormCard').scrollIntoView({behavior:'smooth'});
+}
+
+function saveMember() {
+  var name = document.getElementById('mName').value.trim();
+  var phone = document.getElementById('mPhone').value.trim();
+  
+  if (!name) { showToast('Name zaroori hai', 'error'); return; }
+  if (phone.length !== 10) { showToast('10 digit phone daalo', 'error'); return; }
+  
+  var data = {
+    name: name,
+    role: document.getElementById('mRole').value,
+    city: document.getElementById('mCity').value.trim() || null,
+    active: true
+  };
+  
+  var btn = document.getElementById('saveMemberBtn');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+  
+  if (state.editingMemberId) {
+    fetch(CONFIG.supabaseUrl + '/rest/v1/trial_team_members?id=eq.' + state.editingMemberId, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': CONFIG.supabaseKey,
+        'Authorization': 'Bearer ' + CONFIG.supabaseKey
+      },
+      body: JSON.stringify(data)
+    })
+    .then(function(r) {
+      btn.disabled = false;
+      btn.textContent = 'Save Member';
+      if (!r.ok) throw new Error('Update failed');
+      showToast('Member updated', 'success');
+      closeMemberForm();
+      loadMembers();
+    })
+    .catch(function() { 
+      btn.disabled = false;
+      btn.textContent = 'Save Member';
+      showToast('Update failed', 'error'); 
+    });
+  } else {
+    data.phone = phone;
+    fetch(CONFIG.supabaseUrl + '/rest/v1/trial_team_members', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': CONFIG.supabaseKey,
+        'Authorization': 'Bearer ' + CONFIG.supabaseKey
+      },
+      body: JSON.stringify(data)
+    })
+    .then(function(r) {
+      btn.disabled = false;
+      btn.textContent = 'Save Member';
+      if (!r.ok) return r.text().then(function(t) { throw new Error(t); });
+      showToast('Member added', 'success');
+      closeMemberForm();
+      loadMembers();
+    })
+    .catch(function(err) { 
+      btn.disabled = false;
+      btn.textContent = 'Save Member';
+      showToast(err.message.indexOf('duplicate') > -1 ? 'Phone already exists' : 'Add failed', 'error'); 
+    });
+  }
+}
+
+function toggleMemberActive(id, newActive) {
+  fetch(CONFIG.supabaseUrl + '/rest/v1/trial_team_members?id=eq.' + id, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': CONFIG.supabaseKey,
+      'Authorization': 'Bearer ' + CONFIG.supabaseKey
+    },
+    body: JSON.stringify({ active: newActive })
+  })
+  .then(function(r) {
+    if (!r.ok) throw new Error('Failed');
+    showToast(newActive ? 'Activated' : 'Deactivated', 'success');
+    loadMembers();
+  })
+  .catch(function() { showToast('Update failed', 'error'); });
+}
+
+// ============================================================
+//  TAB 3: DAILY ASSIGNMENTS
+// ============================================================
+
+function loadAssignments() {
+  var listEl = document.getElementById('assignmentsList');
+  listEl.innerHTML = '<div class="spinner"></div>';
+  var date = document.getElementById('assignDate').value || todayStr();
+  
+  // Load all data in parallel
+  Promise.all([
+    api('/rest/v1/trial_team_members?active=eq.true&order=name&select=*'),
+    api('/rest/v1/trial_campaigns?active=eq.true&order=name&select=*'),
+    api('/rest/v1/trial_daily_assignments?assignment_date=eq.' + date + '&select=*')
+  ])
+  .then(function(results) {
+    var members = results[0] || [];
+    var campaigns = results[1] || [];
+    var assignments = results[2] || [];
+    
+    // Map member_phone -> assignment
+    var assignMap = {};
+    assignments.forEach(function(a) { assignMap[a.member_phone] = a; });
+    
+    if (members.length === 0) {
+      listEl.innerHTML = '<div class="empty-state">Koi active member nahi - Tab 2 mein add karo</div>';
+      return;
+    }
+    
+    var html = '';
+    members.forEach(function(m) {
+      var current = assignMap[m.phone];
+      var options = '<option value="">Not assigned</option>';
+      campaigns.forEach(function(c) {
+        var sel = current && current.campaign_key === c.key ? ' selected' : '';
+        options += '<option value="' + escapeHtml(c.key) + '"' + sel + '>' + escapeHtml(c.name || c.key) + '</option>';
+      });
+      
+      html += '<div class="assign-row">' +
+        '<div>' +
+          '<div class="member-name">' + escapeHtml(m.name) + '</div>' +
+          '<div class="member-phone">' + escapeHtml(m.phone) + '</div>' +
+        '</div>' +
+        '<select onchange="saveAssignment(\'' + m.phone + '\', this.value, \'' + date + '\')">' + options + '</select>' +
+        '<div style="font-size:10px; color:#888; min-width:60px; text-align:right;">' + 
+          (current ? '✓ Saved' : '-') + 
+        '</div>' +
+      '</div>';
+    });
+    listEl.innerHTML = html;
   })
   .catch(function(err) {
     console.error(err);
-    showToast('Save error', 'error');
-  })
-  .finally(function() {
-    document.getElementById('saveBtn').disabled = false;
-    document.getElementById('saveBtn').textContent = 'Save Settings';
+    listEl.innerHTML = '<div class="empty-state">Load failed</div>';
   });
-};
+}
 
-// Auto-login if saved
+function saveAssignment(phone, campaignKey, date) {
+  if (!campaignKey) {
+    // Delete existing assignment
+    fetch(CONFIG.supabaseUrl + '/rest/v1/trial_daily_assignments?member_phone=eq.' + phone + '&assignment_date=eq.' + date, {
+      method: 'DELETE',
+      headers: {
+        'apikey': CONFIG.supabaseKey,
+        'Authorization': 'Bearer ' + CONFIG.supabaseKey
+      }
+    })
+    .then(function() {
+      showToast('Assignment removed', 'success');
+      loadAssignments();
+    })
+    .catch(function() { showToast('Failed', 'error'); });
+    return;
+  }
+  
+  // Upsert
+  fetch(CONFIG.supabaseUrl + '/rest/v1/trial_daily_assignments?on_conflict=member_phone,assignment_date', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': CONFIG.supabaseKey,
+      'Authorization': 'Bearer ' + CONFIG.supabaseKey,
+      'Prefer': 'resolution=merge-duplicates,return=minimal'
+    },
+    body: JSON.stringify({
+      member_phone: phone,
+      campaign_key: campaignKey,
+      assignment_date: date,
+      created_by: state.admin.phone
+    })
+  })
+  .then(function(r) {
+    if (!r.ok) throw new Error('Failed');
+    showToast('Assigned', 'success');
+    loadAssignments();
+  })
+  .catch(function() { showToast('Save failed', 'error'); });
+}
+
+// ============================================================
+//  TAB 4: PHOTOS BROWSER
+// ============================================================
+
+function initPhotosTab() {
+  // Populate filter dropdowns
+  var campSel = document.getElementById('photoCampaign');
+  var memSel = document.getElementById('photoMember');
+  
+  campSel.innerHTML = '<option value="">All Campaigns</option>';
+  state.campaigns.forEach(function(c) {
+    campSel.innerHTML += '<option value="' + escapeHtml(c.key) + '">' + escapeHtml(c.name || c.key) + '</option>';
+  });
+  
+  if (state.members.length === 0) {
+    api('/rest/v1/trial_team_members?select=phone,name&order=name')
+      .then(function(members) {
+        memSel.innerHTML = '<option value="">All Members</option>';
+        members.forEach(function(m) {
+          memSel.innerHTML += '<option value="' + escapeHtml(m.phone) + '">' + escapeHtml(m.name) + '</option>';
+        });
+      });
+  } else {
+    memSel.innerHTML = '<option value="">All Members</option>';
+    state.members.forEach(function(m) {
+      memSel.innerHTML += '<option value="' + escapeHtml(m.phone) + '">' + escapeHtml(m.name) + '</option>';
+    });
+  }
+  
+  loadPhotos();
+}
+
+function loadPhotos() {
+  var listEl = document.getElementById('photosList');
+  listEl.innerHTML = '<div class="spinner"></div>';
+  
+  var date = document.getElementById('photoDate').value;
+  var campaign = document.getElementById('photoCampaign').value;
+  var member = document.getElementById('photoMember').value;
+  
+  var qs = '?select=*&order=captured_at.desc&limit=200';
+  if (date) {
+    qs += '&captured_at=gte.' + date + 'T00:00:00';
+    qs += '&captured_at=lte.' + date + 'T23:59:59';
+  }
+  if (campaign) qs += '&campaign_key=eq.' + campaign;
+  if (member) qs += '&member_phone=eq.' + member;
+  
+  api('/rest/v1/trial_photos' + qs)
+    .then(function(photos) {
+      photos = photos || [];
+      
+      // Stats
+      var statsEl = document.getElementById('photoStats');
+      var uniqueVehicles = {};
+      photos.forEach(function(p) { if (p.vehicle_number) uniqueVehicles[p.vehicle_number] = true; });
+      
+      statsEl.innerHTML = 
+        '<div class="stat-box"><div class="label">Photos</div><div class="value">' + photos.length + '</div></div>' +
+        '<div class="stat-box"><div class="label">Vehicles</div><div class="value">' + Object.keys(uniqueVehicles).length + '</div></div>' +
+        '<div class="stat-box"><div class="label">Hood</div><div class="value">' + photos.filter(function(p){return p.mode==='hood';}).length + '</div></div>' +
+        '<div class="stat-box"><div class="label">Back Panel</div><div class="value">' + photos.filter(function(p){return p.mode==='back_panel';}).length + '</div></div>';
+      
+      if (photos.length === 0) {
+        listEl.innerHTML = '<div class="empty-state">Selected filter ke liye photos nahi mile</div>';
+        return;
+      }
+      
+      var html = '<div class="photos-grid">';
+      photos.forEach(function(p) {
+        var time = p.captured_at ? new Date(p.captured_at).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'}) : '';
+        html += '<div class="photo-item" onclick="openPhotoModal(\'' + escapeHtml(p.photo_url || '') + '\')">' +
+          '<img class="photo-img" src="' + escapeHtml(p.photo_url || '') + '" loading="lazy" alt="">' +
+          '<div class="photo-meta">' +
+            '<div class="vehicle">' + escapeHtml(p.vehicle_number || '-') + '</div>' +
+            '<div class="info">' + escapeHtml(p.mode || '') + ' · ' + time + '</div>' +
+            '<div class="info">' + escapeHtml((p.address || '').substring(0, 40)) + '</div>' +
+          '</div>' +
+        '</div>';
+      });
+      html += '</div>';
+      listEl.innerHTML = html;
+    })
+    .catch(function(err) {
+      console.error(err);
+      listEl.innerHTML = '<div class="empty-state">Load failed</div>';
+    });
+}
+
+function openPhotoModal(url) {
+  if (!url) return;
+  document.getElementById('photoModalImg').src = url;
+  document.getElementById('photoModal').classList.add('active');
+}
+
+function closePhotoModal() {
+  document.getElementById('photoModal').classList.remove('active');
+  document.getElementById('photoModalImg').src = '';
+}
+
+// ─── AUTO LOGIN ON PAGE LOAD ───
 document.addEventListener('DOMContentLoaded', function() {
   var saved = localStorage.getItem('prajapati_admin_phone');
-  if (saved) {
+  if (saved && saved.length === 10) {
     document.getElementById('loginPhone').value = saved;
   }
 });
