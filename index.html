@@ -1233,16 +1233,30 @@ function getCampaignFromAPI(lat, lng, city) {
     srcEl.textContent = srcText;
     srcEl.className = 'source ' + srcClass;
     
-    // ─── Fetch auto_vehicle_enabled separately (RPC may not return it) ───
-    api('/rest/v1/trial_campaigns?key=eq.' + state.campaign.campaign_key + '&select=auto_vehicle_enabled')
+    // ─── CRITICAL FIX: Fetch auto_vehicle_enabled BEFORE enabling Start ───
+    // Race condition fix - await this before letting user proceed
+    api('/rest/v1/trial_campaigns?key=eq.' + state.campaign.campaign_key + '&select=auto_vehicle_enabled,manual_gps_enabled,branding_mode')
       .then(function(rows) {
         if (rows && rows.length > 0) {
           state.campaign.auto_vehicle_enabled = !!rows[0].auto_vehicle_enabled;
+          state.campaign.manual_gps_enabled = !!rows[0].manual_gps_enabled;
+          state.campaign.branding_mode = rows[0].branding_mode || 'full';
+          console.log('[Campaign] Settings loaded:', {
+            auto_vehicle: state.campaign.auto_vehicle_enabled,
+            manual_gps: state.campaign.manual_gps_enabled,
+            branding: state.campaign.branding_mode
+          });
         }
+        // ONLY enable Start button AFTER all flags loaded
+        document.getElementById('startBtn').disabled = false;
       })
-      .catch(function() { state.campaign.auto_vehicle_enabled = false; });
-    
-    document.getElementById('startBtn').disabled = false;
+      .catch(function(err) {
+        console.warn('Settings fetch failed, using defaults:', err);
+        state.campaign.auto_vehicle_enabled = false;
+        state.campaign.manual_gps_enabled = false;
+        state.campaign.branding_mode = 'full';
+        document.getElementById('startBtn').disabled = false;
+      });
   })
   .catch(function(err) {
     console.error('Campaign fetch error:', err);
