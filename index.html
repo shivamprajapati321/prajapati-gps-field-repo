@@ -1233,25 +1233,48 @@ function getCampaignFromAPI(lat, lng, city) {
     srcEl.textContent = srcText;
     srcEl.className = 'source ' + srcClass;
     
-    // ─── CRITICAL FIX: Fetch auto_vehicle_enabled BEFORE enabling Start ───
-    // Race condition fix - await this before letting user proceed
-    api('/rest/v1/trial_campaigns?key=eq.' + state.campaign.campaign_key + '&select=auto_vehicle_enabled,manual_gps_enabled,branding_mode')
+    // ─── ROBUST FIX: Use id (UUID) not campaign_key ───
+    // Note: RPC returns "campaign_key" but actual DB column is "key"
+    // Using id (UUID) which is guaranteed consistent
+    var campaignKeyValue = state.campaign.campaign_key || state.campaign.key;
+    var fetchUrl = state.campaign.id 
+      ? '/rest/v1/trial_campaigns?id=eq.' + state.campaign.id + '&select=auto_vehicle_enabled,manual_gps_enabled,branding_mode,custom_logo_url,custom_brand_name,custom_website,anchor_address'
+      : '/rest/v1/trial_campaigns?key=eq.' + campaignKeyValue + '&select=auto_vehicle_enabled,manual_gps_enabled,branding_mode,custom_logo_url,custom_brand_name,custom_website,anchor_address';
+    
+    console.log('[DEBUG] Fetching campaign settings:', {
+      campaign_id: state.campaign.id,
+      campaign_key: campaignKeyValue,
+      fetch_url: fetchUrl
+    });
+    
+    api(fetchUrl)
       .then(function(rows) {
+        console.log('[DEBUG] Settings fetch response:', rows);
         if (rows && rows.length > 0) {
           state.campaign.auto_vehicle_enabled = !!rows[0].auto_vehicle_enabled;
           state.campaign.manual_gps_enabled = !!rows[0].manual_gps_enabled;
           state.campaign.branding_mode = rows[0].branding_mode || 'full';
+          state.campaign.custom_logo_url = rows[0].custom_logo_url;
+          state.campaign.custom_brand_name = rows[0].custom_brand_name;
+          state.campaign.custom_website = rows[0].custom_website;
+          state.campaign.anchor_address = rows[0].anchor_address;
+          
           console.log('[Campaign] Settings loaded:', {
             auto_vehicle: state.campaign.auto_vehicle_enabled,
             manual_gps: state.campaign.manual_gps_enabled,
             branding: state.campaign.branding_mode
           });
+        } else {
+          console.warn('[Campaign] No settings row returned - using defaults');
+          state.campaign.auto_vehicle_enabled = false;
+          state.campaign.manual_gps_enabled = false;
+          state.campaign.branding_mode = 'full';
         }
         // ONLY enable Start button AFTER all flags loaded
         document.getElementById('startBtn').disabled = false;
       })
       .catch(function(err) {
-        console.warn('Settings fetch failed, using defaults:', err);
+        console.error('[Campaign] Settings fetch FAILED:', err);
         state.campaign.auto_vehicle_enabled = false;
         state.campaign.manual_gps_enabled = false;
         state.campaign.branding_mode = 'full';
