@@ -1233,6 +1233,15 @@ function getCampaignFromAPI(lat, lng, city) {
     srcEl.textContent = srcText;
     srcEl.className = 'source ' + srcClass;
     
+    // ─── Fetch auto_vehicle_enabled separately (RPC may not return it) ───
+    api('/rest/v1/trial_campaigns?key=eq.' + state.campaign.campaign_key + '&select=auto_vehicle_enabled')
+      .then(function(rows) {
+        if (rows && rows.length > 0) {
+          state.campaign.auto_vehicle_enabled = !!rows[0].auto_vehicle_enabled;
+        }
+      })
+      .catch(function() { state.campaign.auto_vehicle_enabled = false; });
+    
     document.getElementById('startBtn').disabled = false;
   })
   .catch(function(err) {
@@ -1243,6 +1252,15 @@ function getCampaignFromAPI(lat, lng, city) {
 
 document.getElementById('startBtn').addEventListener('click', function() {
   if (!state.selectedMode || !state.campaign) return;
+  
+  // ─── AUTO VEHICLE MODE: Skip vehicle entry screen ───
+  if (state.campaign.auto_vehicle_enabled === true) {
+    state.currentVehicle = 'AUTO_OCR'; // Placeholder - real plate read by backend
+    state.photosThisSession = 0;
+    goToCameraScreen();
+    return;
+  }
+  
   goToVehicleScreen();
 });
 
@@ -1298,7 +1316,15 @@ function goToCameraScreen() {
   for (var i = 0; i < state.expectedPhotoCount; i++) bars += '<div class="progress-bar"></div>';
   document.getElementById('progressBars').innerHTML = bars;
   
-  document.getElementById('liveVehicleBadge').textContent = state.currentVehicle;
+  // ─── AUTO VEHICLE MODE: Hide vehicle badge in live overlay ───
+  var autoVehicleMode = state.campaign && state.campaign.auto_vehicle_enabled === true;
+  var liveBadge = document.getElementById('liveVehicleBadge');
+  if (autoVehicleMode) {
+    liveBadge.style.display = 'none';
+  } else {
+    liveBadge.style.display = 'block';
+    liveBadge.textContent = state.currentVehicle;
+  }
   
   if (LOGO_DATA_URL && LOGO_DATA_URL !== 'LOGO_BASE64_PLACEHOLDER') {
     document.getElementById('liveLogo').src = LOGO_DATA_URL;
@@ -1476,19 +1502,24 @@ function drawGPSStamp(ctx, w, h) {
   var fontSize = Math.max(28 * scale, 22);
   var margin = 30 * scale;
   
-  var vehTextWidth = ctx.measureText(state.currentVehicle).width;
-  var vehBannerW = Math.max(vehTextWidth + 80 * scale, 360 * scale);
-  var vehBannerH = 70 * scale;
+  // ─── AUTO VEHICLE MODE: Hide vehicle banner ───
+  var autoVehicleMode = state.campaign && state.campaign.auto_vehicle_enabled === true;
   
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.88)';
-  roundRect(ctx, margin, margin, vehBannerW, vehBannerH, 8 * scale);
-  ctx.fill();
-  
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold ' + (fontSize * 1.5) + 'px monospace';
-  ctx.textBaseline = 'middle';
-  ctx.textAlign = 'left';
-  ctx.fillText(state.currentVehicle, margin + 25 * scale, margin + vehBannerH / 2);
+  if (!autoVehicleMode) {
+    var vehTextWidth = ctx.measureText(state.currentVehicle).width;
+    var vehBannerW = Math.max(vehTextWidth + 80 * scale, 360 * scale);
+    var vehBannerH = 70 * scale;
+    
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.88)';
+    roundRect(ctx, margin, margin, vehBannerW, vehBannerH, 8 * scale);
+    ctx.fill();
+    
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold ' + (fontSize * 1.5) + 'px monospace';
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    ctx.fillText(state.currentVehicle, margin + 25 * scale, margin + vehBannerH / 2);
+  }
   
   // ─── BRANDING MODE: Show logo only if NOT clean mode ───
   if (brandingMode !== 'clean') {
@@ -1830,6 +1861,10 @@ function uploadPhoto(blob) {
           state.customBrand = result.custom_brand_name;
           state.customWebsite = result.custom_website;
         }
+        // Update vehicle number from OCR result
+        if (result.final_vehicle && result.auto_vehicle) {
+          state.currentVehicle = result.final_vehicle;
+        }
         
         state.photosThisSession++;
         var done = state.photosThisSession;
@@ -1881,6 +1916,27 @@ function finishVehicleSession() {
   // SILENT AUTO-UPDATE: Apply pending update between vehicles
   if (typeof window.checkForUpdateOnVehicleComplete === 'function') {
     window.checkForUpdateOnVehicleComplete();
+  }
+  
+  // ─── AUTO VEHICLE MODE: Stay in camera for next vehicle ───
+  if (state.campaign && state.campaign.auto_vehicle_enabled === true) {
+    state.photosThisSession = 0;
+    state.currentVehicle = 'AUTO_OCR';
+    
+    // Reset photo counter UI
+    document.getElementById('photosDone').textContent = '0';
+    var bars = document.querySelectorAll('.progress-bars-mini .progress-bar');
+    bars.forEach(function(b) { b.classList.remove('filled'); });
+    
+    // Reset done button
+    var doneBtn = document.getElementById('doneBtn');
+    doneBtn.disabled = true;
+    doneBtn.classList.remove('done-ready');
+    
+    // Reset photo index
+    document.getElementById('livePhotoIndex').textContent = '1 of ' + state.expectedPhotoCount;
+    
+    return; // Camera stays active
   }
   
   stopCamera();
