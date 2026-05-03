@@ -334,7 +334,11 @@ function escapeHtml(s) {
 }
 
 function todayStr() {
-  return new Date().toISOString().split('T')[0];
+  // ✅ FIX: Return today's date in IST (not UTC)
+  var now = new Date();
+  var istOffset = 5.5 * 60 * 60 * 1000; // IST = UTC + 5:30
+  var istDate = new Date(now.getTime() + istOffset);
+  return istDate.toISOString().split('T')[0];
 }
 
 // ─── LOGIN ───
@@ -1015,8 +1019,15 @@ function loadPhotos() {
   
   var qs = '?select=*&order=captured_at.desc&limit=200';
   if (date) {
-    qs += '&captured_at=gte.' + date + 'T00:00:00';
-    qs += '&captured_at=lte.' + date + 'T23:59:59';
+    // ✅ FIX: IST timezone handling
+    // User selects "2026-05-03" in IST. Database stores in UTC.
+    // IST midnight 2026-05-03 00:00 = UTC 2026-05-02 18:30
+    // IST end-of-day 2026-05-03 23:59 = UTC 2026-05-03 18:29
+    // We must convert IST date range to UTC for accurate filtering
+    var istStartLocal = new Date(date + 'T00:00:00+05:30');
+    var istEndLocal = new Date(date + 'T23:59:59+05:30');
+    qs += '&captured_at=gte.' + istStartLocal.toISOString();
+    qs += '&captured_at=lte.' + istEndLocal.toISOString();
   }
   if (campaign) qs += '&campaign_key=eq.' + campaign;
   if (member) qs += '&member_phone=eq.' + member;
@@ -1042,8 +1053,8 @@ function loadPhotos() {
       
       var html = '<div class="photos-grid">';
       photos.forEach(function(p) {
-        var time = p.captured_at ? new Date(p.captured_at).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'}) : '';
-        // ✅ FIX: public_url use kar rahe hain (database column ka actual naam)
+        // ✅ FIX: Force IST display for time
+        var time = p.captured_at ? new Date(p.captured_at).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', timeZone: 'Asia/Kolkata'}) : '';
         var imgUrl = p.public_url || '';
         html += '<div class="photo-item" onclick="openPhotoModal(\'' + escapeHtml(imgUrl) + '\')">' +
           '<img class="photo-img" src="' + escapeHtml(imgUrl) + '" loading="lazy" alt="">' +
