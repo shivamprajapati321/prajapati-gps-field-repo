@@ -3,368 +3,397 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Prajapati GPS - PPT Generator</title>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-<!-- PPTXGenJS library -->
-<script src="https://cdn.jsdelivr.net/gh/gitbrent/PptxGenJS@3.12.0/dist/pptxgen.bundle.js"></script>
+<title>Prajapati GPS — PPT Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { 
-  font-family: 'Poppins', sans-serif; 
-  background: #f4f6f9; 
-  color: #1a2980; 
-  min-height: 100vh; 
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background: #f5f6f8;
+  color: #0B1957;
+  min-height: 100vh;
+  padding: 24px;
 }
+.container { max-width: 1200px; margin: 0 auto; }
 
-.header { 
-  background: #1a2980; 
-  color: #fff; 
-  padding: 14px 20px; 
-  display: flex; 
-  justify-content: space-between; 
-  align-items: center; 
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
-}
-.header h1 { font-size: 17px; font-weight: 600; }
-.header .sub { font-size: 11px; opacity: 0.85; margin-top: 2px; }
-.back-btn { 
-  background: rgba(255,255,255,0.15); 
-  color: #fff; 
-  border: none; 
-  padding: 6px 14px; 
-  border-radius: 16px; 
-  font-size: 11px; 
-  cursor: pointer; 
-  font-family: inherit; 
-}
-.back-btn:hover { background: rgba(255,255,255,0.25); }
-
-.container { 
-  max-width: 800px; 
-  margin: 0 auto; 
-  padding: 20px 14px; 
-}
-
-.card { 
-  background: #fff; 
-  border-radius: 12px; 
-  padding: 20px; 
-  margin-bottom: 14px; 
-  border: 1px solid #e8e8ee; 
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04); 
-}
-
-.card h2 { 
-  font-size: 15px; 
-  font-weight: 600; 
-  margin-bottom: 12px; 
-  color: #1a2980;
-}
-
-.card .desc { 
-  font-size: 12px; 
-  color: #666; 
-  margin-bottom: 14px; 
-  line-height: 1.5;
-}
-
-label { 
-  display: block; 
-  font-size: 10px; 
-  font-weight: 600; 
-  text-transform: uppercase; 
-  letter-spacing: 0.4px; 
-  color: #555; 
-  margin-bottom: 5px; 
-}
-
-input, select { 
-  width: 100%; 
-  padding: 10px 12px; 
-  font-size: 13px; 
-  border: 1px solid #dde; 
-  border-radius: 6px; 
-  font-family: inherit; 
-  outline: none; 
+.header {
   background: #fff;
+  border-radius: 16px;
+  padding: 28px 32px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
-input:focus, select:focus { border-color: #1a2980; }
-
-.field { margin-bottom: 12px; }
-.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-
-.btn { 
-  background: #1a2980; 
-  color: #fff; 
-  border: none; 
-  padding: 12px 24px; 
-  font-size: 14px; 
-  font-weight: 600; 
-  border-radius: 8px; 
-  cursor: pointer; 
-  font-family: inherit; 
-  width: 100%;
+.header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0B1957;
+  margin-bottom: 6px;
 }
-.btn:hover { opacity: 0.92; }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-success { background: linear-gradient(135deg, #34c759, #00a843); }
-
-.preview-section {
-  background: #f4f6f9;
-  border-radius: 8px;
-  padding: 14px;
-  margin-top: 14px;
+.header p {
+  font-size: 14px;
+  color: #6b7280;
 }
 
-.preview-stats {
+.filters {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px 28px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.filters h2 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 16px;
+}
+.filter-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-bottom: 12px;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
 }
-
-.stat-box {
-  background: #fff;
-  border-radius: 8px;
+.filter-group label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+.filter-group select,
+.filter-group input {
+  width: 100%;
   padding: 10px 12px;
-  border: 1px solid #e8e8ee;
-}
-.stat-box .label { 
-  font-size: 9px; 
-  color: #888; 
-  text-transform: uppercase; 
-  letter-spacing: 0.4px; 
-  margin-bottom: 3px; 
-}
-.stat-box .value { 
-  font-size: 20px; 
-  font-weight: 700; 
-  color: #1a2980; 
-}
-
-.vehicle-list {
-  max-height: 200px;
-  overflow-y: auto;
+  font-size: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
   background: #fff;
-  border-radius: 6px;
-  border: 1px solid #e8e8ee;
+  font-family: inherit;
+  color: #0B1957;
+  outline: none;
+}
+.filter-group select:focus,
+.filter-group input:focus {
+  border-color: #26d0ce;
 }
 
-.vehicle-row {
-  padding: 8px 12px;
-  border-bottom: 1px solid #f0f2f7;
+.btn {
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.btn-primary {
+  background: #0B1957;
+  color: #fff;
+}
+.btn-primary:hover { background: #1a2980; }
+.btn-primary:disabled {
+  background: #cbd5e1;
+  cursor: not-allowed;
+}
+.btn-accent {
+  background: #26d0ce;
+  color: #0B1957;
+}
+.btn-accent:hover { background: #1bbab8; }
+.btn-secondary {
+  background: #fff;
+  color: #0B1957;
+  border: 1px solid #e5e7eb;
+}
+
+.preview {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px 28px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.preview-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 12px;
+  margin-bottom: 20px;
+}
+.preview-header h2 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+.preview-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.stat-card {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+.stat-card .label {
+  font-size: 11px;
+  color: #6b7280;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+.stat-card .value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0B1957;
+}
+.stat-card .value.accent { color: #26d0ce; }
+
+.vehicle-list {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+.vehicle-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 13px;
+  align-items: center;
 }
 .vehicle-row:last-child { border-bottom: none; }
-.vehicle-row .vehicle-num { font-family: monospace; font-weight: 600; }
-.vehicle-row .vehicle-meta { font-size: 10px; color: #888; }
-.vehicle-row .photo-count {
-  background: #DAE9F1;
-  color: #185FA5;
-  padding: 2px 8px;
-  border-radius: 9px;
-  font-size: 10px;
+.vehicle-row.header {
+  background: #f8fafc;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+.vehicle-row .vh-num {
+  font-family: 'JetBrains Mono', monospace;
   font-weight: 600;
 }
-.vehicle-row .photo-count.warn {
-  background: #FAEEDA;
-  color: #854F0B;
+.mode-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.mode-pill.hood { background: #dbeafe; color: #1e40af; }
+.mode-pill.back_panel { background: #fef3c7; color: #92400e; }
+
+.empty-state {
+  padding: 40px;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 13px;
 }
 
-.empty-state { 
-  text-align: center; 
-  padding: 24px 14px; 
-  color: #888; 
-  font-size: 13px; 
-}
-
-.spinner { 
-  width: 24px; 
-  height: 24px; 
-  border: 3px solid #ddd; 
-  border-top-color: #1a2980; 
-  border-radius: 50%; 
-  animation: spin 1s linear infinite; 
-  margin: 16px auto; 
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.toast { 
-  position: fixed; 
-  top: 14px; 
-  right: 14px; 
-  background: #1a2980; 
-  color: #fff; 
-  padding: 11px 16px; 
-  border-radius: 6px; 
-  font-size: 12px; 
-  font-weight: 500; 
-  display: none; 
-  z-index: 1000; 
-  box-shadow: 0 4px 16px rgba(0,0,0,0.2); 
-  max-width: 280px; 
-}
-.toast.show { display: block; }
-.toast.success { background: #34c759; }
-.toast.error { background: #ef4444; }
-
-.progress-modal {
+.modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.7);
+  background: rgba(11, 25, 87, 0.6);
   display: none;
   align-items: center;
   justify-content: center;
-  z-index: 999;
-  backdrop-filter: blur(4px);
+  z-index: 1000;
 }
-.progress-modal.show { display: flex; }
-.progress-content {
+.modal-overlay.show { display: flex; }
+.modal {
   background: #fff;
-  border-radius: 12px;
-  padding: 24px;
-  text-align: center;
-  max-width: 320px;
-  width: 90%;
+  border-radius: 16px;
+  padding: 32px;
+  min-width: 400px;
+  max-width: 500px;
 }
-.progress-content h3 { font-size: 14px; margin-bottom: 6px; }
-.progress-content p { font-size: 12px; color: #666; margin-bottom: 16px; }
-.progress-bar {
-  background: #f0f2f7;
+.modal h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+.modal .progress-bar {
+  width: 100%;
   height: 8px;
+  background: #f1f5f9;
   border-radius: 4px;
   overflow: hidden;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
-.progress-fill {
-  background: linear-gradient(90deg, #1a2980, #26d0ce);
+.modal .progress-fill {
   height: 100%;
+  background: #26d0ce;
   width: 0%;
   transition: width 0.3s;
 }
-.progress-text {
-  font-size: 11px;
-  color: #888;
+.modal .progress-text {
+  font-size: 13px;
+  color: #6b7280;
 }
 
-.info-banner {
-  background: #FFF8E8;
-  border: 1px solid #F5E1A8;
+.toast {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 14px 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  font-size: 14px;
+  font-weight: 500;
+  display: none;
+  z-index: 1001;
+  max-width: 400px;
+}
+.toast.show { display: block; }
+.toast.success { background: #10b981; color: #fff; }
+.toast.error { background: #ef4444; color: #fff; }
+
+.branding-info {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: #f0fdfa;
+  border-left: 4px solid #26d0ce;
   border-radius: 8px;
-  padding: 11px 14px;
-  margin-bottom: 14px;
-  font-size: 11px;
-  color: #854F0B;
-  line-height: 1.5;
+  font-size: 12px;
+  color: #134e4a;
+  display: none;
 }
+.branding-info.show { display: block; }
+.branding-info strong { font-weight: 600; }
 
-@media (max-width: 600px) {
-  .field-row { grid-template-columns: 1fr; }
-}
 </style>
 </head>
 <body>
 
-<div class="header">
-  <div>
-    <h1>📊 PPT Report Generator</h1>
-    <div class="sub">Campaign-wise vehicle reports</div>
-  </div>
-  <button class="back-btn" onclick="window.location.href='admin.html'">← Back to Admin</button>
-</div>
-
 <div class="container">
 
-  <div class="card">
-    <h2>1. Campaign & Date Select</h2>
-    <p class="desc">Campaign aur date range choose karo. Saare matching photos PPT mein aayenge.</p>
-    
-    <div class="field">
-      <label>Campaign</label>
-      <select id="campaignSelect">
-        <option value="">Loading campaigns...</option>
-      </select>
-    </div>
+  <div class="header">
+    <h1>📊 PPT Report Generator</h1>
+    <p>Campaign-wise vehicle branding photo report banao</p>
+  </div>
 
-    <div class="field-row">
-      <div class="field">
+  <div class="filters">
+    <h2>Filters</h2>
+    <div class="filter-row">
+      <div class="filter-group">
+        <label>Campaign</label>
+        <select id="campaignFilter">
+          <option value="">Loading campaigns...</option>
+        </select>
+      </div>
+      <div class="filter-group">
         <label>From Date</label>
-        <input type="date" id="dateFrom">
+        <input type="date" id="fromDate">
       </div>
-      <div class="field">
+      <div class="filter-group">
         <label>To Date</label>
-        <input type="date" id="dateTo">
+        <input type="date" id="toDate">
+      </div>
+      <div class="filter-group">
+        <label>Mode</label>
+        <select id="modeFilter">
+          <option value="all">All Modes</option>
+          <option value="hood">Hood Only</option>
+          <option value="back_panel">Back Panel Only</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="loadVehicles()">Load Vehicles</button>
+    
+    <div class="branding-info" id="brandingInfo">
+      <strong>Branding Mode:</strong> <span id="brandingModeName">—</span> · <span id="brandingModeDesc">—</span>
+    </div>
+  </div>
+
+  <div class="preview" id="preview" style="display: none;">
+    <div class="preview-header">
+      <h2>Preview</h2>
+      <button class="btn btn-accent" id="generateBtn" onclick="generatePPT()">📥 Generate PPT</button>
+    </div>
+    
+    <div class="preview-stats">
+      <div class="stat-card">
+        <div class="label">Total Vehicles</div>
+        <div class="value" id="statVehicles">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Total Photos</div>
+        <div class="value accent" id="statPhotos">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Hood Mode</div>
+        <div class="value" id="statHood">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Back Panel</div>
+        <div class="value" id="statBackPanel">0</div>
       </div>
     </div>
 
-    <div class="field">
-      <label>Mode (Optional)</label>
-      <select id="modeSelect">
-        <option value="">All Modes (Hood + Back Panel)</option>
-        <option value="hood">Hood Only (3 photos per vehicle)</option>
-        <option value="back_panel">Back Panel Only (1 photo per vehicle)</option>
-      </select>
+    <div class="vehicle-list">
+      <div class="vehicle-row header">
+        <div>Vehicle</div>
+        <div>Mode</div>
+        <div>Photos</div>
+        <div>Date</div>
+        <div>Member</div>
+      </div>
+      <div id="vehicleListBody">
+        <div class="empty-state">Filters select karke "Load Vehicles" dabao</div>
+      </div>
     </div>
-
-    <button class="btn" onclick="loadPreview()">🔍 Load Preview</button>
   </div>
 
-  <div class="card" id="previewCard" style="display: none;">
-    <h2>2. Preview</h2>
-    
-    <div id="previewStats" class="preview-stats"></div>
-    
-    <div class="info-banner" id="previewInfo">Loading vehicles...</div>
+</div>
 
-    <label>Vehicles to be included:</label>
-    <div class="vehicle-list" id="vehicleList">
-      <div class="spinner"></div>
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h3 id="modalTitle">Generating PPT...</h3>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill"></div>
     </div>
-
-    <button class="btn btn-success" id="generateBtn" onclick="generatePPT()" style="margin-top: 14px;" disabled>
-      📥 Generate & Download PPT
-    </button>
+    <div class="progress-text" id="progressText">Starting...</div>
   </div>
-
 </div>
 
 <div class="toast" id="toast"></div>
 
-<div class="progress-modal" id="progressModal">
-  <div class="progress-content">
-    <h3 id="progressTitle">Generating PPT...</h3>
-    <p id="progressDesc">Photos load ho rahe hain</p>
-    <div class="progress-bar">
-      <div class="progress-fill" id="progressFill"></div>
-    </div>
-    <div class="progress-text" id="progressText">0 / 0</div>
-  </div>
-</div>
-
 <script>
 "use strict";
 
-var CONFIG = {
+const CONFIG = {
   supabaseUrl: 'https://fpbktcgtspqsqpaytslv.supabase.co',
   supabaseKey: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j'
 };
 
-var state = {
+const PRAJAPATI_LOGO_URL = 'https://prajapatiadvertising.co.in/logo.png';
+
+let state = {
   campaigns: [],
-  vehicles: [],
-  selectedCampaign: null
+  selectedCampaign: null,
+  brandingMode: 'full',
+  customLogo: null,
+  customBrand: 'PRAJAPATI',
+  customWebsite: 'prajapatiadvertising.co.in',
+  vehicles: []
 };
 
-// ─── UTILITIES ───
 function showToast(msg, type) {
-  var t = document.getElementById('toast');
+  const t = document.getElementById('toast');
   t.textContent = msg;
-  t.className = 'toast ' + (type || '');
-  t.classList.add('show');
-  setTimeout(function() { t.classList.remove('show'); }, 2500);
+  t.className = 'toast show ' + (type || '');
+  setTimeout(() => t.classList.remove('show'), 3000);
 }
 
 function api(path, options) {
@@ -372,641 +401,914 @@ function api(path, options) {
   options.headers = options.headers || {};
   options.headers.apikey = CONFIG.supabaseKey;
   options.headers.Authorization = 'Bearer ' + CONFIG.supabaseKey;
-  return fetch(CONFIG.supabaseUrl + path, options).then(function(r) {
+  if (options.body && typeof options.body !== 'string') {
+    options.headers['Content-Type'] = 'application/json';
+    options.body = JSON.stringify(options.body);
+  }
+  return fetch(CONFIG.supabaseUrl + path, options).then(r => {
     if (!r.ok) throw new Error('API ' + r.status);
     return r.json();
   });
 }
 
-function escapeHtml(s) {
-  if (s == null) return '';
-  return String(s).replace(/[&<>"']/g, function(c) {
-    return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
-  });
-}
-
-function todayIST() {
-  var now = new Date();
-  var istOffset = 5.5 * 60 * 60 * 1000;
-  var istDate = new Date(now.getTime() + istOffset);
+// ─── IST Date Helpers ───
+function istDateStr(d) {
+  d = d || new Date();
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const istDate = new Date(d.getTime() + istOffset);
   return istDate.toISOString().split('T')[0];
 }
 
-function formatDate(isoString) {
-  var d = new Date(isoString);
-  return d.toLocaleDateString('en-IN', { 
-    day: '2-digit', month: 'short', year: 'numeric',
-    timeZone: 'Asia/Kolkata'
-  });
+function dateRangeUTC(fromDateStr, toDateStr) {
+  const from = new Date(fromDateStr + 'T00:00:00+05:30').toISOString();
+  const to = new Date(toDateStr + 'T23:59:59+05:30').toISOString();
+  return { from, to };
 }
 
-function formatDateTime(isoString) {
-  var d = new Date(isoString);
-  return d.toLocaleString('en-IN', { 
-    day: '2-digit', month: 'short', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-    timeZone: 'Asia/Kolkata'
-  });
-}
-
-// ─── INIT ───
-document.addEventListener('DOMContentLoaded', function() {
-  // Set default dates (last 30 days)
-  var today = todayIST();
-  var thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  var fromDate = thirtyDaysAgo.toISOString().split('T')[0];
-  
-  document.getElementById('dateFrom').value = fromDate;
-  document.getElementById('dateTo').value = today;
+// ─── Init ───
+document.addEventListener('DOMContentLoaded', () => {
+  const today = istDateStr();
+  const monthAgo = new Date();
+  monthAgo.setDate(monthAgo.getDate() - 30);
+  document.getElementById('fromDate').value = istDateStr(monthAgo);
+  document.getElementById('toDate').value = today;
   
   loadCampaigns();
 });
 
-// ─── LOAD CAMPAIGNS ───
-function loadCampaigns() {
-  api('/rest/v1/trial_campaigns?select=*&order=name')
-    .then(function(campaigns) {
-      state.campaigns = campaigns || [];
-      var sel = document.getElementById('campaignSelect');
-      sel.innerHTML = '<option value="">Select campaign...</option>';
-      campaigns.forEach(function(c) {
-        sel.innerHTML += '<option value="' + escapeHtml(c.key) + '">' 
-          + escapeHtml(c.name || c.key) + '</option>';
-      });
-    })
-    .catch(function(err) {
-      console.error(err);
-      showToast('Campaigns load failed', 'error');
+// ─── Load Campaigns ───
+async function loadCampaigns() {
+  try {
+    const campaigns = await api('/rest/v1/trial_campaigns?select=id,key,name,client_name,branding_mode,custom_logo_url,custom_brand_name,custom_website&order=name.asc');
+    state.campaigns = campaigns;
+    
+    const select = document.getElementById('campaignFilter');
+    select.innerHTML = '<option value="">Select campaign...</option>';
+    campaigns.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.key;
+      opt.textContent = c.name + (c.client_name ? ' (' + c.client_name + ')' : '');
+      opt.dataset.id = c.id;
+      select.appendChild(opt);
     });
+    
+    select.addEventListener('change', onCampaignChange);
+  } catch (err) {
+    console.error('Campaign load error:', err);
+    showToast('Campaigns load nahi hue', 'error');
+  }
 }
 
-// ─── LOAD PREVIEW ───
-function loadPreview() {
-  var campaignKey = document.getElementById('campaignSelect').value;
-  var dateFrom = document.getElementById('dateFrom').value;
-  var dateTo = document.getElementById('dateTo').value;
-  var mode = document.getElementById('modeSelect').value;
+function onCampaignChange() {
+  const select = document.getElementById('campaignFilter');
+  const key = select.value;
   
-  if (!campaignKey) { showToast('Campaign select karo', 'error'); return; }
-  if (!dateFrom || !dateTo) { showToast('Dates select karo', 'error'); return; }
-  if (dateFrom > dateTo) { showToast('From date To date se chhota hona chahiye', 'error'); return; }
+  if (!key) {
+    document.getElementById('brandingInfo').classList.remove('show');
+    state.selectedCampaign = null;
+    return;
+  }
   
-  state.selectedCampaign = state.campaigns.find(function(c) { return c.key === campaignKey; });
+  const campaign = state.campaigns.find(c => c.key === key);
+  state.selectedCampaign = campaign;
+  state.brandingMode = campaign.branding_mode || 'full';
+  state.customLogo = campaign.custom_logo_url || null;
+  state.customBrand = campaign.custom_brand_name || 'PRAJAPATI';
+  state.customWebsite = campaign.custom_website || 'prajapatiadvertising.co.in';
   
-  document.getElementById('previewCard').style.display = 'block';
-  document.getElementById('vehicleList').innerHTML = '<div class="spinner"></div>';
-  document.getElementById('previewInfo').textContent = 'Loading photos...';
-  document.getElementById('generateBtn').disabled = true;
+  // Show branding info
+  const info = document.getElementById('brandingInfo');
+  const nameEl = document.getElementById('brandingModeName');
+  const descEl = document.getElementById('brandingModeDesc');
   
-  // ─── IST timezone handling for date filters ───
-  var istStart = new Date(dateFrom + 'T00:00:00+05:30').toISOString();
-  var istEnd = new Date(dateTo + 'T23:59:59+05:30').toISOString();
-  
-  var qs = '?select=*&campaign_key=eq.' + campaignKey
-    + '&captured_at=gte.' + istStart
-    + '&captured_at=lte.' + istEnd
-    + '&order=captured_at.asc&limit=2000';
-  
-  if (mode) qs += '&mode=eq.' + mode;
-  
-  api('/rest/v1/trial_photos' + qs)
-    .then(function(photos) {
-      photos = photos || [];
-      buildVehicleGroups(photos);
-    })
-    .catch(function(err) {
-      console.error(err);
-      document.getElementById('vehicleList').innerHTML = 
-        '<div class="empty-state">Load failed - retry karo</div>';
-      showToast('Photos load failed', 'error');
-    });
+  if (state.brandingMode === 'full') {
+    nameEl.textContent = 'Full Prajapati Branding';
+    descEl.textContent = 'PPT mein Prajapati logo, "Verified by Prajapati" footer, website URL aayega';
+  } else if (state.brandingMode === 'clean') {
+    nameEl.textContent = 'White Label / Clean';
+    descEl.textContent = 'Koi Prajapati branding nahi — Agency ko bhejne ke liye safe';
+  } else if (state.brandingMode === 'custom') {
+    nameEl.textContent = 'Custom Branding (' + state.customBrand + ')';
+    descEl.textContent = 'Custom logo + ' + state.customBrand + ' branding · Website: ' + state.customWebsite;
+  }
+  info.classList.add('show');
 }
 
-// ─── GROUP PHOTOS BY VEHICLE ───
-function buildVehicleGroups(photos) {
-  // Group photos by vehicle_number + mode
-  var groups = {};
+// ─── Load Vehicles ───
+async function loadVehicles() {
+  const campaignKey = document.getElementById('campaignFilter').value;
+  const fromDate = document.getElementById('fromDate').value;
+  const toDate = document.getElementById('toDate').value;
+  const mode = document.getElementById('modeFilter').value;
   
-  photos.forEach(function(p) {
-    if (!p.vehicle_number) return;
-    var key = p.vehicle_number + '|' + (p.mode || 'unknown');
-    if (!groups[key]) {
-      groups[key] = {
-        vehicle_number: p.vehicle_number,
-        owner_name: p.owner_name || null,
-        mode: p.mode,
-        photos: [],
-        captured_at: p.captured_at,
-        city: p.city,
-        address: p.address
-      };
+  if (!campaignKey) {
+    showToast('Pehle campaign select karo', 'error');
+    return;
+  }
+  if (!fromDate || !toDate) {
+    showToast('Date range select karo', 'error');
+    return;
+  }
+  
+  showToast('Loading vehicles...', '');
+  
+  try {
+    const range = dateRangeUTC(fromDate, toDate);
+    let url = '/rest/v1/trial_photos?campaign_key=eq.' + encodeURIComponent(campaignKey)
+            + '&captured_at=gte.' + range.from
+            + '&captured_at=lte.' + range.to
+            + '&select=id,vehicle_number,mode,photo_number,total_expected,public_url,captured_at,owner_name,member_name,city,address,latitude,longitude'
+            + '&order=captured_at.asc'
+            + '&limit=10000';
+    
+    if (mode !== 'all') {
+      url += '&mode=eq.' + mode;
     }
-    groups[key].photos.push(p);
-    // Keep latest captured_at for sorting
-    if (p.captured_at > groups[key].captured_at) {
-      groups[key].captured_at = p.captured_at;
+    
+    const photos = await api(url);
+    
+    if (!photos || photos.length === 0) {
+      document.getElementById('preview').style.display = 'block';
+      document.getElementById('vehicleListBody').innerHTML = '<div class="empty-state">Is range mein koi photos nahi mile</div>';
+      document.getElementById('statVehicles').textContent = '0';
+      document.getElementById('statPhotos').textContent = '0';
+      document.getElementById('statHood').textContent = '0';
+      document.getElementById('statBackPanel').textContent = '0';
+      document.getElementById('generateBtn').disabled = true;
+      state.vehicles = [];
+      return;
     }
-  });
-  
-  // Convert to array, sort by captured_at desc
-  var vehicles = Object.values(groups).sort(function(a, b) {
-    return b.captured_at.localeCompare(a.captured_at);
-  });
-  
-  state.vehicles = vehicles;
-  renderPreview();
+    
+    // Group photos by vehicle_number + mode (1 vehicle+mode = 1 slide)
+    const grouped = {};
+    photos.forEach(p => {
+      const key = p.vehicle_number + '|' + p.mode;
+      if (!grouped[key]) {
+        grouped[key] = {
+          vehicle_number: p.vehicle_number,
+          mode: p.mode,
+          owner_name: p.owner_name,
+          member_name: p.member_name,
+          city: p.city,
+          address: p.address,
+          captured_at: p.captured_at,
+          photos: []
+        };
+      }
+      grouped[key].photos.push(p);
+    });
+    
+    state.vehicles = Object.values(grouped);
+    
+    // Sort photos within each vehicle by photo_number
+    state.vehicles.forEach(v => {
+      v.photos.sort((a, b) => (a.photo_number || 0) - (b.photo_number || 0));
+    });
+    
+    renderPreview();
+  } catch (err) {
+    console.error('Load error:', err);
+    showToast('Load fail: ' + err.message, 'error');
+  }
 }
 
 function renderPreview() {
-  var vehicles = state.vehicles;
+  document.getElementById('preview').style.display = 'block';
   
-  // Stats
-  var totalPhotos = vehicles.reduce(function(sum, v) { return sum + v.photos.length; }, 0);
-  var hoodVehicles = vehicles.filter(function(v) { return v.mode === 'hood'; }).length;
-  var backVehicles = vehicles.filter(function(v) { return v.mode === 'back_panel'; }).length;
+  const totalVehicles = state.vehicles.length;
+  const totalPhotos = state.vehicles.reduce((sum, v) => sum + v.photos.length, 0);
+  const hoodCount = state.vehicles.filter(v => v.mode === 'hood').length;
+  const backPanelCount = state.vehicles.filter(v => v.mode === 'back_panel').length;
   
-  document.getElementById('previewStats').innerHTML = 
-    '<div class="stat-box"><div class="label">Total Vehicles</div><div class="value">' + vehicles.length + '</div></div>' +
-    '<div class="stat-box"><div class="label">Total Photos</div><div class="value">' + totalPhotos + '</div></div>' +
-    '<div class="stat-box"><div class="label">Hood / Back</div><div class="value" style="font-size:14px;">' + hoodVehicles + ' / ' + backVehicles + '</div></div>';
+  document.getElementById('statVehicles').textContent = totalVehicles;
+  document.getElementById('statPhotos').textContent = totalPhotos;
+  document.getElementById('statHood').textContent = hoodCount;
+  document.getElementById('statBackPanel').textContent = backPanelCount;
+  document.getElementById('generateBtn').disabled = totalVehicles === 0;
   
-  if (vehicles.length === 0) {
-    document.getElementById('vehicleList').innerHTML = 
-      '<div class="empty-state">Selected filter ke liye koi vehicles nahi mile</div>';
-    document.getElementById('previewInfo').textContent = 'Filter change karke try karo';
-    document.getElementById('generateBtn').disabled = true;
-    return;
-  }
-  
-  // Info banner
-  var slidesCount = vehicles.length; // 1 vehicle = 1 slide
-  document.getElementById('previewInfo').innerHTML = 
-    '📊 PPT mein <strong>' + slidesCount + ' slides</strong> banenge (1 vehicle = 1 slide). ' +
-    'Hood mode mein 3 photos per slide, Back panel mein 1 photo per slide.';
-  
-  // Vehicle list
-  var html = '';
-  vehicles.forEach(function(v) {
-    var expectedPhotos = v.mode === 'hood' ? 3 : 1;
-    var photoClass = v.photos.length >= expectedPhotos ? '' : 'warn';
-    var modeLabel = v.mode === 'hood' ? 'Hood' : 'Back Panel';
-    
-    html += '<div class="vehicle-row">' +
-      '<div>' +
-        '<div class="vehicle-num">' + escapeHtml(v.vehicle_number) + '</div>' +
-        '<div class="vehicle-meta">' + 
-          escapeHtml(modeLabel) + ' · ' + 
-          formatDate(v.captured_at) + 
-          (v.owner_name ? ' · ' + escapeHtml(v.owner_name) : '') +
-        '</div>' +
-      '</div>' +
-      '<div class="photo-count ' + photoClass + '">' + 
-        v.photos.length + ' / ' + expectedPhotos + ' photos' +
-      '</div>' +
-    '</div>';
-  });
-  document.getElementById('vehicleList').innerHTML = html;
-  
-  document.getElementById('generateBtn').disabled = false;
+  const body = document.getElementById('vehicleListBody');
+  body.innerHTML = state.vehicles.map(v => {
+    const date = new Date(v.captured_at);
+    const dateStr = date.toLocaleDateString('en-IN', { 
+      day: '2-digit', month: 'short', year: 'numeric',
+      timeZone: 'Asia/Kolkata' 
+    });
+    const modeClass = v.mode === 'hood' ? 'hood' : 'back_panel';
+    const modeLabel = v.mode === 'hood' ? 'Hood' : 'Back Panel';
+    return `
+      <div class="vehicle-row">
+        <div class="vh-num">${escapeHtml(v.vehicle_number)}</div>
+        <div><span class="mode-pill ${modeClass}">${modeLabel}</span></div>
+        <div>${v.photos.length} / ${v.photos[0]?.total_expected || '?'}</div>
+        <div>${dateStr}</div>
+        <div>${escapeHtml(v.member_name || '-')}</div>
+      </div>
+    `;
+  }).join('');
 }
 
-// ─── GENERATE PPT ───
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => 
+    ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+
+// ─── Image Fetch (CORS-safe) ───
+async function fetchImageAsDataURL(url) {
+  try {
+    const res = await fetch(url, { mode: 'cors' });
+    if (!res.ok) throw new Error('Image fetch failed');
+    const blob = await res.blob();
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (err) {
+    console.warn('Image fetch failed, returning placeholder:', url, err);
+    return null;
+  }
+}
+
+// ─── Modal Helpers ───
+function showModal(title, text) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('progressText').textContent = text;
+  document.getElementById('modal').classList.add('show');
+}
+function hideModal() {
+  document.getElementById('modal').classList.remove('show');
+}
+function updateProgress(percent, text) {
+  document.getElementById('progressFill').style.width = percent + '%';
+  document.getElementById('progressText').textContent = text;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PPT GENERATION (with 3 branding modes)
+// ═══════════════════════════════════════════════════════════════
 async function generatePPT() {
-  if (!state.vehicles || state.vehicles.length === 0) {
-    showToast('Pehle preview load karo', 'error');
+  if (state.vehicles.length === 0) {
+    showToast('Koi vehicles nahi hain', 'error');
     return;
   }
   
-  if (typeof PptxGenJS === 'undefined') {
-    showToast('PPT library load nahi hui - page reload karo', 'error');
-    return;
-  }
-  
-  var modal = document.getElementById('progressModal');
-  var fill = document.getElementById('progressFill');
-  var text = document.getElementById('progressText');
-  var desc = document.getElementById('progressDesc');
-  
-  modal.classList.add('show');
-  desc.textContent = 'PPT initialize ho raha hai...';
-  fill.style.width = '0%';
-  text.textContent = '0 / ' + state.vehicles.length;
+  showModal('Generating PPT...', 'Preparing slides...');
   
   try {
-    var pptx = new PptxGenJS();
+    const pptx = new PptxGenJS();
+    pptx.layout = 'LAYOUT_WIDE'; // 13.333 x 7.5 inches
     
-    // PPT settings
-    pptx.layout = 'LAYOUT_WIDE'; // 13.333" x 7.5"
-    pptx.title = state.selectedCampaign.name + ' - Vehicle Report';
-    pptx.author = 'Prajapati Advertising';
-    pptx.company = 'Prajapati Advertising';
-    pptx.subject = 'Campaign Vehicle Branding Report';
+    const campaign = state.selectedCampaign;
+    const branding = state.brandingMode;
+    
+    // ─── Branding Configuration ───
+    const brandConfig = getBrandingConfig(branding);
     
     // ─── COVER SLIDE ───
-    var coverSlide = pptx.addSlide();
-    coverSlide.background = { color: '1A2980' };
-    
-    coverSlide.addText('PRAJAPATI ADVERTISING', {
-      x: 0.5, y: 1.5, w: 12.3, h: 0.5,
-      fontSize: 18, color: 'FFFFFF', bold: true,
-      align: 'center', fontFace: 'Calibri'
-    });
-    
-    coverSlide.addText(state.selectedCampaign.name, {
-      x: 0.5, y: 2.3, w: 12.3, h: 1.0,
-      fontSize: 44, color: 'FFFFFF', bold: true,
-      align: 'center', fontFace: 'Calibri'
-    });
-    
-    if (state.selectedCampaign.client_name) {
-      coverSlide.addText('for ' + state.selectedCampaign.client_name, {
-        x: 0.5, y: 3.5, w: 12.3, h: 0.5,
-        fontSize: 22, color: 'FFD60A',
-        align: 'center', fontFace: 'Calibri'
-      });
-    }
-    
-    coverSlide.addText('Vehicle Branding Coverage Report', {
-      x: 0.5, y: 4.3, w: 12.3, h: 0.4,
-      fontSize: 16, color: 'FFFFFF',
-      align: 'center', fontFace: 'Calibri'
-    });
-    
-    var dateFrom = document.getElementById('dateFrom').value;
-    var dateTo = document.getElementById('dateTo').value;
-    coverSlide.addText(formatDate(dateFrom + 'T00:00:00') + ' to ' + formatDate(dateTo + 'T00:00:00'), {
-      x: 0.5, y: 4.9, w: 12.3, h: 0.4,
-      fontSize: 14, color: 'FFFFFF', italic: true,
-      align: 'center', fontFace: 'Calibri'
-    });
-    
-    coverSlide.addText(state.vehicles.length + ' Vehicles Covered', {
-      x: 0.5, y: 5.7, w: 12.3, h: 0.5,
-      fontSize: 20, color: '34C759', bold: true,
-      align: 'center', fontFace: 'Calibri'
-    });
-    
-    coverSlide.addText('Generated: ' + formatDateTime(new Date().toISOString()), {
-      x: 0.5, y: 6.8, w: 12.3, h: 0.3,
-      fontSize: 10, color: 'FFFFFF',
-      align: 'center', fontFace: 'Calibri'
-    });
+    addCoverSlide(pptx, campaign, brandConfig);
     
     // ─── VEHICLE SLIDES ───
-    for (var i = 0; i < state.vehicles.length; i++) {
-      var vehicle = state.vehicles[i];
-      var progress = Math.round(((i + 1) / state.vehicles.length) * 100);
-      fill.style.width = progress + '%';
-      text.textContent = (i + 1) + ' / ' + state.vehicles.length;
-      desc.textContent = 'Slide banaa rahe: ' + vehicle.vehicle_number;
+    const totalVehicles = state.vehicles.length;
+    let processed = 0;
+    
+    for (const vehicle of state.vehicles) {
+      processed++;
+      updateProgress(
+        (processed / totalVehicles) * 90,
+        `Slide ${processed} of ${totalVehicles}: ${vehicle.vehicle_number}`
+      );
       
-      // Allow UI update
-      await new Promise(function(r) { setTimeout(r, 10); });
+      // Fetch all photos as data URLs
+      const photoDataUrls = [];
+      for (const photo of vehicle.photos) {
+        const dataUrl = await fetchImageAsDataURL(photo.public_url);
+        photoDataUrls.push(dataUrl);
+      }
       
       if (vehicle.mode === 'hood') {
-        await addHoodSlide(pptx, vehicle);
+        addHoodSlide(pptx, vehicle, photoDataUrls, campaign, brandConfig);
       } else {
-        await addBackPanelSlide(pptx, vehicle);
+        addBackPanelSlide(pptx, vehicle, photoDataUrls, campaign, brandConfig);
       }
     }
     
     // ─── SUMMARY SLIDE ───
-    var summarySlide = pptx.addSlide();
-    summarySlide.background = { color: 'F4F6F9' };
+    addSummarySlide(pptx, campaign, brandConfig);
     
-    summarySlide.addText('Campaign Summary', {
-      x: 0.5, y: 0.5, w: 12.3, h: 0.6,
-      fontSize: 28, color: '1A2980', bold: true,
-      align: 'center', fontFace: 'Calibri'
-    });
+    updateProgress(95, 'Saving file...');
     
-    var totalPhotos = state.vehicles.reduce(function(sum, v) { return sum + v.photos.length; }, 0);
-    var hoodCount = state.vehicles.filter(function(v) { return v.mode === 'hood'; }).length;
-    var backCount = state.vehicles.filter(function(v) { return v.mode === 'back_panel'; }).length;
-    
-    var summaryText = 
-      'Campaign: ' + state.selectedCampaign.name + '\n\n' +
-      'Total Vehicles: ' + state.vehicles.length + '\n' +
-      'Hood Branding: ' + hoodCount + ' vehicles\n' +
-      'Back Panel: ' + backCount + ' vehicles\n' +
-      'Total Photos: ' + totalPhotos + '\n\n' +
-      'Period: ' + formatDate(dateFrom + 'T00:00:00') + ' to ' + formatDate(dateTo + 'T00:00:00') + '\n' +
-      'Generated: ' + formatDateTime(new Date().toISOString());
-    
-    summarySlide.addText(summaryText, {
-      x: 1.5, y: 1.5, w: 10.3, h: 5,
-      fontSize: 18, color: '333333',
-      align: 'left', fontFace: 'Calibri',
-      lineSpacing: 32
-    });
-    
-    summarySlide.addText('Prajapati Advertising · prajapatiadvertising.co.in', {
-      x: 0.5, y: 6.9, w: 12.3, h: 0.4,
-      fontSize: 12, color: '888888', italic: true,
-      align: 'center', fontFace: 'Calibri'
-    });
-    
-    // ─── DOWNLOAD ───
-    desc.textContent = 'PPT save ho raha hai...';
-    
-    var filename = state.selectedCampaign.name.replace(/[^a-zA-Z0-9]/g, '_') 
-      + '_' + dateFrom + '_to_' + dateTo + '.pptx';
+    // ─── SAVE ───
+    const today = new Date();
+    const filename = `${campaign.name.replace(/[^a-zA-Z0-9]/g, '_')}_${istDateStr()}.pptx`;
     
     await pptx.writeFile({ fileName: filename });
     
-    modal.classList.remove('show');
-    showToast('✅ PPT downloaded: ' + filename, 'success');
+    updateProgress(100, 'Done!');
+    setTimeout(() => {
+      hideModal();
+      showToast('✓ PPT generated successfully!', 'success');
+    }, 500);
     
   } catch (err) {
     console.error('PPT generation error:', err);
-    modal.classList.remove('show');
-    showToast('PPT generation failed: ' + err.message, 'error');
+    hideModal();
+    showToast('PPT fail: ' + err.message, 'error');
   }
 }
 
-// ─── HOOD SLIDE: 3 photos (front, left, right) + details ───
-async function addHoodSlide(pptx, vehicle) {
-  var slide = pptx.addSlide();
-  slide.background = { color: 'FFFFFF' };
+// ─── Branding Configuration ───
+function getBrandingConfig(mode) {
+  if (mode === 'clean') {
+    return {
+      mode: 'clean',
+      headerColor: '2C2C2A',         // Dark gray
+      headerGradient: false,
+      showLogo: false,
+      showFooter: false,
+      footerText: '',
+      footerWebsite: '',
+      titleColor: 'FFFFFF',
+      coverGradient: ['2C2C2A', '5F5E5A']
+    };
+  } else if (mode === 'custom') {
+    return {
+      mode: 'custom',
+      headerColor: '534AB7',         // Custom purple
+      headerGradient: true,
+      headerGradientColor: '7F77DD',
+      showLogo: !!state.customLogo,
+      logoUrl: state.customLogo,
+      logoText: state.customBrand,
+      showFooter: true,
+      footerText: '✓ Verified by ' + state.customBrand,
+      footerWebsite: state.customWebsite,
+      titleColor: 'FFFFFF',
+      coverGradient: ['534AB7', '7F77DD'],
+      brandName: state.customBrand
+    };
+  } else {
+    // Full Prajapati branding
+    return {
+      mode: 'full',
+      headerColor: '0B1957',         // Navy
+      headerGradient: true,
+      headerGradientColor: '26d0ce',
+      showLogo: true,
+      logoText: 'PRAJAPATI',
+      showFooter: true,
+      footerText: '✓ Verified by Prajapati Advertising',
+      footerWebsite: 'prajapatiadvertising.co.in',
+      titleColor: 'FFFFFF',
+      coverGradient: ['0B1957', '26D0CE'],
+      brandName: 'PRAJAPATI ADVERTISING'
+    };
+  }
+}
+
+// ─── COVER SLIDE ───
+function addCoverSlide(pptx, campaign, brand) {
+  const slide = pptx.addSlide();
   
-  // Top header bar
-  slide.addShape('rect', {
-    x: 0, y: 0, w: 13.333, h: 0.7,
-    fill: { color: '1A2980' },
-    line: { color: '1A2980' }
+  // Background gradient
+  slide.background = { color: brand.coverGradient[0] };
+  
+  // Big rectangle for visual gradient effect (right half)
+  slide.addShape(pptx.ShapeType.rect, {
+    x: 6.67, y: 0, w: 6.66, h: 7.5,
+    fill: { color: brand.coverGradient[1] },
+    line: { color: brand.coverGradient[1], width: 0 }
   });
   
-  slide.addText(vehicle.vehicle_number, {
-    x: 0.5, y: 0.1, w: 6, h: 0.5,
-    fontSize: 22, color: 'FFFFFF', bold: true,
-    align: 'left', fontFace: 'Calibri',
-    valign: 'middle'
-  });
-  
-  slide.addText('HOOD BRANDING · ' + state.selectedCampaign.name, {
-    x: 6.5, y: 0.1, w: 6.5, h: 0.5,
-    fontSize: 14, color: 'FFD60A',
-    align: 'right', fontFace: 'Calibri',
-    valign: 'middle'
-  });
-  
-  // Get 3 photos (sorted by captured_at)
-  var photos = vehicle.photos.slice().sort(function(a, b) {
-    return a.captured_at.localeCompare(b.captured_at);
-  });
-  
-  var photoLabels = ['FRONT', 'LEFT SIDE', 'RIGHT SIDE'];
-  
-  // 3 photos in a row
-  var photoY = 1.0;
-  var photoW = 4.0;
-  var photoH = 4.0;
-  var gap = 0.3;
-  var startX = (13.333 - (photoW * 3 + gap * 2)) / 2;
-  
-  for (var i = 0; i < 3; i++) {
-    var x = startX + i * (photoW + gap);
-    
-    if (photos[i] && photos[i].public_url) {
-      try {
-        var imgData = await fetchImageAsDataURL(photos[i].public_url);
-        slide.addImage({
-          data: imgData,
-          x: x, y: photoY, w: photoW, h: photoH,
-          sizing: { type: 'cover', w: photoW, h: photoH }
-        });
-      } catch (e) {
-        console.warn('Image load failed:', photos[i].public_url, e);
-        // Placeholder
-        slide.addShape('rect', {
-          x: x, y: photoY, w: photoW, h: photoH,
-          fill: { color: 'F0F2F7' }, line: { color: 'DDDDDD' }
-        });
-        slide.addText('Image unavailable', {
-          x: x, y: photoY, w: photoW, h: photoH,
-          fontSize: 12, color: '888888', align: 'center', valign: 'middle'
-        });
-      }
-    } else {
-      // Placeholder for missing photo
-      slide.addShape('rect', {
-        x: x, y: photoY, w: photoW, h: photoH,
-        fill: { color: 'F0F2F7' }, line: { color: 'DDDDDD' }
-      });
-      slide.addText('Photo ' + (i+1) + ' not captured', {
-        x: x, y: photoY, w: photoW, h: photoH,
-        fontSize: 12, color: '888888', align: 'center', valign: 'middle'
-      });
-    }
-    
-    // Photo label below
-    slide.addText(photoLabels[i], {
-      x: x, y: photoY + photoH + 0.05, w: photoW, h: 0.3,
-      fontSize: 11, color: '1A2980', bold: true,
-      align: 'center', fontFace: 'Calibri'
+  // Brand name (top, only if branded mode)
+  if (brand.mode !== 'clean') {
+    slide.addText(brand.brandName || '', {
+      x: 0.5, y: 0.5, w: 12.33, h: 0.5,
+      fontSize: 14,
+      fontFace: 'Plus Jakarta Sans',
+      color: 'FFFFFF',
+      bold: true,
+      align: 'left'
     });
   }
   
-  // Bottom details panel
-  var detailsY = 5.7;
-  slide.addShape('rect', {
-    x: 0.3, y: detailsY, w: 12.733, h: 1.5,
-    fill: { color: 'F4F6F9' },
-    line: { color: 'E0E0E0' }
+  // Campaign name (huge, center)
+  slide.addText(campaign.name || 'Campaign Report', {
+    x: 1, y: 2.5, w: 11.33, h: 1.5,
+    fontSize: 44,
+    fontFace: 'Plus Jakarta Sans',
+    color: 'FFFFFF',
+    bold: true,
+    align: 'center',
+    valign: 'middle'
   });
   
-  // Vehicle Number
-  slide.addText('VEHICLE NUMBER', {
-    x: 0.6, y: detailsY + 0.1, w: 3, h: 0.25,
-    fontSize: 9, color: '888888', bold: true,
-    fontFace: 'Calibri'
-  });
-  slide.addText(vehicle.vehicle_number, {
-    x: 0.6, y: detailsY + 0.35, w: 3, h: 0.4,
-    fontSize: 18, color: '1A2980', bold: true,
-    fontFace: 'Calibri'
-  });
-  
-  // Owner Name
-  slide.addText('OWNER NAME', {
-    x: 3.8, y: detailsY + 0.1, w: 3, h: 0.25,
-    fontSize: 9, color: '888888', bold: true,
-    fontFace: 'Calibri'
-  });
-  slide.addText(vehicle.owner_name || 'Not Provided', {
-    x: 3.8, y: detailsY + 0.35, w: 3, h: 0.4,
-    fontSize: 16, color: vehicle.owner_name ? '333333' : 'AAAAAA', 
-    italic: !vehicle.owner_name,
-    fontFace: 'Calibri'
-  });
-  
-  // Date
-  slide.addText('DATE', {
-    x: 7.0, y: detailsY + 0.1, w: 2.5, h: 0.25,
-    fontSize: 9, color: '888888', bold: true,
-    fontFace: 'Calibri'
-  });
-  slide.addText(formatDate(vehicle.captured_at), {
-    x: 7.0, y: detailsY + 0.35, w: 2.5, h: 0.4,
-    fontSize: 14, color: '333333',
-    fontFace: 'Calibri'
-  });
-  
-  // Location
-  slide.addText('LOCATION', {
-    x: 9.7, y: detailsY + 0.1, w: 3.3, h: 0.25,
-    fontSize: 9, color: '888888', bold: true,
-    fontFace: 'Calibri'
-  });
-  var locationText = vehicle.city || 'Unknown';
-  if (vehicle.address) {
-    var shortAddr = vehicle.address.length > 50 
-      ? vehicle.address.substring(0, 50) + '...' 
-      : vehicle.address;
-    locationText = vehicle.city + '\n' + shortAddr;
+  // Client name (subtitle)
+  if (campaign.client_name) {
+    slide.addText('For: ' + campaign.client_name, {
+      x: 1, y: 4, w: 11.33, h: 0.5,
+      fontSize: 18,
+      fontFace: 'Plus Jakarta Sans',
+      color: 'FFFFFF',
+      align: 'center'
+    });
   }
-  slide.addText(locationText, {
-    x: 9.7, y: detailsY + 0.35, w: 3.3, h: 1.0,
-    fontSize: 11, color: '333333',
-    fontFace: 'Calibri'
+  
+  // Date range
+  const fromDate = document.getElementById('fromDate').value;
+  const toDate = document.getElementById('toDate').value;
+  const dateRangeStr = fromDate === toDate 
+    ? formatDate(fromDate)
+    : formatDate(fromDate) + ' to ' + formatDate(toDate);
+  
+  slide.addText('📅 Period: ' + dateRangeStr, {
+    x: 1, y: 5, w: 11.33, h: 0.4,
+    fontSize: 14,
+    fontFace: 'Plus Jakarta Sans',
+    color: 'FFFFFF',
+    align: 'center'
   });
   
-  // Footer
-  slide.addText('✓ Verified by Prajapati Advertising · prajapatiadvertising.co.in', {
-    x: 0.5, y: 7.25, w: 12.3, h: 0.2,
-    fontSize: 8, color: '888888', italic: true,
-    align: 'center', fontFace: 'Calibri'
+  // Vehicle count
+  const totalVehicles = state.vehicles.length;
+  slide.addText(totalVehicles + ' Vehicles Covered', {
+    x: 1, y: 5.5, w: 11.33, h: 0.4,
+    fontSize: 14,
+    fontFace: 'Plus Jakarta Sans',
+    color: 'FFFFFF',
+    align: 'center',
+    bold: true
   });
+  
+  // Footer (only if branded)
+  if (brand.showFooter) {
+    slide.addText(brand.footerText, {
+      x: 0.5, y: 7, w: 12.33, h: 0.3,
+      fontSize: 10,
+      fontFace: 'Plus Jakarta Sans',
+      color: 'FFFFFF',
+      align: 'center'
+    });
+  }
 }
 
-// ─── BACK PANEL SLIDE: 1 photo + details ───
-async function addBackPanelSlide(pptx, vehicle) {
-  var slide = pptx.addSlide();
+// ─── HOOD SLIDE (3 photos) ───
+function addHoodSlide(pptx, vehicle, photoDataUrls, campaign, brand) {
+  const slide = pptx.addSlide();
   slide.background = { color: 'FFFFFF' };
   
-  // Top header
-  slide.addShape('rect', {
+  // ─── HEADER BAR ───
+  // Header background
+  slide.addShape(pptx.ShapeType.rect, {
     x: 0, y: 0, w: 13.333, h: 0.7,
-    fill: { color: '1A2980' },
-    line: { color: '1A2980' }
+    fill: { color: brand.headerColor },
+    line: { color: brand.headerColor, width: 0 }
   });
   
+  // Logo/Brand text (left side of header)
+  if (brand.showLogo && brand.logoText) {
+    slide.addText(brand.logoText, {
+      x: 0.3, y: 0.15, w: 1.5, h: 0.4,
+      fontSize: 11,
+      fontFace: 'Plus Jakarta Sans',
+      color: 'FFFFFF',
+      bold: true,
+      fill: { color: 'FFFFFF', transparency: 75 },
+      align: 'center',
+      valign: 'middle'
+    });
+  }
+  
+  // Vehicle number (center-left of header)
   slide.addText(vehicle.vehicle_number, {
-    x: 0.5, y: 0.1, w: 6, h: 0.5,
-    fontSize: 22, color: 'FFFFFF', bold: true,
-    align: 'left', fontFace: 'Calibri',
+    x: brand.showLogo ? 1.9 : 0.3, y: 0.1, w: 5.5, h: 0.5,
+    fontSize: 22,
+    fontFace: 'JetBrains Mono',
+    color: 'FFFFFF',
+    bold: true,
+    align: 'left',
     valign: 'middle'
   });
   
-  slide.addText('BACK PANEL · ' + state.selectedCampaign.name, {
-    x: 6.5, y: 0.1, w: 6.5, h: 0.5,
-    fontSize: 14, color: 'FFD60A',
-    align: 'right', fontFace: 'Calibri',
+  // Mode + Campaign (right of header)
+  slide.addText('HOOD · ' + campaign.name, {
+    x: 7.5, y: 0.1, w: 5.5, h: 0.5,
+    fontSize: 13,
+    fontFace: 'Plus Jakarta Sans',
+    color: 'FFFFFF',
+    bold: true,
+    align: 'right',
     valign: 'middle'
   });
   
-  // Single big photo on left
-  var photo = vehicle.photos[0];
-  var photoX = 0.5;
-  var photoY = 1.0;
-  var photoW = 7.0;
-  var photoH = 5.5;
+  // ─── DETAILS STRIP ───
+  slide.addShape(pptx.ShapeType.rect, {
+    x: 0, y: 0.7, w: 13.333, h: 0.7,
+    fill: { color: 'F7F8FA' },
+    line: { color: 'E5E7EB', width: 0.5 }
+  });
   
-  if (photo && photo.public_url) {
-    try {
-      var imgData = await fetchImageAsDataURL(photo.public_url);
+  const dateStr = formatDateFromTimestamp(vehicle.captured_at);
+  const locationStr = vehicle.city || (vehicle.address ? vehicle.address.split(',')[0] : 'India');
+  const ownerStr = vehicle.owner_name || 'Not Provided';
+  
+  // 4 columns: Vehicle | Owner | Date | Location
+  const colWidth = 13.333 / 4;
+  const detailsData = [
+    { label: 'VEHICLE', value: vehicle.vehicle_number, mono: true },
+    { label: 'OWNER', value: ownerStr, mono: false },
+    { label: 'DATE', value: dateStr, mono: false },
+    { label: 'LOCATION', value: locationStr, mono: false }
+  ];
+  
+  detailsData.forEach((item, idx) => {
+    const x = idx * colWidth + 0.3;
+    
+    // Label
+    slide.addText(item.label, {
+      x: x, y: 0.78, w: colWidth - 0.5, h: 0.2,
+      fontSize: 8,
+      fontFace: 'Plus Jakarta Sans',
+      color: '6B7280',
+      bold: true,
+      align: 'left'
+    });
+    
+    // Value
+    slide.addText(item.value, {
+      x: x, y: 0.98, w: colWidth - 0.5, h: 0.35,
+      fontSize: 13,
+      fontFace: item.mono ? 'JetBrains Mono' : 'Plus Jakarta Sans',
+      color: '0B1957',
+      bold: true,
+      align: 'left'
+    });
+  });
+  
+  // ─── PHOTOS (3 columns) ───
+  const labels = ['Front View', 'Left Side', 'Right Side'];
+  const photoY = 1.7;
+  const photoH = 4.8;
+  const photoAreaW = 13.333 - 0.6; // total width minus margins
+  const photoW = (photoAreaW - 0.6) / 3; // 3 photos with 0.3 gap between
+  
+  for (let i = 0; i < 3; i++) {
+    const photoX = 0.3 + i * (photoW + 0.3);
+    const dataUrl = photoDataUrls[i];
+    
+    if (dataUrl) {
+      // Photo with CONTAIN sizing (no stretch)
       slide.addImage({
-        data: imgData,
-        x: photoX, y: photoY, w: photoW, h: photoH,
-        sizing: { type: 'cover', w: photoW, h: photoH }
+        data: dataUrl,
+        x: photoX,
+        y: photoY,
+        w: photoW,
+        h: photoH,
+        sizing: { type: 'contain', w: photoW, h: photoH }
       });
-    } catch (e) {
-      console.warn('Image load failed:', photo.public_url, e);
-      slide.addShape('rect', {
+    } else {
+      // Placeholder rectangle
+      slide.addShape(pptx.ShapeType.rect, {
         x: photoX, y: photoY, w: photoW, h: photoH,
-        fill: { color: 'F0F2F7' }, line: { color: 'DDDDDD' }
+        fill: { color: 'F1F5F9' },
+        line: { color: 'E5E7EB', width: 1 }
       });
-      slide.addText('Image unavailable', {
+      slide.addText('Photo not available', {
         x: photoX, y: photoY, w: photoW, h: photoH,
-        fontSize: 14, color: '888888', align: 'center', valign: 'middle'
+        fontSize: 12,
+        color: '9CA3AF',
+        align: 'center',
+        valign: 'middle'
+      });
+    }
+    
+    // Photo label
+    if (labels[i]) {
+      slide.addText(labels[i] + ' (Photo ' + (i+1) + ' of 3)', {
+        x: photoX, y: photoY + photoH + 0.05, w: photoW, h: 0.3,
+        fontSize: 10,
+        fontFace: 'Plus Jakarta Sans',
+        color: '6B7280',
+        bold: true,
+        align: 'center'
       });
     }
   }
   
-  // Details panel on right
-  var dx = 8.0;
-  var dy = 1.0;
-  
-  slide.addShape('rect', {
-    x: dx, y: dy, w: 4.8, h: 5.5,
-    fill: { color: 'F4F6F9' },
-    line: { color: 'E0E0E0' }
-  });
-  
-  slide.addText('VEHICLE DETAILS', {
-    x: dx + 0.3, y: dy + 0.3, w: 4.2, h: 0.4,
-    fontSize: 14, color: '1A2980', bold: true,
-    fontFace: 'Calibri'
-  });
-  
-  // Separator line
-  slide.addShape('line', {
-    x: dx + 0.3, y: dy + 0.75, w: 4.2, h: 0,
-    line: { color: '1A2980', width: 2 }
-  });
-  
-  var detailY = dy + 1.0;
-  var rowGap = 0.85;
-  
-  function addDetail(label, value, isItalic, isBold) {
-    slide.addText(label, {
-      x: dx + 0.3, y: detailY, w: 4.2, h: 0.25,
-      fontSize: 9, color: '888888', bold: true,
-      fontFace: 'Calibri'
+  // ─── FOOTER ───
+  if (brand.showFooter) {
+    slide.addShape(pptx.ShapeType.rect, {
+      x: 0, y: 7.15, w: 13.333, h: 0.35,
+      fill: { color: 'FFFFFF' },
+      line: { color: 'E5E7EB', width: 0.5 }
     });
-    slide.addText(value, {
-      x: dx + 0.3, y: detailY + 0.25, w: 4.2, h: 0.5,
-      fontSize: isBold ? 18 : 14, 
-      color: isItalic ? 'AAAAAA' : '1A2980',
-      bold: isBold || false,
-      italic: isItalic || false,
-      fontFace: 'Calibri'
+    
+    slide.addText(brand.footerText, {
+      x: 0.3, y: 7.18, w: 6, h: 0.3,
+      fontSize: 9,
+      fontFace: 'Plus Jakarta Sans',
+      color: '6B7280',
+      align: 'left',
+      valign: 'middle'
     });
-    detailY += rowGap;
+    
+    slide.addText(brand.footerWebsite, {
+      x: 7, y: 7.18, w: 6, h: 0.3,
+      fontSize: 9,
+      fontFace: 'Plus Jakarta Sans',
+      color: '6B7280',
+      align: 'right',
+      valign: 'middle'
+    });
+  }
+}
+
+// ─── BACK PANEL SLIDE (1 photo) ───
+function addBackPanelSlide(pptx, vehicle, photoDataUrls, campaign, brand) {
+  const slide = pptx.addSlide();
+  slide.background = { color: 'FFFFFF' };
+  
+  // ─── HEADER BAR ───
+  slide.addShape(pptx.ShapeType.rect, {
+    x: 0, y: 0, w: 13.333, h: 0.7,
+    fill: { color: brand.headerColor },
+    line: { color: brand.headerColor, width: 0 }
+  });
+  
+  if (brand.showLogo && brand.logoText) {
+    slide.addText(brand.logoText, {
+      x: 0.3, y: 0.15, w: 1.5, h: 0.4,
+      fontSize: 11,
+      fontFace: 'Plus Jakarta Sans',
+      color: 'FFFFFF',
+      bold: true,
+      fill: { color: 'FFFFFF', transparency: 75 },
+      align: 'center',
+      valign: 'middle'
+    });
   }
   
-  addDetail('VEHICLE NUMBER', vehicle.vehicle_number, false, true);
-  addDetail('OWNER NAME', vehicle.owner_name || 'Not Provided', !vehicle.owner_name);
-  addDetail('DATE CAPTURED', formatDate(vehicle.captured_at));
-  addDetail('LOCATION', (vehicle.city || 'Unknown') + 
-    (vehicle.address ? '\n' + (vehicle.address.length > 40 ? vehicle.address.substring(0, 40) + '...' : vehicle.address) : ''));
+  slide.addText(vehicle.vehicle_number, {
+    x: brand.showLogo ? 1.9 : 0.3, y: 0.1, w: 5.5, h: 0.5,
+    fontSize: 22,
+    fontFace: 'JetBrains Mono',
+    color: 'FFFFFF',
+    bold: true,
+    align: 'left',
+    valign: 'middle'
+  });
+  
+  slide.addText('BACK PANEL · ' + campaign.name, {
+    x: 7.5, y: 0.1, w: 5.5, h: 0.5,
+    fontSize: 13,
+    fontFace: 'Plus Jakarta Sans',
+    color: 'FFFFFF',
+    bold: true,
+    align: 'right',
+    valign: 'middle'
+  });
+  
+  // ─── DETAILS STRIP ───
+  slide.addShape(pptx.ShapeType.rect, {
+    x: 0, y: 0.7, w: 13.333, h: 0.7,
+    fill: { color: 'F7F8FA' },
+    line: { color: 'E5E7EB', width: 0.5 }
+  });
+  
+  const dateStr = formatDateFromTimestamp(vehicle.captured_at);
+  const locationStr = vehicle.city || (vehicle.address ? vehicle.address.split(',')[0] : 'India');
+  const ownerStr = vehicle.owner_name || 'Not Provided';
+  
+  const colWidth = 13.333 / 4;
+  const detailsData = [
+    { label: 'VEHICLE', value: vehicle.vehicle_number, mono: true },
+    { label: 'OWNER', value: ownerStr, mono: false },
+    { label: 'DATE', value: dateStr, mono: false },
+    { label: 'LOCATION', value: locationStr, mono: false }
+  ];
+  
+  detailsData.forEach((item, idx) => {
+    const x = idx * colWidth + 0.3;
+    slide.addText(item.label, {
+      x: x, y: 0.78, w: colWidth - 0.5, h: 0.2,
+      fontSize: 8,
+      fontFace: 'Plus Jakarta Sans',
+      color: '6B7280',
+      bold: true
+    });
+    slide.addText(item.value, {
+      x: x, y: 0.98, w: colWidth - 0.5, h: 0.35,
+      fontSize: 13,
+      fontFace: item.mono ? 'JetBrains Mono' : 'Plus Jakarta Sans',
+      color: '0B1957',
+      bold: true
+    });
+  });
+  
+  // ─── SINGLE PHOTO (centered, contain) ───
+  const photoY = 1.7;
+  const photoH = 4.8;
+  const photoW = 8.5;
+  const photoX = (13.333 - photoW) / 2;
+  
+  const dataUrl = photoDataUrls[0];
+  if (dataUrl) {
+    slide.addImage({
+      data: dataUrl,
+      x: photoX,
+      y: photoY,
+      w: photoW,
+      h: photoH,
+      sizing: { type: 'contain', w: photoW, h: photoH }
+    });
+  } else {
+    slide.addShape(pptx.ShapeType.rect, {
+      x: photoX, y: photoY, w: photoW, h: photoH,
+      fill: { color: 'F1F5F9' },
+      line: { color: 'E5E7EB', width: 1 }
+    });
+    slide.addText('Photo not available', {
+      x: photoX, y: photoY, w: photoW, h: photoH,
+      fontSize: 14,
+      color: '9CA3AF',
+      align: 'center',
+      valign: 'middle'
+    });
+  }
+  
+  // ─── FOOTER ───
+  if (brand.showFooter) {
+    slide.addShape(pptx.ShapeType.rect, {
+      x: 0, y: 7.15, w: 13.333, h: 0.35,
+      fill: { color: 'FFFFFF' },
+      line: { color: 'E5E7EB', width: 0.5 }
+    });
+    
+    slide.addText(brand.footerText, {
+      x: 0.3, y: 7.18, w: 6, h: 0.3,
+      fontSize: 9,
+      fontFace: 'Plus Jakarta Sans',
+      color: '6B7280',
+      align: 'left',
+      valign: 'middle'
+    });
+    
+    slide.addText(brand.footerWebsite, {
+      x: 7, y: 7.18, w: 6, h: 0.3,
+      fontSize: 9,
+      fontFace: 'Plus Jakarta Sans',
+      color: '6B7280',
+      align: 'right',
+      valign: 'middle'
+    });
+  }
+}
+
+// ─── SUMMARY SLIDE ───
+function addSummarySlide(pptx, campaign, brand) {
+  const slide = pptx.addSlide();
+  slide.background = { color: 'FFFFFF' };
+  
+  // Header
+  slide.addShape(pptx.ShapeType.rect, {
+    x: 0, y: 0, w: 13.333, h: 0.7,
+    fill: { color: brand.headerColor },
+    line: { color: brand.headerColor, width: 0 }
+  });
+  
+  slide.addText('Campaign Summary', {
+    x: 0.3, y: 0.1, w: 12.7, h: 0.5,
+    fontSize: 22,
+    fontFace: 'Plus Jakarta Sans',
+    color: 'FFFFFF',
+    bold: true,
+    align: 'left',
+    valign: 'middle'
+  });
+  
+  // Stats
+  const totalVehicles = state.vehicles.length;
+  const totalPhotos = state.vehicles.reduce((sum, v) => sum + v.photos.length, 0);
+  const hoodCount = state.vehicles.filter(v => v.mode === 'hood').length;
+  const backPanelCount = state.vehicles.filter(v => v.mode === 'back_panel').length;
+  
+  // Campaign name
+  slide.addText(campaign.name + (campaign.client_name ? ' · ' + campaign.client_name : ''), {
+    x: 0.5, y: 1.2, w: 12.33, h: 0.5,
+    fontSize: 18,
+    fontFace: 'Plus Jakarta Sans',
+    color: '0B1957',
+    bold: true,
+    align: 'left'
+  });
+  
+  // Date range
+  const fromDate = document.getElementById('fromDate').value;
+  const toDate = document.getElementById('toDate').value;
+  const dateRangeStr = fromDate === toDate 
+    ? formatDate(fromDate)
+    : formatDate(fromDate) + ' to ' + formatDate(toDate);
+  
+  slide.addText('📅 ' + dateRangeStr, {
+    x: 0.5, y: 1.7, w: 12.33, h: 0.3,
+    fontSize: 12,
+    fontFace: 'Plus Jakarta Sans',
+    color: '6B7280',
+    align: 'left'
+  });
+  
+  // Stat cards (2x2 grid)
+  const stats = [
+    { label: 'Total Vehicles', value: totalVehicles, color: '0B1957' },
+    { label: 'Total Photos', value: totalPhotos, color: '26D0CE' },
+    { label: 'Hood Branding', value: hoodCount, color: '534AB7' },
+    { label: 'Back Panel', value: backPanelCount, color: 'BA7517' }
+  ];
+  
+  const cardW = 5.5;
+  const cardH = 1.8;
+  const cardGap = 0.3;
+  const startX = (13.333 - cardW * 2 - cardGap) / 2;
+  const startY = 2.5;
+  
+  stats.forEach((stat, idx) => {
+    const col = idx % 2;
+    const row = Math.floor(idx / 2);
+    const x = startX + col * (cardW + cardGap);
+    const y = startY + row * (cardH + cardGap);
+    
+    slide.addShape(pptx.ShapeType.rect, {
+      x: x, y: y, w: cardW, h: cardH,
+      fill: { color: 'F8FAFC' },
+      line: { color: 'E5E7EB', width: 1 }
+    });
+    
+    slide.addText(stat.label.toUpperCase(), {
+      x: x + 0.3, y: y + 0.3, w: cardW - 0.6, h: 0.3,
+      fontSize: 11,
+      fontFace: 'Plus Jakarta Sans',
+      color: '6B7280',
+      bold: true,
+      align: 'left'
+    });
+    
+    slide.addText(String(stat.value), {
+      x: x + 0.3, y: y + 0.65, w: cardW - 0.6, h: 1,
+      fontSize: 56,
+      fontFace: 'Plus Jakarta Sans',
+      color: stat.color,
+      bold: true,
+      align: 'left',
+      valign: 'middle'
+    });
+  });
+  
+  // Generated date
+  const generatedAt = new Date().toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+  
+  slide.addText('Generated: ' + generatedAt, {
+    x: 0.5, y: 6.5, w: 12.33, h: 0.3,
+    fontSize: 11,
+    fontFace: 'Plus Jakarta Sans',
+    color: '9CA3AF',
+    align: 'center'
+  });
   
   // Footer
-  slide.addText('✓ Verified by Prajapati Advertising · prajapatiadvertising.co.in', {
-    x: 0.5, y: 7.0, w: 12.3, h: 0.3,
-    fontSize: 8, color: '888888', italic: true,
-    align: 'center', fontFace: 'Calibri'
+  if (brand.showFooter) {
+    slide.addText(brand.footerText + ' · ' + brand.footerWebsite, {
+      x: 0.5, y: 7.1, w: 12.33, h: 0.3,
+      fontSize: 10,
+      fontFace: 'Plus Jakarta Sans',
+      color: '6B7280',
+      align: 'center'
+    });
+  }
+}
+
+// ─── Date Helpers ───
+function formatDate(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00+05:30');
+  return d.toLocaleDateString('en-IN', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    timeZone: 'Asia/Kolkata'
   });
 }
 
-// ─── FETCH IMAGE AS DATA URL (CORS-safe) ───
-function fetchImageAsDataURL(url) {
-  return new Promise(function(resolve, reject) {
-    fetch(url)
-      .then(function(response) {
-        if (!response.ok) throw new Error('HTTP ' + response.status);
-        return response.blob();
-      })
-      .then(function(blob) {
-        var reader = new FileReader();
-        reader.onloadend = function() { resolve(reader.result); };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      })
-      .catch(reject);
+function formatDateFromTimestamp(timestamp) {
+  const d = new Date(timestamp);
+  return d.toLocaleDateString('en-IN', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    timeZone: 'Asia/Kolkata'
   });
 }
+
 </script>
+
 </body>
 </html>
