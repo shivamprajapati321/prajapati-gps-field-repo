@@ -970,7 +970,10 @@ var state = {
   gpsLockState: 'acquiring',
   lastGeocodeAt: 0,
   lastGeocodedPos: null,
-  captureInProgress: false
+  captureInProgress: false,
+  // Manual GPS (v3.6)
+  anchorGps: null,
+  anchorGeocodeCache: null
 };
 
 function showToast(msg, type) {
@@ -1253,6 +1256,9 @@ document.addEventListener('DOMContentLoaded', function() {
     retryBtn.addEventListener('click', retryFailedUpload);
   }
   
+  // Restore any failed uploads from previous session (v3.6)
+  restoreUploadQueue();
+  
   if (isRunningStandalone()) {
     var installBtn = document.getElementById('installAppBtn');
     if (installBtn) installBtn.style.display = 'none';
@@ -1459,8 +1465,8 @@ function getCampaignFromAPI(lat, lng, city) {
     // ─── ROBUST FIX: Use id (UUID) not campaign_key ───
     var campaignKeyValue = state.campaign.campaign_key || state.campaign.key;
     var fetchUrl = state.campaign.id 
-      ? '/rest/v1/trial_campaigns?id=eq.' + state.campaign.id + '&select=auto_vehicle_enabled,manual_gps_enabled,branding_mode,custom_logo_url,custom_brand_name,custom_website,anchor_address'
-      : '/rest/v1/trial_campaigns?key=eq.' + campaignKeyValue + '&select=auto_vehicle_enabled,manual_gps_enabled,branding_mode,custom_logo_url,custom_brand_name,custom_website,anchor_address';
+      ? '/rest/v1/trial_campaigns?id=eq.' + state.campaign.id + '&select=auto_vehicle_enabled,manual_gps_enabled,branding_mode,custom_logo_url,custom_brand_name,custom_website,anchor_address,anchor_lat,anchor_lng,anchor_pincode,gps_radius_m'
+      : '/rest/v1/trial_campaigns?key=eq.' + campaignKeyValue + '&select=auto_vehicle_enabled,manual_gps_enabled,branding_mode,custom_logo_url,custom_brand_name,custom_website,anchor_address,anchor_lat,anchor_lng,anchor_pincode,gps_radius_m';
     
     api(fetchUrl)
       .then(function(rows) {
@@ -1472,6 +1478,31 @@ function getCampaignFromAPI(lat, lng, city) {
           state.campaign.custom_brand_name = rows[0].custom_brand_name;
           state.campaign.custom_website = rows[0].custom_website;
           state.campaign.anchor_address = rows[0].anchor_address;
+          state.campaign.anchor_lat = rows[0].anchor_lat;
+          state.campaign.anchor_lng = rows[0].anchor_lng;
+          state.campaign.anchor_pincode = rows[0].anchor_pincode;
+          state.campaign.gps_radius_m = rows[0].gps_radius_m || 50;
+          
+          // ═══ MANUAL GPS INIT (v3.6) ═══
+          if (state.campaign.manual_gps_enabled 
+              && state.campaign.anchor_lat && state.campaign.anchor_lng) {
+            state.anchorGps = {
+              lat: parseFloat(state.campaign.anchor_lat),
+              lng: parseFloat(state.campaign.anchor_lng),
+              radius_m: state.campaign.gps_radius_m,
+              address: state.campaign.anchor_address,
+              pincode: state.campaign.anchor_pincode
+            };
+            console.log('[Manual GPS] ✓ Anchor active:', state.anchorGps);
+            // Pre-cache anchor reverse geocode for faster first photo
+            warmAnchorAddress();
+          } else {
+            state.anchorGps = null;
+            if (state.campaign.manual_gps_enabled) {
+              console.warn('[Manual GPS] Enabled but anchor coordinates missing!');
+            }
+          }
+          // ═══ END MANUAL GPS INIT ═══
           
           // ═══ PATCH 1: Set top-level state immediately so first photo gets correct branding ═══
           state.brandingMode = state.campaign.branding_mode;
@@ -1485,6 +1516,7 @@ function getCampaignFromAPI(lat, lng, city) {
           state.campaign.manual_gps_enabled = false;
           state.campaign.branding_mode = 'full';
           state.brandingMode = 'full';
+          state.anchorGps = null;
         }
         document.getElementById('startBtn').disabled = false;
       })
@@ -1779,6 +1811,96 @@ function parseGeocodeResponse(data, source) {
 }
 
 // ─── PROVIDER 1: LocationIQ (primary, accurate) ───
+// ═══════════════════════════════════════════════════════════
+// MANUAL GPS HELPERS (v3.6)
+// Used when campaign.manual_gps_enabled = true
+// ═══════════════════════════════════════════════════════════
+
+// Generate a random GPS point within radiusM meters of anchor.
+// Uses uniform distribution within a circle (not a square).
+function randomPointAroundAnchor(anchorLat, anchorLng, radiusM) {
+  // Convert radius to degrees (approximate, good for <1km)
+  // 1 degree latitude ≈ 111,320 meters
+  // 1 degree longitude ≈ 111,320 * cos(latitude) meters
+  var radiusDeg = radiusM / 111320;
+  var lngScale = 1 / Math.cos(anchorLat * Math.PI / 180);
+  
+  // Random angle + random distance (sqrt for uniform distribution in circle)
+  var angle = Math.random() * 2 * Math.PI;
+  var dist = Math.sqrt(Math.random()) * radiusDeg;
+  
+  var dLat = dist * Math.cos(angle);
+  var dLng = dist * Math.sin(angle) * lngScale;
+  
+  return {
+    lat: anchorLat + dLat,
+    lng: anchorLng + dLng
+  };
+}
+
+// Build a fake-but-realistic GPS reading for manual mode.
+// Returns same shape as real navigator.geolocation.coords.
+function generateManualGps() {
+  if (!state.anchorGps) return null;
+  
+  var pt = randomPointAroundAnchor(
+    state.anchorGps.lat, 
+    state.anchorGps.lng, 
+    state.anchorGps.radius_m || 50
+  );
+  
+  // Realistic accuracy — vary 5-12m (good GPS signal)
+  var accuracy = 5 + Math.random() * 7;
+  
+  return {
+    lat: pt.lat,
+    lng: pt.lng,
+    accuracy: accuracy,
+    source: 'manual',
+    timestamp: Date.now()
+  };
+}
+
+// Pre-fetch anchor address on campaign load (so first photo doesn't lag)
+function warmAnchorAddress() {
+  if (!state.anchorGps) return;
+  // Use anchor coords directly for initial UI display
+  geocodeViaLocationIQ(state.anchorGps.lat, state.anchorGps.lng)
+    .then(function(parsed) {
+      state.anchorGeocodeCache = parsed;
+      console.log('[Manual GPS] Anchor address cached:', parsed.full);
+      // Update live overlay immediately (camera not opened yet usually)
+      applyGeocodeResult(parsed);
+    })
+    .catch(function(err) {
+      console.warn('[Manual GPS] Anchor warmup failed:', err.message);
+      // Fallback — use admin-provided address as-is
+      if (state.anchorGps.address) {
+        state.anchorGeocodeCache = {
+          city: 'Anchor', 
+          state: 'Maharashtra', 
+          country: 'India',
+          full: state.anchorGps.address,
+          pincode: state.anchorGps.pincode || ''
+        };
+        applyGeocodeResult(state.anchorGeocodeCache);
+      }
+    });
+}
+
+// Get GPS for current photo — manual or real depending on campaign mode
+function getPhotoGps() {
+  if (state.anchorGps) {
+    return generateManualGps();
+  }
+  // Real GPS mode (current behavior)
+  return state.realGps;
+}
+
+// ═══════════════════════════════════════════════════════════
+// END MANUAL GPS HELPERS
+// ═══════════════════════════════════════════════════════════
+
 function geocodeViaLocationIQ(lat, lng) {
   if (!CONFIG.locationIqToken || CONFIG.locationIqToken.indexOf('PASTE_') === 0) {
     return Promise.reject(new Error('LocationIQ token not configured'));
@@ -1894,7 +2016,8 @@ function capturePhoto() {
     return;
   }
   
-  if (state.realGps && state.realGps.accuracy > 50) {
+  // Skip real GPS check if manual mode active
+  if (!state.anchorGps && state.realGps && state.realGps.accuracy > 50) {
     var proceed = confirm(
       'GPS accuracy weak hai (±' + Math.round(state.realGps.accuracy) + 'm).\n\n' +
       'Better accuracy ke liye 10-15 second wait karo, ya phir bhi photo lena hai?\n\n' +
@@ -1911,6 +2034,31 @@ function capturePhoto() {
   // Disable shutter button visually
   var shutter = document.getElementById('shutterBtn');
   if (shutter) shutter.disabled = true;
+  
+  // ═══ MANUAL GPS MODE (v3.6) ═══
+  // If campaign uses manual GPS, generate fresh randomized point per photo
+  // and override state.realGps so stamp + upload both use it.
+  if (state.anchorGps) {
+    var manualPt = generateManualGps();
+    if (manualPt) {
+      state.realGps = {
+        lat: manualPt.lat,
+        lng: manualPt.lng,
+        accuracy: manualPt.accuracy,
+        source: 'manual',
+        timestamp: manualPt.timestamp
+      };
+      console.log('[Manual GPS] Photo coords:', 
+                  manualPt.lat.toFixed(6), manualPt.lng.toFixed(6),
+                  '±' + manualPt.accuracy.toFixed(1) + 'm');
+      
+      // Trigger fresh reverse geocode for THIS point (hybrid address rotation)
+      // Bypass the 8-sec rate limit for manual mode (each photo wants new address)
+      state.lastGeocodeAt = 0;
+      fetchAddress(manualPt.lat, manualPt.lng);
+    }
+  }
+  // ═══ END MANUAL GPS MODE ═══
   
   flashCamera();
   vibrate(50);
@@ -1992,6 +2140,24 @@ function capturePhoto() {
     
     // Pass photoNum explicitly so upload uses correct number
     uploadPhotoWithNum(blob, photoNum, totalExpected);
+    
+    // ═══ AUTO-FINISH ON LAST PHOTO (v3.6) ═══
+    // Don't wait for upload — finish immediately. Upload continues in background.
+    // This makes the field workflow feel instant (ladko ko upload pata nahi chalega).
+    if (photoNum >= totalExpected) {
+      console.log('[Auto-Finish] Last photo captured, finishing vehicle session immediately');
+      // Brief visual confirmation, then finish
+      showBanner('success', '✓ Vehicle Complete!', 'All ' + totalExpected + ' photos saved', false);
+      setTimeout(hideBanner, 1500);
+      // Auto-trigger after small delay (so user sees confirmation)
+      setTimeout(function() {
+        // Defensive: only if user hasn't manually navigated away
+        if (state.photosThisSession >= totalExpected) {
+          finishVehicleSession();
+        }
+      }, 1200);
+    }
+    // ═══ END AUTO-FINISH ═══
   }, 'image/jpeg', 0.85);
 }
 
@@ -2381,7 +2547,7 @@ function uploadPhotoWithNum(blob, photoNum, totalExpected) {
       lat: state.realGps.lat,
       lng: state.realGps.lng,
       accuracy: state.realGps.accuracy || null,
-      gps_source: 'real',
+      gps_source: state.anchorGps ? 'manual' : 'real',
       address: state.realAddress ? state.realAddress.full : null,
       city: state.realAddress ? state.realAddress.city : null,
       image_base64: base64,
@@ -2417,7 +2583,7 @@ function uploadPhoto(blob) {
       lat: state.realGps.lat,
       lng: state.realGps.lng,
       accuracy: state.realGps.accuracy || null,
-      gps_source: 'real',
+      gps_source: state.anchorGps ? 'manual' : 'real',
       address: state.realAddress ? state.realAddress.full : null,
       city: state.realAddress ? state.realAddress.city : null,
       image_base64: base64,
@@ -2542,44 +2708,117 @@ function handleUploadSuccess(result, photoNum, totalExpected) {
   verifyPhotoInDb(state.currentVehicle, state.member.phone, photoNum, result);
   
   var doneBtn = document.getElementById('doneBtn');
+  
+  // ─── BACKGROUND UPLOAD MODE (v3.6) ───
+  // Auto-finish moved to capturePhoto. Here we just confirm DB save silently.
+  // No "Saved" banner mid-session — uploads happen invisibly while user moves to next vehicle.
   if (done >= totalExpected) {
-    // ─── ALL PHOTOS COMPLETE — AUTO-FINISH ───
-    // No "Saved" banner needed; show final completion banner instead.
     doneBtn.disabled = false;
     doneBtn.classList.add('done-ready');
-    showBanner('success', '✓ Vehicle Complete!', 'All ' + totalExpected + ' photos saved', false);
-    setTimeout(hideBanner, 1500);
-    // Auto-finish after brief delay (so user sees completion confirmation)
-    setTimeout(finishVehicleSession, 1200);
+    // No banner here — already shown by capturePhoto auto-finish
   } else {
-    // Mid-session: brief subtle confirmation, then disappear quickly
-    showBanner('success', '✓ Saved', done + ' of ' + totalExpected, false);
-    setTimeout(hideBanner, 800);
     doneBtn.disabled = true;
+    // No "Saved" banner mid-session — keeps UX clean
   }
 }
 
 function handleUploadFailure(payload, photoNum, totalExpected, attemptNum, errorMsg) {
   console.warn('[Upload] Failed attempt ' + (attemptNum + 1) + ':', errorMsg);
   
-  if (attemptNum < 2) {
-    var delay = (attemptNum + 1) * 2000;
-    console.log('[Upload] Silent retry in ' + delay + 'ms');
+  // EXTENDED BACKGROUND RETRY (v3.6) — silent, no banner shown
+  // Old: 3 attempts → "Save failed" banner. New: 5 attempts + persistent queue.
+  if (attemptNum < 4) {  // Up to 5 attempts (0..4)
+    var delay = Math.min((attemptNum + 1) * 3000, 15000);
+    console.log('[Upload] Silent background retry #' + (attemptNum + 2) + ' in ' + delay + 'ms');
     setTimeout(function() {
       uploadPhotoWithRetry(payload, photoNum, totalExpected, attemptNum + 1);
     }, delay);
     return;
   }
   
-  console.error('[Upload] All 3 attempts failed');
-  vibrate(200);
-  showBanner('error', 'Save failed', 'Network issue \u00b7 Tap retry', true);
+  console.error('[Upload] All 5 attempts failed - photo queued for later sync');
   
+  // Add to in-memory pending queue
+  state.pendingUploads = state.pendingUploads || [];
+  state.pendingUploads.push({
+    payload: payload,
+    photoNum: photoNum,
+    totalExpected: totalExpected,
+    failedAt: Date.now()
+  });
+  
+  // Persist to localStorage for retry across reloads
+  try {
+    var stored = JSON.parse(localStorage.getItem('prajapati_pending_uploads') || '[]');
+    stored.push({
+      payload: payload,
+      photoNum: photoNum,
+      totalExpected: totalExpected,
+      failedAt: Date.now(),
+      vehicle: payload.vehicle_number
+    });
+    if (stored.length > 50) stored = stored.slice(-50);
+    localStorage.setItem('prajapati_pending_uploads', JSON.stringify(stored));
+    console.log('[Upload Queue] Persisted ' + stored.length + ' pending uploads');
+  } catch (e) {
+    console.warn('[Upload Queue] localStorage save failed:', e.message);
+  }
+  
+  // Schedule periodic background retry (every 30 sec)
+  if (!state.queueRetryTimer) {
+    state.queueRetryTimer = setInterval(retryQueuedUploads, 30000);
+  }
+  
+  // Keep failedUpload for backward compat with manual Retry button
   state.failedUpload = {
     payload: payload,
     photoNum: photoNum,
     totalExpected: totalExpected
   };
+}
+
+// Retry queued uploads silently in background
+function retryQueuedUploads() {
+  if (!navigator.onLine) {
+    console.log('[Queue Retry] Offline, skipping');
+    return;
+  }
+  
+  var queue = state.pendingUploads || [];
+  if (queue.length === 0) {
+    if (state.queueRetryTimer) {
+      clearInterval(state.queueRetryTimer);
+      state.queueRetryTimer = null;
+    }
+    return;
+  }
+  
+  console.log('[Queue Retry] Attempting ' + queue.length + ' pending uploads...');
+  var item = queue.shift();
+  state.pendingUploads = queue;
+  
+  try {
+    localStorage.setItem('prajapati_pending_uploads', JSON.stringify(queue));
+  } catch (e) {}
+  
+  uploadPhotoWithRetry(item.payload, item.photoNum, item.totalExpected, 0);
+}
+
+// On app load, restore queue from localStorage
+function restoreUploadQueue() {
+  try {
+    var stored = JSON.parse(localStorage.getItem('prajapati_pending_uploads') || '[]');
+    if (stored.length > 0) {
+      console.log('[Upload Queue] Restored ' + stored.length + ' pending uploads');
+      state.pendingUploads = stored;
+      if (!state.queueRetryTimer) {
+        state.queueRetryTimer = setInterval(retryQueuedUploads, 30000);
+      }
+      setTimeout(retryQueuedUploads, 5000);
+    }
+  } catch (e) {
+    console.warn('[Upload Queue] Failed to restore:', e.message);
+  }
 }
 
 function finishVehicleSession() {
