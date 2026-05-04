@@ -734,7 +734,7 @@ body.pwa-installed .ios-install-hint { display: none !important; }
     
     <div class="live-vehicle-badge" id="liveVehicleBadge">MH00XX0000</div>
     
-    <div class="live-logo-badge">
+    <div class="live-logo-badge" id="liveLogoBadge">
       <div class="logo-image-wrap">
         <img id="liveLogo" alt="Prajapati" />
       </div>
@@ -767,9 +767,9 @@ body.pwa-installed .ios-install-hint { display: none !important; }
       </div>
     </div>
     
-    <div class="live-verified-strip">
-      <span>✓ Verified by Prajapati Advertising</span>
-      <span>prajapatiadvertising.co.in</span>
+    <div class="live-verified-strip" id="liveVerifiedStrip">
+      <span id="liveVerifyText">✓ Verified by Prajapati Advertising</span>
+      <span id="liveVerifyWebsite">prajapatiadvertising.co.in</span>
     </div>
     
   </div>
@@ -857,7 +857,11 @@ var state = {
   realGps: null,
   realAddress: null,
   cameraStream: null,
-  todayPhotoCount: 0
+  todayPhotoCount: 0,
+  brandingMode: null,
+  customLogo: null,
+  customBrand: null,
+  customWebsite: null
 };
 
 function showToast(msg, type) {
@@ -896,6 +900,30 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, function(c) {
     return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
   });
+}
+
+// ─── BRANDING UI HELPER (Patch 3): Update live overlay branding ───
+function applyLiveOverlayBranding() {
+  var mode = state.brandingMode || 'full';
+  var logoBadge = document.getElementById('liveLogoBadge');
+  var verifyStrip = document.getElementById('liveVerifiedStrip');
+  var verifyText = document.getElementById('liveVerifyText');
+  var verifyWebsite = document.getElementById('liveVerifyWebsite');
+  
+  if (mode === 'clean') {
+    if (logoBadge) logoBadge.style.display = 'none';
+    if (verifyStrip) verifyStrip.style.display = 'none';
+  } else if (mode === 'custom') {
+    if (logoBadge) logoBadge.style.display = 'block';
+    if (verifyStrip) verifyStrip.style.display = 'flex';
+    if (verifyText) verifyText.textContent = '✓ Verified by ' + (state.customBrand || 'PRAJAPATI');
+    if (verifyWebsite) verifyWebsite.textContent = state.customWebsite || 'prajapatiadvertising.co.in';
+  } else {
+    if (logoBadge) logoBadge.style.display = 'block';
+    if (verifyStrip) verifyStrip.style.display = 'flex';
+    if (verifyText) verifyText.textContent = '✓ Verified by Prajapati Advertising';
+    if (verifyWebsite) verifyWebsite.textContent = 'prajapatiadvertising.co.in';
+  }
 }
 
 // ============================================================
@@ -1141,7 +1169,8 @@ document.getElementById('logoutBtn').addEventListener('click', function() {
     state = {
       member: null, selectedMode: null, campaign: null,
       expectedPhotoCount: 3, currentVehicle: null, photosThisSession: 0,
-      realGps: null, realAddress: null, cameraStream: null, todayPhotoCount: 0
+      realGps: null, realAddress: null, cameraStream: null, todayPhotoCount: 0,
+      brandingMode: null, customLogo: null, customBrand: null, customWebsite: null
     };
     document.getElementById('phoneInput').value = '';
     document.getElementById('loginBtn').textContent = 'Login →';
@@ -1152,6 +1181,15 @@ document.getElementById('logoutBtn').addEventListener('click', function() {
 
 function goToModeScreen() {
   showScreen('modeScreen');
+  
+  // ═══ PATCH 2: Reset branding state to prevent stale leak across campaigns ═══
+  state.brandingMode = null;
+  state.customLogo = null;
+  state.customBrand = null;
+  state.customWebsite = null;
+  state.serverGps = null;
+  state.serverAddress = null;
+  // ═══ END PATCH 2 ═══
   
   document.getElementById('userAvatar').textContent = state.member.name.charAt(0).toUpperCase();
   document.getElementById('userName').textContent = state.member.name;
@@ -1234,8 +1272,6 @@ function getCampaignFromAPI(lat, lng, city) {
     srcEl.className = 'source ' + srcClass;
     
     // ─── ROBUST FIX: Use id (UUID) not campaign_key ───
-    // Note: RPC returns "campaign_key" but actual DB column is "key"
-    // Using id (UUID) which is guaranteed consistent
     var campaignKeyValue = state.campaign.campaign_key || state.campaign.key;
     var fetchUrl = state.campaign.id 
       ? '/rest/v1/trial_campaigns?id=eq.' + state.campaign.id + '&select=auto_vehicle_enabled,manual_gps_enabled,branding_mode,custom_logo_url,custom_brand_name,custom_website,anchor_address'
@@ -1251,10 +1287,19 @@ function getCampaignFromAPI(lat, lng, city) {
           state.campaign.custom_brand_name = rows[0].custom_brand_name;
           state.campaign.custom_website = rows[0].custom_website;
           state.campaign.anchor_address = rows[0].anchor_address;
+          
+          // ═══ PATCH 1: Set top-level state immediately so first photo gets correct branding ═══
+          state.brandingMode = state.campaign.branding_mode;
+          state.customLogo = state.campaign.custom_logo_url;
+          state.customBrand = state.campaign.custom_brand_name || 'PRAJAPATI';
+          state.customWebsite = state.campaign.custom_website || 'prajapatiadvertising.co.in';
+          console.log('[Branding] Set from campaign:', state.brandingMode);
+          // ═══ END PATCH 1 ═══
         } else {
           state.campaign.auto_vehicle_enabled = false;
           state.campaign.manual_gps_enabled = false;
           state.campaign.branding_mode = 'full';
+          state.brandingMode = 'full';
         }
         document.getElementById('startBtn').disabled = false;
       })
@@ -1263,6 +1308,7 @@ function getCampaignFromAPI(lat, lng, city) {
         state.campaign.auto_vehicle_enabled = false;
         state.campaign.manual_gps_enabled = false;
         state.campaign.branding_mode = 'full';
+        state.brandingMode = 'full';
         document.getElementById('startBtn').disabled = false;
       });
   })
@@ -1277,7 +1323,7 @@ document.getElementById('startBtn').addEventListener('click', function() {
   
   // ─── AUTO VEHICLE MODE: Skip vehicle entry screen ───
   if (state.campaign.auto_vehicle_enabled === true) {
-    state.currentVehicle = 'AUTO_OCR'; // Placeholder - real plate read by backend
+    state.currentVehicle = 'AUTO_OCR';
     state.photosThisSession = 0;
     goToCameraScreen();
     return;
@@ -1351,6 +1397,10 @@ function goToCameraScreen() {
   if (LOGO_DATA_URL && LOGO_DATA_URL !== 'LOGO_BASE64_PLACEHOLDER') {
     document.getElementById('liveLogo').src = LOGO_DATA_URL;
   }
+  
+  // ═══ PATCH 3: Apply branding to live overlay (hide/show logo + verified strip) ═══
+  applyLiveOverlayBranding();
+  // ═══ END PATCH 3 ═══
   
   document.getElementById('livePhotoIndex').textContent = '1 of ' + state.expectedPhotoCount;
   
@@ -1514,6 +1564,8 @@ function drawGPSStamp(ctx, w, h) {
   var customBrand = state.customBrand || 'PRAJAPATI';
   var customWebsite = state.customWebsite || 'prajapatiadvertising.co.in';
   
+  console.log('[drawGPSStamp] Branding mode:', brandingMode);
+  
   // Use server-returned coords/address if available (for manual GPS mode)
   var displayLat = state.serverGps ? state.serverGps.lat : state.realGps.lat;
   var displayLng = state.serverGps ? state.serverGps.lng : state.realGps.lng;
@@ -1603,8 +1655,8 @@ function drawGPSStamp(ctx, w, h) {
   var accW = ctx.measureText(accText).width + 25 * scale;
   
   var accColor = state.realGps.accuracy < 20 ? 'rgba(34, 197, 94, 0.9)' 
-              : state.realGps.accuracy < 50 ? 'rgba(251, 191, 36, 0.9)'
-              : 'rgba(239, 68, 68, 0.9)';
+               : state.realGps.accuracy < 50 ? 'rgba(251, 191, 36, 0.9)'
+               : 'rgba(239, 68, 68, 0.9)';
   ctx.fillStyle = accColor;
   roundRect(ctx, badgeRight - accW, badgeY, accW, 28 * scale, 14 * scale);
   ctx.fill();
@@ -1882,6 +1934,8 @@ function uploadPhoto(blob) {
           state.customLogo = result.custom_logo_url;
           state.customBrand = result.custom_brand_name;
           state.customWebsite = result.custom_website;
+          // Re-apply overlay branding in case server overrides
+          applyLiveOverlayBranding();
         }
         // Update vehicle number from OCR result
         if (result.final_vehicle && result.auto_vehicle) {
