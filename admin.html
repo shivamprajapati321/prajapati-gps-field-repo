@@ -209,7 +209,40 @@ label { display: block; font-size: 10px; font-weight: 600; text-transform: upper
           <div class="toggle" id="manualToggle" onclick="toggleManualGps(this)"></div>
         </div>
         <div id="manualFields" class="expandable-fields">
-          <div class="field"><label>Anchor Address (Photos pe yeh dikhega)</label><textarea id="cAnchorAddr" placeholder="Shop No 5, MG Road, Pune 411001"></textarea></div>
+          <div class="field">
+            <label>📍 Search Anchor Location</label>
+            <div style="position: relative;">
+              <input type="text" id="cAnchorSearch" placeholder="MNGL CNG Shivaji Nagar Pune" autocomplete="off" oninput="onAnchorSearchInput()" onblur="setTimeout(closeAnchorDropdown, 200)">
+              <div id="anchorDropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:#fff; border:1px solid #ddd; border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,0.1); max-height:280px; overflow-y:auto; z-index:1000;"></div>
+            </div>
+            <div class="helper">Type karke select karo — exact location ka lat/lng auto-fill ho jayega</div>
+          </div>
+          <div id="anchorSelectedBox" style="display:none; background:#f0f9ff; border:1px solid #26d0ce; border-radius:8px; padding:12px; margin-top:8px;">
+            <div style="font-weight:600; color:#0B1957; margin-bottom:6px;">✅ Selected Anchor</div>
+            <div style="font-size:13px; color:#333; margin-bottom:8px;" id="anchorSelectedText"></div>
+            <div class="field-row cols-3" style="margin:0;">
+              <div class="field"><label>Lat</label><input type="number" step="0.000001" id="cAnchorLat" readonly style="background:#f5f5f5;"></div>
+              <div class="field"><label>Lng</label><input type="number" step="0.000001" id="cAnchorLng" readonly style="background:#f5f5f5;"></div>
+              <div class="field"><label>Pincode</label><input type="text" id="cAnchorPincode" readonly style="background:#f5f5f5;"></div>
+            </div>
+            <button class="btn btn-secondary" type="button" onclick="clearAnchor()" style="margin-top:8px; padding:6px 12px; font-size:12px;">Clear & Search Again</button>
+          </div>
+          <div class="field" style="margin-top:8px;">
+            <label>📏 GPS Variation Radius (meters)</label>
+            <select id="cGpsRadius" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px;">
+              <option value="30">30m — Very close (same shop / parking)</option>
+              <option value="50" selected>50m — Same gali / building cluster (default)</option>
+              <option value="100">100m — Same block</option>
+              <option value="200">200m — Larger area / market</option>
+              <option value="500">500m — Neighborhood scale</option>
+            </select>
+            <div class="helper">Har photo ka lat/lng anchor ke around random distance pe hoga</div>
+          </div>
+          <input type="hidden" id="cAnchorAddr">
+          <div style="margin-top:10px;">
+            <button class="btn btn-secondary" type="button" onclick="previewAnchorPoints()" style="padding:8px 16px; font-size:13px;">🎯 Preview 5 Random Points</button>
+            <div id="anchorPreview" style="margin-top:10px; display:none; background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:12px; font-size:12px; font-family:monospace;"></div>
+          </div>
         </div>
         <div class="toggle-row">
           <div class="toggle-info"><div class="title">Auto Vehicle (OCR)</div><div class="desc">Camera reads plate automatically</div></div>
@@ -287,7 +320,8 @@ label { display: block; font-size: 10px; font-weight: 600; text-transform: upper
 
 var CONFIG = {
   supabaseUrl: 'https://fpbktcgtspqsqpaytslv.supabase.co',
-  supabaseKey: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j'
+  supabaseKey: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j',
+  locationIqToken: 'pk.fde6fab706b3370a82c78ba286a896be'
 };
 
 var state = {
@@ -515,6 +549,15 @@ function openCampaignForm() {
   document.getElementById('cWebsite').value = '';
   document.getElementById('cAnchorAddr').value = '';
   
+  // v3.6 — Clear new anchor picker fields
+  document.getElementById('cAnchorLat').value = '';
+  document.getElementById('cAnchorLng').value = '';
+  document.getElementById('cAnchorPincode').value = '';
+  document.getElementById('cAnchorSearch').value = '';
+  document.getElementById('cGpsRadius').value = '50';
+  document.getElementById('anchorSelectedBox').style.display = 'none';
+  document.getElementById('anchorPreview').style.display = 'none';
+  
   document.querySelectorAll('.mode-option').forEach(function(el) {
     el.classList.toggle('selected', el.dataset.mode === 'full');
   });
@@ -565,6 +608,22 @@ function editCampaign(id) {
   document.getElementById('cWebsite').value = c.custom_website || '';
   document.getElementById('cAnchorAddr').value = c.anchor_address || '';
   
+  // v3.6 — Populate anchor lat/lng/pincode/radius
+  document.getElementById('cAnchorLat').value = c.anchor_lat || '';
+  document.getElementById('cAnchorLng').value = c.anchor_lng || '';
+  document.getElementById('cAnchorPincode').value = c.anchor_pincode || '';
+  document.getElementById('cGpsRadius').value = c.gps_radius_m || 50;
+  
+  // Show selected box if anchor exists
+  if (c.anchor_lat && c.anchor_lng && c.anchor_address) {
+    document.getElementById('anchorSelectedText').textContent = c.anchor_address;
+    document.getElementById('anchorSelectedBox').style.display = 'block';
+  } else {
+    document.getElementById('anchorSelectedBox').style.display = 'none';
+  }
+  document.getElementById('anchorPreview').style.display = 'none';
+  document.getElementById('cAnchorSearch').value = '';
+  
   var mode = c.branding_mode || 'full';
   document.querySelectorAll('.mode-option').forEach(function(el) {
     el.classList.toggle('selected', el.dataset.mode === mode);
@@ -579,6 +638,157 @@ function editCampaign(id) {
   document.getElementById('campaignFormCard').classList.add('active');
   document.getElementById('campaignFormCard').scrollIntoView({behavior:'smooth'});
 }
+
+// ═══════════════════════════════════════════════════════════
+// ANCHOR LOCATION PICKER (v3.6) — LocationIQ autocomplete
+// ═══════════════════════════════════════════════════════════
+var anchorSearchTimer = null;
+
+function onAnchorSearchInput() {
+  var query = document.getElementById('cAnchorSearch').value.trim();
+  if (anchorSearchTimer) clearTimeout(anchorSearchTimer);
+  
+  if (query.length < 3) {
+    closeAnchorDropdown();
+    return;
+  }
+  
+  // Debounce 350ms — don't spam API on every keystroke
+  anchorSearchTimer = setTimeout(function() {
+    searchAnchorLocations(query);
+  }, 350);
+}
+
+function searchAnchorLocations(query) {
+  var dropdown = document.getElementById('anchorDropdown');
+  dropdown.innerHTML = '<div style="padding:12px; color:#888; font-size:13px;">🔍 Searching...</div>';
+  dropdown.style.display = 'block';
+  
+  // LocationIQ Autocomplete API — better than search for typing UX
+  // countrycodes=in restricts to India (faster, more relevant)
+  var url = 'https://api.locationiq.com/v1/autocomplete?key=' + CONFIG.locationIqToken
+          + '&q=' + encodeURIComponent(query)
+          + '&limit=8&countrycodes=in&dedupe=1&normalizeaddress=1';
+  
+  fetch(url)
+    .then(function(r) { return r.json(); })
+    .then(function(results) {
+      if (!Array.isArray(results) || results.length === 0) {
+        dropdown.innerHTML = '<div style="padding:12px; color:#888; font-size:13px;">No results found. Try different keywords.</div>';
+        return;
+      }
+      
+      dropdown.innerHTML = results.map(function(r, idx) {
+        var displayName = r.display_name || '';
+        var primary = (r.address && (r.address.name || r.address.road || r.address.suburb)) || displayName.split(',')[0];
+        var secondary = displayName.replace(primary + ', ', '').slice(0, 80);
+        
+        return '<div class="anchor-result" onclick="selectAnchorResult(' + idx + ')" '
+             + 'style="padding:10px 12px; border-bottom:1px solid #eee; cursor:pointer;" '
+             + 'onmouseenter="this.style.background=\'#f9fafb\'" '
+             + 'onmouseleave="this.style.background=\'\'">'
+             + '<div style="font-weight:600; color:#0B1957; font-size:13px;">📍 ' + primary + '</div>'
+             + '<div style="color:#666; font-size:11px; margin-top:2px;">' + secondary + '</div>'
+             + '</div>';
+      }).join('');
+      
+      // Store results for selection
+      state.anchorSearchResults = results;
+    })
+    .catch(function(err) {
+      console.error('[Anchor Search] Failed:', err);
+      dropdown.innerHTML = '<div style="padding:12px; color:#dc2626; font-size:13px;">Search failed. Check internet.</div>';
+    });
+}
+
+function selectAnchorResult(idx) {
+  var result = state.anchorSearchResults && state.anchorSearchResults[idx];
+  if (!result) return;
+  
+  var lat = parseFloat(result.lat);
+  var lng = parseFloat(result.lon);
+  var address = result.display_name || '';
+  var pincode = (result.address && result.address.postcode) || '';
+  
+  // Fill hidden + visible fields
+  document.getElementById('cAnchorLat').value = lat.toFixed(7);
+  document.getElementById('cAnchorLng').value = lng.toFixed(7);
+  document.getElementById('cAnchorPincode').value = pincode;
+  document.getElementById('cAnchorAddr').value = address;
+  
+  // Show selected box
+  document.getElementById('anchorSelectedText').textContent = address;
+  document.getElementById('anchorSelectedBox').style.display = 'block';
+  
+  // Clear search input + close dropdown
+  document.getElementById('cAnchorSearch').value = '';
+  closeAnchorDropdown();
+  
+  console.log('[Anchor] Selected:', { lat: lat, lng: lng, pincode: pincode, address: address });
+}
+
+function closeAnchorDropdown() {
+  var dropdown = document.getElementById('anchorDropdown');
+  if (dropdown) {
+    dropdown.style.display = 'none';
+    dropdown.innerHTML = '';
+  }
+}
+
+function clearAnchor() {
+  document.getElementById('cAnchorLat').value = '';
+  document.getElementById('cAnchorLng').value = '';
+  document.getElementById('cAnchorPincode').value = '';
+  document.getElementById('cAnchorAddr').value = '';
+  document.getElementById('anchorSelectedBox').style.display = 'none';
+  document.getElementById('anchorPreview').style.display = 'none';
+  document.getElementById('cAnchorSearch').focus();
+}
+
+// Generate 5 random preview points within the radius
+function previewAnchorPoints() {
+  var lat = parseFloat(document.getElementById('cAnchorLat').value);
+  var lng = parseFloat(document.getElementById('cAnchorLng').value);
+  var radius = parseInt(document.getElementById('cGpsRadius').value) || 50;
+  
+  var box = document.getElementById('anchorPreview');
+  
+  if (!lat || !lng) {
+    box.style.display = 'block';
+    box.innerHTML = '<div style="color:#dc2626;">⚠️ Pehle anchor location select karo</div>';
+    return;
+  }
+  
+  // Generate 5 random points using same algorithm as field app
+  var radiusDeg = radius / 111320;
+  var lngScale = 1 / Math.cos(lat * Math.PI / 180);
+  
+  var points = [];
+  for (var i = 0; i < 5; i++) {
+    var angle = Math.random() * 2 * Math.PI;
+    var dist = Math.sqrt(Math.random()) * radiusDeg;
+    var dLat = dist * Math.cos(angle);
+    var dLng = dist * Math.sin(angle) * lngScale;
+    var pLat = lat + dLat;
+    var pLng = lng + dLng;
+    // Calculate actual meter distance for display
+    var distM = Math.sqrt(Math.pow(dLat * 111320, 2) + Math.pow(dLng * 111320 * Math.cos(lat * Math.PI / 180), 2));
+    points.push({ lat: pLat, lng: pLng, distM: distM.toFixed(1) });
+  }
+  
+  box.style.display = 'block';
+  box.innerHTML = '<div style="font-weight:600; color:#0B1957; margin-bottom:8px; font-family:sans-serif;">📍 5 Random Sample Points (radius ' + radius + 'm):</div>'
+                + points.map(function(p, idx) {
+                    return '<div style="padding:4px 0; border-bottom:1px dashed #eee;">'
+                         + 'Photo ' + (idx + 1) + ': <strong>' + p.lat.toFixed(6) + '°, ' + p.lng.toFixed(6) + '°</strong>'
+                         + ' <span style="color:#888;">(' + p.distM + 'm from anchor)</span>'
+                         + '</div>';
+                  }).join('')
+                + '<div style="margin-top:8px; padding-top:8px; border-top:1px solid #ddd; font-family:sans-serif; color:#16a34a; font-size:11px;">✓ Realistic variation — no two photos will be at exact same coords</div>';
+}
+// ═══════════════════════════════════════════════════════════
+// END ANCHOR LOCATION PICKER
+// ═══════════════════════════════════════════════════════════
 
 function saveCampaign() {
   var name = document.getElementById('cName').value.trim();
@@ -611,6 +821,10 @@ function saveCampaign() {
     manual_gps_enabled: manualOn,
     auto_vehicle_enabled: autoOn,
     anchor_address: manualOn ? document.getElementById('cAnchorAddr').value.trim() : null,
+    anchor_lat: manualOn ? (parseFloat(document.getElementById('cAnchorLat').value) || null) : null,
+    anchor_lng: manualOn ? (parseFloat(document.getElementById('cAnchorLng').value) || null) : null,
+    anchor_pincode: manualOn ? (document.getElementById('cAnchorPincode').value.trim() || null) : null,
+    gps_radius_m: manualOn ? (parseInt(document.getElementById('cGpsRadius').value) || 50) : null,
     active: true
   };
   
