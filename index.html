@@ -964,7 +964,9 @@ var state = {
   customBrand: null,
   customWebsite: null,
   gpsSamples: [],
-  gpsLockState: 'acquiring'
+  gpsLockState: 'acquiring',
+  lastGeocodeAt: 0,
+  lastGeocodedPos: null
 };
 
 function showToast(msg, type) {
@@ -979,6 +981,18 @@ function vibrate(pattern) {
   if (navigator.vibrate) {
     try { navigator.vibrate(pattern); } catch (e) {}
   }
+}
+
+// Haversine distance in meters between two GPS points
+function haversineDist(lat1, lng1, lat2, lng2) {
+  var R = 6371000; // Earth radius in meters
+  var toRad = function(d) { return d * Math.PI / 180; };
+  var dLat = toRad(lat2 - lat1);
+  var dLng = toRad(lng2 - lng1);
+  var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+          Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+          Math.sin(dLng/2) * Math.sin(dLng/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
 function flashCamera() {
@@ -1375,12 +1389,31 @@ function fetchCampaignForMember() {
     navigator.geolocation.getCurrentPosition(
       function(pos) {
         state.realGps = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
-        fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + pos.coords.latitude 
-              + '&lon=' + pos.coords.longitude + '&zoom=10&addressdetails=1')
+        fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=' + pos.coords.latitude 
+              + '&lon=' + pos.coords.longitude + '&zoom=18&addressdetails=1', {
+              headers: { 'Accept-Language': 'en' }
+            })
           .then(function(r) { return r.json(); })
           .then(function(data) {
-            var city = data.address ? (data.address.city || data.address.town || data.address.village || '') : '';
-            state.realAddress = { city: city, full: data.display_name };
+            var a = data.address || {};
+            var locality = a.neighbourhood || a.hamlet || a.residential || a.quarter || '';
+            var suburb = a.suburb || a.city_district || a.county || '';
+            var city = a.city || a.town || a.municipality || a.village || a.state_district || '';
+            var pincode = a.postcode || '';
+            
+            var parts = [];
+            if (locality) parts.push(locality);
+            if (suburb && suburb !== locality) parts.push(suburb);
+            if (city && city !== suburb && city !== locality) parts.push(city);
+            if (pincode) parts.push(pincode);
+            
+            state.realAddress = { 
+              city: suburb || city,
+              suburb: suburb,
+              locality: locality,
+              pincode: pincode,
+              full: parts.join(', ') || data.display_name || ''
+            };
             getCampaignFromAPI(pos.coords.latitude, pos.coords.longitude, city);
           })
           .catch(function() { getCampaignFromAPI(pos.coords.latitude, pos.coords.longitude, null); });
@@ -1655,7 +1688,21 @@ function goToCameraScreen() {
         document.getElementById('liveCoords').textContent = 
           '📍 Lat ' + bestSample.lat.toFixed(6) + '°  Long ' + bestSample.lng.toFixed(6) + '°';
         
-        if (!state.realAddress) {
+        // Trigger geocode if:
+        // 1. No address yet, OR
+        // 2. Position moved 100m+ from last geocoded position, OR
+        // 3. Accuracy now <30m and previously was poor (likely better address)
+        var shouldGeocode = !state.realAddress;
+        if (state.realAddress && state.lastGeocodedPos) {
+          var distMoved = haversineDist(
+            bestSample.lat, bestSample.lng,
+            state.lastGeocodedPos.lat, state.lastGeocodedPos.lng
+          );
+          if (distMoved > 100) shouldGeocode = true;
+          if (acc < 20 && state.lastGeocodedPos.accuracy > 50) shouldGeocode = true;
+        }
+        if (shouldGeocode && acc < 100) {
+          state.lastGeocodedPos = { lat: bestSample.lat, lng: bestSample.lng, accuracy: acc };
           fetchAddress(bestSample.lat, bestSample.lng);
         }
       },
@@ -1693,18 +1740,71 @@ function updateLiveTime() {
 }
 
 function fetchAddress(lat, lng) {
-  fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat 
-        + '&lon=' + lng + '&zoom=14&addressdetails=1')
+  // Cache busting + rate limit guard
+  var now = Date.now();
+  if (state.lastGeocodeAt && (now - state.lastGeocodeAt) < 8000) {
+    return; // Don't spam Nominatim — 8 sec cooldown
+  }
+  state.lastGeocodeAt = now;
+  
+  // zoom=18 = building level, gives suburb/neighbourhood/postcode
+  var url = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=' + lat 
+            + '&lon=' + lng + '&zoom=18&addressdetails=1';
+  
+  fetch(url, {
+    headers: { 'Accept-Language': 'en' }
+  })
     .then(function(r) { return r.json(); })
     .then(function(data) {
-      var city = data.address ? (data.address.city || data.address.town || data.address.village || 'India') : 'India';
-      state.realAddress = { city: city, full: data.display_name || '' };
+      var a = data.address || {};
+      
+      // Most-specific locality (block/society level)
+      var locality = a.neighbourhood || a.hamlet || a.residential 
+                     || a.quarter || a.industrial || '';
+      
+      // Suburb/area level (Warje, Bavdhan etc.)
+      var suburb = a.suburb || a.city_district || a.county || '';
+      
+      // City level
+      var city = a.city || a.town || a.municipality || a.village 
+                 || a.state_district || 'India';
+      
+      var pincode = a.postcode || '';
+      var state_name = a.state || 'Maharashtra';
+      var country = a.country || 'India';
+      
+      // Build clean address: locality, suburb, city - pincode
+      var parts = [];
+      if (locality) parts.push(locality);
+      if (suburb && suburb !== locality) parts.push(suburb);
+      if (city && city !== suburb && city !== locality) parts.push(city);
+      if (pincode) parts.push(pincode);
+      var cleanAddress = parts.join(', ');
+      
+      // The "city" badge should show the most useful identifier (suburb if exists, else city)
+      var displayCity = suburb || city;
+      
+      state.realAddress = { 
+        city: displayCity, 
+        suburb: suburb,
+        locality: locality,
+        pincode: pincode,
+        full: cleanAddress || data.display_name || '',
+        rawDisplay: data.display_name || ''
+      };
+      
       var liveCity = document.getElementById('liveCity');
       var liveAddr = document.getElementById('liveAddress');
-      if (liveCity) liveCity.textContent = city + ', Maharashtra, India 🇮🇳';
-      if (liveAddr) liveAddr.textContent = data.display_name || '';
+      if (liveCity) {
+        liveCity.textContent = '📍 ' + displayCity + ', ' + state_name + ', ' + country + ' 🇮🇳';
+      }
+      if (liveAddr) {
+        liveAddr.textContent = cleanAddress || data.display_name || '';
+      }
     })
-    .catch(function() {});
+    .catch(function(err) {
+      console.warn('[Geocode] Failed:', err);
+    });
 }
 
 document.getElementById('shutterBtn').addEventListener('click', capturePhoto);
@@ -1776,6 +1876,19 @@ function capturePhoto() {
       + '_' + timestamp + '.jpg';
     
     saveToGallery(blob, filename);
+    
+    // IMMEDIATE UI feedback — counter advance karo turant (upload success ka wait nahi)
+    // Final state-level update upload success pe hoga (line ~2228)
+    var pendingDone = state.photosThisSession + 1;
+    var totalExpectedUI = state.expectedPhotoCount;
+    var photosDoneEl = document.getElementById('photosDone');
+    if (photosDoneEl) photosDoneEl.textContent = pendingDone;
+    var barsUI = document.querySelectorAll('.progress-bars-mini .progress-bar');
+    if (barsUI[pendingDone - 1]) barsUI[pendingDone - 1].classList.add('filled');
+    var idxEl = document.getElementById('livePhotoIndex');
+    if (idxEl && pendingDone < totalExpectedUI) {
+      idxEl.textContent = (pendingDone + 1) + ' of ' + totalExpectedUI;
+    }
     
     uploadPhoto(blob);
   }, 'image/jpeg', 0.85);
