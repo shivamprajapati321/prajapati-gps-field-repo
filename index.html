@@ -372,72 +372,75 @@ body.pwa-installed .ios-install-hint { display: none !important; }
   bottom: 110px;
   left: 14px;
   right: 14px;
-  background: rgba(0, 0, 0, 0.82);
+  background: rgba(0, 0, 0, 0.85);
   border-radius: 10px;
-  padding: 10px 12px;
+  padding: 12px 14px;
   display: flex;
-  gap: 10px;
+  flex-direction: column;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+  color: #fff;
 }
-.live-mini-map {
-  width: 60px; height: 60px;
-  background: linear-gradient(135deg, #f5f3ed, #e8e4d8);
-  border-radius: 5px;
-  flex-shrink: 0;
-  position: relative;
-  overflow: hidden;
+.live-time-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 6px;
 }
-.map-roads-h {
-  position: absolute;
-  top: 50%; left: 0; right: 0;
-  height: 4px; background: #fff;
-  border-top: 0.5px solid #c8c0b0;
-  border-bottom: 0.5px solid #c8c0b0;
-  transform: translateY(-50%);
-}
-.map-roads-v {
-  position: absolute;
-  top: 0; bottom: 0; left: 50%;
-  width: 4px; background: #fff;
-  border-left: 0.5px solid #c8c0b0;
-  border-right: 0.5px solid #c8c0b0;
-  transform: translateX(-50%);
-}
-.map-pin {
-  position: absolute;
-  top: 50%; left: 50%;
-  width: 12px; height: 12px;
-  background: #ea4335;
-  border-radius: 50% 50% 50% 0;
-  transform: translate(-50%, -100%) rotate(-45deg);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.5);
-}
-.live-gps-info { flex: 1; color: #fff; min-width: 0; }
-.live-city {
-  font-size: 11px;
+.live-time-big {
+  font-size: 22px;
   font-weight: 700;
-  margin-bottom: 1px;
+  color: #fff;
+  line-height: 1;
+  font-family: 'Poppins', sans-serif;
+}
+.live-time-ampm {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+}
+.live-time-sep {
+  width: 2px;
+  height: 18px;
+  background: #ffd60a;
+  margin: 0 4px;
+}
+.live-date-block {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.live-date-text {
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+}
+.live-day-text {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.7);
+}
+.live-city {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  margin: 4px 0 3px 0;
 }
 .live-address {
-  font-size: 8px;
-  opacity: 0.85;
-  line-height: 1.3;
-  white-space: nowrap;
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.4;
+  margin-bottom: 6px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 .live-coords {
   font-family: 'SF Mono', 'Roboto Mono', monospace;
   font-size: 9px;
-  opacity: 0.85;
-  margin-top: 2px;
-}
-.live-time {
-  font-size: 9px;
-  color: #ffd60a;
-  font-weight: 600;
-  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.7);
+  padding-top: 5px;
+  border-top: 0.5px solid rgba(255, 255, 255, 0.15);
 }
 
 .live-verified-strip {
@@ -621,6 +624,92 @@ body.pwa-installed .ios-install-hint { display: none !important; }
 #toast.error { background: #ef4444; color: #fff; }
 #toast.success { background: #34c759; color: #fff; }
 
+#statusBanner {
+  position: fixed;
+  bottom: 110px;
+  left: 14px;
+  right: 14px;
+  background: rgba(0, 0, 0, 0.92);
+  color: #fff;
+  padding: 12px 16px;
+  border-radius: 12px;
+  display: none;
+  z-index: 999;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-family: 'Poppins', sans-serif;
+  border-left: 4px solid #34c759;
+  animation: slideUp 0.3s ease-out;
+}
+#statusBanner.show { display: flex; align-items: center; gap: 12px; }
+#statusBanner.success { border-left-color: #34c759; }
+#statusBanner.saving { border-left-color: #fbbf24; }
+#statusBanner.error { border-left-color: #ef4444; background: rgba(127, 20, 20, 0.95); }
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.banner-icon {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  background: rgba(52, 199, 89, 0.25);
+}
+#statusBanner.saving .banner-icon { background: rgba(251, 191, 36, 0.25); }
+#statusBanner.error .banner-icon { background: rgba(239, 68, 68, 0.25); }
+
+.banner-icon-spinner {
+  width: 20px; height: 20px;
+  border: 3px solid rgba(251, 191, 36, 0.3);
+  border-top-color: #fbbf24;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.banner-text { flex: 1; min-width: 0; }
+.banner-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.banner-sub {
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.banner-btn {
+  background: #fff;
+  color: #ef4444;
+  border: none;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.banner-btn:active { transform: scale(0.95); }
+
+#captureFlash {
+  position: fixed;
+  inset: 0;
+  background: #fff;
+  z-index: 998;
+  display: none;
+  pointer-events: none;
+}
+#captureFlash.flash { display: block; animation: flashAnim 0.15s ease-out; }
+@keyframes flashAnim {
+  0% { opacity: 0; }
+  50% { opacity: 0.85; }
+  100% { opacity: 0; }
+}
+
 .spinner {
   width: 40px; height: 40px;
   border: 4px solid rgba(255,255,255,0.3);
@@ -754,17 +843,18 @@ body.pwa-installed .ios-install-hint { display: none !important; }
     </div>
     
     <div class="live-gps-stamp">
-      <div class="live-mini-map">
-        <div class="map-roads-h"></div>
-        <div class="map-roads-v"></div>
-        <div class="map-pin"></div>
+      <div class="live-time-row">
+        <div class="live-time-big" id="liveTimeBig">12:17</div>
+        <div class="live-time-ampm" id="liveTimeAmpm">PM</div>
+        <div class="live-time-sep"></div>
+        <div class="live-date-block">
+          <div class="live-date-text" id="liveDateText">04 May 2026</div>
+          <div class="live-day-text" id="liveDayText">Monday</div>
+        </div>
       </div>
-      <div class="live-gps-info">
-        <div class="live-city" id="liveCity">📍 Detecting...</div>
-        <div class="live-address" id="liveAddress">Address loading</div>
-        <div class="live-coords" id="liveCoords">--, --</div>
-        <div class="live-time" id="liveTime">📅 शुक्रवार, 7:30 PM</div>
-      </div>
+      <div class="live-city" id="liveCity">📍 Detecting...</div>
+      <div class="live-address" id="liveAddress">Address loading</div>
+      <div class="live-coords" id="liveCoords">📍 Lat --°  Long --°</div>
     </div>
     
     <div class="live-verified-strip" id="liveVerifiedStrip">
@@ -817,6 +907,15 @@ body.pwa-installed .ios-install-hint { display: none !important; }
 
 <canvas id="hiddenCanvas"></canvas>
 <div id="toast"></div>
+<div id="captureFlash"></div>
+<div id="statusBanner">
+  <div class="banner-icon" id="bannerIcon"></div>
+  <div class="banner-text">
+    <div class="banner-title" id="bannerTitle">Saved</div>
+    <div class="banner-sub" id="bannerSub">1 of 3 photos</div>
+  </div>
+  <button class="banner-btn" id="bannerBtn" style="display: none;">Retry</button>
+</div>
 
 <script>
 "use strict";
@@ -861,7 +960,9 @@ var state = {
   brandingMode: null,
   customLogo: null,
   customBrand: null,
-  customWebsite: null
+  customWebsite: null,
+  gpsSamples: [],
+  gpsLockState: 'acquiring'
 };
 
 function showToast(msg, type) {
@@ -870,6 +971,55 @@ function showToast(msg, type) {
   t.className = type ? type : '';
   t.classList.add('show');
   setTimeout(function() { t.classList.remove('show'); }, 2500);
+}
+
+function vibrate(pattern) {
+  if (navigator.vibrate) {
+    try { navigator.vibrate(pattern); } catch (e) {}
+  }
+}
+
+function flashCamera() {
+  var f = document.getElementById('captureFlash');
+  f.classList.add('flash');
+  setTimeout(function() { f.classList.remove('flash'); }, 200);
+}
+
+function showBanner(stateType, title, sub, showRetry) {
+  var banner = document.getElementById('statusBanner');
+  var icon = document.getElementById('bannerIcon');
+  var titleEl = document.getElementById('bannerTitle');
+  var subEl = document.getElementById('bannerSub');
+  var btn = document.getElementById('bannerBtn');
+  
+  banner.className = 'show ' + stateType;
+  titleEl.textContent = title;
+  subEl.textContent = sub || '';
+  
+  if (stateType === 'saving') {
+    icon.innerHTML = '<div class="banner-icon-spinner"></div>';
+  } else if (stateType === 'success') {
+    icon.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#34c759" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+  } else if (stateType === 'error') {
+    icon.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="8" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
+  }
+  
+  btn.style.display = showRetry ? 'block' : 'none';
+}
+
+function hideBanner() {
+  var banner = document.getElementById('statusBanner');
+  banner.classList.remove('show');
+}
+
+state.failedUpload = null;
+
+function retryFailedUpload() {
+  if (!state.failedUpload) return;
+  var item = state.failedUpload;
+  state.failedUpload = null;
+  showBanner('saving', 'Saving...', 'Photo ' + item.photoNum + ' of ' + item.totalExpected, false);
+  uploadPhotoWithRetry(item.payload, item.photoNum, item.totalExpected, 0);
 }
 
 function showScreen(id) {
@@ -1078,6 +1228,11 @@ function isRunningStandalone() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+  var retryBtn = document.getElementById('bannerBtn');
+  if (retryBtn) {
+    retryBtn.addEventListener('click', retryFailedUpload);
+  }
+  
   if (isRunningStandalone()) {
     var installBtn = document.getElementById('installAppBtn');
     if (installBtn) installBtn.style.display = 'none';
@@ -1170,7 +1325,8 @@ document.getElementById('logoutBtn').addEventListener('click', function() {
       member: null, selectedMode: null, campaign: null,
       expectedPhotoCount: 3, currentVehicle: null, photosThisSession: 0,
       realGps: null, realAddress: null, cameraStream: null, todayPhotoCount: 0,
-      brandingMode: null, customLogo: null, customBrand: null, customWebsite: null
+      brandingMode: null, customLogo: null, customBrand: null, customWebsite: null,
+      gpsSamples: [], gpsLockState: 'acquiring', failedUpload: null
     };
     document.getElementById('phoneInput').value = '';
     document.getElementById('loginBtn').textContent = 'Login →';
@@ -1410,12 +1566,12 @@ function goToCameraScreen() {
   
   if (state.realAddress) {
     var city = state.realAddress.city || 'India';
-    document.getElementById('liveCity').textContent = '📍 ' + city + ', Maharashtra 🇮🇳';
+    document.getElementById('liveCity').textContent = city + ', Maharashtra, India 🇮🇳';
     document.getElementById('liveAddress').textContent = state.realAddress.full || '';
   }
   if (state.realGps) {
     document.getElementById('liveCoords').textContent = 
-      state.realGps.lat.toFixed(6) + '°, ' + state.realGps.lng.toFixed(6) + '°';
+      '📍 Lat ' + state.realGps.lat.toFixed(6) + '°  Long ' + state.realGps.lng.toFixed(6) + '°';
   }
   
   var doneBtn = document.getElementById('doneBtn');
@@ -1436,52 +1592,102 @@ function goToCameraScreen() {
   });
   
   if (navigator.geolocation) {
-    navigator.geolocation.watchPosition(
+    state.gpsSamples = [];
+    state.gpsLockState = 'acquiring';
+    
+    var liveAccInit = document.getElementById('liveGpsAcc');
+    if (liveAccInit) {
+      liveAccInit.textContent = '● Locking...';
+      liveAccInit.className = 'live-gps-acc bad';
+    }
+    
+    var watchOptions = { 
+      enableHighAccuracy: true, 
+      maximumAge: 0,
+      timeout: 30000
+    };
+    
+    state.gpsWatchId = navigator.geolocation.watchPosition(
       function(pos) {
-        state.realGps = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
+        var newReading = { 
+          lat: pos.coords.latitude, 
+          lng: pos.coords.longitude, 
+          accuracy: pos.coords.accuracy,
+          timestamp: Date.now()
+        };
+        
+        state.gpsSamples.push(newReading);
+        if (state.gpsSamples.length > 5) {
+          state.gpsSamples.shift();
+        }
+        
+        var bestSample = state.gpsSamples.reduce(function(best, current) {
+          return current.accuracy < best.accuracy ? current : best;
+        }, state.gpsSamples[0]);
+        
+        state.realGps = bestSample;
         
         var dot = document.getElementById('gpsDot');
-        var acc = pos.coords.accuracy;
-        if (acc < 20) dot.className = 'gps-dot';
-        else if (acc < 50) dot.className = 'gps-dot weak';
-        else dot.className = 'gps-dot failed';
+        var acc = bestSample.accuracy;
+        var liveAcc = document.getElementById('liveGpsAcc');
+        
+        if (acc < 20) {
+          state.gpsLockState = 'locked';
+          dot.className = 'gps-dot';
+          liveAcc.className = 'live-gps-acc';
+          liveAcc.textContent = '● GPS ±' + Math.round(acc) + 'm';
+        } else if (acc < 50) {
+          state.gpsLockState = 'weak';
+          dot.className = 'gps-dot weak';
+          liveAcc.className = 'live-gps-acc weak';
+          liveAcc.textContent = '● GPS ±' + Math.round(acc) + 'm';
+        } else {
+          state.gpsLockState = 'poor';
+          dot.className = 'gps-dot failed';
+          liveAcc.className = 'live-gps-acc bad';
+          liveAcc.textContent = '● GPS ±' + Math.round(acc) + 'm';
+        }
+        
         document.getElementById('gpsText').textContent = '±' + Math.round(acc) + 'm';
         
-        var liveAcc = document.getElementById('liveGpsAcc');
-        liveAcc.textContent = '● GPS ±' + Math.round(acc) + 'm';
-        if (acc < 20) liveAcc.className = 'live-gps-acc';
-        else if (acc < 50) liveAcc.className = 'live-gps-acc weak';
-        else liveAcc.className = 'live-gps-acc bad';
-        
         document.getElementById('liveCoords').textContent = 
-          pos.coords.latitude.toFixed(6) + '°, ' + pos.coords.longitude.toFixed(6) + '°';
+          '📍 Lat ' + bestSample.lat.toFixed(6) + '°  Long ' + bestSample.lng.toFixed(6) + '°';
         
         if (!state.realAddress) {
-          fetchAddress(pos.coords.latitude, pos.coords.longitude);
+          fetchAddress(bestSample.lat, bestSample.lng);
         }
       },
-      function() {
+      function(err) {
+        console.warn('[GPS] Error:', err);
         document.getElementById('gpsDot').className = 'gps-dot failed';
         document.getElementById('gpsText').textContent = 'No GPS';
         document.getElementById('liveGpsAcc').textContent = '● No GPS';
         document.getElementById('liveGpsAcc').className = 'live-gps-acc bad';
+        state.gpsLockState = 'failed';
       },
-      { enableHighAccuracy: true, maximumAge: 5000 }
+      watchOptions
     );
   }
 }
 
 function updateLiveTime() {
   var d = new Date();
-  var days = ['रवि','सोम','मंगल','बुध','गुरु','शुक्र','शनि'];
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   var hours = d.getHours();
   var ampm = hours >= 12 ? 'PM' : 'AM';
   hours = hours % 12 || 12;
-  var timeStr = '📅 ' + days[d.getDay()] + ' ' 
-    + String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth()+1).padStart(2, '0')
-    + ', ' + hours + ':' + String(d.getMinutes()).padStart(2, '0') + ' ' + ampm;
-  var el = document.getElementById('liveTime');
-  if (el) el.textContent = timeStr;
+  var minutes = String(d.getMinutes()).padStart(2, '0');
+  
+  var timeBig = document.getElementById('liveTimeBig');
+  var timeAmpm = document.getElementById('liveTimeAmpm');
+  var dateText = document.getElementById('liveDateText');
+  var dayText = document.getElementById('liveDayText');
+  
+  if (timeBig) timeBig.textContent = hours + ':' + minutes;
+  if (timeAmpm) timeAmpm.textContent = ampm;
+  if (dateText) dateText.textContent = String(d.getDate()).padStart(2, '0') + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+  if (dayText) dayText.textContent = days[d.getDay()];
 }
 
 function fetchAddress(lat, lng) {
@@ -1493,7 +1699,7 @@ function fetchAddress(lat, lng) {
       state.realAddress = { city: city, full: data.display_name || '' };
       var liveCity = document.getElementById('liveCity');
       var liveAddr = document.getElementById('liveAddress');
-      if (liveCity) liveCity.textContent = '📍 ' + city + ', Maharashtra 🇮🇳';
+      if (liveCity) liveCity.textContent = city + ', Maharashtra, India 🇮🇳';
       if (liveAddr) liveAddr.textContent = data.display_name || '';
     })
     .catch(function() {});
@@ -1524,6 +1730,24 @@ document.getElementById('doneBtn').addEventListener('click', function() {
 });
 
 function capturePhoto() {
+  if (state.realGps && state.realGps.accuracy > 50) {
+    var proceed = confirm(
+      'GPS accuracy weak hai (±' + Math.round(state.realGps.accuracy) + 'm).\n\n' +
+      'Better accuracy ke liye 10-15 second wait karo, ya phir bhi photo lena hai?\n\n' +
+      'OK = Photo lo (low accuracy)\n' +
+      'Cancel = Wait karo'
+    );
+    if (!proceed) {
+      return;
+    }
+  }
+  
+  flashCamera();
+  vibrate(50);
+  
+  var nextPhotoNum = state.photosThisSession + 1;
+  showBanner('saving', 'Saving...', 'Photo ' + nextPhotoNum + ' of ' + state.expectedPhotoCount, false);
+  
   var video = document.getElementById('cameraVideo');
   var canvas = document.getElementById('hiddenCanvas');
   
@@ -1558,15 +1782,13 @@ function capturePhoto() {
 function drawGPSStamp(ctx, w, h) {
   if (!state.realGps) return;
   
-  // Determine branding mode (default 'full' for backward compatibility)
   var brandingMode = state.brandingMode || 'full';
   var customLogo = state.customLogo || null;
   var customBrand = state.customBrand || 'PRAJAPATI';
   var customWebsite = state.customWebsite || 'prajapatiadvertising.co.in';
   
-  console.log('[drawGPSStamp] Branding mode:', brandingMode);
+  console.log('[drawGPSStamp] Branding mode:', brandingMode, 'GPS accuracy:', state.realGps.accuracy);
   
-  // Use server-returned coords/address if available (for manual GPS mode)
   var displayLat = state.serverGps ? state.serverGps.lat : state.realGps.lat;
   var displayLng = state.serverGps ? state.serverGps.lng : state.realGps.lng;
   var displayAddress = state.serverAddress ? state.serverAddress.full : (state.realAddress ? state.realAddress.full : '');
@@ -1576,7 +1798,6 @@ function drawGPSStamp(ctx, w, h) {
   var fontSize = Math.max(28 * scale, 22);
   var margin = 30 * scale;
   
-  // ─── AUTO VEHICLE MODE: Hide vehicle banner ───
   var autoVehicleMode = state.campaign && state.campaign.auto_vehicle_enabled === true;
   
   if (!autoVehicleMode) {
@@ -1595,45 +1816,44 @@ function drawGPSStamp(ctx, w, h) {
     ctx.fillText(state.currentVehicle, margin + 25 * scale, margin + vehBannerH / 2);
   }
   
-  // ─── BRANDING MODE: Show logo only if NOT clean mode ───
   if (brandingMode !== 'clean') {
     if (logoImg && logoImg.complete && logoImg.naturalWidth > 0 && brandingMode === 'full') {
-    var logoTargetW = 320 * scale;
-    var logoAspect = logoImg.naturalHeight / logoImg.naturalWidth;
-    var logoTargetH = logoTargetW * logoAspect;
-    var logoX = w - margin - logoTargetW;
-    var logoY = margin;
-    
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-    roundRect(ctx, logoX - 10 * scale, logoY - 5 * scale, 
-              logoTargetW + 20 * scale, logoTargetH + 10 * scale, 8 * scale);
-    ctx.fill();
-    
-    ctx.drawImage(logoImg, logoX, logoY, logoTargetW, logoTargetH);
-  } else {
-    var logoBgW = 280 * scale;
-    var logoBgH = 70 * scale;
-    var logoX = w - margin - logoBgW;
-    var logoY = margin;
-    
-    var grad = ctx.createLinearGradient(logoX, logoY, logoX + logoBgW, logoY);
-    grad.addColorStop(0, '#3D3290');
-    grad.addColorStop(1, '#5C4DB1');
-    ctx.fillStyle = grad;
-    roundRect(ctx, logoX, logoY, logoBgW, logoBgH, 8 * scale);
-    ctx.fill();
-    
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold ' + (fontSize * 0.95) + 'px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(customBrand, logoX + logoBgW / 2, logoY + logoBgH / 2 - 10 * scale);
-    ctx.font = (fontSize * 0.65) + 'px sans-serif';
-    ctx.fillText('ADVERTISING', logoX + logoBgW / 2, logoY + logoBgH / 2 + 12 * scale);
+      var logoTargetW = 320 * scale;
+      var logoAspect = logoImg.naturalHeight / logoImg.naturalWidth;
+      var logoTargetH = logoTargetW * logoAspect;
+      var logoX = w - margin - logoTargetW;
+      var logoY = margin;
+      
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+      roundRect(ctx, logoX - 10 * scale, logoY - 5 * scale, 
+                logoTargetW + 20 * scale, logoTargetH + 10 * scale, 8 * scale);
+      ctx.fill();
+      
+      ctx.drawImage(logoImg, logoX, logoY, logoTargetW, logoTargetH);
+    } else if (brandingMode === 'custom') {
+      var logoBgW = 280 * scale;
+      var logoBgH = 70 * scale;
+      var logoX = w - margin - logoBgW;
+      var logoY = margin;
+      
+      var grad = ctx.createLinearGradient(logoX, logoY, logoX + logoBgW, logoY);
+      grad.addColorStop(0, '#3D3290');
+      grad.addColorStop(1, '#5C4DB1');
+      ctx.fillStyle = grad;
+      roundRect(ctx, logoX, logoY, logoBgW, logoBgH, 8 * scale);
+      ctx.fill();
+      
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold ' + (fontSize * 0.95) + 'px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(customBrand, logoX + logoBgW / 2, logoY + logoBgH / 2 - 10 * scale);
+      ctx.font = (fontSize * 0.65) + 'px sans-serif';
+      ctx.fillText('ADVERTISING', logoX + logoBgW / 2, logoY + logoBgH / 2 + 12 * scale);
+    }
   }
-  } // End: if brandingMode !== 'clean'
   
-  var badgeY = margin + (logoImg ? 90 : 80) * scale;
+  var badgeY = margin + (logoImg && brandingMode !== 'clean' ? 90 : 80) * scale;
   var badgeRight = w - margin;
   
   var idxText = state.photosThisSession + 1 + ' of ' + state.expectedPhotoCount;
@@ -1664,87 +1884,127 @@ function drawGPSStamp(ctx, w, h) {
   ctx.fillStyle = '#fff';
   ctx.fillText(accText, badgeRight - accW / 2, badgeY + 14 * scale);
   
-  var stampHeight = 280 * scale;
+  var stampHeight = 320 * scale;
   var y = h - stampHeight - margin;
   
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.92)';
   roundRect(ctx, margin, y, w - margin * 2, stampHeight, 12 * scale);
   ctx.fill();
   
-  var mapSize = 200 * scale;
-  var mapX = margin + 25 * scale;
-  var mapY = y + 25 * scale;
-  
-  drawStylizedMap(ctx, mapX, mapY, mapSize, displayLat, displayLng);
-  
-  var textX = mapX + mapSize + 30 * scale;
-  var textY = y + 50 * scale;
-  
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold ' + (fontSize * 1.3) + 'px sans-serif';
-  ctx.textBaseline = 'top';
-  ctx.textAlign = 'left';
-  var stampCity = displayCity || 'India';
-  ctx.fillText(stampCity + ', Maharashtra 🇮🇳', textX, textY);
-  
-  textY += fontSize * 1.7;
-  
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-  ctx.font = (fontSize * 0.85) + 'px sans-serif';
-  var addr = displayAddress || '';
-  var maxAddrLen = Math.floor((w - textX - margin - 50 * scale) / (fontSize * 0.45));
-  if (addr.length > maxAddrLen) addr = addr.substring(0, maxAddrLen) + '...';
-  ctx.fillText(addr, textX, textY);
-  
-  textY += fontSize * 1.4;
-  
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-  ctx.font = (fontSize * 0.85) + 'px monospace';
-  ctx.fillText(
-    '📍 Lat ' + displayLat.toFixed(6) + '°  Lng ' + displayLng.toFixed(6) + '°',
-    textX, textY
-  );
-  
-  textY += fontSize * 1.4;
+  var padX = margin + 30 * scale;
+  var rowY = y + 35 * scale;
   
   var d = new Date();
-  var days = ['रविवार','सोमवार','मंगलवार','बुधवार','गुरुवार','शुक्रवार','शनिवार'];
-  var hindiMonths = ['जनवरी','फरवरी','मार्च','अप्रैल','मई','जून','जुलाई','अगस्त','सितंबर','अक्टूबर','नवंबर','दिसंबर'];
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   var hours = d.getHours();
   var ampm = hours >= 12 ? 'PM' : 'AM';
   hours = hours % 12 || 12;
-  var dateStr = '📅 ' + days[d.getDay()] + ' ' 
-    + String(d.getDate()).padStart(2, '0') + ' ' + hindiMonths[d.getMonth()] + ' ' + d.getFullYear()
-    + ' · ' + hours + ':' + String(d.getMinutes()).padStart(2, '0') + ' ' + ampm;
+  var minutes = String(d.getMinutes()).padStart(2, '0');
+  var dateStr = String(d.getDate()).padStart(2, '0') + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+  var dayStr = days[d.getDay()];
+  var timeStr = hours + ':' + minutes;
+  
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold ' + (fontSize * 2.0) + 'px sans-serif';
+  ctx.textBaseline = 'top';
+  ctx.textAlign = 'left';
+  ctx.fillText(timeStr, padX, rowY);
+  
+  var timeW = ctx.measureText(timeStr).width;
+  
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+  ctx.font = (fontSize * 0.85) + 'px sans-serif';
+  ctx.fillText(ampm, padX + timeW + 12 * scale, rowY + 12 * scale);
+  
+  var ampmW = ctx.measureText(ampm).width;
+  var sepX = padX + timeW + ampmW + 30 * scale;
   
   ctx.fillStyle = '#ffd60a';
-  ctx.font = 'bold ' + (fontSize * 0.9) + 'px sans-serif';
-  ctx.fillText(dateStr, textX, textY);
+  ctx.fillRect(sepX, rowY + 5 * scale, 3 * scale, fontSize * 1.6);
   
-  var stripY = y + stampHeight - 35 * scale;
+  var dateX = sepX + 18 * scale;
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold ' + (fontSize * 0.95) + 'px sans-serif';
+  ctx.fillText(dateStr, dateX, rowY + 5 * scale);
   
-  // ─── BRANDING MODE: Show verified strip only if NOT clean mode ───
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+  ctx.font = (fontSize * 0.75) + 'px sans-serif';
+  ctx.fillText(dayStr, dateX, rowY + fontSize * 1.2);
+  
+  rowY = y + stampHeight * 0.42;
+  
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold ' + (fontSize * 1.15) + 'px sans-serif';
+  var stampCity = displayCity || 'India';
+  ctx.fillText(stampCity + ', Maharashtra, India 🇮🇳', padX, rowY);
+  
+  rowY += fontSize * 1.5;
+  
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+  ctx.font = (fontSize * 0.78) + 'px sans-serif';
+  var addr = displayAddress || '';
+  var maxAddrW = w - padX * 2;
+  var maxCharsPerLine = Math.floor(maxAddrW / (fontSize * 0.42));
+  
+  if (addr.length > 0) {
+    var line1 = '';
+    var line2 = '';
+    if (addr.length <= maxCharsPerLine) {
+      line1 = addr;
+    } else {
+      var splitPoint = addr.lastIndexOf(' ', maxCharsPerLine);
+      if (splitPoint < maxCharsPerLine * 0.5) splitPoint = maxCharsPerLine;
+      line1 = addr.substring(0, splitPoint);
+      var remaining = addr.substring(splitPoint).trim();
+      if (remaining.length > maxCharsPerLine) {
+        line2 = remaining.substring(0, maxCharsPerLine - 3) + '...';
+      } else {
+        line2 = remaining;
+      }
+    }
+    ctx.fillText(line1, padX, rowY);
+    if (line2) {
+      ctx.fillText(line2, padX, rowY + fontSize * 1.1);
+    }
+  }
+  
+  rowY = y + stampHeight - 50 * scale;
+  
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padX, rowY);
+  ctx.lineTo(w - padX, rowY);
+  ctx.stroke();
+  
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+  ctx.font = (fontSize * 0.8) + 'px monospace';
+  ctx.fillText(
+    '📍 Lat ' + displayLat.toFixed(6) + '°  Long ' + displayLng.toFixed(6) + '°',
+    padX, rowY + 12 * scale
+  );
+  
   if (brandingMode !== 'clean') {
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(margin + 20 * scale, stripY);
-    ctx.lineTo(w - margin - 20 * scale, stripY);
-    ctx.stroke();
+    var stripY = h - margin - 35 * scale;
     
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-    ctx.font = 'bold ' + (fontSize * 0.7) + 'px sans-serif';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+    roundRect(ctx, margin, stripY, w - margin * 2, 32 * scale, 6 * scale);
+    ctx.fill();
+    
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.font = 'bold ' + (fontSize * 0.65) + 'px sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     var verifyText = brandingMode === 'custom' 
       ? '✓ Verified by ' + customBrand 
       : '✓ Verified by Prajapati Advertising';
-    ctx.fillText(verifyText, margin + 25 * scale, stripY + 18 * scale);
+    ctx.fillText(verifyText, margin + 20 * scale, stripY + 16 * scale);
     
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-    ctx.font = (fontSize * 0.65) + 'px sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+    ctx.font = (fontSize * 0.6) + 'px sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText(customWebsite, w - margin - 25 * scale, stripY + 18 * scale);
+    ctx.fillText(customWebsite, w - margin - 20 * scale, stripY + 16 * scale);
   }
   
   ctx.textAlign = 'left';
@@ -1886,13 +2146,17 @@ function saveToGallery(blob, filename) {
 
 function uploadPhoto(blob) {
   if (!state.realGps || typeof state.realGps.lat !== 'number') {
-    showToast('GPS not available - wait for GPS lock', 'error');
+    showBanner('error', 'GPS not ready', 'Wait for GPS lock', false);
+    setTimeout(hideBanner, 3000);
     return;
   }
   
   var reader = new FileReader();
   reader.onloadend = function() {
     var base64 = reader.result.split(',')[1];
+    
+    var photoNum = state.photosThisSession + 1;
+    var totalExpected = state.expectedPhotoCount;
     
     var payload = {
       member_phone: state.member.phone,
@@ -1907,76 +2171,107 @@ function uploadPhoto(blob) {
       city: state.realAddress ? state.realAddress.city : null,
       image_base64: base64,
       timestamp: Date.now(),
-      photo_index: state.photosThisSession + 1
+      photo_index: photoNum
     };
     
-    fetch(CONFIG.uploadEndpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: CONFIG.supabaseKey,
-        Authorization: 'Bearer ' + CONFIG.supabaseKey
-      },
-      body: JSON.stringify(payload)
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(result) {
-      if (result.ok) {
-        // Store final data from server (used for next stamp rendering)
-        if (result.final_lat && result.final_lng) {
-          state.serverGps = { lat: result.final_lat, lng: result.final_lng };
-        }
-        if (result.final_address) {
-          state.serverAddress = { full: result.final_address, city: result.final_city };
-        }
-        if (result.branding_mode) {
-          state.brandingMode = result.branding_mode;
-          state.customLogo = result.custom_logo_url;
-          state.customBrand = result.custom_brand_name;
-          state.customWebsite = result.custom_website;
-          // Re-apply overlay branding in case server overrides
-          applyLiveOverlayBranding();
-        }
-        // Update vehicle number from OCR result
-        if (result.final_vehicle && result.auto_vehicle) {
-          state.currentVehicle = result.final_vehicle;
-        }
-        
-        state.photosThisSession++;
-        var done = state.photosThisSession;
-        var total = state.expectedPhotoCount;
-        
-        document.getElementById('photosDone').textContent = done;
-        var bars = document.querySelectorAll('.progress-bars-mini .progress-bar');
-        if (bars[done - 1]) bars[done - 1].classList.add('filled');
-        
-        if (done < total) {
-          document.getElementById('livePhotoIndex').textContent = (done + 1) + ' of ' + total;
-        }
-        
-        showToast('✓ Saved (' + done + '/' + total + ')', 'success');
-        
-        var doneBtn = document.getElementById('doneBtn');
-        if (done >= total) {
-          doneBtn.disabled = false;
-          doneBtn.classList.add('done-ready');
-        } else {
-          doneBtn.disabled = true;
-        }
-        
-        if (done >= total) {
-          setTimeout(finishVehicleSession, 1500);
-        }
-      } else {
-        showToast('Upload fail: ' + (result.error || 'unknown'), 'error');
-      }
-    })
-    .catch(function(err) {
-      console.error('Upload error:', err);
-      showToast('Network error - retry karo', 'error');
-    });
+    uploadPhotoWithRetry(payload, photoNum, totalExpected, 0);
   };
   reader.readAsDataURL(blob);
+}
+
+function uploadPhotoWithRetry(payload, photoNum, totalExpected, attemptNum) {
+  fetch(CONFIG.uploadEndpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: CONFIG.supabaseKey,
+      Authorization: 'Bearer ' + CONFIG.supabaseKey
+    },
+    body: JSON.stringify(payload)
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(result) {
+    if (result.ok) {
+      handleUploadSuccess(result, photoNum, totalExpected);
+    } else {
+      handleUploadFailure(payload, photoNum, totalExpected, attemptNum, result.error || 'unknown');
+    }
+  })
+  .catch(function(err) {
+    console.error('[Upload] Error attempt ' + (attemptNum + 1) + ':', err);
+    handleUploadFailure(payload, photoNum, totalExpected, attemptNum, err.message || 'network');
+  });
+}
+
+function handleUploadSuccess(result, photoNum, totalExpected) {
+  if (result.final_lat && result.final_lng) {
+    state.serverGps = { lat: result.final_lat, lng: result.final_lng };
+  }
+  if (result.final_address) {
+    state.serverAddress = { full: result.final_address, city: result.final_city };
+  }
+  if (result.branding_mode) {
+    state.brandingMode = result.branding_mode;
+    state.customLogo = result.custom_logo_url;
+    state.customBrand = result.custom_brand_name;
+    state.customWebsite = result.custom_website;
+    if (typeof applyLiveOverlayBranding === 'function') {
+      applyLiveOverlayBranding();
+    }
+  }
+  if (result.final_vehicle && result.auto_vehicle) {
+    state.currentVehicle = result.final_vehicle;
+  }
+  
+  state.photosThisSession = photoNum;
+  var done = state.photosThisSession;
+  
+  document.getElementById('photosDone').textContent = done;
+  var bars = document.querySelectorAll('.progress-bars-mini .progress-bar');
+  if (bars[done - 1]) bars[done - 1].classList.add('filled');
+  
+  if (done < totalExpected) {
+    document.getElementById('livePhotoIndex').textContent = (done + 1) + ' of ' + totalExpected;
+  }
+  
+  vibrate(50);
+  showBanner('success', 'Saved', done + ' of ' + totalExpected + ' photos', false);
+  setTimeout(hideBanner, 1800);
+  
+  var doneBtn = document.getElementById('doneBtn');
+  if (done >= totalExpected) {
+    doneBtn.disabled = false;
+    doneBtn.classList.add('done-ready');
+  } else {
+    doneBtn.disabled = true;
+  }
+  
+  if (done >= totalExpected) {
+    setTimeout(finishVehicleSession, 1500);
+  }
+}
+
+function handleUploadFailure(payload, photoNum, totalExpected, attemptNum, errorMsg) {
+  console.warn('[Upload] Failed attempt ' + (attemptNum + 1) + ':', errorMsg);
+  
+  if (attemptNum < 2) {
+    var delay = (attemptNum + 1) * 2000;
+    console.log('[Upload] Silent retry in ' + delay + 'ms');
+    setTimeout(function() {
+      uploadPhotoWithRetry(payload, photoNum, totalExpected, attemptNum + 1);
+    }, delay);
+    return;
+  }
+  
+  console.error('[Upload] All 3 attempts failed');
+  vibrate(200);
+  showBanner('error', 'Save failed', 'Network issue \u00b7 Tap retry', true);
+  
+  state.failedUpload = {
+    payload: payload,
+    photoNum: photoNum,
+    totalExpected: totalExpected
+  };
 }
 
 function finishVehicleSession() {
@@ -2030,6 +2325,14 @@ function stopCamera() {
     clearInterval(state.timeInterval);
     state.timeInterval = null;
   }
+  if (state.gpsWatchId !== undefined && state.gpsWatchId !== null) {
+    try {
+      navigator.geolocation.clearWatch(state.gpsWatchId);
+    } catch (e) {}
+    state.gpsWatchId = null;
+  }
+  state.gpsSamples = [];
+  state.gpsLockState = 'acquiring';
 }
 
 </script>
