@@ -1038,7 +1038,7 @@ function retryFailedUpload() {
   if (!state.failedUpload) return;
   var item = state.failedUpload;
   state.failedUpload = null;
-  showBanner('saving', 'Saving...', 'Photo ' + item.photoNum + ' of ' + item.totalExpected, false);
+  showBanner('saving', 'Retrying...', 'Photo ' + item.photoNum + ' of ' + item.totalExpected, false);
   uploadPhotoWithRetry(item.payload, item.photoNum, item.totalExpected, 0);
 }
 
@@ -1935,7 +1935,17 @@ function capturePhoto() {
     idxEl.textContent = photoNum + ' of ' + totalExpected;
   }
   
-  showBanner('saving', 'Saving...', 'Photo ' + photoNum + ' of ' + totalExpected, false);
+  // If this was the LAST photo, permanently disable shutter (visual hint)
+  if (photoNum >= totalExpected) {
+    var shutterEl = document.getElementById('shutterBtn');
+    if (shutterEl) {
+      shutterEl.disabled = true;
+      shutterEl.style.opacity = '0.4';
+    }
+  }
+  
+  // No "Saving..." banner — captures should feel instant.
+  // Success/error feedback shows on upload completion only.
   
   var video = document.getElementById('cameraVideo');
   var canvas = document.getElementById('hiddenCanvas');
@@ -1949,7 +1959,10 @@ function capturePhoto() {
   
   canvas.toBlob(function(blob) {
     state.captureInProgress = false;
-    if (shutter) shutter.disabled = false;
+    // Re-enable shutter ONLY if we're not at max yet
+    if (shutter && state.photosThisSession < totalExpected) {
+      shutter.disabled = false;
+    }
     
     if (!blob) {
       // ROLLBACK state on capture failure
@@ -1957,6 +1970,11 @@ function capturePhoto() {
       if (photosDoneEl) photosDoneEl.textContent = state.photosThisSession;
       if (barsUI[photoNum - 1]) barsUI[photoNum - 1].classList.remove('filled');
       if (idxEl) idxEl.textContent = (state.photosThisSession + 1) + ' of ' + totalExpected;
+      // Re-enable shutter and reset opacity (rollback succeeded)
+      if (shutter) {
+        shutter.disabled = false;
+        shutter.style.opacity = '';
+      }
       hideBanner();
       showToast('Photo capture failed - retry karo', 'error');
       return;
@@ -2517,8 +2535,6 @@ function handleUploadSuccess(result, photoNum, totalExpected) {
   }
   
   vibrate(50);
-  showBanner('success', 'Saved', done + ' of ' + totalExpected + ' photos', false);
-  setTimeout(hideBanner, 1800);
   
   // ─── DB VERIFICATION (silent background check, doesn't block user) ───
   // Edge function says success — but verify photo actually exists in trial_photos
@@ -2527,14 +2543,19 @@ function handleUploadSuccess(result, photoNum, totalExpected) {
   
   var doneBtn = document.getElementById('doneBtn');
   if (done >= totalExpected) {
+    // ─── ALL PHOTOS COMPLETE — AUTO-FINISH ───
+    // No "Saved" banner needed; show final completion banner instead.
     doneBtn.disabled = false;
     doneBtn.classList.add('done-ready');
+    showBanner('success', '✓ Vehicle Complete!', 'All ' + totalExpected + ' photos saved', false);
+    setTimeout(hideBanner, 1500);
+    // Auto-finish after brief delay (so user sees completion confirmation)
+    setTimeout(finishVehicleSession, 1200);
   } else {
+    // Mid-session: brief subtle confirmation, then disappear quickly
+    showBanner('success', '✓ Saved', done + ' of ' + totalExpected, false);
+    setTimeout(hideBanner, 800);
     doneBtn.disabled = true;
-  }
-  
-  if (done >= totalExpected) {
-    setTimeout(finishVehicleSession, 1500);
   }
 }
 
@@ -2586,6 +2607,13 @@ function finishVehicleSession() {
     document.getElementById('photosDone').textContent = '0';
     var bars = document.querySelectorAll('.progress-bars-mini .progress-bar');
     bars.forEach(function(b) { b.classList.remove('filled'); });
+    
+    // Re-enable shutter for new vehicle
+    var shutterReset = document.getElementById('shutterBtn');
+    if (shutterReset) {
+      shutterReset.disabled = false;
+      shutterReset.style.opacity = '';
+    }
     
     // Reset done button
     var doneBtn = document.getElementById('doneBtn');
