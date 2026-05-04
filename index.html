@@ -969,7 +969,8 @@ var state = {
   gpsSamples: [],
   gpsLockState: 'acquiring',
   lastGeocodeAt: 0,
-  lastGeocodedPos: null
+  lastGeocodedPos: null,
+  captureInProgress: false
 };
 
 function showToast(msg, type) {
@@ -1881,6 +1882,18 @@ document.getElementById('doneBtn').addEventListener('click', function() {
 });
 
 function capturePhoto() {
+  // ─── DEBOUNCE: prevent double-tap and concurrent captures ───
+  if (state.captureInProgress) {
+    console.log('[Capture] Ignored - already in progress');
+    return;
+  }
+  
+  // Limit check — already at max?
+  if (state.photosThisSession >= state.expectedPhotoCount) {
+    showToast('Already have ' + state.expectedPhotoCount + ' photos. Press Done.', 'error');
+    return;
+  }
+  
   if (state.realGps && state.realGps.accuracy > 50) {
     var proceed = confirm(
       'GPS accuracy weak hai (±' + Math.round(state.realGps.accuracy) + 'm).\n\n' +
@@ -1893,11 +1906,36 @@ function capturePhoto() {
     }
   }
   
+  state.captureInProgress = true;
+  
+  // Disable shutter button visually
+  var shutter = document.getElementById('shutterBtn');
+  if (shutter) shutter.disabled = true;
+  
   flashCamera();
   vibrate(50);
   
-  var nextPhotoNum = state.photosThisSession + 1;
-  showBanner('saving', 'Saving...', 'Photo ' + nextPhotoNum + ' of ' + state.expectedPhotoCount, false);
+  // ─── CRITICAL FIX: Increment state IMMEDIATELY (atomic) ───
+  // Was: only updating UI but state.photosThisSession stayed at 0 until upload success.
+  // This caused: rapid taps → all photos numbered "1", saving banner stuck on "1 of 3"
+  // Now: state increments on capture (single source of truth)
+  state.photosThisSession = state.photosThisSession + 1;
+  var photoNum = state.photosThisSession;
+  var totalExpected = state.expectedPhotoCount;
+  
+  // Update UI to reflect new state immediately
+  var photosDoneEl = document.getElementById('photosDone');
+  if (photosDoneEl) photosDoneEl.textContent = photoNum;
+  var barsUI = document.querySelectorAll('.progress-bars-mini .progress-bar');
+  if (barsUI[photoNum - 1]) barsUI[photoNum - 1].classList.add('filled');
+  var idxEl = document.getElementById('livePhotoIndex');
+  if (idxEl && photoNum < totalExpected) {
+    idxEl.textContent = (photoNum + 1) + ' of ' + totalExpected;
+  } else if (idxEl) {
+    idxEl.textContent = photoNum + ' of ' + totalExpected;
+  }
+  
+  showBanner('saving', 'Saving...', 'Photo ' + photoNum + ' of ' + totalExpected, false);
   
   var video = document.getElementById('cameraVideo');
   var canvas = document.getElementById('hiddenCanvas');
@@ -1910,12 +1948,20 @@ function capturePhoto() {
   drawGPSStamp(ctx, canvas.width, canvas.height);
   
   canvas.toBlob(function(blob) {
+    state.captureInProgress = false;
+    if (shutter) shutter.disabled = false;
+    
     if (!blob) {
+      // ROLLBACK state on capture failure
+      state.photosThisSession = state.photosThisSession - 1;
+      if (photosDoneEl) photosDoneEl.textContent = state.photosThisSession;
+      if (barsUI[photoNum - 1]) barsUI[photoNum - 1].classList.remove('filled');
+      if (idxEl) idxEl.textContent = (state.photosThisSession + 1) + ' of ' + totalExpected;
+      hideBanner();
       showToast('Photo capture failed - retry karo', 'error');
       return;
     }
     
-    var photoNum = state.photosThisSession + 1;
     var d = new Date();
     var timestamp = String(d.getHours()).padStart(2, '0') 
       + String(d.getMinutes()).padStart(2, '0') 
@@ -1926,20 +1972,8 @@ function capturePhoto() {
     
     saveToGallery(blob, filename);
     
-    // IMMEDIATE UI feedback — counter advance karo turant (upload success ka wait nahi)
-    // Final state-level update upload success pe hoga (line ~2228)
-    var pendingDone = state.photosThisSession + 1;
-    var totalExpectedUI = state.expectedPhotoCount;
-    var photosDoneEl = document.getElementById('photosDone');
-    if (photosDoneEl) photosDoneEl.textContent = pendingDone;
-    var barsUI = document.querySelectorAll('.progress-bars-mini .progress-bar');
-    if (barsUI[pendingDone - 1]) barsUI[pendingDone - 1].classList.add('filled');
-    var idxEl = document.getElementById('livePhotoIndex');
-    if (idxEl && pendingDone < totalExpectedUI) {
-      idxEl.textContent = (pendingDone + 1) + ' of ' + totalExpectedUI;
-    }
-    
-    uploadPhoto(blob);
+    // Pass photoNum explicitly so upload uses correct number
+    uploadPhotoWithNum(blob, photoNum, totalExpected);
   }, 'image/jpeg', 0.85);
 }
 
@@ -2308,6 +2342,41 @@ function saveToGallery(blob, filename) {
   }
 }
 
+// NEW: Takes explicit photoNum & totalExpected (from capture flow).
+// Use this instead of uploadPhoto() to avoid race conditions on rapid captures.
+function uploadPhotoWithNum(blob, photoNum, totalExpected) {
+  if (!state.realGps || typeof state.realGps.lat !== 'number') {
+    showBanner('error', 'GPS not ready', 'Wait for GPS lock', false);
+    setTimeout(hideBanner, 3000);
+    return;
+  }
+  
+  var reader = new FileReader();
+  reader.onloadend = function() {
+    var base64 = reader.result.split(',')[1];
+    
+    var payload = {
+      member_phone: state.member.phone,
+      vehicle_number: state.currentVehicle,
+      mode: state.selectedMode,
+      campaign_key: state.campaign.campaign_key,
+      lat: state.realGps.lat,
+      lng: state.realGps.lng,
+      accuracy: state.realGps.accuracy || null,
+      gps_source: 'real',
+      address: state.realAddress ? state.realAddress.full : null,
+      city: state.realAddress ? state.realAddress.city : null,
+      image_base64: base64,
+      timestamp: Date.now(),
+      photo_index: photoNum
+    };
+    
+    uploadPhotoWithRetry(payload, photoNum, totalExpected, 0);
+  };
+  reader.readAsDataURL(blob);
+}
+
+// LEGACY: kept for backward compatibility, derives photoNum from state.
 function uploadPhoto(blob) {
   if (!state.realGps || typeof state.realGps.lat !== 'number') {
     showBanner('error', 'GPS not ready', 'Wait for GPS lock', false);
@@ -2319,7 +2388,7 @@ function uploadPhoto(blob) {
   reader.onloadend = function() {
     var base64 = reader.result.split(',')[1];
     
-    var photoNum = state.photosThisSession + 1;
+    var photoNum = state.photosThisSession;  // Already incremented in capturePhoto
     var totalExpected = state.expectedPhotoCount;
     
     var payload = {
@@ -2433,12 +2502,15 @@ function handleUploadSuccess(result, photoNum, totalExpected) {
     state.currentVehicle = result.final_vehicle;
   }
   
-  state.photosThisSession = photoNum;
+  // NOTE: state.photosThisSession was already incremented in capturePhoto (atomic).
+  // Don't re-set here — would cause stale-update bug if uploads complete out-of-order.
+  // Just use current state for display.
   var done = state.photosThisSession;
   
+  // Re-confirm UI in case anything got out of sync (idempotent updates)
   document.getElementById('photosDone').textContent = done;
   var bars = document.querySelectorAll('.progress-bars-mini .progress-bar');
-  if (bars[done - 1]) bars[done - 1].classList.add('filled');
+  if (bars[photoNum - 1]) bars[photoNum - 1].classList.add('filled');
   
   if (done < totalExpected) {
     document.getElementById('livePhotoIndex').textContent = (done + 1) + ' of ' + totalExpected;
@@ -2507,6 +2579,7 @@ function finishVehicleSession() {
   // ─── AUTO VEHICLE MODE: Stay in camera for next vehicle ───
   if (state.campaign && state.campaign.auto_vehicle_enabled === true) {
     state.photosThisSession = 0;
+    state.captureInProgress = false;
     state.currentVehicle = 'AUTO_OCR';
     
     // Reset photo counter UI
