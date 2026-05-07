@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#1a2980">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Prajapati GPS — Field</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fpbktcgtspqsqpaytslv.supabase.co" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --primary:#1a2980; --primary-dark:#0f1c5e; --primary-light:#26a;
+  --bg:#f4f6f9; --card:#fff; --line:#e8e8ee; --text:#1a2980; --muted:#666;
+  --ok:#10b981; --danger:#ef4444; --warn:#f59e0b; --gold:#f5b800;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+html,body{font-family:'Poppins',sans-serif;background:var(--bg);color:#222;min-height:100vh;min-height:100dvh;overscroll-behavior:none}
+button,input{font-family:inherit}
+input{font-size:16px}
+
+.header{background:var(--primary);color:#fff;padding:14px 18px;padding-top:max(14px,env(safe-area-inset-top));position:sticky;top:0;z-index:50;box-shadow:0 2px 10px rgba(0,0,0,0.1);display:flex;justify-content:space-between;align-items:center}
+.header-left{display:flex;align-items:center;gap:10px}
+.header-logo{width:32px;height:32px;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--primary);font-weight:700;font-size:16px}
+.header h1{font-size:14px;font-weight:600;letter-spacing:.5px}
+.header .sub{font-size:10px;opacity:.85;margin-top:1px}
+.header-right{font-size:11px;opacity:.95}
+.logout-btn{background:rgba(255,255,255,0.15);color:#fff;border:none;padding:5px 12px;border-radius:14px;font-size:11px;cursor:pointer}
+
+.screen{display:none;padding:16px;padding-bottom:140px}
+.screen.active{display:block}
+@media(min-width:640px){.screen{max-width:520px;margin:0 auto}}
+
+.card{background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;border:1px solid var(--line)}
+.card h3{font-size:15px;font-weight:600;color:var(--primary);margin-bottom:6px}
+.card .sub{font-size:12px;color:var(--muted);margin-bottom:12px}
+
+.field{margin-bottom:12px}
+.field label{font-size:11px;font-weight:600;color:var(--primary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;display:block}
+.field input,.field select{width:100%;padding:11px 13px;font-size:15px;border:1px solid #dde;border-radius:8px;background:#fff;outline:none}
+.field input:focus,.field select:focus{border-color:var(--primary)}
+.field input.otp{font-family:'JetBrains Mono';letter-spacing:6px;text-align:center;font-size:20px}
+
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;background:var(--primary);color:#fff;font-weight:600;border-radius:10px;font-size:14px;border:none;cursor:pointer}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn:hover:not(:disabled){background:var(--primary-dark)}
+.btn-ghost{background:transparent;border:1px solid #dde;color:var(--primary)}
+.btn-ghost:hover:not(:disabled){background:#f0f2f7}
+.btn-success{background:var(--ok)}
+.btn-danger{background:var(--danger)}
+.btn-sm{padding:8px 14px;font-size:12px;width:auto}
+
+/* Login splash */
+.splash{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;justify-content:center;padding:32px;background:linear-gradient(180deg,var(--primary) 0%,#0f1c5e 100%);color:#fff}
+.splash .logo{display:flex;align-items:center;gap:12px;margin-bottom:48px}
+.splash .logo-mark{width:48px;height:48px;background:#fff;border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--primary);font-weight:700;font-size:24px}
+.splash h1{font-size:28px;font-weight:700;line-height:1.15;margin-bottom:6px}
+.splash p.lead{opacity:.85;font-size:13px;margin-bottom:32px}
+.splash .field input{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:#fff}
+.splash .field input::placeholder{color:rgba(255,255,255,.6)}
+.splash .field input:focus{border-color:#fff;background:rgba(255,255,255,.15)}
+.splash .field label{color:rgba(255,255,255,.7)}
+.splash .btn{background:#fff;color:var(--primary)}
+.splash .btn:hover:not(:disabled){background:#f0f2f7}
+
+/* Campaign hero card */
+.campaign-hero{background:linear-gradient(135deg,var(--primary) 0%,#26a 100%);color:#fff;padding:18px;border-radius:14px;margin-bottom:14px;position:relative;overflow:hidden}
+.campaign-hero::before{content:"";position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.1)}
+.campaign-hero .lbl{font-size:10px;opacity:.85;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px}
+.campaign-hero h2{font-size:20px;font-weight:700;margin-bottom:4px}
+.campaign-hero .meta{font-size:12px;opacity:.85}
+.campaign-hero .progress{display:flex;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.2)}
+.campaign-hero .progress div{font-size:11px;opacity:.85;text-align:center;flex:1}
+.campaign-hero .progress strong{display:block;font-size:20px;font-weight:700;margin-bottom:2px}
+
+/* Mode toggle */
+.mode-toggle{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.mode-btn{padding:14px;background:#fff;border:2px solid var(--line);border-radius:10px;cursor:pointer;text-align:center;font-size:13px;font-weight:600;color:var(--muted);transition:.15s}
+.mode-btn.active{border-color:var(--primary);background:#eef0f9;color:var(--primary)}
+.mode-btn .count{font-size:18px;font-weight:700;display:block;margin-top:2px}
+
+/* Photo grid */
+.photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.photo-grid.single{grid-template-columns:1fr}
+.photo-grid .slot{aspect-ratio:1/1;background:#fff;border:2px dashed var(--line);border-radius:12px;display:flex;flex-direction:column;justify-content:center;align-items:center;color:var(--muted);font-size:12px;font-weight:500;cursor:pointer;position:relative;overflow:hidden}
+.photo-grid .slot.done{border-style:solid;border-color:var(--ok)}
+.photo-grid .slot.uploading{border-color:var(--warn)}
+.photo-grid .slot img{width:100%;height:100%;object-fit:cover;border-radius:10px}
+.photo-grid .slot .badge{position:absolute;top:6px;left:6px;background:rgba(26,41,128,0.9);color:#fff;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:700;z-index:2}
+.photo-grid .slot .check{position:absolute;top:6px;right:6px;background:var(--ok);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;z-index:2}
+.photo-grid .slot .uploading-icon{position:absolute;top:6px;right:6px;background:var(--warn);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11px;z-index:2;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.photo-grid .slot.failed{border-color:var(--danger)}
+.photo-grid .slot.failed .badge-error{position:absolute;bottom:6px;left:6px;right:6px;background:var(--danger);color:#fff;padding:4px;border-radius:4px;font-size:9px;text-align:center;font-weight:700}
+
+/* Status bar */
+.gps-strip{display:flex;align-items:center;gap:8px;padding:9px 13px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.3);border-radius:8px;font-size:11px;color:var(--ok);margin-bottom:12px}
+.gps-strip.warn{background:rgba(255,77,79,.08);border-color:rgba(255,77,79,.3);color:var(--danger)}
+.gps-strip .live{width:7px;height:7px;background:var(--ok);border-radius:50%;animation:livepulse 1.5s infinite}
+.gps-strip.warn .live{background:var(--danger)}
+@keyframes livepulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+.upload-strip{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fff7e6;border:1px solid var(--warn);border-radius:8px;font-size:11px;color:#a06000;margin-bottom:8px}
+.upload-strip .spin{width:12px;height:12px;border:2px solid #f0e0a0;border-top-color:var(--warn);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Vehicle row */
+.vehicle-row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}
+.vehicle-row:last-child{border-bottom:none}
+.vehicle-row .num{font-family:'JetBrains Mono';font-weight:700;font-size:13px;color:var(--primary)}
+.vehicle-row .time{font-size:11px;color:var(--muted);margin-top:2px}
+.vehicle-row .count{background:var(--ok);color:#fff;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:700}
+
+/* Action bar */
+.action-bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:14px 16px;padding-bottom:max(14px,env(safe-area-inset-bottom));z-index:60;display:flex;gap:8px}
+.action-bar .btn{flex:1}
+@media(min-width:640px){.action-bar{max-width:520px;margin:0 auto;left:50%;transform:translateX(-50%)}}
+
+/* Toast */
+.toast{position:fixed;top:80px;left:50%;transform:translateX(-50%);background:var(--primary);color:#fff;padding:11px 18px;border-radius:99px;font-size:12px;font-weight:600;z-index:300;opacity:0;transition:.25s;pointer-events:none;max-width:90vw;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.15)}
+.toast.show{opacity:1}
+.toast.success{background:var(--ok)}
+.toast.error{background:var(--danger)}
+
+/* Loader */
+.overlay{position:fixed;inset:0;background:rgba(26,41,128,.85);display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;z-index:400;backdrop-filter:blur(4px)}
+.overlay.show{display:flex}
+.overlay .ring{width:42px;height:42px;border:3px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin 1s linear infinite}
+.overlay p{color:#fff;font-size:13px;font-weight:500}
+
+/* Plate confirm */
+.plate-box{background:linear-gradient(135deg,#fff,#f8faff);border:2px solid var(--primary);border-radius:12px;padding:18px;text-align:center;margin-bottom:14px}
+.plate-box .label{font-size:10px;color:var(--primary);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px}
+.plate-box .plate{font-family:'JetBrains Mono';font-size:24px;font-weight:700;letter-spacing:2px;color:var(--primary);margin-bottom:8px}
+
+.cam-input{display:none}
+
+/* Status pill */
+.pill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+.pill.complete{background:#dcfce7;color:#0d9968}
+.pill.partial{background:#fef3c7;color:#a06000}
+.pill.empty{background:#fee;color:#c33}
+</style>
+</head>
+<body>
+
+<!-- ============== LOGIN ============== -->
+<section class="splash" id="screen-login">
+  <div class="logo">
+    <div class="logo-mark">P</div>
+    <div>
+      <div style="font-weight:700;font-size:13px;letter-spacing:1.5px">PRAJAPATI</div>
+      <div style="font-size:11px;opacity:.7;letter-spacing:1px">GPS FIELD</div>
+    </div>
+  </div>
+  <h1>Field photo capture<br>simplified.</h1>
+  <p class="lead">Mobile number daalo aur shuru karo. GPS-stamped photos auto-upload ho jaayenge.</p>
+  <div class="field">
+    <label>Mobile Number</label>
+    <input id="inp-mobile" type="tel" inputmode="numeric" maxlength="10" placeholder="9876543210" autocomplete="tel">
+  </div>
+  <button class="btn" id="btn-login">Login →</button>
+  <p style="text-align:center;color:rgba(255,255,255,.55);font-size:11px;margin-top:18px">
+    Sirf admin-registered numbers login kar sakte hain.<br>Issue ho to admin se contact karo.
+  </p>
+</section>
+
+
+<!-- ============== HOME ============== -->
+<div id="screen-home" class="screen">
+  <div id="home-content" style="padding:0">
+    <!-- Campaign card or no-campaign card -->
+    <div id="campaign-area"></div>
+
+    <!-- Capture launcher -->
+    <div class="card" id="capture-launcher" style="display:none">
+      <h3>Capture new vehicle</h3>
+      <div class="sub" id="capture-sub">—</div>
+      <button class="btn" id="btn-start-capture">📸 Start Capture</button>
+    </div>
+
+    <!-- Today's entries -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <h3 style="margin:0">Aaj ke vehicles</h3>
+        <button class="btn-ghost btn btn-sm" onclick="loadAssignment()" style="padding:5px 12px;font-size:11px">↻ Refresh</button>
+      </div>
+      <div id="today-list">
+        <p style="color:var(--muted);font-size:12px;text-align:center;padding:18px 0">No vehicles captured yet today</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============== CAPTURE ============== -->
+<div id="screen-capture" class="screen">
+  <div id="gps-strip" class="gps-strip warn">
+    <div class="live"></div>
+    <span>Getting GPS lock…</span>
+  </div>
+
+  <!-- Vehicle Number entry -->
+  <div class="card">
+    <div class="field" style="margin-bottom:0">
+      <label>Vehicle Number</label>
+      <input id="inp-vehicle" type="text" placeholder="MH 12 AB 1234" style="text-transform:uppercase;font-family:'JetBrains Mono';letter-spacing:1px;font-weight:700" maxlength="15">
+    </div>
+  </div>
+
+  <!-- Mode toggle -->
+  <div style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;font-weight:600">Capture Mode</div>
+  <div class="mode-toggle">
+    <div class="mode-btn active" data-mode="hood" onclick="switchMode('hood')">
+      Hood
+      <span class="count" id="cnt-hood">3</span>
+    </div>
+    <div class="mode-btn" data-mode="back_panel" onclick="switchMode('back_panel')">
+      Back Panel
+      <span class="count" id="cnt-back">1</span>
+    </div>
+  </div>
+
+  <!-- Photo grid (dynamic) -->
+  <div id="photo-grid-wrap"></div>
+
+  <input type="file" accept="image/*" capture="environment" class="cam-input" id="cam-input">
+</div>
+
+<!-- Capture action bar -->
+<div class="action-bar" id="capture-actions" style="display:none">
+  <button class="btn btn-ghost" onclick="cancelCapture()">Cancel</button>
+  <button class="btn" id="btn-finish-capture" disabled>Save & Finish</button>
+</div>
+
+
+<!-- Toast & Loader -->
+<div class="toast" id="toast"></div>
+<div class="overlay" id="overlay"><div class="ring"></div><p id="overlay-text">Working…</p></div>
+
+
+<script>
+"use strict";
+
+// ============================================================
+// CONFIG — matches existing prajapati-gps-field-repo schema
+// ============================================================
+var CONFIG = {
+  supabaseUrl: 'https://fpbktcgtspqsqpaytslv.supabase.co',
+  supabaseKey: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j',
+  storageBucket: 'trial-photos',  // CHANGE if your bucket has different name
+  locationIqToken: 'pk.fde6fab706b3370a82c78ba286a896be'
+};
+
+// ============================================================
+// STATE
+// ============================================================
+var state = {
+  member: null,
+  campaign: null,
+  assignment: null,
+  todayPhotos: [],
+  // current capture
+  captureMode: 'hood',
+  vehicleNumber: '',
+  photos: {},      // { 'hood_1': {blob, url}, ... }
+  uploadStatus: {}, // { 'hood_1': 'pending'/'uploading'/'uploaded'/'failed' }
+  gps: { lat:null, lng:null, address:null, addressObj:null, accuracy:null, city:null }
+};
+
+// ============================================================
+// HELPERS
+// ============================================================
+function $(id){ return document.getElementById(id); }
+function showScreen(id){
+  document.querySelectorAll('.screen,.splash').forEach(function(s){
+    s.classList.remove('active');
+    s.style.display='none';
+  });
+  var el = $(id);
+  if (!el) return;
+  if (el.classList.contains('splash')) el.style.display='flex';
+  else { el.style.display='block'; el.classList.add('active'); }
+  window.scrollTo(0,0);
+}
+function toast(msg, type){
+  var t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (type || '');
+  setTimeout(function(){ t.className = 'toast'; }, 2400);
+}
+function loader(show, text){
+  $('overlay-text').textContent = text || 'Working…';
+  $('overlay').classList.toggle('show', !!show);
+}
+function todayStr(){
+  var now = new Date();
+  var ist = new Date(now.getTime() + 5.5*60*60*1000);
+  return ist.toISOString().split('T')[0];
+}
+function escapeHtml(s){
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+// Supabase REST helper
+function api(path, options){
+  options = options || {};
+  options.headers = Object.assign({
+    'apikey': CONFIG.supabaseKey,
+    'Authorization': 'Bearer ' + CONFIG.supabaseKey
+  }, options.headers || {});
+  if (options.body && typeof options.body !== 'string'){
+    options.headers['Content-Type'] = 'application/json';
+    options.body = JSON.stringify(options.body);
+  }
+  return fetch(CONFIG.supabaseUrl + path, options).then(function(r){
+    if (!r.ok){
+      return r.text().then(function(t){ throw new Error('API '+r.status+': '+t); });
+    }
+    return r.status === 204 ? null : r.json();
+  });
+}
+
+// ============================================================
+// LOGIN
+// ============================================================
+function bootAuth(){
+  var saved = localStorage.getItem('pf_member_phone');
+  if (saved){
+    api('/rest/v1/trial_team_members?phone=eq.'+saved+'&active=eq.true&select=*')
+      .then(function(rows){
+        if (rows && rows.length){
+          state.member = rows[0];
+          enterApp();
+        } else {
+          showScreen('screen-login');
+        }
+      }).catch(function(){
+        showScreen('screen-login');
+      });
+  } else {
+    showScreen('screen-login');
+  }
+}
+
+$('btn-login').addEventListener('click', function(){
+  var phone = $('inp-mobile').value.trim().replace(/\D/g,'');
+  if (phone.length !== 10) return toast('10-digit mobile number daalo','error');
+
+  loader(true, 'Logging in…');
+  api('/rest/v1/trial_team_members?phone=eq.'+phone+'&active=eq.true&select=*')
+    .then(function(rows){
+      loader(false);
+      if (!rows || !rows.length) return toast('Number registered nahi hai. Admin se contact karo.','error');
+      state.member = rows[0];
+      localStorage.setItem('pf_member_phone', phone);
+      enterApp();
+    })
+    .catch(function(){
+      loader(false);
+      toast('Login error','error');
+    });
+});
+
+$('inp-mobile').addEventListener('keypress', function(e){
+  if (e.key === 'Enter') $('btn-login').click();
+});
+
+function logout(){
+  if (!confirm('Logout?')) return;
+  localStorage.removeItem('pf_member_phone');
+  state = { member:null, campaign:null, assignment:null, todayPhotos:[], captureMode:'hood', vehicleNumber:'', photos:{}, uploadStatus:{}, gps:{} };
+  showScreen('screen-login');
+}
+
+// ============================================================
+// HOME / ASSIGNMENT
+// ============================================================
+function enterApp(){
+  showScreen('screen-home');
+  // Header injection
+  if (!document.getElementById('app-header')){
+    var hdr = document.createElement('div');
+    hdr.id = 'app-header';
+    hdr.className = 'header';
+    hdr.innerHTML = '<div class="header-left"><div class="header-logo">P</div><div><h1>PRAJAPATI GPS</h1><div class="sub" id="hdr-name">'+escapeHtml(state.member.name)+'</div></div></div>'
+      +'<button class="logout-btn" onclick="logout()">Logout</button>';
+    $('screen-home').insertBefore(hdr, $('home-content'));
+  } else {
+    $('hdr-name').textContent = state.member.name;
+  }
+  loadAssignment();
+}
+
+function loadAssignment(){
+  loader(true, 'Loading today\'s campaign…');
+  var date = todayStr();
+  // 1. Fetch today's assignment for this member
+  api('/rest/v1/trial_daily_assignments?member_phone=eq.'+state.member.phone+'&assignment_date=eq.'+date+'&select=*')
+    .then(function(rows){
+      if (!rows || !rows.length){
+        state.assignment = null; state.campaign = null;
+        renderHome();
+        loader(false);
+        return null;
+      }
+      state.assignment = rows[0];
+      // 2. Fetch campaign
+      return api('/rest/v1/trial_campaigns?key=eq.'+rows[0].campaign_key+'&select=*');
+    })
+    .then(function(rows){
+      if (rows && rows.length){
+        state.campaign = rows[0];
+        // 3. Today's photos for this member+campaign
+        return loadTodayPhotos();
+      }
+    })
+    .then(function(){
+      renderHome();
+      loader(false);
+    })
+    .catch(function(err){
+      console.error(err);
+      loader(false);
+      toast('Load error','error');
+    });
+}
+
+function loadTodayPhotos(){
+  var date = todayStr();
+  var startUTC = new Date(date + 'T00:00:00+05:30').toISOString();
+  var endUTC = new Date(date + 'T23:59:59+05:30').toISOString();
+  return api('/rest/v1/trial_photos?member_phone=eq.'+state.member.phone
+    +'&campaign_key=eq.'+state.campaign.key
+    +'&captured_at=gte.'+startUTC+'&captured_at=lte.'+endUTC
+    +'&select=vehicle_number,mode,photo_number,captured_at,public_url'
+    +'&order=captured_at.desc')
+    .then(function(rows){
+      state.todayPhotos = rows || [];
+    });
+}
+
+function renderHome(){
+  var area = $('campaign-area');
+  if (!state.assignment || !state.campaign){
+    area.innerHTML = '<div class="card" style="border-color:var(--warn);background:#fef9e7"><h3 style="color:#a06000">⚠ No campaign assigned</h3><div class="sub">Aaj admin ne tumhe koi campaign assign nahi kiya. Refresh karo ya admin ko bolo.</div></div>';
+    $('capture-launcher').style.display = 'none';
+    return;
+  }
+  var c = state.campaign;
+  // Group photos by vehicle
+  var byVeh = {};
+  state.todayPhotos.forEach(function(p){
+    if (!byVeh[p.vehicle_number]) byVeh[p.vehicle_number] = { hood:[], back_panel:[], firstAt:p.captured_at };
+    byVeh[p.vehicle_number][p.mode].push(p);
+  });
+  var vehCount = Object.keys(byVeh).length;
+  var photoCount = state.todayPhotos.length;
+
+  area.innerHTML = '<div class="campaign-hero">'
+    +'<div class="lbl">Today\'s Campaign</div>'
+    +'<h2>'+escapeHtml(c.name)+'</h2>'
+    +'<div class="meta">'+escapeHtml(c.client_name||'-')+(c.default_city ? ' · '+escapeHtml(c.default_city) : '')+'</div>'
+    +'<div class="progress">'
+      +'<div><strong>'+vehCount+'</strong>Vehicles</div>'
+      +'<div><strong>'+photoCount+'</strong>Photos</div>'
+      +'<div><strong>'+(c.target_count||'∞')+'</strong>Target</div>'
+    +'</div></div>';
+
+  $('capture-launcher').style.display = 'block';
+  $('capture-sub').textContent = 'Hood: '+(c.hood_photo_count||3)+' photos · Back panel: '+(c.back_panel_photo_count||1)+' photos';
+
+  // Today's vehicle list
+  var list = $('today-list');
+  if (!vehCount){
+    list.innerHTML = '<p style="color:var(--muted);font-size:12px;text-align:center;padding:18px 0">No vehicles captured yet today</p>';
+    return;
+  }
+  var hoodTarget = c.hood_photo_count||3;
+  var backTarget = c.back_panel_photo_count||1;
+  list.innerHTML = Object.keys(byVeh).map(function(vnum){
+    var v = byVeh[vnum];
+    var hoodDone = v.hood.length;
+    var backDone = v.back_panel.length;
+    var status = 'empty';
+    var statusText = 'incomplete';
+    if (hoodDone >= hoodTarget && backDone >= backTarget){ status='complete'; statusText='complete'; }
+    else if (hoodDone>0 || backDone>0){ status='partial'; statusText='partial'; }
+    var time = v.firstAt ? new Date(v.firstAt).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'}) : '';
+    return '<div class="vehicle-row"><div>'
+      +'<div class="num">'+escapeHtml(vnum)+'</div>'
+      +'<div class="time">'+time+' · Hood '+hoodDone+'/'+hoodTarget+' · Back '+backDone+'/'+backTarget+'</div>'
+      +'</div><span class="pill '+status+'">'+statusText+'</span></div>';
+  }).join('');
+}
+
+// ============================================================
+// GPS TRACKING
+// ============================================================
+var gpsWatchId = null;
+function watchGps(){
+  if (gpsWatchId) return;
+  if (!navigator.geolocation){
+    $('gps-strip').className='gps-strip warn';
+    $('gps-strip').innerHTML='<div class="live"></div><span>GPS not supported</span>';
+    return;
+  }
+  gpsWatchId = navigator.geolocation.watchPosition(function(pos){
+    state.gps.lat = pos.coords.latitude;
+    state.gps.lng = pos.coords.longitude;
+    state.gps.accuracy = pos.coords.accuracy;
+    $('gps-strip').className = 'gps-strip';
+    $('gps-strip').innerHTML = '<div class="live"></div><span>GPS locked · '
+      +pos.coords.latitude.toFixed(5)+', '+pos.coords.longitude.toFixed(5)+' · ±'+Math.round(pos.coords.accuracy)+'m</span>';
+    // LocationIQ reverse geocode (better than Nominatim, cleaner data)
+    if (!state.gps.address){
+      fetchReverseGeocode(pos.coords.latitude, pos.coords.longitude);
+    }
+  }, function(err){
+    $('gps-strip').className='gps-strip warn';
+    $('gps-strip').innerHTML = '<div class="live"></div><span>GPS error: '+err.message+'</span>';
+  }, { enableHighAccuracy:true, maximumAge:8000, timeout:20000 });
+}
+
+function fetchReverseGeocode(lat, lng){
+  var url = 'https://us1.locationiq.com/v1/reverse?key='+CONFIG.locationIqToken+'&lat='+lat+'&lon='+lng+'&format=json&addressdetails=1';
+  fetch(url).then(function(r){ return r.json(); }).then(function(d){
+    state.gps.address = d.display_name;
+    state.gps.addressObj = d.address || {};
+    state.gps.city = d.address?.city || d.address?.town || d.address?.village || d.address?.suburb || '';
+  }).catch(function(){
+    // fallback to Nominatim
+    fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+lat+'&lon='+lng+'&zoom=18&addressdetails=1')
+      .then(function(r){ return r.json(); }).then(function(d){
+        state.gps.address = d.display_name;
+        state.gps.addressObj = d.address || {};
+        state.gps.city = d.address?.city || d.address?.town || d.address?.village || d.address?.suburb || '';
+      }).catch(function(){});
+  });
+}
+
+function stopGps(){
+  if (gpsWatchId !== null){
+    navigator.geolocation.clearWatch(gpsWatchId);
+    gpsWatchId = null;
+  }
+}
+
+// ============================================================
+// CAPTURE FLOW
+// ============================================================
+$('btn-start-capture').addEventListener('click', function(){
+  if (!state.campaign) return toast('No campaign assigned','error');
+  state.captureMode = 'hood';
+  state.vehicleNumber = '';
+  state.photos = {};
+  state.uploadStatus = {};
+  $('inp-vehicle').value = '';
+  $('cnt-hood').textContent = state.campaign.hood_photo_count || 3;
+  $('cnt-back').textContent = state.campaign.back_panel_photo_count || 1;
+  switchMode('hood');
+  showScreen('screen-capture');
+  $('capture-actions').style.display = 'flex';
+  watchGps();
+});
+
+function switchMode(mode){
+  state.captureMode = mode;
+  document.querySelectorAll('.mode-btn').forEach(function(b){
+    b.classList.toggle('active', b.dataset.mode === mode);
+  });
+  renderPhotoGrid();
+}
+
+function renderPhotoGrid(){
+  var count = state.captureMode === 'hood' ? (state.campaign.hood_photo_count||3) : (state.campaign.back_panel_photo_count||1);
+  var wrap = $('photo-grid-wrap');
+  var slots = '';
+  for (var i = 1; i <= count; i++){
+    var key = state.captureMode + '_' + i;
+    var photo = state.photos[key];
+    var status = state.uploadStatus[key];
+    var slotClass = 'slot';
+    var content = '<div class="badge">'+state.captureMode.toUpperCase().replace('_',' ')+' '+i+'</div>'
+      +'<div style="font-size:24px">📷</div><div>Tap to capture</div>';
+    if (photo){
+      slotClass += ' done';
+      var statusBadge = '<div class="check">✓</div>';
+      if (status === 'uploading'){
+        slotClass += ' uploading';
+        statusBadge = '<div class="uploading-icon">↑</div>';
+      } else if (status === 'failed'){
+        slotClass += ' failed';
+        statusBadge = '<div class="check" style="background:var(--danger)">!</div>';
+      }
+      content = '<div class="badge">'+state.captureMode.toUpperCase().replace('_',' ')+' '+i+'</div>'
+        + statusBadge
+        + '<img src="'+photo.previewUrl+'" alt="">'
+        + (status === 'failed' ? '<div class="badge-error" onclick="event.stopPropagation();retryUpload(\''+key+'\')">Tap to retry</div>' : '');
+    }
+    slots += '<div class="'+slotClass+'" onclick="capturePhoto(\''+key+'\')">' + content + '</div>';
+  }
+  wrap.innerHTML = '<div class="photo-grid'+(count===1?' single':'')+'">'+slots+'</div>';
+  updateFinishButton();
+}
+
+function updateFinishButton(){
+  var btn = $('btn-finish-capture');
+  var hoodTarget = state.campaign.hood_photo_count || 3;
+  var backTarget = state.campaign.back_panel_photo_count || 1;
+  var hoodDone = 0, backDone = 0;
+  for (var k in state.photos){
+    if (state.uploadStatus[k] === 'uploaded'){
+      if (k.startsWith('hood_')) hoodDone++;
+      else if (k.startsWith('back_panel_')) backDone++;
+    }
+  }
+  var totalDone = hoodDone + backDone;
+  var totalNeeded = hoodTarget + backTarget;
+  btn.textContent = 'Save & Finish ('+totalDone+'/'+totalNeeded+' uploaded)';
+  btn.disabled = !state.vehicleNumber || hoodDone < hoodTarget || backDone < backTarget;
+}
+
+$('inp-vehicle').addEventListener('input', function(){
+  state.vehicleNumber = this.value.trim().toUpperCase();
+  this.value = state.vehicleNumber;
+  updateFinishButton();
+});
+
+function capturePhoto(key){
+  if (!state.vehicleNumber){ return toast('Pehle vehicle number daalo','error'); }
+  state._capturingKey = key;
+  $('cam-input').click();
+}
+
+$('cam-input').addEventListener('change', function(e){
+  var file = e.target.files[0];
+  if (!file) return;
+  var key = state._capturingKey;
+  loader(true, 'Stamping GPS…');
+  stampGps(file).then(function(stamped){
+    loader(false);
+    var previewUrl = URL.createObjectURL(stamped.blob);
+    state.photos[key] = { blob: stamped.blob, previewUrl: previewUrl };
+    state.uploadStatus[key] = 'uploading';
+    renderPhotoGrid();
+    // Silent upload
+    uploadPhoto(key);
+  }).catch(function(err){
+    loader(false);
+    console.error(err);
+    toast('Stamp error','error');
+  });
+  e.target.value = '';
+});
+
+function cancelCapture(){
+  if (!confirm('Cancel capture? Uploaded photos already saved.')) return;
+  stopGps();
+  showScreen('screen-home');
+  $('capture-actions').style.display = 'none';
+  loadAssignment();
+}
+
+// ============================================================
+// GPS MAP CAMERA STYLE STAMP
+// ============================================================
+function stampGps(file){
+  return fileToImage(file).then(function(img){
+    var canvas = document.createElement('canvas');
+    var maxW = 1600;
+    var scale = img.width > maxW ? maxW/img.width : 1;
+    canvas.width = img.width * scale;
+    canvas.height = img.height * scale;
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    var W = canvas.width, H = canvas.height;
+    var overlayH = Math.round(H * 0.22);
+    var overlayY = H - overlayH;
+    var pad = Math.round(overlayH * 0.08);
+    var mapSize = overlayH - 2*pad;
+
+    // Dark overlay band
+    ctx.fillStyle = 'rgba(10,14,26,0.85)';
+    ctx.fillRect(0, overlayY, W, overlayH);
+
+    // Map thumbnail (left) — fake satellite view
+    var mapX = pad, mapY = overlayY + pad;
+    ctx.fillStyle = '#7AA070'; ctx.fillRect(mapX, mapY, mapSize, mapSize);
+    ctx.fillStyle = '#D8D4C0';
+    ctx.fillRect(mapX, mapY + Math.round(mapSize*0.4), mapSize, Math.round(mapSize*0.06));
+    ctx.fillRect(mapX + Math.round(mapSize*0.45), mapY, Math.round(mapSize*0.04), mapSize);
+    ctx.fillStyle = '#5A5650';
+    ctx.fillRect(mapX + Math.round(mapSize*0.08), mapY + Math.round(mapSize*0.08), Math.round(mapSize*0.25), Math.round(mapSize*0.25));
+    ctx.fillStyle = '#6A6660';
+    ctx.fillRect(mapX + Math.round(mapSize*0.55), mapY + Math.round(mapSize*0.08), Math.round(mapSize*0.35), Math.round(mapSize*0.25));
+    ctx.fillRect(mapX + Math.round(mapSize*0.08), mapY + Math.round(mapSize*0.55), Math.round(mapSize*0.25), Math.round(mapSize*0.4));
+    ctx.fillStyle = '#5A5650';
+    ctx.fillRect(mapX + Math.round(mapSize*0.55), mapY + Math.round(mapSize*0.55), Math.round(mapSize*0.35), Math.round(mapSize*0.4));
+    ctx.fillStyle = '#3070C0';
+    ctx.fillRect(mapX, mapY + Math.round(mapSize*0.78), mapSize, Math.round(mapSize*0.06));
+    // Red pin
+    var pinCX = mapX + mapSize/2, pinCY = mapY + mapSize*0.45, pinR = mapSize*0.13;
+    ctx.fillStyle = '#DB4437';
+    ctx.beginPath();
+    ctx.arc(pinCX, pinCY, pinR, Math.PI*1.1, Math.PI*1.9);
+    ctx.lineTo(pinCX, pinCY + pinR*2.2);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath(); ctx.arc(pinCX, pinCY, pinR*0.4, 0, 2*Math.PI); ctx.fill();
+    // Google watermark
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold ' + Math.round(mapSize*0.13) + 'px system-ui';
+    ctx.fillText('Google', mapX + Math.round(mapSize*0.06), mapY + mapSize - Math.round(mapSize*0.08));
+
+    // Text block right
+    var textX = mapX + mapSize + pad;
+    var textW = W - textX - pad;
+
+    var now = new Date();
+    var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    var dayName = days[now.getDay()];
+    var dd = String(now.getDate()).padStart(2,'0');
+    var mm = String(now.getMonth()+1).padStart(2,'0');
+    var yyyy = now.getFullYear();
+    var hh = now.getHours();
+    var min = String(now.getMinutes()).padStart(2,'0');
+    var ampm = hh >= 12 ? 'PM' : 'AM';
+    hh = ((hh + 11) % 12) + 1;
+    var dateStr = dayName + ', ' + dd + '/' + mm + '/' + yyyy + ' ' + String(hh).padStart(2,'0') + ':' + min + ' ' + ampm + ' GMT +05:30';
+
+    var lat = state.gps.lat ? state.gps.lat.toFixed(6) : '—';
+    var lng = state.gps.lng ? state.gps.lng.toFixed(6) : '—';
+
+    var a = state.gps.addressObj || {};
+    var city = a.city || a.town || a.village || a.suburb || a.county || '';
+    var stateName = a.state || '';
+    var country = a.country || 'India';
+    var cityLine = [city, stateName, country].filter(Boolean).join(', ') || '—';
+
+    var addrText = state.gps.address || '';
+    if (a.postcode && addrText.indexOf(a.postcode) === -1) addrText += ', ' + a.postcode;
+
+    // Word wrap address
+    ctx.font = Math.round(overlayH*0.09) + 'px system-ui';
+    var words = addrText.split(/[, ]+/).filter(Boolean);
+    var lines = [], cur = '';
+    for (var i = 0; i < words.length; i++){
+      var w = words[i];
+      var test = cur ? cur + ', ' + w : w;
+      if (ctx.measureText(test).width > textW && cur){
+        lines.push(cur + ',');
+        cur = w;
+        if (lines.length >= 2){ cur = words.slice(i).join(', '); break; }
+      } else { cur = test; }
+    }
+    if (cur && lines.length < 2) lines.push(cur);
+    while (lines.length < 2) lines.push('');
+    if (ctx.measureText(lines[1]).width > textW){
+      while (lines[1] && ctx.measureText(lines[1]+'…').width > textW){
+        lines[1] = lines[1].slice(0,-1);
+      }
+      lines[1] += '…';
+    }
+
+    var cy = overlayY + pad + Math.round(overlayH*0.16);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold ' + Math.round(overlayH*0.13) + 'px system-ui';
+    ctx.fillText(cityLine, textX, cy);
+    // Indian flag
+    var cityW = ctx.measureText(cityLine).width;
+    var flagX = textX + cityW + Math.round(overlayH*0.06);
+    var flagY = cy - Math.round(overlayH*0.11);
+    var flagW = Math.round(overlayH*0.13);
+    var flagH = Math.round(flagW*0.66);
+    if (flagX + flagW < W - pad){
+      ctx.fillStyle = '#FF9933'; ctx.fillRect(flagX, flagY, flagW, flagH/3);
+      ctx.fillStyle = '#FFFFFF'; ctx.fillRect(flagX, flagY+flagH/3, flagW, flagH/3);
+      ctx.fillStyle = '#138808'; ctx.fillRect(flagX, flagY+2*flagH/3, flagW, flagH/3);
+    }
+    cy += Math.round(overlayH*0.17);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = Math.round(overlayH*0.09) + 'px system-ui';
+    for (var j = 0; j < lines.length; j++){
+      if (lines[j]) ctx.fillText(lines[j], textX, cy);
+      cy += Math.round(overlayH*0.13);
+    }
+    ctx.fillText('Lat ' + lat + '° Long ' + lng + '°', textX, cy);
+    cy += Math.round(overlayH*0.13);
+    ctx.fillText(dateStr, textX, cy);
+
+    return new Promise(function(resolve){
+      canvas.toBlob(function(blob){
+        resolve({ blob: blob, width: canvas.width, height: canvas.height });
+      }, 'image/jpeg', 0.85);
+    });
+  });
+}
+
+function fileToImage(file){
+  return new Promise(function(res, rej){
+    var img = new Image();
+    img.onload = function(){ res(img); };
+    img.onerror = rej;
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+// ============================================================
+// UPLOAD TO SUPABASE STORAGE + DB INSERT
+// ============================================================
+function uploadPhoto(key){
+  var photo = state.photos[key];
+  if (!photo) return;
+
+  var parts = key.split('_');
+  var photoNumber;
+  var mode;
+  if (key.indexOf('back_panel_') === 0){
+    mode = 'back_panel';
+    photoNumber = parseInt(key.replace('back_panel_',''));
+  } else {
+    mode = 'hood';
+    photoNumber = parseInt(key.replace('hood_',''));
+  }
+
+  var dateStr = todayStr().replace(/-/g,'');
+  var safeName = function(s){ return (s||'').replace(/[^A-Za-z0-9-]/g,'_'); };
+  var memberShort = safeName(state.member.name.split(' ')[0]);
+  var vehicleSafe = safeName(state.vehicleNumber.replace(/\s+/g,''));
+  var filename = memberShort+'-'+safeName(state.campaign.key)+'-'+dateStr+'-'+vehicleSafe+'-'+mode+'_'+photoNumber+'.jpg';
+  var path = state.campaign.key+'/'+todayStr()+'/'+filename;
+
+  state.uploadStatus[key] = 'uploading';
+  renderPhotoGrid();
+
+  // 1. Upload to Storage
+  var url = CONFIG.supabaseUrl + '/storage/v1/object/' + CONFIG.storageBucket + '/' + encodeURIComponent(path);
+  fetch(url, {
+    method: 'POST',
+    headers: {
+      'apikey': CONFIG.supabaseKey,
+      'Authorization': 'Bearer ' + CONFIG.supabaseKey,
+      'Content-Type': 'image/jpeg',
+      'x-upsert': 'true'
+    },
+    body: photo.blob
+  })
+  .then(function(r){
+    if (!r.ok) return r.text().then(function(t){ throw new Error('Storage '+r.status+': '+t); });
+    return r.json();
+  })
+  .then(function(){
+    var publicUrl = CONFIG.supabaseUrl + '/storage/v1/object/public/' + CONFIG.storageBucket + '/' + path;
+    // 2. Insert DB row
+    return api('/rest/v1/trial_photos', {
+      method: 'POST',
+      headers: { 'Prefer': 'return=minimal' },
+      body: {
+        campaign_key: state.campaign.key,
+        member_phone: state.member.phone,
+        member_name: state.member.name,
+        vehicle_number: state.vehicleNumber,
+        mode: mode,
+        photo_number: photoNumber,
+        total_expected: mode === 'hood' ? (state.campaign.hood_photo_count||3) : (state.campaign.back_panel_photo_count||1),
+        public_url: publicUrl,
+        captured_at: new Date().toISOString(),
+        latitude: state.gps.lat,
+        longitude: state.gps.lng,
+        address: state.gps.address,
+        city: state.gps.city
+      }
+    });
+  })
+  .then(function(){
+    state.uploadStatus[key] = 'uploaded';
+    renderPhotoGrid();
+  })
+  .catch(function(err){
+    console.error('Upload failed for '+key+':', err);
+    state.uploadStatus[key] = 'failed';
+    renderPhotoGrid();
+    toast('Upload failed: '+key.replace('_',' ')+' (tap to retry)','error');
+  });
+}
+
+window.retryUpload = function(key){
+  uploadPhoto(key);
+};
+
+// ============================================================
+// FINISH
+// ============================================================
+$('btn-finish-capture').addEventListener('click', function(){
+  var pending = Object.keys(state.uploadStatus).filter(function(k){
+    return state.uploadStatus[k] !== 'uploaded';
+  });
+  if (pending.length){
+    return toast('Wait, '+pending.length+' photos still uploading','error');
+  }
+  toast('✓ Vehicle saved!','success');
+  stopGps();
+  setTimeout(function(){
+    showScreen('screen-home');
+    $('capture-actions').style.display = 'none';
+    loadAssignment();
+  }, 800);
+});
+
+// ============================================================
+// SERVICE WORKER
+// ============================================================
+if ('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  });
+}
+
+// ============================================================
+// INIT
+// ============================================================
+window.logout = logout;
+window.switchMode = switchMode;
+window.capturePhoto = capturePhoto;
+window.cancelCapture = cancelCapture;
+window.loadAssignment = loadAssignment;
+
+bootAuth();
+</script>
+</body>
+</html>
