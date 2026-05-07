@@ -259,7 +259,12 @@ function api(path, options){
   }
   return fetch(CONFIG.supabaseUrl + path, options).then(function(r){
     if (!r.ok) return r.text().then(function(t){ throw new Error('API '+r.status+': '+t); });
-    return r.status === 204 ? null : r.json();
+    if (r.status === 204) return null;
+    // Handle empty body (e.g., POST with Prefer:return=minimal returns 201 with no body)
+    return r.text().then(function(t){
+      if (!t) return null;
+      try { return JSON.parse(t); } catch(e){ return null; }
+    });
   });
 }
 
