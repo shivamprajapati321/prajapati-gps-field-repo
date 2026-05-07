@@ -130,7 +130,7 @@ button,input{font-family:inherit}input{font-size:16px}
 
 <div id="screen-capture" class="scr">
 <div id="gps-strip" class="gps warn"><div class="live"></div><span>Getting GPS lock…</span></div>
-<div class="sbar"><div class="l"><span class="num" id="session-count">0</span><span>vehicles today</span></div><div class="r" id="session-status"><div class="dot online"></div><span>Online</span></div></div>
+<div class="sbar"><div class="l"><span class="num" id="session-count">0</span><span>vehicles aaj</span></div><div class="r" id="session-status" style="display:none"></div></div>
 <div id="ocr-banner" class="ocr" style="display:none"></div>
 <div id="photo-grid-wrap"></div>
 <input type="file" accept="image/*" capture="environment" class="cam-input" id="cam-input">
@@ -153,7 +153,8 @@ var CONFIG = {
   storageBucket: 'trial-photos',
   locationIqToken: 'pk.fde6fab706b3370a82c78ba286a896be',
   plateRecognizerToken: '4f6a384fb325649a527b7b2341aaf800b9f10306',
-  plateRecognizerUrl: 'https://api.platerecognizer.com/v1/plate-reader/'
+  plateRecognizerUrl: 'https://api.platerecognizer.com/v1/plate-reader/',
+  sessionTtlMs: 12 * 60 * 60 * 1000  // 12 hours of inactivity → auto-logout
 };
 
 var state = {
@@ -168,6 +169,7 @@ var state = {
   sessionId: '',
   resumeMode: false,
   serverPhotoUrls: {},
+  sessionCaptures: [],
   gps: { lat:null, lng:null, address:null, addressObj:null, accuracy:null, city:null }
 };
 
@@ -191,6 +193,43 @@ function loader(show, text){
 function todayStr(){
   var ist = new Date(new Date().getTime() + 5.5*60*60*1000);
   return ist.toISOString().split('T')[0];
+}
+
+// ─── Session lifecycle: 12hr inactivity auto-logout ───
+function touchActivity(){
+  if (state.member) localStorage.setItem('pf_last_activity', String(Date.now()));
+}
+function isSessionExpired(){
+  var last = parseInt(localStorage.getItem('pf_last_activity') || '0');
+  return last > 0 && (Date.now() - last) > CONFIG.sessionTtlMs;
+}
+function clearSessionStorage(){
+  localStorage.removeItem('pf_member_phone');
+  localStorage.removeItem('pf_last_activity');
+  localStorage.removeItem('pf_session_captures');
+  localStorage.removeItem('pf_session_captures_date');
+}
+
+// ─── Persist sessionCaptures across reload ───
+function persistSessionCaptures(){
+  try {
+    localStorage.setItem('pf_session_captures', JSON.stringify(state.sessionCaptures));
+    localStorage.setItem('pf_session_captures_date', todayStr());
+  } catch(e){}
+}
+function loadSessionCaptures(){
+  try {
+    var savedDate = localStorage.getItem('pf_session_captures_date');
+    if (savedDate !== todayStr()){
+      // Stale (different day) — discard
+      localStorage.removeItem('pf_session_captures');
+      localStorage.removeItem('pf_session_captures_date');
+      state.sessionCaptures = [];
+      return;
+    }
+    var raw = localStorage.getItem('pf_session_captures');
+    if (raw){ state.sessionCaptures = JSON.parse(raw) || []; }
+  } catch(e){ state.sessionCaptures = []; }
 }
 function escapeHtml(s){
   if (s == null) return '';
@@ -311,11 +350,34 @@ setInterval(function(){ if (navigator.onLine) processQueue(); }, 25000);
 // AUTH
 function bootAuth(){
   var saved = localStorage.getItem('pf_member_phone');
-  if (saved){
-    api('/rest/v1/trial_team_members?phone=eq.'+saved+'&active=eq.true&select=*')
-      .then(function(rows){ if (rows && rows.length){ state.member = rows[0]; enterApp(); } else showScreen('screen-login'); })
-      .catch(function(){ showScreen('screen-login'); });
-  } else showScreen('screen-login');
+  if (!saved){ showScreen('screen-login'); return; }
+
+  // Check 12hr inactivity expiry BEFORE attempting auto-login
+  if (isSessionExpired()){
+    clearSessionStorage();
+    showScreen('screen-login');
+    setTimeout(function(){ toast('Session expired (12hr inactive) — login again','warn'); }, 400);
+    return;
+  }
+
+  // Restore today's local session captures (instant UI before server fetch)
+  loadSessionCaptures();
+
+  api('/rest/v1/trial_team_members?phone=eq.'+saved+'&active=eq.true&select=*')
+    .then(function(rows){
+      if (rows && rows.length){
+        state.member = rows[0];
+        touchActivity();
+        enterApp();
+        // Welcome back greeting on cold start (not first login)
+        setTimeout(function(){
+          var n = state.sessionCaptures.length || state.todayCount || 0;
+          var firstName = state.member.name.split(' ')[0];
+          if (n > 0) toast('Welcome back, ' + firstName + ' — ' + n + ' vehicles aaj', 'success');
+          else toast('Welcome back, ' + firstName, 'success');
+        }, 800);
+      } else { clearSessionStorage(); showScreen('screen-login'); }
+    }).catch(function(){ showScreen('screen-login'); });
 }
 
 $('btn-login').addEventListener('click', function(){
@@ -327,19 +389,43 @@ $('btn-login').addEventListener('click', function(){
       loader(false);
       if (!rows || !rows.length) return toast('Number registered nahi hai','error');
       state.member = rows[0];
+      // Fresh login — clear any stale session captures from previous user
+      state.sessionCaptures = [];
       localStorage.setItem('pf_member_phone', phone);
+      touchActivity();
+      persistSessionCaptures();
       enterApp();
     }).catch(function(){ loader(false); toast('Login error','error'); });
 });
 
 $('inp-mobile').addEventListener('keypress', function(e){ if (e.key === 'Enter') $('btn-login').click(); });
 
-function logout(){
-  if (!confirm('Logout?')) return;
-  localStorage.removeItem('pf_member_phone');
-  state = { member:null, campaign:null, assignment:null, todayPhotos:[], todayVehicles:[], todayCount:0, slots:[], photos:{}, vehicleNumber:'', plateOcrScore:null, ocrInFlight:false, ocrAttempted:false, sessionId:'', resumeMode:false, serverPhotoUrls:{}, gps:{} };
+function logout(skipConfirm){
+  if (!skipConfirm && !confirm('Logout?')) return;
+  clearSessionStorage();
+  if (typeof stopHomeAutoRefresh === 'function') stopHomeAutoRefresh();
+  state = { member:null, campaign:null, assignment:null, todayPhotos:[], todayVehicles:[], todayCount:0, slots:[], photos:{}, vehicleNumber:'', plateOcrScore:null, ocrInFlight:false, ocrAttempted:false, sessionId:'', resumeMode:false, serverPhotoUrls:{}, sessionCaptures:[], gps:{} };
   showScreen('screen-login');
+  $('inp-mobile').value = '';
 }
+
+// Periodic inactivity check — every 5 min
+setInterval(function(){
+  if (state.member && isSessionExpired()){
+    toast('Session expired — auto logging out','warn');
+    setTimeout(function(){ logout(true); }, 1500);
+  }
+}, 5 * 60 * 1000);
+
+// Touch activity when app becomes visible (user returned to tab)
+document.addEventListener('visibilitychange', function(){
+  if (!document.hidden && state.member){
+    if (isSessionExpired()){
+      toast('Session expired','warn');
+      setTimeout(function(){ logout(true); }, 1200);
+    } else { touchActivity(); }
+  }
+});
 
 // HOME
 function enterApp(){
@@ -347,11 +433,17 @@ function enterApp(){
   if (!$('app-header')){
     var hdr = document.createElement('div');
     hdr.id = 'app-header'; hdr.className = 'header';
-    hdr.innerHTML = '<div class="h-l"><div class="h-logo">P</div><div><h1>PRAJAPATI GPS</h1><div class="sub">'+escapeHtml(state.member.name)+'</div></div></div><button class="lo-btn" onclick="logout()">Logout</button>';
+    hdr.innerHTML = '<div class="h-l"><div class="h-logo">P</div><div><h1>PRAJAPATI GPS</h1><div class="sub">'+escapeHtml(state.member.name)+'</div></div></div><button class="lo-btn" onclick="logout(false)">Logout</button>';
     $('screen-home').insertBefore(hdr, $('home-content'));
+  } else {
+    // Header exists from previous session — make sure name is current
+    var subEl = $('app-header').querySelector('.sub');
+    if (subEl) subEl.textContent = state.member.name;
   }
+  touchActivity();
   loadAssignment();
   processQueue();
+  startHomeAutoRefresh();
 }
 
 function loadAssignment(){
@@ -389,8 +481,37 @@ function loadTodayPhotos(){
         var bd = v.photos.filter(function(p){ return p.mode==='back_panel'; }).length;
         return hd >= hT && bd >= bT;
       }).length;
+      // Smart prune: keep sessionCapture until server has SAME or MORE photos
+      var serverByKey = {};
+      state.todayVehicles.forEach(function(v){ serverByKey[v.key] = v; });
+      state.sessionCaptures = state.sessionCaptures.filter(function(sc){
+        var sv = serverByKey[sc.key];
+        if (!sv) return true; // not yet on server, keep
+        var serverHood = sv.photos.filter(function(p){return p.mode==='hood';}).length;
+        var serverBack = sv.photos.filter(function(p){return p.mode==='back_panel';}).length;
+        return serverHood < (sc.hood_count||0) || serverBack < (sc.back_count||0);
+      });
+      persistSessionCaptures();
     });
 }
+
+// Background refresh — when home is showing AND queue has pending uploads, refresh every 8 sec
+var homeRefreshTimer = null;
+function startHomeAutoRefresh(){
+  stopHomeAutoRefresh();
+  homeRefreshTimer = setInterval(function(){
+    if (!$('screen-home').classList.contains('active')) return;
+    idb.getAll().then(function(rows){
+      var pending = rows.filter(function(r){ return r.status === 'pending' || r.status === 'failed'; }).length;
+      if (pending > 0 || state.sessionCaptures.length > 0){
+        loadAssignment();
+      } else {
+        stopHomeAutoRefresh();
+      }
+    });
+  }, 8000);
+}
+function stopHomeAutoRefresh(){ if (homeRefreshTimer){ clearInterval(homeRefreshTimer); homeRefreshTimer = null; } }
 
 function renderHome(){
   var html = '';
@@ -403,9 +524,30 @@ function renderHome(){
   var c = state.campaign;
   var hT = c.hood_photo_count || 0;
   var bT = c.back_panel_photo_count || 0;
-  var vehCount = state.todayVehicles.length;
 
-  html += '<div class="hero"><div class="lbl">Today\'s Campaign</div><h2>'+escapeHtml(c.name)+'</h2><div class="meta">'+escapeHtml(c.client_name||'-')+(c.default_city?' · '+escapeHtml(c.default_city):'')+'</div><div class="progress"><div><strong>'+state.todayCount+'</strong>Complete</div><div><strong>'+vehCount+'</strong>Started</div><div><strong>'+(c.target_count||'∞')+'</strong>Target</div></div></div>';
+  // Merge local session captures with server data (server-side wins when same key exists)
+  var serverKeys = {};
+  state.todayVehicles.forEach(function(v){ serverKeys[v.key] = true; });
+  var mergedVehicles = state.todayVehicles.slice();
+  state.sessionCaptures.forEach(function(sc){
+    if (!serverKeys[sc.key]){
+      // Not yet on server — synthesize a vehicle entry so user sees it immediately
+      var pseudoPhotos = [];
+      for (var i=0; i<sc.hood_count; i++) pseudoPhotos.push({mode:'hood', photo_number:i+1, _local:true});
+      for (var j=0; j<sc.back_count; j++) pseudoPhotos.push({mode:'back_panel', photo_number:j+1, _local:true});
+      mergedVehicles.push({ key: sc.key, vehicle_number: sc.vehicle_number, photos: pseudoPhotos, firstAt: sc.captured_at, _localOnly: true });
+    }
+  });
+
+  // Compute counts from merged data
+  var vehCount = mergedVehicles.length;
+  var completeCount = mergedVehicles.filter(function(v){
+    var hd = v.photos.filter(function(p){return p.mode==='hood';}).length;
+    var bd = v.photos.filter(function(p){return p.mode==='back_panel';}).length;
+    return hd >= hT && bd >= bT;
+  }).length;
+
+  html += '<div class="hero"><div class="lbl">Today\'s Campaign</div><h2>'+escapeHtml(c.name)+'</h2><div class="meta">'+escapeHtml(c.client_name||'-')+(c.default_city?' · '+escapeHtml(c.default_city):'')+'</div><div class="progress"><div><strong>'+completeCount+'</strong>Complete</div><div><strong>'+vehCount+'</strong>Started</div><div><strong>'+(c.target_count||'∞')+'</strong>Target</div></div></div>';
 
   var modeLine = '';
   if (hT > 0 && bT > 0) modeLine = '4 photos per rickshaw (3 hood + 1 back panel)';
@@ -419,7 +561,7 @@ function renderHome(){
 
   if (!vehCount){ html += '<p style="color:var(--mu);font-size:12px;text-align:center;padding:18px 0">No vehicles captured yet today</p>'; }
   else {
-    html += state.todayVehicles.map(function(v){
+    html += mergedVehicles.map(function(v){
       var hd = v.photos.filter(function(p){ return p.mode==='hood'; }).length;
       var bd = v.photos.filter(function(p){ return p.mode==='back_panel'; }).length;
       var complete = hd >= hT && bd >= bT;
@@ -443,6 +585,14 @@ var gpsWatchId = null;
 function watchGps(){
   if (gpsWatchId) return;
   if (!navigator.geolocation){ $('gps-strip').className = 'gps warn'; $('gps-strip').innerHTML = '<div class="live"></div><span>GPS not supported</span>'; return; }
+  // Immediate one-shot fix for fastest lock
+  navigator.geolocation.getCurrentPosition(function(pos){
+    state.gps.lat = pos.coords.latitude; state.gps.lng = pos.coords.longitude; state.gps.accuracy = pos.coords.accuracy;
+    $('gps-strip').className = 'gps';
+    $('gps-strip').innerHTML = '<div class="live"></div><span>GPS locked · '+pos.coords.latitude.toFixed(5)+', '+pos.coords.longitude.toFixed(5)+' · ±'+Math.round(pos.coords.accuracy)+'m</span>';
+    if (!state.gps.address) fetchReverseGeocode(pos.coords.latitude, pos.coords.longitude);
+  }, function(){}, { enableHighAccuracy:true, maximumAge:0, timeout:8000 });
+  // Continuous watch for movement updates
   gpsWatchId = navigator.geolocation.watchPosition(function(pos){
     state.gps.lat = pos.coords.latitude; state.gps.lng = pos.coords.longitude; state.gps.accuracy = pos.coords.accuracy;
     $('gps-strip').className = 'gps';
@@ -556,6 +706,22 @@ function renderPhotoGrid(){
 }
 
 window.capturePhoto = function(key){
+  if (state.gps.lat == null || state.gps.lng == null){
+    toast('GPS lock ho raha hai — 3 sec wait karo', 'warn');
+    if (navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(function(pos){
+        state.gps.lat = pos.coords.latitude;
+        state.gps.lng = pos.coords.longitude;
+        state.gps.accuracy = pos.coords.accuracy;
+        if (!state.gps.address) fetchReverseGeocode(pos.coords.latitude, pos.coords.longitude);
+        toast('GPS lock! Photo le sakte ho ab', 'success');
+      }, function(){
+        toast('GPS error — phone GPS on hai?', 'error');
+      }, { enableHighAccuracy:true, maximumAge:5000, timeout:10000 });
+    }
+    return;
+  }
+  touchActivity();
   state._capturingKey = key;
   $('cam-input').click();
 };
@@ -563,7 +729,6 @@ window.capturePhoto = function(key){
 window.endSession = function(){
   if (Object.keys(state.photos).length > 0){
     if (!confirm('End session? Pending photos queue mein chale jayenge.')) return;
-    // Wait for OCR briefly so any partial vehicle gets correct folder
     var waitMs = state.ocrInFlight ? 3000 : 0;
     if (waitMs) loader(true, 'Saving last vehicle…');
     waitForOcr(waitMs).then(function(){
@@ -573,6 +738,7 @@ window.endSession = function(){
       $('capture-actions').style.display = 'none';
       showScreen('screen-home');
       loadAssignment();
+      startHomeAutoRefresh();
     });
     return;
   }
@@ -580,6 +746,7 @@ window.endSession = function(){
   $('capture-actions').style.display = 'none';
   showScreen('screen-home');
   loadAssignment();
+  startHomeAutoRefresh();
 };
 
 $('cam-input').addEventListener('change', function(e){
@@ -591,6 +758,9 @@ $('cam-input').addEventListener('change', function(e){
     loader(false);
     state.photos[key] = { blob: stamped.blob, previewUrl: URL.createObjectURL(stamped.blob), originalBlob: file, _queued: false };
     renderPhotoGrid();
+
+    // Save to phone gallery (Downloads folder) — within user gesture for browser permission
+    saveToGallery(stamped.blob, key);
 
     // First captured photo of session → run OCR
     var firstKey = state.slots.find(function(s){ return s.mode === 'hood'; });
@@ -843,6 +1013,31 @@ function queuePhoto(key){
     .catch(function(err){ console.error('Queue add failed:', err); photo._queued = false; });
 }
 
+// Save photo to phone gallery via Downloads folder
+// On Android Chrome: file goes to Downloads → visible in Photos app under "Downloads" album
+// On iOS Safari: file saves via share sheet to Files app
+function saveToGallery(blob, key){
+  try {
+    var slot = state.slots.find(function(s){ return s.key === key; });
+    var angle = slot ? getAngleName(slot) : 'photo';
+    var dateStr = todayStr();
+    var timeStr = new Date().toTimeString().slice(0,8).replace(/:/g,'');
+    // Filename: session-prefixed so all photos of same vehicle group together when sorted
+    var fname = 'prajapati-' + dateStr + '-' + state.sessionId + '-' + angle + '.jpg';
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = fname;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 8000);
+  } catch (e){
+    console.warn('Gallery save failed:', e);
+  }
+}
+
 // Wait for OCR to resolve before queuing — ensures correct folder name (vehicle_number)
 // If OCR is not running OR already done, queues immediately
 function queuePhotoWhenReady(key){
@@ -863,7 +1058,20 @@ function finishVehicleSession(){
     });
 
     var plate = state.vehicleNumber || ('— (' + (state._fallbackVehicleId || 'review') + ')');
+    var vehicleKey = state.vehicleNumber || state._fallbackVehicleId;
+
+    // Track locally for instant home screen feedback (before server confirms upload)
+    state.sessionCaptures.push({
+      key: vehicleKey,
+      vehicle_number: state.vehicleNumber || '',
+      hood_count: state.slots.filter(function(s){return s.mode==='hood';}).length,
+      back_count: state.slots.filter(function(s){return s.mode==='back_panel';}).length,
+      captured_at: new Date().toISOString()
+    });
     state.todayCount += 1;
+    persistSessionCaptures();
+    touchActivity();
+
     loader(false);
 
     // Show success flash
