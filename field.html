@@ -669,6 +669,13 @@ function renderHome(){
 // GPS
 var gpsWatchId = null;
 function watchGps(){
+  // Manual GPS mode: bypass real GPS, set anchor-based coords
+  if (isManualMode()){
+    applyManualGps();
+    $('gps-strip').className = 'gps';
+    $('gps-strip').innerHTML = '<div class="live"></div><span>📍 Manual GPS · '+state.gps.lat.toFixed(5)+', '+state.gps.lng.toFixed(5)+' · anchor ±'+(state.campaign.gps_radius_m||50)+'m</span>';
+    return;
+  }
   if (gpsWatchId) return;
   if (!navigator.geolocation){ $('gps-strip').className = 'gps warn'; $('gps-strip').innerHTML = '<div class="live"></div><span>GPS not supported</span>'; return; }
   // Immediate one-shot fix for fastest lock
@@ -695,8 +702,10 @@ function setGpsFromPosition(pos){
 
 // Force-fresh GPS reading before stamping a photo (100% accuracy guarantee)
 // Always uses maximumAge:0 — no cache, fresh sensor reading.
+// In manual mode: skip — coords already applied via applyManualGps() when camera opened.
 function ensureFreshGps(){
   return new Promise(function(resolve){
+    if (isManualMode()){ resolve(true); return; }
     if (!navigator.geolocation){ resolve(false); return; }
     var done = false;
     var timer = setTimeout(function(){
@@ -740,6 +749,43 @@ function fetchReverseGeocode(lat, lng){
 }
 
 function stopGps(){ if (gpsWatchId !== null){ navigator.geolocation.clearWatch(gpsWatchId); gpsWatchId = null; } }
+
+// ─── MANUAL GPS MODE ───
+// When campaign has manual_gps_enabled + anchor coords, generate random points
+// within radius around anchor instead of using device GPS.
+// Fresh random point generated PER PHOTO (so 3 photos of same vehicle get slightly
+// different coords within radius — looks natural in admin review).
+
+function isManualMode(){
+  return !!(state.campaign && state.campaign.manual_gps_enabled
+    && state.campaign.anchor_lat != null && state.campaign.anchor_lng != null);
+}
+
+function applyManualGps(){
+  if (!isManualMode()) return false;
+  var anchorLat = parseFloat(state.campaign.anchor_lat);
+  var anchorLng = parseFloat(state.campaign.anchor_lng);
+  var radiusM = parseInt(state.campaign.gps_radius_m) || 50;
+
+  // Uniform random point within disk of radius radiusM
+  var radiusDeg = radiusM / 111320;
+  var lngScale = 1 / Math.cos(anchorLat * Math.PI / 180);
+  var angle = Math.random() * 2 * Math.PI;
+  var dist = Math.sqrt(Math.random()) * radiusDeg;
+
+  state.gps.lat = anchorLat + dist * Math.cos(angle);
+  state.gps.lng = anchorLng + dist * Math.sin(angle) * lngScale;
+  state.gps.accuracy = Math.max(8, Math.round(radiusM / 5));
+  state.gps._timestamp = Date.now();
+  state.gps._isManual = true;
+
+  // Address from anchor (set once, persists across photos)
+  if (!state.gps.address){
+    if (state.campaign.anchor_address) state.gps.address = state.campaign.anchor_address;
+    fetchReverseGeocode(anchorLat, anchorLng);  // populate addressObj for stamp
+  }
+  return true;
+}
 
 // CAPTURE FLOW
 function buildSlotList(){
@@ -847,6 +893,14 @@ function renderPhotoGrid(){
 }
 
 window.capturePhoto = function(key){
+  // Manual mode: generate fresh random point within radius for THIS photo
+  if (isManualMode()){
+    applyManualGps();
+    touchActivity();
+    state._capturingKey = key;
+    openInAppCamera(key);
+    return;
+  }
   if (state.gps.lat == null || state.gps.lng == null){
     toast('GPS lock ho raha hai — 3 sec wait karo', 'warn');
     if (navigator.geolocation){
@@ -910,7 +964,10 @@ function updateCamStampPreview(){
   // GPS chip top-right
   var chip = $('cam-gps-chip');
   var chipTxt = $('cam-gps-txt');
-  if (state.gps.lat != null && state.gps.lng != null){
+  if (isManualMode()){
+    chip.className = 'cam-gps';
+    chipTxt.textContent = 'Manual ±'+(state.campaign.gps_radius_m||50)+'m';
+  } else if (state.gps.lat != null && state.gps.lng != null){
     chip.className = 'cam-gps';
     chipTxt.textContent = '±' + Math.round(state.gps.accuracy || 0) + 'm';
   } else {
