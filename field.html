@@ -197,7 +197,19 @@ function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; });
 }
 function safeName(s){ return (s||'').replace(/[^A-Za-z0-9-]/g,'_'); }
+function slugify(s){ if (!s) return ''; return String(s).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,60); }
 function genSessionId(){ return 'S' + Date.now().toString(36) + Math.random().toString(36).slice(2,5).toUpperCase(); }
+function fallbackVehicleId(){ var d = new Date(); return 'unk-' + String(d.getHours()).padStart(2,'0') + String(d.getMinutes()).padStart(2,'0') + String(d.getSeconds()).padStart(2,'0'); }
+function getAngleName(slot){
+  if (slot.mode === 'hood'){
+    var labels = ['back','left','right','front','top'];
+    return labels[slot.n - 1] || ('hood-' + slot.n);
+  }
+  if (slot.mode === 'back_panel'){
+    return state.campaign.back_panel_photo_count > 1 ? ('back-panel-' + slot.n) : 'back-panel';
+  }
+  return 'photo-' + slot.n;
+}
 
 function api(path, options){
   options = options || {};
@@ -495,6 +507,7 @@ function resetSession(isResume){
   state.ocrInFlight = false;
   state.ocrAttempted = false;
   state.sessionId = genSessionId();
+  state._fallbackVehicleId = null;
   state.resumeMode = !!isResume;
   if (!isResume) state.serverPhotoUrls = {};
 }
@@ -550,8 +563,18 @@ window.capturePhoto = function(key){
 window.endSession = function(){
   if (Object.keys(state.photos).length > 0){
     if (!confirm('End session? Pending photos queue mein chale jayenge.')) return;
-    // Queue any pending photos before leaving
-    Object.keys(state.photos).forEach(function(k){ if (!state.photos[k]._queued) queuePhoto(k); });
+    // Wait for OCR briefly so any partial vehicle gets correct folder
+    var waitMs = state.ocrInFlight ? 3000 : 0;
+    if (waitMs) loader(true, 'Saving last vehicle…');
+    waitForOcr(waitMs).then(function(){
+      Object.keys(state.photos).forEach(function(k){ if (!state.photos[k]._queued) queuePhoto(k); });
+      loader(false);
+      stopGps();
+      $('capture-actions').style.display = 'none';
+      showScreen('screen-home');
+      loadAssignment();
+    });
+    return;
   }
   stopGps();
   $('capture-actions').style.display = 'none';
@@ -577,8 +600,8 @@ $('cam-input').addEventListener('change', function(e){
       runPlateOcr(file);
     }
 
-    // Queue silently for upload (don't block)
-    queuePhoto(key);
+    // Queue silently — but wait for OCR if it's running so folder gets correct vehicle_number
+    queuePhotoWhenReady(key);
 
     // Check if all slots filled → auto-advance
     var allFilled = state.slots.every(function(s){ return state.photos[s.key] || state.serverPhotoUrls[s.key]; });
@@ -777,11 +800,18 @@ function fileToImage(file){
 function buildPhotoMetadata(key){
   var slot = state.slots.find(function(s){ return s.key === key; });
   if (!slot) return null;
-  var dateStr = todayStr().replace(/-/g,'');
-  var memberShort = safeName((state.member.name||'').split(' ')[0]);
-  var vehicleSafe = safeName((state.vehicleNumber || state.sessionId).replace(/\s+/g,''));
-  var filename = memberShort+'-'+safeName(state.campaign.key)+'-'+dateStr+'-'+vehicleSafe+'-'+slot.mode+'_'+slot.n+'.jpg';
-  var path = state.campaign.key+'/'+todayStr()+'/'+filename;
+
+  // Folder structure: {campaign_key}/{YYYY-MM-DD}/{member-slug}/{vehicle-slug}/{angle}-{vehicle-slug}.jpg
+  var campaignSlug = slugify(state.campaign.key) || 'campaign';
+  var dateSlug = todayStr();
+  var memberSlug = slugify(state.member.name) || ('member-' + state.member.phone.slice(-4));
+  var vehiclePlate = (state.vehicleNumber || '').replace(/\s+/g,'');
+  if (!state._fallbackVehicleId) state._fallbackVehicleId = fallbackVehicleId();
+  var vehicleSlug = slugify(vehiclePlate) || state._fallbackVehicleId;
+  var angle = getAngleName(slot);
+  var filename = angle + '-' + vehicleSlug + '.jpg';
+  var path = campaignSlug + '/' + dateSlug + '/' + memberSlug + '/' + vehicleSlug + '/' + filename;
+
   var dbRow = {
     campaign_key: state.campaign.key,
     member_phone: state.member.phone,
@@ -808,37 +838,31 @@ function queuePhoto(key){
   var meta = buildPhotoMetadata(key);
   if (!meta) return;
   photo._queued = true;
-  // Note: if vehicleNumber is updated by OCR after this queue, the metadata is already snapshotted.
-  // We update the queue item once OCR resolves.
   idb.add({ blob: photo.blob, metadata: meta, status: 'pending', attempts: 0, queued_at: Date.now(), session_id: state.sessionId, slot_key: key })
     .then(function(){ updateSessionStatus(); processQueue(); })
-    .catch(function(err){ console.error('Queue add failed:', err); });
+    .catch(function(err){ console.error('Queue add failed:', err); photo._queued = false; });
 }
 
-// When OCR completes, update any queued items in this session with the detected vehicle_number
-function patchSessionVehicleNumber(){
-  if (!state.vehicleNumber) return;
-  idb.getAll().then(function(rows){
-    rows.forEach(function(r){
-      if (r.session_id === state.sessionId && r.status === 'pending' && (!r.metadata.dbRow.vehicle_number)){
-        r.metadata.dbRow.vehicle_number = state.vehicleNumber;
-        if (r.metadata.dbRow.mode === 'hood' && r.metadata.dbRow.photo_number === 1 && state.plateOcrScore){
-          r.metadata.dbRow.plate_ocr_score = state.plateOcrScore;
-        }
-        idb.update(r.id, { metadata: r.metadata });
-      }
-    });
-  });
+// Wait for OCR to resolve before queuing — ensures correct folder name (vehicle_number)
+// If OCR is not running OR already done, queues immediately
+function queuePhotoWhenReady(key){
+  if (state.ocrInFlight){
+    waitForOcr(4000).then(function(){ queuePhoto(key); });
+  } else {
+    queuePhoto(key);
+  }
 }
 
 // Auto-advance after last photo of vehicle
 function finishVehicleSession(){
   loader(true, state.ocrInFlight ? 'Reading plate…' : 'Saving vehicle…');
-  waitForOcr(3500).then(function(){
-    // Apply OCR-detected vehicle number to any queued photos from this session
-    patchSessionVehicleNumber();
+  waitForOcr(4000).then(function(){
+    // Ensure all photos are queued (with final vehicle_number resolved)
+    Object.keys(state.photos).forEach(function(k){
+      if (!state.photos[k]._queued) queuePhoto(k);
+    });
 
-    var plate = state.vehicleNumber || '— (will review)';
+    var plate = state.vehicleNumber || ('— (' + (state._fallbackVehicleId || 'review') + ')');
     state.todayCount += 1;
     loader(false);
 
