@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Prajapati GPS - Admin Panel</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: 'Poppins', sans-serif; background: #f4f6f9; color: #1a2980; min-height: 100vh; }
@@ -116,6 +117,15 @@ label { display: block; font-size: 10px; font-weight: 600; text-transform: upper
 .assign-row .member-name { font-size: 13px; font-weight: 500; }
 .assign-row .member-phone { font-size: 10px; color: #888; font-family: monospace; }
 .assign-row select { font-size: 12px; }
+.live-status { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 14px; font-size: 11px; font-weight: 600; background: #f0f2f7; color: #888; }
+.live-status.on { background: #e6f7ec; color: #1D9E75; }
+.live-status.polling { background: #fef3c7; color: #92400e; }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.live-status.on .live-dot { animation: livePulse 1.6s ease-in-out infinite; }
+@keyframes livePulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; transform: scale(1.4); } }
+.photo-item.is-new { border: 2px solid #34c759; box-shadow: 0 0 0 4px rgba(52,199,89,0.25); animation: newPhotoFlash 1.6s ease-out 1; position: relative; }
+.photo-item.is-new::before { content: 'NEW'; position: absolute; top: 6px; left: 6px; background: #34c759; color: #fff; font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 4px; z-index: 2; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+@keyframes newPhotoFlash { 0% { box-shadow: 0 0 0 0 rgba(52,199,89,0.8); } 100% { box-shadow: 0 0 0 16px rgba(52,199,89,0); } }
 @media (max-width: 600px) {
   .header h1 { font-size: 14px; }
   .header .sub { display: none; }
@@ -309,13 +319,28 @@ label { display: block; font-size: 10px; font-weight: 600; text-transform: upper
   </div>
 
   <div id="tab-photos" class="tab-content">
-    <div class="section-header"><h2>Photos Browser</h2></div>
+    <div class="section-header">
+      <h2>Photos Browser <span id="livePhotoCounter" style="font-size:11px; color:#1D9E75; font-weight:600; margin-left:8px;"></span></h2>
+      <div class="live-status" id="liveStatus"><div class="live-dot"></div><span>Off</span></div>
+    </div>
     <div class="stats-grid" id="photoStats"></div>
-    <div class="filter-bar">
-      <div><label>Date</label><input type="date" id="photoDate"></div>
-      <div><label>Campaign</label><select id="photoCampaign"><option value="">All</option></select></div>
-      <div><label>Member</label><select id="photoMember"><option value="">All</option></select></div>
-      <button class="btn" onclick="loadPhotos()">Filter</button>
+    <div style="background:#fff; border-radius:8px; padding:11px; margin-bottom:8px; border:1px solid #e8e8ee;">
+      <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
+        <span style="font-size:10px; font-weight:600; color:#555; text-transform:uppercase; letter-spacing:0.4px; margin-right:4px;">Quick:</span>
+        <button class="btn-icon" onclick="setQuickRange('today')">Today</button>
+        <button class="btn-icon" onclick="setQuickRange('yesterday')">Yesterday</button>
+        <button class="btn-icon" onclick="setQuickRange('week')">Last 7 days</button>
+        <button class="btn-icon" onclick="setQuickRange('month')">Last 30 days</button>
+        <button class="btn-icon" onclick="setQuickRange('all')">All time</button>
+        <span id="quickRangeLabel" style="font-size:11px; color:#1a2980; font-weight:600; margin-left:6px;"></span>
+      </div>
+      <div class="filter-bar" style="margin:0; padding:0; border:none;">
+        <div><label>From Date</label><input type="date" id="photoDate"></div>
+        <div><label>To Date</label><input type="date" id="photoDateEnd"></div>
+        <div><label>Campaign</label><select id="photoCampaign"><option value="">All</option></select></div>
+        <div><label>Member</label><select id="photoMember"><option value="">All</option></select></div>
+        <button class="btn" onclick="loadPhotos()">Filter</button>
+      </div>
     </div>
     <div id="photosList"><div class="empty-state">Filter karo aur photos load karo</div></div>
   </div>
@@ -409,6 +434,7 @@ function loginAdmin() {
 
 function logout() {
   if (!confirm('Logout karna hai?')) return;
+  stopLivePhotos();
   localStorage.removeItem('prajapati_admin_phone');
   state.admin = null;
   document.getElementById('mainContainer').style.display = 'none';
@@ -428,7 +454,12 @@ function enterDashboard() {
   document.getElementById('logoutBtn').style.display = 'block';
   document.getElementById('adminUserSub').textContent = 'Welcome ' + state.admin.name;
   document.getElementById('assignDate').value = todayStr();
-  document.getElementById('photoDate').value = todayStr();
+  // Default photo filter: last 7 days (better default than just today, which often has 0 photos)
+  var ist = new Date(new Date().getTime() + 5.5*60*60*1000);
+  var weekAgo = new Date(ist.getTime() - 7*24*60*60*1000).toISOString().split('T')[0];
+  document.getElementById('photoDate').value = weekAgo;
+  document.getElementById('photoDateEnd').value = todayStr();
+  document.getElementById('quickRangeLabel').textContent = '· Last 7 days';
   loadCampaigns();
 }
 
@@ -436,10 +467,10 @@ function switchTab(tabName) {
   document.querySelectorAll('.tab').forEach(function(t) { t.classList.toggle('active', t.dataset.tab === tabName); });
   document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
   document.getElementById('tab-' + tabName).classList.add('active');
-  if (tabName === 'campaigns') loadCampaigns();
-  else if (tabName === 'members') loadMembers();
-  else if (tabName === 'assignments') loadAssignments();
-  else if (tabName === 'photos') initPhotosTab();
+  if (tabName === 'campaigns') { stopLivePhotos(); loadCampaigns(); }
+  else if (tabName === 'members') { stopLivePhotos(); loadMembers(); }
+  else if (tabName === 'assignments') { stopLivePhotos(); loadAssignments(); }
+  else if (tabName === 'photos') { initPhotosTab(); startLivePhotos(); }
 }
 
 // ============================================================
@@ -972,17 +1003,38 @@ function initPhotosTab() {
   loadPhotos();
 }
 
-function loadPhotos() {
+function setQuickRange(range){
+  var now = new Date();
+  var ist = new Date(now.getTime() + 5.5*60*60*1000);
+  var todayIso = ist.toISOString().split('T')[0];
+  var yesterday = new Date(ist.getTime() - 24*60*60*1000).toISOString().split('T')[0];
+  var weekAgo = new Date(ist.getTime() - 7*24*60*60*1000).toISOString().split('T')[0];
+  var monthAgo = new Date(ist.getTime() - 30*24*60*60*1000).toISOString().split('T')[0];
+  var dateInput = document.getElementById('photoDate');
+  var dateEndInput = document.getElementById('photoDateEnd');
+  var label = document.getElementById('quickRangeLabel');
+  if (range === 'today'){ dateInput.value = todayIso; dateEndInput.value = todayIso; label.textContent = '· Today only'; }
+  else if (range === 'yesterday'){ dateInput.value = yesterday; dateEndInput.value = yesterday; label.textContent = '· Yesterday only'; }
+  else if (range === 'week'){ dateInput.value = weekAgo; dateEndInput.value = todayIso; label.textContent = '· Last 7 days'; }
+  else if (range === 'month'){ dateInput.value = monthAgo; dateEndInput.value = todayIso; label.textContent = '· Last 30 days'; }
+  else if (range === 'all'){ dateInput.value = ''; dateEndInput.value = ''; label.textContent = '· All time (latest 200)'; }
+  loadPhotos();
+}
+
+function loadPhotos(silent) {
   var listEl = document.getElementById('photosList');
-  listEl.innerHTML = '<div class="spinner"></div>';
-  var date = document.getElementById('photoDate').value;
+  if (!silent) listEl.innerHTML = '<div class="spinner"></div>';
+  var dateFrom = document.getElementById('photoDate').value;
+  var dateTo = document.getElementById('photoDateEnd').value || dateFrom;
   var campaign = document.getElementById('photoCampaign').value;
   var member = document.getElementById('photoMember').value;
   var qs = '?select=*&order=captured_at.desc&limit=200';
-  if (date) {
-    var istStartLocal = new Date(date + 'T00:00:00+05:30');
-    var istEndLocal = new Date(date + 'T23:59:59+05:30');
+  if (dateFrom) {
+    var istStartLocal = new Date(dateFrom + 'T00:00:00+05:30');
     qs += '&captured_at=gte.' + istStartLocal.toISOString();
+  }
+  if (dateTo) {
+    var istEndLocal = new Date(dateTo + 'T23:59:59+05:30');
     qs += '&captured_at=lte.' + istEndLocal.toISOString();
   }
   if (campaign) qs += '&campaign_key=eq.' + campaign;
@@ -994,21 +1046,111 @@ function loadPhotos() {
       var uniqueVehicles = {};
       photos.forEach(function(p) { if (p.vehicle_number) uniqueVehicles[p.vehicle_number] = true; });
       statsEl.innerHTML = '<div class="stat-box"><div class="label">Photos</div><div class="value">' + photos.length + '</div></div><div class="stat-box"><div class="label">Vehicles</div><div class="value">' + Object.keys(uniqueVehicles).length + '</div></div><div class="stat-box"><div class="label">Hood</div><div class="value">' + photos.filter(function(p){return p.mode==='hood';}).length + '</div></div><div class="stat-box"><div class="label">Back Panel</div><div class="value">' + photos.filter(function(p){return p.mode==='back_panel';}).length + '</div></div>';
-      if (photos.length === 0) { listEl.innerHTML = '<div class="empty-state">No photos found</div>'; return; }
+      if (photos.length === 0) { listEl.innerHTML = '<div class="empty-state">No photos found in selected range. Try "Last 7 days" or "All time".</div>'; return; }
       var html = '<div class="photos-grid">';
       photos.forEach(function(p) {
-        var time = p.captured_at ? new Date(p.captured_at).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', timeZone: 'Asia/Kolkata'}) : '';
+        var time = p.captured_at ? new Date(p.captured_at).toLocaleString('en-IN', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', timeZone: 'Asia/Kolkata'}) : '';
         var imgUrl = p.public_url || '';
-        html += '<div class="photo-item" onclick="openPhotoModal(\'' + escapeHtml(imgUrl) + '\')"><img class="photo-img" src="' + escapeHtml(imgUrl) + '" loading="lazy" alt=""><div class="photo-meta"><div class="vehicle">' + escapeHtml(p.vehicle_number || '-') + '</div><div class="info">' + escapeHtml(p.mode || '') + ' · ' + time + '</div><div class="info">' + escapeHtml((p.address || '').substring(0, 40)) + '</div></div></div>';
+        var isNew = _newPhotoIds.has(p.id);
+        html += '<div class="photo-item' + (isNew ? ' is-new' : '') + '" onclick="openPhotoModal(\'' + escapeHtml(imgUrl) + '\')"><img class="photo-img" src="' + escapeHtml(imgUrl) + '" loading="lazy" alt=""><div class="photo-meta"><div class="vehicle">' + escapeHtml(p.vehicle_number || '-') + '</div><div class="info">' + escapeHtml(p.mode || '') + ' · ' + time + '</div><div class="info">' + escapeHtml((p.address || '').substring(0, 40)) + '</div></div></div>';
       });
       html += '</div>';
       listEl.innerHTML = html;
     })
-    .catch(function() { listEl.innerHTML = '<div class="empty-state">Load failed</div>'; });
+    .catch(function() { if (!silent) listEl.innerHTML = '<div class="empty-state">Load failed</div>'; });
 }
 
 function openPhotoModal(url) { if (!url) return; document.getElementById('photoModalImg').src = url; document.getElementById('photoModal').classList.add('active'); }
 function closePhotoModal() { document.getElementById('photoModal').classList.remove('active'); document.getElementById('photoModalImg').src = ''; }
+
+// ─── LIVE PHOTO UPDATES (Supabase Realtime + polling fallback) ───
+var _sbClient = null;
+var _liveChannel = null;
+var _pollTimer = null;
+var _newPhotoIds = new Set();
+var _liveSinceCount = 0;
+
+function getSupabaseClient() {
+  if (_sbClient) return _sbClient;
+  if (window.supabase && typeof window.supabase.createClient === 'function') {
+    _sbClient = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey);
+  }
+  return _sbClient;
+}
+
+function setLiveStatus(state, label) {
+  var el = document.getElementById('liveStatus');
+  if (!el) return;
+  el.className = 'live-status ' + state;
+  el.innerHTML = '<div class="live-dot"></div><span>' + label + '</span>';
+}
+
+function startLivePhotos() {
+  stopLivePhotos();
+  _liveSinceCount = 0;
+  document.getElementById('livePhotoCounter').textContent = '';
+  var client = getSupabaseClient();
+  if (!client) { startPollingFallback(); return; }
+  setLiveStatus('', 'Connecting...');
+  try {
+    _liveChannel = client.channel('admin-photos-' + Date.now())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'trial_photos' }, function(payload) {
+        handleNewPhoto(payload.new);
+      })
+      .subscribe(function(status) {
+        if (status === 'SUBSCRIBED') {
+          setLiveStatus('on', 'Live');
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          if (_liveChannel) { try { client.removeChannel(_liveChannel); } catch(e){} _liveChannel = null; }
+          startPollingFallback();
+        }
+      });
+  } catch (e) {
+    console.warn('Realtime failed, falling back to polling:', e);
+    startPollingFallback();
+  }
+}
+
+function startPollingFallback() {
+  if (_pollTimer) return;
+  setLiveStatus('polling', 'Auto-refresh 15s');
+  _pollTimer = setInterval(function() {
+    var activeTab = document.querySelector('.tab.active');
+    if (activeTab && activeTab.dataset.tab === 'photos') {
+      loadPhotos(true);  // silent refresh
+    }
+  }, 15000);
+}
+
+function stopLivePhotos() {
+  if (_liveChannel && _sbClient) { try { _sbClient.removeChannel(_liveChannel); } catch(e){} _liveChannel = null; }
+  if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+  setLiveStatus('', 'Off');
+  _newPhotoIds.clear();
+}
+
+function handleNewPhoto(photo) {
+  if (!photo || !photo.id) return;
+  // Mark as NEW for visual highlight
+  _newPhotoIds.add(photo.id);
+  setTimeout(function() { _newPhotoIds.delete(photo.id); }, 120000); // remove after 2 min
+
+  // Update counter
+  _liveSinceCount += 1;
+  document.getElementById('livePhotoCounter').textContent = '+' + _liveSinceCount + ' new';
+
+  // Toast notification
+  var who = photo.member_name || photo.member_phone || 'field';
+  var what = photo.vehicle_number ? photo.vehicle_number : 'photo';
+  showToast('📸 ' + who + ' uploaded ' + what, 'success');
+
+  // Reload list to apply current filters (debounced — multiple inserts batch into single reload)
+  if (window._liveReloadTimer) clearTimeout(window._liveReloadTimer);
+  window._liveReloadTimer = setTimeout(function() {
+    var activeTab = document.querySelector('.tab.active');
+    if (activeTab && activeTab.dataset.tab === 'photos') loadPhotos(true);
+  }, 600);
+}
 
 document.addEventListener('DOMContentLoaded', function() {
   var saved = localStorage.getItem('prajapati_admin_phone');
