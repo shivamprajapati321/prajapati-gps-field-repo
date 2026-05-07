@@ -62,6 +62,7 @@ label { display: block; font-size: 10px; font-weight: 600; text-transform: upper
 .tag-off { background: #f0f2f7; color: #888; }
 .tag-info { background: #E5F2F8; color: #0E6BA8; }
 .tag-success { background: #EAF3DE; color: #1D9E75; }
+.tag-media { background: #FFF3D6; color: #854F0B; }
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
 .section-header h2 { font-size: 14px; font-weight: 600; }
 .section-header .count { font-size: 11px; color: #888; margin-left: 6px; font-weight: 400; }
@@ -170,14 +171,27 @@ label { display: block; font-size: 10px; font-weight: 600; text-transform: upper
         <div class="field"><label>Campaign Key *</label><input type="text" id="cKey" placeholder="lowercase_no_spaces" maxlength="40"></div>
       </div>
       <div class="field"><label>Client Name</label><input type="text" id="cClient" placeholder="Client company name"></div>
+
       <div class="form-section">
-        <div class="form-section-title">Photos & Quantity</div>
-        <div class="field-row cols-3">
-          <div class="field"><label>Hood Photos</label><input type="number" id="cHood" value="3" min="1" max="10"></div>
-          <div class="field"><label>Back Panel</label><input type="number" id="cBack" value="1" min="1" max="10"></div>
-          <div class="field"><label>Target Rickshaws</label><input type="number" id="cTarget" value="100" min="1"></div>
+        <div class="form-section-title">Photo Coverage Type *</div>
+        <div class="mode-grid">
+          <div class="mode-option selected" data-media="hood" onclick="selectMedia(this)">
+            <div class="mode-label">Hood</div>
+            <div class="mode-desc">3 photos<br>(back · left · right)</div>
+          </div>
+          <div class="mode-option" data-media="back_panel" onclick="selectMedia(this)">
+            <div class="mode-label">Back Panel</div>
+            <div class="mode-desc">1 photo</div>
+          </div>
+          <div class="mode-option" data-media="both" onclick="selectMedia(this)">
+            <div class="mode-label">Both</div>
+            <div class="mode-desc">3 hood + 1 back<br>= 4 photos</div>
+          </div>
         </div>
+        <div class="helper" id="mediaHelper">Field worker ko 3 hood photos lene padenge — back, left, right</div>
+        <div class="field" style="margin-top:8px;"><label>Target Rickshaws</label><input type="number" id="cTarget" value="100" min="1"></div>
       </div>
+
       <div class="form-section">
         <div class="form-section-title">Location</div>
         <div class="field"><label>Active Cities (comma separated)</label><textarea id="cCities" placeholder="Pune, Mumbai, Nashik"></textarea></div>
@@ -288,7 +302,7 @@ label { display: block; font-size: 10px; font-weight: 600; text-transform: upper
     </div>
     <div class="card" style="background:#FFF8E8; border-color:#F5E1A8; padding:11px 14px; margin-bottom:12px;">
       <div style="font-size:11px; color:#854F0B; line-height:1.5;">
-        <strong>How it works:</strong> Date select karo, har member ke liye campaign assign karo. Field app mein members ko same campaign milega.
+        <strong>How it works:</strong> Date select karo, har member ke liye campaign assign karo. Field app mein members ko same campaign milega — campaign ke media type ke hisaab se 1, 3 ya 4 photos lene honge.
       </div>
     </div>
     <div id="assignmentsList"><div class="spinner"></div></div>
@@ -332,7 +346,6 @@ var state = {
   editingMemberId: null
 };
 
-// ─── UTILITIES ───
 function showToast(msg, type) {
   var t = document.getElementById('toast');
   t.textContent = msg;
@@ -352,9 +365,7 @@ function api(path, options) {
   }
   return fetch(CONFIG.supabaseUrl + path, options).then(function(r) {
     if (!r.ok) {
-      return r.text().then(function(text) {
-        throw new Error('API ' + r.status + ': ' + text);
-      });
+      return r.text().then(function(text) { throw new Error('API ' + r.status + ': ' + text); });
     }
     return r.status === 204 ? null : r.json();
   });
@@ -368,55 +379,32 @@ function escapeHtml(s) {
 }
 
 function todayStr() {
-  // ✅ FIX: Return today's date in IST (not UTC)
   var now = new Date();
-  var istOffset = 5.5 * 60 * 60 * 1000; // IST = UTC + 5:30
+  var istOffset = 5.5 * 60 * 60 * 1000;
   var istDate = new Date(now.getTime() + istOffset);
   return istDate.toISOString().split('T')[0];
 }
 
-// ─── LOGIN ───
 document.getElementById('loginBtn').addEventListener('click', loginAdmin);
-document.getElementById('loginPhone').addEventListener('keypress', function(e) {
-  if (e.key === 'Enter') loginAdmin();
-});
-document.getElementById('loginPhone').addEventListener('input', function(e) {
-  this.value = this.value.replace(/\D/g, '');
-});
+document.getElementById('loginPhone').addEventListener('keypress', function(e) { if (e.key === 'Enter') loginAdmin(); });
+document.getElementById('loginPhone').addEventListener('input', function(e) { this.value = this.value.replace(/\D/g, ''); });
 
 function loginAdmin() {
   var phone = document.getElementById('loginPhone').value.trim();
-  if (phone.length !== 10) {
-    showToast('10 digit number daalo', 'error');
-    return;
-  }
+  if (phone.length !== 10) { showToast('10 digit number daalo', 'error'); return; }
   var btn = document.getElementById('loginBtn');
-  btn.disabled = true;
-  btn.textContent = 'Loading...';
-  
+  btn.disabled = true; btn.textContent = 'Loading...';
   api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*')
     .then(function(members) {
-      btn.disabled = false;
-      btn.textContent = 'Login →';
-      if (!members || members.length === 0) {
-        showToast('Number registered nahi hai', 'error');
-        return;
-      }
+      btn.disabled = false; btn.textContent = 'Login →';
+      if (!members || members.length === 0) { showToast('Number registered nahi hai', 'error'); return; }
       var member = members[0];
-      if (member.role !== 'admin' && member.role !== 'owner') {
-        showToast('Sirf admin/owner login kar sakte hain', 'error');
-        return;
-      }
+      if (member.role !== 'admin' && member.role !== 'owner') { showToast('Sirf admin/owner login kar sakte hain', 'error'); return; }
       state.admin = member;
       localStorage.setItem('prajapati_admin_phone', phone);
       enterDashboard();
     })
-    .catch(function(err) {
-      btn.disabled = false;
-      btn.textContent = 'Login →';
-      console.error(err);
-      showToast('Login error', 'error');
-    });
+    .catch(function(err) { btn.disabled = false; btn.textContent = 'Login →'; console.error(err); showToast('Login error', 'error'); });
 }
 
 function logout() {
@@ -439,23 +427,15 @@ function enterDashboard() {
   document.getElementById('userBadge').textContent = state.admin.name + ' (' + state.admin.role + ')';
   document.getElementById('logoutBtn').style.display = 'block';
   document.getElementById('adminUserSub').textContent = 'Welcome ' + state.admin.name;
-  
   document.getElementById('assignDate').value = todayStr();
   document.getElementById('photoDate').value = todayStr();
-  
   loadCampaigns();
 }
 
-// ─── TABS ───
 function switchTab(tabName) {
-  document.querySelectorAll('.tab').forEach(function(t) {
-    t.classList.toggle('active', t.dataset.tab === tabName);
-  });
-  document.querySelectorAll('.tab-content').forEach(function(c) {
-    c.classList.remove('active');
-  });
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.toggle('active', t.dataset.tab === tabName); });
+  document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
   document.getElementById('tab-' + tabName).classList.add('active');
-  
   if (tabName === 'campaigns') loadCampaigns();
   else if (tabName === 'members') loadMembers();
   else if (tabName === 'assignments') loadAssignments();
@@ -463,13 +443,12 @@ function switchTab(tabName) {
 }
 
 // ============================================================
-//  TAB 1: CAMPAIGNS
+// CAMPAIGNS — with simplified Hood/Back Panel/Both selector
 // ============================================================
 
 function loadCampaigns() {
   var listEl = document.getElementById('campaignsList');
   listEl.innerHTML = '<div class="spinner"></div>';
-  
   api('/rest/v1/trial_campaigns?select=*&order=name')
     .then(function(campaigns) {
       state.campaigns = campaigns || [];
@@ -483,28 +462,29 @@ function loadCampaigns() {
     });
 }
 
+// Helper — derive media type label from counts
+function getMediaTypeLabel(hood, back) {
+  if (hood > 0 && back > 0) return 'BOTH (3+1)';
+  if (back > 0) return 'BACK PANEL (1)';
+  if (hood > 0) return 'HOOD (3)';
+  return 'NONE';
+}
+
 function renderCampaigns() {
   var list = document.getElementById('campaignsList');
   if (state.campaigns.length === 0) {
     list.innerHTML = '<div class="empty-state">Koi campaign nahi - "+ Add New" se banao</div>';
     return;
   }
-  
   var html = '';
   state.campaigns.forEach(function(c) {
     var brandingMode = c.branding_mode || 'full';
     var brandingTag = '<span class="tag tag-' + brandingMode + '">' + brandingMode.toUpperCase() + '</span>';
-    var manualTag = c.manual_gps_enabled 
-      ? '<span class="tag tag-on">Manual GPS</span>'
-      : '<span class="tag tag-off">Real GPS</span>';
-    var ocrTag = c.auto_vehicle_enabled
-      ? '<span class="tag tag-on">Auto OCR</span>'
-      : '';
-    var activeTag = c.active 
-      ? '<span class="tag tag-success">ACTIVE</span>'
-      : '<span class="tag tag-off">INACTIVE</span>';
+    var manualTag = c.manual_gps_enabled ? '<span class="tag tag-on">Manual GPS</span>' : '<span class="tag tag-off">Real GPS</span>';
+    var ocrTag = c.auto_vehicle_enabled ? '<span class="tag tag-on">Auto OCR</span>' : '';
+    var activeTag = c.active ? '<span class="tag tag-success">ACTIVE</span>' : '<span class="tag tag-off">INACTIVE</span>';
+    var mediaTag = '<span class="tag tag-media">' + getMediaTypeLabel(c.hood_photo_count || 0, c.back_panel_photo_count || 0) + '</span>';
     var cities = Array.isArray(c.active_cities) ? c.active_cities.join(', ') : '';
-    
     html += '<div class="card">' +
       '<div class="card-header">' +
         '<div>' +
@@ -513,21 +493,47 @@ function renderCampaigns() {
         '</div>' +
         '<div class="card-key">' + escapeHtml(c.key) + '</div>' +
       '</div>' +
-      '<div class="card-meta">' +
-        'Hood: ' + (c.hood_photo_count || 3) + ' · Back: ' + (c.back_panel_photo_count || 1) + 
-        ' · Target: ' + (c.target_count || 100) + 
-        (cities ? ' · ' + escapeHtml(cities.substring(0, 60)) : '') +
-      '</div>' +
-      '<div style="margin-top:6px;">' + activeTag + brandingTag + manualTag + ocrTag + '</div>' +
+      '<div class="card-meta">Target: ' + (c.target_count || 100) + (cities ? ' · ' + escapeHtml(cities.substring(0, 60)) : '') + '</div>' +
+      '<div style="margin-top:6px;">' + activeTag + mediaTag + brandingTag + manualTag + ocrTag + '</div>' +
       '<div class="card-actions">' +
         '<button class="btn-icon" onclick="editCampaign(\'' + c.id + '\')">Edit</button>' +
-        '<button class="btn-icon" onclick="toggleCampaignActive(\'' + c.id + '\', ' + (!c.active) + ')">' + 
-          (c.active ? 'Deactivate' : 'Activate') + '</button>' +
+        '<button class="btn-icon" onclick="toggleCampaignActive(\'' + c.id + '\', ' + (!c.active) + ')">' + (c.active ? 'Deactivate' : 'Activate') + '</button>' +
         '<button class="btn-icon danger" onclick="deleteCampaign(\'' + c.id + '\', \'' + escapeHtml(c.name || c.key) + '\')">Delete</button>' +
       '</div>' +
     '</div>';
   });
   list.innerHTML = html;
+}
+
+// NEW: media type selector (replaces numeric Hood/Back inputs)
+function selectMedia(el) {
+  document.querySelectorAll('.mode-option[data-media]').forEach(function(o) { o.classList.remove('selected'); });
+  el.classList.add('selected');
+  var helper = document.getElementById('mediaHelper');
+  var t = el.dataset.media;
+  if (t === 'hood') helper.textContent = 'Field worker ko 3 hood photos lene padenge — back, left, right';
+  else if (t === 'back_panel') helper.textContent = 'Field worker ko sirf 1 back panel photo leni padegi';
+  else helper.textContent = 'Field worker ko 4 photos leni padengi — 3 hood (back/left/right) + 1 back panel';
+}
+
+function getSelectedMedia() {
+  var sel = document.querySelector('.mode-option.selected[data-media]');
+  return sel ? sel.dataset.media : 'hood';
+}
+
+function setMediaSelection(type) {
+  document.querySelectorAll('.mode-option[data-media]').forEach(function(o) {
+    o.classList.toggle('selected', o.dataset.media === type);
+  });
+  // Trigger helper update
+  var sel = document.querySelector('.mode-option.selected[data-media]');
+  if (sel) selectMedia(sel);
+}
+
+function inferMediaType(hood, back) {
+  if (hood > 0 && back > 0) return 'both';
+  if (back > 0) return 'back_panel';
+  return 'hood';
 }
 
 function openCampaignForm() {
@@ -537,8 +543,6 @@ function openCampaignForm() {
   document.getElementById('cKey').value = '';
   document.getElementById('cKey').disabled = false;
   document.getElementById('cClient').value = '';
-  document.getElementById('cHood').value = '3';
-  document.getElementById('cBack').value = '1';
   document.getElementById('cTarget').value = '100';
   document.getElementById('cCities').value = '';
   document.getElementById('cDefCity').value = '';
@@ -548,8 +552,6 @@ function openCampaignForm() {
   document.getElementById('cBrand').value = '';
   document.getElementById('cWebsite').value = '';
   document.getElementById('cAnchorAddr').value = '';
-  
-  // v3.6 — Clear new anchor picker fields
   document.getElementById('cAnchorLat').value = '';
   document.getElementById('cAnchorLng').value = '';
   document.getElementById('cAnchorPincode').value = '';
@@ -557,15 +559,17 @@ function openCampaignForm() {
   document.getElementById('cGpsRadius').value = '50';
   document.getElementById('anchorSelectedBox').style.display = 'none';
   document.getElementById('anchorPreview').style.display = 'none';
-  
-  document.querySelectorAll('.mode-option').forEach(function(el) {
+
+  setMediaSelection('hood');
+
+  document.querySelectorAll('.mode-option[data-mode]').forEach(function(el) {
     el.classList.toggle('selected', el.dataset.mode === 'full');
   });
   document.getElementById('customFields').style.display = 'none';
   document.getElementById('manualToggle').classList.remove('on');
   document.getElementById('manualFields').classList.remove('active');
   document.getElementById('autoVehicleToggle').classList.remove('on');
-  
+
   document.getElementById('campaignFormCard').classList.add('active');
   document.getElementById('campaignFormCard').scrollIntoView({behavior:'smooth'});
 }
@@ -575,8 +579,9 @@ function closeCampaignForm() {
   state.editingCampaignId = null;
 }
 
+// FIXED: scope to data-mode (branding only) so it doesn't deselect data-media
 function selectMode(el) {
-  document.querySelectorAll('.mode-option').forEach(function(o) { o.classList.remove('selected'); });
+  document.querySelectorAll('.mode-option[data-mode]').forEach(function(o) { o.classList.remove('selected'); });
   el.classList.add('selected');
   document.getElementById('customFields').style.display = el.dataset.mode === 'custom' ? 'block' : 'none';
 }
@@ -589,15 +594,12 @@ function toggleManualGps(el) {
 function editCampaign(id) {
   var c = state.campaigns.find(function(x) { return x.id === id; });
   if (!c) return;
-  
   state.editingCampaignId = id;
   document.getElementById('campaignFormTitle').textContent = 'Edit: ' + (c.name || c.key);
   document.getElementById('cName').value = c.name || '';
   document.getElementById('cKey').value = c.key || '';
   document.getElementById('cKey').disabled = true;
   document.getElementById('cClient').value = c.client_name || '';
-  document.getElementById('cHood').value = c.hood_photo_count || 3;
-  document.getElementById('cBack').value = c.back_panel_photo_count || 1;
   document.getElementById('cTarget').value = c.target_count || 100;
   document.getElementById('cCities').value = Array.isArray(c.active_cities) ? c.active_cities.join(', ') : '';
   document.getElementById('cDefCity').value = c.default_city || '';
@@ -607,14 +609,15 @@ function editCampaign(id) {
   document.getElementById('cBrand').value = c.custom_brand_name || '';
   document.getElementById('cWebsite').value = c.custom_website || '';
   document.getElementById('cAnchorAddr').value = c.anchor_address || '';
-  
-  // v3.6 — Populate anchor lat/lng/pincode/radius
   document.getElementById('cAnchorLat').value = c.anchor_lat || '';
   document.getElementById('cAnchorLng').value = c.anchor_lng || '';
   document.getElementById('cAnchorPincode').value = c.anchor_pincode || '';
   document.getElementById('cGpsRadius').value = c.gps_radius_m || 50;
-  
-  // Show selected box if anchor exists
+
+  // Infer media type from existing counts
+  var mediaType = inferMediaType(c.hood_photo_count || 0, c.back_panel_photo_count || 0);
+  setMediaSelection(mediaType);
+
   if (c.anchor_lat && c.anchor_lng && c.anchor_address) {
     document.getElementById('anchorSelectedText').textContent = c.anchor_address;
     document.getElementById('anchorSelectedBox').style.display = 'block';
@@ -623,116 +626,72 @@ function editCampaign(id) {
   }
   document.getElementById('anchorPreview').style.display = 'none';
   document.getElementById('cAnchorSearch').value = '';
-  
+
   var mode = c.branding_mode || 'full';
-  document.querySelectorAll('.mode-option').forEach(function(el) {
+  document.querySelectorAll('.mode-option[data-mode]').forEach(function(el) {
     el.classList.toggle('selected', el.dataset.mode === mode);
   });
   document.getElementById('customFields').style.display = mode === 'custom' ? 'block' : 'none';
-  
+
   var manualOn = !!c.manual_gps_enabled;
   document.getElementById('manualToggle').classList.toggle('on', manualOn);
   document.getElementById('manualFields').classList.toggle('active', manualOn);
   document.getElementById('autoVehicleToggle').classList.toggle('on', !!c.auto_vehicle_enabled);
-  
+
   document.getElementById('campaignFormCard').classList.add('active');
   document.getElementById('campaignFormCard').scrollIntoView({behavior:'smooth'});
 }
 
-// ═══════════════════════════════════════════════════════════
-// ANCHOR LOCATION PICKER (v3.6) — LocationIQ autocomplete
-// ═══════════════════════════════════════════════════════════
+// ANCHOR LOCATION PICKER (unchanged)
 var anchorSearchTimer = null;
-
 function onAnchorSearchInput() {
   var query = document.getElementById('cAnchorSearch').value.trim();
   if (anchorSearchTimer) clearTimeout(anchorSearchTimer);
-  
-  if (query.length < 3) {
-    closeAnchorDropdown();
-    return;
-  }
-  
-  // Debounce 350ms — don't spam API on every keystroke
-  anchorSearchTimer = setTimeout(function() {
-    searchAnchorLocations(query);
-  }, 350);
+  if (query.length < 3) { closeAnchorDropdown(); return; }
+  anchorSearchTimer = setTimeout(function() { searchAnchorLocations(query); }, 350);
 }
 
 function searchAnchorLocations(query) {
   var dropdown = document.getElementById('anchorDropdown');
   dropdown.innerHTML = '<div style="padding:12px; color:#888; font-size:13px;">🔍 Searching...</div>';
   dropdown.style.display = 'block';
-  
-  // LocationIQ Autocomplete API — better than search for typing UX
-  // countrycodes=in restricts to India (faster, more relevant)
-  var url = 'https://api.locationiq.com/v1/autocomplete?key=' + CONFIG.locationIqToken
-          + '&q=' + encodeURIComponent(query)
-          + '&limit=8&countrycodes=in&dedupe=1&normalizeaddress=1';
-  
-  fetch(url)
-    .then(function(r) { return r.json(); })
+  var url = 'https://api.locationiq.com/v1/autocomplete?key=' + CONFIG.locationIqToken + '&q=' + encodeURIComponent(query) + '&limit=8&countrycodes=in&dedupe=1&normalizeaddress=1';
+  fetch(url).then(function(r) { return r.json(); })
     .then(function(results) {
       if (!Array.isArray(results) || results.length === 0) {
-        dropdown.innerHTML = '<div style="padding:12px; color:#888; font-size:13px;">No results found. Try different keywords.</div>';
+        dropdown.innerHTML = '<div style="padding:12px; color:#888; font-size:13px;">No results found.</div>';
         return;
       }
-      
       dropdown.innerHTML = results.map(function(r, idx) {
         var displayName = r.display_name || '';
         var primary = (r.address && (r.address.name || r.address.road || r.address.suburb)) || displayName.split(',')[0];
         var secondary = displayName.replace(primary + ', ', '').slice(0, 80);
-        
-        return '<div class="anchor-result" onclick="selectAnchorResult(' + idx + ')" '
-             + 'style="padding:10px 12px; border-bottom:1px solid #eee; cursor:pointer;" '
-             + 'onmouseenter="this.style.background=\'#f9fafb\'" '
-             + 'onmouseleave="this.style.background=\'\'">'
-             + '<div style="font-weight:600; color:#0B1957; font-size:13px;">📍 ' + primary + '</div>'
-             + '<div style="color:#666; font-size:11px; margin-top:2px;">' + secondary + '</div>'
-             + '</div>';
+        return '<div class="anchor-result" onclick="selectAnchorResult(' + idx + ')" style="padding:10px 12px; border-bottom:1px solid #eee; cursor:pointer;" onmouseenter="this.style.background=\'#f9fafb\'" onmouseleave="this.style.background=\'\'"><div style="font-weight:600; color:#0B1957; font-size:13px;">📍 ' + primary + '</div><div style="color:#666; font-size:11px; margin-top:2px;">' + secondary + '</div></div>';
       }).join('');
-      
-      // Store results for selection
       state.anchorSearchResults = results;
     })
-    .catch(function(err) {
-      console.error('[Anchor Search] Failed:', err);
-      dropdown.innerHTML = '<div style="padding:12px; color:#dc2626; font-size:13px;">Search failed. Check internet.</div>';
-    });
+    .catch(function() { dropdown.innerHTML = '<div style="padding:12px; color:#dc2626; font-size:13px;">Search failed.</div>'; });
 }
 
 function selectAnchorResult(idx) {
   var result = state.anchorSearchResults && state.anchorSearchResults[idx];
   if (!result) return;
-  
-  var lat = parseFloat(result.lat);
-  var lng = parseFloat(result.lon);
+  var lat = parseFloat(result.lat), lng = parseFloat(result.lon);
   var address = result.display_name || '';
   var pincode = (result.address && result.address.postcode) || '';
-  
-  // Fill hidden + visible fields
   document.getElementById('cAnchorLat').value = lat.toFixed(7);
   document.getElementById('cAnchorLng').value = lng.toFixed(7);
   document.getElementById('cAnchorPincode').value = pincode;
   document.getElementById('cAnchorAddr').value = address;
-  
-  // Show selected box
   document.getElementById('anchorSelectedText').textContent = address;
   document.getElementById('anchorSelectedBox').style.display = 'block';
-  
-  // Clear search input + close dropdown
   document.getElementById('cAnchorSearch').value = '';
   closeAnchorDropdown();
-  
-  console.log('[Anchor] Selected:', { lat: lat, lng: lng, pincode: pincode, address: address });
 }
 
 function closeAnchorDropdown() {
-  var dropdown = document.getElementById('anchorDropdown');
-  if (dropdown) {
-    dropdown.style.display = 'none';
-    dropdown.innerHTML = '';
-  }
+  var d = document.getElementById('anchorDropdown');
+  if (d) { d.style.display = 'none'; d.innerHTML = ''; }
 }
 
 function clearAnchor() {
@@ -745,70 +704,50 @@ function clearAnchor() {
   document.getElementById('cAnchorSearch').focus();
 }
 
-// Generate 5 random preview points within the radius
 function previewAnchorPoints() {
   var lat = parseFloat(document.getElementById('cAnchorLat').value);
   var lng = parseFloat(document.getElementById('cAnchorLng').value);
   var radius = parseInt(document.getElementById('cGpsRadius').value) || 50;
-  
   var box = document.getElementById('anchorPreview');
-  
-  if (!lat || !lng) {
-    box.style.display = 'block';
-    box.innerHTML = '<div style="color:#dc2626;">⚠️ Pehle anchor location select karo</div>';
-    return;
-  }
-  
-  // Generate 5 random points using same algorithm as field app
+  if (!lat || !lng) { box.style.display = 'block'; box.innerHTML = '<div style="color:#dc2626;">⚠️ Pehle anchor location select karo</div>'; return; }
   var radiusDeg = radius / 111320;
   var lngScale = 1 / Math.cos(lat * Math.PI / 180);
-  
   var points = [];
   for (var i = 0; i < 5; i++) {
     var angle = Math.random() * 2 * Math.PI;
     var dist = Math.sqrt(Math.random()) * radiusDeg;
     var dLat = dist * Math.cos(angle);
     var dLng = dist * Math.sin(angle) * lngScale;
-    var pLat = lat + dLat;
-    var pLng = lng + dLng;
-    // Calculate actual meter distance for display
+    var pLat = lat + dLat, pLng = lng + dLng;
     var distM = Math.sqrt(Math.pow(dLat * 111320, 2) + Math.pow(dLng * 111320 * Math.cos(lat * Math.PI / 180), 2));
     points.push({ lat: pLat, lng: pLng, distM: distM.toFixed(1) });
   }
-  
   box.style.display = 'block';
-  box.innerHTML = '<div style="font-weight:600; color:#0B1957; margin-bottom:8px; font-family:sans-serif;">📍 5 Random Sample Points (radius ' + radius + 'm):</div>'
-                + points.map(function(p, idx) {
-                    return '<div style="padding:4px 0; border-bottom:1px dashed #eee;">'
-                         + 'Photo ' + (idx + 1) + ': <strong>' + p.lat.toFixed(6) + '°, ' + p.lng.toFixed(6) + '°</strong>'
-                         + ' <span style="color:#888;">(' + p.distM + 'm from anchor)</span>'
-                         + '</div>';
-                  }).join('')
-                + '<div style="margin-top:8px; padding-top:8px; border-top:1px solid #ddd; font-family:sans-serif; color:#16a34a; font-size:11px;">✓ Realistic variation — no two photos will be at exact same coords</div>';
+  box.innerHTML = '<div style="font-weight:600; color:#0B1957; margin-bottom:8px; font-family:sans-serif;">📍 5 Random Sample Points (radius ' + radius + 'm):</div>' + points.map(function(p, idx) { return '<div style="padding:4px 0; border-bottom:1px dashed #eee;">Photo ' + (idx + 1) + ': <strong>' + p.lat.toFixed(6) + '°, ' + p.lng.toFixed(6) + '°</strong> <span style="color:#888;">(' + p.distM + 'm)</span></div>'; }).join('');
 }
-// ═══════════════════════════════════════════════════════════
-// END ANCHOR LOCATION PICKER
-// ═══════════════════════════════════════════════════════════
 
 function saveCampaign() {
   var name = document.getElementById('cName').value.trim();
   var key = document.getElementById('cKey').value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
-  
   if (!name) { showToast('Campaign name zaroori hai', 'error'); return; }
   if (!key) { showToast('Campaign key zaroori hai', 'error'); return; }
-  
-  var selectedMode = document.querySelector('.mode-option.selected').dataset.mode;
+
+  // Derive hood/back counts from selected media type
+  var mediaType = getSelectedMedia();
+  var hoodCount = (mediaType === 'hood' || mediaType === 'both') ? 3 : 0;
+  var backCount = (mediaType === 'back_panel' || mediaType === 'both') ? 1 : 0;
+
+  var selectedMode = document.querySelector('.mode-option.selected[data-mode]').dataset.mode;
   var manualOn = document.getElementById('manualToggle').classList.contains('on');
   var autoOn = document.getElementById('autoVehicleToggle').classList.contains('on');
-  
   var citiesText = document.getElementById('cCities').value.trim();
   var citiesArr = citiesText ? citiesText.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
-  
+
   var data = {
     name: name,
     client_name: document.getElementById('cClient').value.trim() || null,
-    hood_photo_count: parseInt(document.getElementById('cHood').value) || 3,
-    back_panel_photo_count: parseInt(document.getElementById('cBack').value) || 1,
+    hood_photo_count: hoodCount,
+    back_panel_photo_count: backCount,
     target_count: parseInt(document.getElementById('cTarget').value) || 100,
     active_cities: citiesArr,
     default_city: document.getElementById('cDefCity').value.trim() || null,
@@ -827,155 +766,80 @@ function saveCampaign() {
     gps_radius_m: manualOn ? (parseInt(document.getElementById('cGpsRadius').value) || 50) : null,
     active: true
   };
-  
+
   var btn = document.getElementById('saveCampaignBtn');
-  btn.disabled = true;
-  btn.textContent = 'Saving...';
-  
+  btn.disabled = true; btn.textContent = 'Saving...';
+
   if (state.editingCampaignId) {
     fetch(CONFIG.supabaseUrl + '/rest/v1/trial_campaigns?id=eq.' + state.editingCampaignId, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': CONFIG.supabaseKey,
-        'Authorization': 'Bearer ' + CONFIG.supabaseKey,
-        'Prefer': 'return=representation'
-      },
+      headers: { 'Content-Type': 'application/json', 'apikey': CONFIG.supabaseKey, 'Authorization': 'Bearer ' + CONFIG.supabaseKey, 'Prefer': 'return=representation' },
       body: JSON.stringify(data)
     })
     .then(function(r) {
-      btn.disabled = false;
-      btn.textContent = 'Save Campaign';
+      btn.disabled = false; btn.textContent = 'Save Campaign';
       if (!r.ok) return r.text().then(function(t) { throw new Error(t); });
       showToast('Campaign updated', 'success');
-      closeCampaignForm();
-      loadCampaigns();
+      closeCampaignForm(); loadCampaigns();
     })
-    .catch(function(err) {
-      btn.disabled = false;
-      btn.textContent = 'Save Campaign';
-      console.error(err);
-      showToast('Update failed: ' + err.message, 'error');
-    });
+    .catch(function(err) { btn.disabled = false; btn.textContent = 'Save Campaign'; showToast('Update failed: ' + err.message, 'error'); });
   } else {
     data.key = key;
     fetch(CONFIG.supabaseUrl + '/rest/v1/trial_campaigns', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': CONFIG.supabaseKey,
-        'Authorization': 'Bearer ' + CONFIG.supabaseKey,
-        'Prefer': 'return=representation'
-      },
+      headers: { 'Content-Type': 'application/json', 'apikey': CONFIG.supabaseKey, 'Authorization': 'Bearer ' + CONFIG.supabaseKey, 'Prefer': 'return=representation' },
       body: JSON.stringify(data)
     })
     .then(function(r) {
-      btn.disabled = false;
-      btn.textContent = 'Save Campaign';
+      btn.disabled = false; btn.textContent = 'Save Campaign';
       if (!r.ok) return r.text().then(function(t) { throw new Error(t); });
       showToast('Campaign created', 'success');
-      closeCampaignForm();
-      loadCampaigns();
+      closeCampaignForm(); loadCampaigns();
     })
-    .catch(function(err) {
-      btn.disabled = false;
-      btn.textContent = 'Save Campaign';
-      console.error(err);
-      showToast('Create failed: ' + (err.message.indexOf('duplicate') > -1 ? 'Key already exists' : err.message), 'error');
-    });
+    .catch(function(err) { btn.disabled = false; btn.textContent = 'Save Campaign'; showToast('Create failed: ' + (err.message.indexOf('duplicate') > -1 ? 'Key already exists' : err.message), 'error'); });
   }
 }
 
 function toggleCampaignActive(id, newActive) {
   fetch(CONFIG.supabaseUrl + '/rest/v1/trial_campaigns?id=eq.' + id, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': CONFIG.supabaseKey,
-      'Authorization': 'Bearer ' + CONFIG.supabaseKey
-    },
+    headers: { 'Content-Type': 'application/json', 'apikey': CONFIG.supabaseKey, 'Authorization': 'Bearer ' + CONFIG.supabaseKey },
     body: JSON.stringify({ active: newActive })
   })
-  .then(function(r) {
-    if (!r.ok) throw new Error('Failed');
-    showToast(newActive ? 'Activated' : 'Deactivated', 'success');
-    loadCampaigns();
-  })
+  .then(function(r) { if (!r.ok) throw new Error('Failed'); showToast(newActive ? 'Activated' : 'Deactivated', 'success'); loadCampaigns(); })
   .catch(function() { showToast('Update failed', 'error'); });
 }
 
 function deleteCampaign(id, name) {
-  if (!confirm('Delete "' + name + '"?\n\nYeh permanent hai - photos remain but campaign hide ho jayega.')) return;
-  
+  if (!confirm('Delete "' + name + '"?\n\nYeh permanent hai.')) return;
   fetch(CONFIG.supabaseUrl + '/rest/v1/trial_campaigns?id=eq.' + id, {
     method: 'DELETE',
-    headers: {
-      'apikey': CONFIG.supabaseKey,
-      'Authorization': 'Bearer ' + CONFIG.supabaseKey
-    }
+    headers: { 'apikey': CONFIG.supabaseKey, 'Authorization': 'Bearer ' + CONFIG.supabaseKey }
   })
-  .then(function(r) {
-    if (!r.ok) {
-      showToast('Delete failed - photos linked. Try Deactivate instead', 'error');
-      return;
-    }
-    showToast('Campaign deleted', 'success');
-    loadCampaigns();
-  })
+  .then(function(r) { if (!r.ok) { showToast('Delete failed - photos linked. Try Deactivate', 'error'); return; } showToast('Campaign deleted', 'success'); loadCampaigns(); })
   .catch(function() { showToast('Delete failed', 'error'); });
 }
 
 // ============================================================
-//  TAB 2: TEAM MEMBERS
+// MEMBERS, ASSIGNMENTS, PHOTOS — unchanged from original
 // ============================================================
 
 function loadMembers() {
   var listEl = document.getElementById('membersList');
   listEl.innerHTML = '<div class="spinner"></div>';
-  
   api('/rest/v1/trial_team_members?select=*&order=name')
-    .then(function(members) {
-      state.members = members || [];
-      document.getElementById('membersCount').textContent = '(' + state.members.length + ')';
-      renderMembers();
-    })
-    .catch(function(err) {
-      console.error(err);
-      listEl.innerHTML = '<div class="empty-state">Load failed</div>';
-    });
+    .then(function(members) { state.members = members || []; document.getElementById('membersCount').textContent = '(' + state.members.length + ')'; renderMembers(); })
+    .catch(function() { listEl.innerHTML = '<div class="empty-state">Load failed</div>'; });
 }
 
 function renderMembers() {
   var list = document.getElementById('membersList');
-  if (state.members.length === 0) {
-    list.innerHTML = '<div class="empty-state">Koi member nahi - "+ Add Member" se banao</div>';
-    return;
-  }
-  
+  if (state.members.length === 0) { list.innerHTML = '<div class="empty-state">Koi member nahi - "+ Add Member" se banao</div>'; return; }
   var html = '';
   state.members.forEach(function(m) {
     var roleColor = m.role === 'admin' || m.role === 'owner' ? 'tag-info' : 'tag-success';
-    var activeTag = m.active 
-      ? '<span class="tag tag-success">ACTIVE</span>' 
-      : '<span class="tag tag-off">INACTIVE</span>';
-    
-    html += '<div class="card">' +
-      '<div class="card-header">' +
-        '<div>' +
-          '<div class="card-title">' + escapeHtml(m.name) + '</div>' +
-          '<div class="card-meta" style="margin-top:3px; font-family:monospace;">' + escapeHtml(m.phone) + '</div>' +
-        '</div>' +
-        '<div>' + activeTag + ' <span class="tag ' + roleColor + '">' + (m.role || 'field').toUpperCase() + '</span></div>' +
-      '</div>' +
-      '<div class="card-meta">' +
-        (m.city ? '📍 ' + escapeHtml(m.city) : '') +
-      '</div>' +
-      '<div class="card-actions">' +
-        '<button class="btn-icon" onclick="editMember(\'' + m.id + '\')">Edit</button>' +
-        '<button class="btn-icon" onclick="toggleMemberActive(\'' + m.id + '\', ' + (!m.active) + ')">' + 
-          (m.active ? 'Deactivate' : 'Activate') + '</button>' +
-      '</div>' +
-    '</div>';
+    var activeTag = m.active ? '<span class="tag tag-success">ACTIVE</span>' : '<span class="tag tag-off">INACTIVE</span>';
+    html += '<div class="card"><div class="card-header"><div><div class="card-title">' + escapeHtml(m.name) + '</div><div class="card-meta" style="margin-top:3px; font-family:monospace;">' + escapeHtml(m.phone) + '</div></div><div>' + activeTag + ' <span class="tag ' + roleColor + '">' + (m.role || 'field').toUpperCase() + '</span></div></div><div class="card-meta">' + (m.city ? '📍 ' + escapeHtml(m.city) : '') + '</div><div class="card-actions"><button class="btn-icon" onclick="editMember(\'' + m.id + '\')">Edit</button><button class="btn-icon" onclick="toggleMemberActive(\'' + m.id + '\', ' + (!m.active) + ')">' + (m.active ? 'Deactivate' : 'Activate') + '</button></div></div>';
   });
   list.innerHTML = html;
 }
@@ -1014,230 +878,108 @@ function editMember(id) {
 function saveMember() {
   var name = document.getElementById('mName').value.trim();
   var phone = document.getElementById('mPhone').value.trim();
-  
   if (!name) { showToast('Name zaroori hai', 'error'); return; }
   if (phone.length !== 10) { showToast('10 digit phone daalo', 'error'); return; }
-  
-  var data = {
-    name: name,
-    role: document.getElementById('mRole').value,
-    city: document.getElementById('mCity').value.trim() || null,
-    active: true
-  };
-  
+  var data = { name: name, role: document.getElementById('mRole').value, city: document.getElementById('mCity').value.trim() || null, active: true };
   var btn = document.getElementById('saveMemberBtn');
-  btn.disabled = true;
-  btn.textContent = 'Saving...';
-  
+  btn.disabled = true; btn.textContent = 'Saving...';
   if (state.editingMemberId) {
     fetch(CONFIG.supabaseUrl + '/rest/v1/trial_team_members?id=eq.' + state.editingMemberId, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': CONFIG.supabaseKey,
-        'Authorization': 'Bearer ' + CONFIG.supabaseKey
-      },
-      body: JSON.stringify(data)
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', 'apikey': CONFIG.supabaseKey, 'Authorization': 'Bearer ' + CONFIG.supabaseKey }, body: JSON.stringify(data)
     })
-    .then(function(r) {
-      btn.disabled = false;
-      btn.textContent = 'Save Member';
-      if (!r.ok) throw new Error('Update failed');
-      showToast('Member updated', 'success');
-      closeMemberForm();
-      loadMembers();
-    })
-    .catch(function() { 
-      btn.disabled = false;
-      btn.textContent = 'Save Member';
-      showToast('Update failed', 'error'); 
-    });
+    .then(function(r) { btn.disabled = false; btn.textContent = 'Save Member'; if (!r.ok) throw new Error('Update failed'); showToast('Member updated', 'success'); closeMemberForm(); loadMembers(); })
+    .catch(function() { btn.disabled = false; btn.textContent = 'Save Member'; showToast('Update failed', 'error'); });
   } else {
     data.phone = phone;
     fetch(CONFIG.supabaseUrl + '/rest/v1/trial_team_members', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': CONFIG.supabaseKey,
-        'Authorization': 'Bearer ' + CONFIG.supabaseKey
-      },
-      body: JSON.stringify(data)
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': CONFIG.supabaseKey, 'Authorization': 'Bearer ' + CONFIG.supabaseKey }, body: JSON.stringify(data)
     })
-    .then(function(r) {
-      btn.disabled = false;
-      btn.textContent = 'Save Member';
-      if (!r.ok) return r.text().then(function(t) { throw new Error(t); });
-      showToast('Member added', 'success');
-      closeMemberForm();
-      loadMembers();
-    })
-    .catch(function(err) { 
-      btn.disabled = false;
-      btn.textContent = 'Save Member';
-      showToast(err.message.indexOf('duplicate') > -1 ? 'Phone already exists' : 'Add failed', 'error'); 
-    });
+    .then(function(r) { btn.disabled = false; btn.textContent = 'Save Member'; if (!r.ok) return r.text().then(function(t) { throw new Error(t); }); showToast('Member added', 'success'); closeMemberForm(); loadMembers(); })
+    .catch(function(err) { btn.disabled = false; btn.textContent = 'Save Member'; showToast(err.message.indexOf('duplicate') > -1 ? 'Phone already exists' : 'Add failed', 'error'); });
   }
 }
 
 function toggleMemberActive(id, newActive) {
   fetch(CONFIG.supabaseUrl + '/rest/v1/trial_team_members?id=eq.' + id, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': CONFIG.supabaseKey,
-      'Authorization': 'Bearer ' + CONFIG.supabaseKey
-    },
-    body: JSON.stringify({ active: newActive })
+    method: 'PATCH', headers: { 'Content-Type': 'application/json', 'apikey': CONFIG.supabaseKey, 'Authorization': 'Bearer ' + CONFIG.supabaseKey }, body: JSON.stringify({ active: newActive })
   })
-  .then(function(r) {
-    if (!r.ok) throw new Error('Failed');
-    showToast(newActive ? 'Activated' : 'Deactivated', 'success');
-    loadMembers();
-  })
+  .then(function(r) { if (!r.ok) throw new Error('Failed'); showToast(newActive ? 'Activated' : 'Deactivated', 'success'); loadMembers(); })
   .catch(function() { showToast('Update failed', 'error'); });
 }
-
-// ============================================================
-//  TAB 3: DAILY ASSIGNMENTS
-// ============================================================
 
 function loadAssignments() {
   var listEl = document.getElementById('assignmentsList');
   listEl.innerHTML = '<div class="spinner"></div>';
   var date = document.getElementById('assignDate').value || todayStr();
-  
   Promise.all([
     api('/rest/v1/trial_team_members?active=eq.true&order=name&select=*'),
     api('/rest/v1/trial_campaigns?active=eq.true&order=name&select=*'),
     api('/rest/v1/trial_daily_assignments?assignment_date=eq.' + date + '&select=*')
   ])
   .then(function(results) {
-    var members = results[0] || [];
-    var campaigns = results[1] || [];
-    var assignments = results[2] || [];
-    
+    var members = results[0] || [], campaigns = results[1] || [], assignments = results[2] || [];
     var assignMap = {};
     assignments.forEach(function(a) { assignMap[a.member_phone] = a; });
-    
-    if (members.length === 0) {
-      listEl.innerHTML = '<div class="empty-state">Koi active member nahi - Tab 2 mein add karo</div>';
-      return;
-    }
-    
+    if (members.length === 0) { listEl.innerHTML = '<div class="empty-state">Koi active member nahi</div>'; return; }
     var html = '';
     members.forEach(function(m) {
       var current = assignMap[m.phone];
       var options = '<option value="">Not assigned</option>';
       campaigns.forEach(function(c) {
+        var label = c.name || c.key;
+        var mediaInfo = ' [' + getMediaTypeLabel(c.hood_photo_count || 0, c.back_panel_photo_count || 0) + ']';
         var sel = current && current.campaign_key === c.key ? ' selected' : '';
-        options += '<option value="' + escapeHtml(c.key) + '"' + sel + '>' + escapeHtml(c.name || c.key) + '</option>';
+        options += '<option value="' + escapeHtml(c.key) + '"' + sel + '>' + escapeHtml(label + mediaInfo) + '</option>';
       });
-      
-      html += '<div class="assign-row">' +
-        '<div>' +
-          '<div class="member-name">' + escapeHtml(m.name) + '</div>' +
-          '<div class="member-phone">' + escapeHtml(m.phone) + '</div>' +
-        '</div>' +
-        '<select onchange="saveAssignment(\'' + m.phone + '\', this.value, \'' + date + '\')">' + options + '</select>' +
-        '<div style="font-size:10px; color:#888; min-width:60px; text-align:right;">' + 
-          (current ? '✓ Saved' : '-') + 
-        '</div>' +
-      '</div>';
+      html += '<div class="assign-row"><div><div class="member-name">' + escapeHtml(m.name) + '</div><div class="member-phone">' + escapeHtml(m.phone) + '</div></div><select onchange="saveAssignment(\'' + m.phone + '\', this.value, \'' + date + '\')">' + options + '</select><div style="font-size:10px; color:#888; min-width:60px; text-align:right;">' + (current ? '✓ Saved' : '-') + '</div></div>';
     });
     listEl.innerHTML = html;
   })
-  .catch(function(err) {
-    console.error(err);
-    listEl.innerHTML = '<div class="empty-state">Load failed</div>';
-  });
+  .catch(function() { listEl.innerHTML = '<div class="empty-state">Load failed</div>'; });
 }
 
 function saveAssignment(phone, campaignKey, date) {
   if (!campaignKey) {
     fetch(CONFIG.supabaseUrl + '/rest/v1/trial_daily_assignments?member_phone=eq.' + phone + '&assignment_date=eq.' + date, {
-      method: 'DELETE',
-      headers: {
-        'apikey': CONFIG.supabaseKey,
-        'Authorization': 'Bearer ' + CONFIG.supabaseKey
-      }
+      method: 'DELETE', headers: { 'apikey': CONFIG.supabaseKey, 'Authorization': 'Bearer ' + CONFIG.supabaseKey }
     })
-    .then(function() {
-      showToast('Assignment removed', 'success');
-      loadAssignments();
-    })
+    .then(function() { showToast('Assignment removed', 'success'); loadAssignments(); })
     .catch(function() { showToast('Failed', 'error'); });
     return;
   }
-  
   fetch(CONFIG.supabaseUrl + '/rest/v1/trial_daily_assignments?on_conflict=member_phone,assignment_date', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': CONFIG.supabaseKey,
-      'Authorization': 'Bearer ' + CONFIG.supabaseKey,
-      'Prefer': 'resolution=merge-duplicates,return=minimal'
-    },
-    body: JSON.stringify({
-      member_phone: phone,
-      campaign_key: campaignKey,
-      assignment_date: date,
-      created_by: state.admin.phone
-    })
+    headers: { 'Content-Type': 'application/json', 'apikey': CONFIG.supabaseKey, 'Authorization': 'Bearer ' + CONFIG.supabaseKey, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({ member_phone: phone, campaign_key: campaignKey, assignment_date: date, created_by: state.admin.phone })
   })
-  .then(function(r) {
-    if (!r.ok) throw new Error('Failed');
-    showToast('Assigned', 'success');
-    loadAssignments();
-  })
+  .then(function(r) { if (!r.ok) throw new Error('Failed'); showToast('Assigned', 'success'); loadAssignments(); })
   .catch(function() { showToast('Save failed', 'error'); });
 }
 
-// ============================================================
-//  TAB 4: PHOTOS BROWSER  ← FIXED: photo_url → public_url
-// ============================================================
-
 function initPhotosTab() {
-  var campSel = document.getElementById('photoCampaign');
-  var memSel = document.getElementById('photoMember');
-  
+  var campSel = document.getElementById('photoCampaign'), memSel = document.getElementById('photoMember');
   campSel.innerHTML = '<option value="">All Campaigns</option>';
-  state.campaigns.forEach(function(c) {
-    campSel.innerHTML += '<option value="' + escapeHtml(c.key) + '">' + escapeHtml(c.name || c.key) + '</option>';
-  });
-  
+  state.campaigns.forEach(function(c) { campSel.innerHTML += '<option value="' + escapeHtml(c.key) + '">' + escapeHtml(c.name || c.key) + '</option>'; });
   if (state.members.length === 0) {
-    api('/rest/v1/trial_team_members?select=phone,name&order=name')
-      .then(function(members) {
-        memSel.innerHTML = '<option value="">All Members</option>';
-        members.forEach(function(m) {
-          memSel.innerHTML += '<option value="' + escapeHtml(m.phone) + '">' + escapeHtml(m.name) + '</option>';
-        });
-      });
+    api('/rest/v1/trial_team_members?select=phone,name&order=name').then(function(members) {
+      memSel.innerHTML = '<option value="">All Members</option>';
+      members.forEach(function(m) { memSel.innerHTML += '<option value="' + escapeHtml(m.phone) + '">' + escapeHtml(m.name) + '</option>'; });
+    });
   } else {
     memSel.innerHTML = '<option value="">All Members</option>';
-    state.members.forEach(function(m) {
-      memSel.innerHTML += '<option value="' + escapeHtml(m.phone) + '">' + escapeHtml(m.name) + '</option>';
-    });
+    state.members.forEach(function(m) { memSel.innerHTML += '<option value="' + escapeHtml(m.phone) + '">' + escapeHtml(m.name) + '</option>'; });
   }
-  
   loadPhotos();
 }
 
 function loadPhotos() {
   var listEl = document.getElementById('photosList');
   listEl.innerHTML = '<div class="spinner"></div>';
-  
   var date = document.getElementById('photoDate').value;
   var campaign = document.getElementById('photoCampaign').value;
   var member = document.getElementById('photoMember').value;
-  
   var qs = '?select=*&order=captured_at.desc&limit=200';
   if (date) {
-    // ✅ FIX: IST timezone handling
-    // User selects "2026-05-03" in IST. Database stores in UTC.
-    // IST midnight 2026-05-03 00:00 = UTC 2026-05-02 18:30
-    // IST end-of-day 2026-05-03 23:59 = UTC 2026-05-03 18:29
-    // We must convert IST date range to UTC for accurate filtering
     var istStartLocal = new Date(date + 'T00:00:00+05:30');
     var istEndLocal = new Date(date + 'T23:59:59+05:30');
     qs += '&captured_at=gte.' + istStartLocal.toISOString();
@@ -1245,66 +987,32 @@ function loadPhotos() {
   }
   if (campaign) qs += '&campaign_key=eq.' + campaign;
   if (member) qs += '&member_phone=eq.' + member;
-  
   api('/rest/v1/trial_photos' + qs)
     .then(function(photos) {
       photos = photos || [];
-      
       var statsEl = document.getElementById('photoStats');
       var uniqueVehicles = {};
       photos.forEach(function(p) { if (p.vehicle_number) uniqueVehicles[p.vehicle_number] = true; });
-      
-      statsEl.innerHTML = 
-        '<div class="stat-box"><div class="label">Photos</div><div class="value">' + photos.length + '</div></div>' +
-        '<div class="stat-box"><div class="label">Vehicles</div><div class="value">' + Object.keys(uniqueVehicles).length + '</div></div>' +
-        '<div class="stat-box"><div class="label">Hood</div><div class="value">' + photos.filter(function(p){return p.mode==='hood';}).length + '</div></div>' +
-        '<div class="stat-box"><div class="label">Back Panel</div><div class="value">' + photos.filter(function(p){return p.mode==='back_panel';}).length + '</div></div>';
-      
-      if (photos.length === 0) {
-        listEl.innerHTML = '<div class="empty-state">Selected filter ke liye photos nahi mile</div>';
-        return;
-      }
-      
+      statsEl.innerHTML = '<div class="stat-box"><div class="label">Photos</div><div class="value">' + photos.length + '</div></div><div class="stat-box"><div class="label">Vehicles</div><div class="value">' + Object.keys(uniqueVehicles).length + '</div></div><div class="stat-box"><div class="label">Hood</div><div class="value">' + photos.filter(function(p){return p.mode==='hood';}).length + '</div></div><div class="stat-box"><div class="label">Back Panel</div><div class="value">' + photos.filter(function(p){return p.mode==='back_panel';}).length + '</div></div>';
+      if (photos.length === 0) { listEl.innerHTML = '<div class="empty-state">No photos found</div>'; return; }
       var html = '<div class="photos-grid">';
       photos.forEach(function(p) {
-        // ✅ FIX: Force IST display for time
         var time = p.captured_at ? new Date(p.captured_at).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', timeZone: 'Asia/Kolkata'}) : '';
         var imgUrl = p.public_url || '';
-        html += '<div class="photo-item" onclick="openPhotoModal(\'' + escapeHtml(imgUrl) + '\')">' +
-          '<img class="photo-img" src="' + escapeHtml(imgUrl) + '" loading="lazy" alt="">' +
-          '<div class="photo-meta">' +
-            '<div class="vehicle">' + escapeHtml(p.vehicle_number || '-') + '</div>' +
-            '<div class="info">' + escapeHtml(p.mode || '') + ' · ' + time + '</div>' +
-            '<div class="info">' + escapeHtml((p.address || '').substring(0, 40)) + '</div>' +
-          '</div>' +
-        '</div>';
+        html += '<div class="photo-item" onclick="openPhotoModal(\'' + escapeHtml(imgUrl) + '\')"><img class="photo-img" src="' + escapeHtml(imgUrl) + '" loading="lazy" alt=""><div class="photo-meta"><div class="vehicle">' + escapeHtml(p.vehicle_number || '-') + '</div><div class="info">' + escapeHtml(p.mode || '') + ' · ' + time + '</div><div class="info">' + escapeHtml((p.address || '').substring(0, 40)) + '</div></div></div>';
       });
       html += '</div>';
       listEl.innerHTML = html;
     })
-    .catch(function(err) {
-      console.error(err);
-      listEl.innerHTML = '<div class="empty-state">Load failed</div>';
-    });
+    .catch(function() { listEl.innerHTML = '<div class="empty-state">Load failed</div>'; });
 }
 
-function openPhotoModal(url) {
-  if (!url) return;
-  document.getElementById('photoModalImg').src = url;
-  document.getElementById('photoModal').classList.add('active');
-}
+function openPhotoModal(url) { if (!url) return; document.getElementById('photoModalImg').src = url; document.getElementById('photoModal').classList.add('active'); }
+function closePhotoModal() { document.getElementById('photoModal').classList.remove('active'); document.getElementById('photoModalImg').src = ''; }
 
-function closePhotoModal() {
-  document.getElementById('photoModal').classList.remove('active');
-  document.getElementById('photoModalImg').src = '';
-}
-
-// ─── AUTO LOGIN ON PAGE LOAD ───
 document.addEventListener('DOMContentLoaded', function() {
   var saved = localStorage.getItem('prajapati_admin_phone');
-  if (saved && saved.length === 10) {
-    document.getElementById('loginPhone').value = saved;
-  }
+  if (saved && saved.length === 10) document.getElementById('loginPhone').value = saved;
 });
 </script>
 </body>
