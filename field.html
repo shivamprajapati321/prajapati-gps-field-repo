@@ -113,6 +113,40 @@ button,input{font-family:inherit}input{font-size:16px}
 .flash .pl{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;letter-spacing:2px;background:rgba(255,255,255,.18);padding:7px 22px;border-radius:8px;margin-bottom:12px}
 .flash .meta{font-size:13px;opacity:.92;margin-bottom:6px}
 .flash .nx{font-size:11px;opacity:.85;margin-top:6px}
+
+/* In-app camera screen */
+.cam-modal{position:fixed;inset:0;background:#000;z-index:600;display:none;flex-direction:column}
+.cam-modal.show{display:flex}
+.cam-feed{flex:1;width:100%;height:100%;object-fit:cover;background:#000}
+.cam-top{position:absolute;top:0;left:0;right:0;padding:14px 16px;padding-top:max(14px,env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:center;background:linear-gradient(180deg,rgba(0,0,0,.6) 0%,transparent 100%);z-index:2;color:#fff}
+.cam-cancel{background:rgba(0,0,0,.5);color:#fff;border:1px solid rgba(255,255,255,.3);width:36px;height:36px;border-radius:50%;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.cam-slot{font-size:13px;font-weight:600;background:rgba(0,0,0,.55);padding:6px 14px;border-radius:99px;letter-spacing:.4px}
+.cam-gps{font-size:11px;font-weight:600;background:rgba(16,185,129,.9);padding:5px 11px;border-radius:99px;display:flex;align-items:center;gap:5px}
+.cam-gps.warn{background:rgba(245,158,11,.9)}
+.cam-gps.err{background:rgba(239,68,68,.9)}
+.cam-gps .live-d{width:6px;height:6px;background:#fff;border-radius:50%;animation:lp 1.5s infinite}
+/* Live stamp preview at bottom of camera */
+.cam-stamp{position:absolute;left:0;right:0;bottom:108px;height:18%;min-height:110px;background:rgba(10,14,26,.85);padding:10px 12px;display:flex;gap:10px;color:#fff;z-index:2}
+.cam-stamp .map{aspect-ratio:1/1;height:100%;background:#7AA070;border-radius:3px;position:relative;flex-shrink:0;overflow:hidden}
+.cam-stamp .map::before,.cam-stamp .map::after{content:"";position:absolute;background:#D8D4C0}
+.cam-stamp .map::before{top:40%;left:0;right:0;height:6%}
+.cam-stamp .map::after{top:0;left:45%;bottom:0;width:4%}
+.cam-stamp .pin{position:absolute;left:50%;top:42%;transform:translateX(-50%);width:32%;height:38%;background:#DB4437;clip-path:path("M 50 0 A 50 50 0 1 1 49.99 0 L 50 100 Z");border-radius:50% 50% 50% 50%/40% 40% 60% 60%}
+.cam-stamp .pin{width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-top:18px solid #DB4437;left:50%;top:35%;transform:translateX(-50%);background:none;clip-path:none}
+.cam-stamp .pin::after{content:"";position:absolute;top:-22px;left:-7px;width:14px;height:14px;border-radius:50%;background:#DB4437;border:3px solid #DB4437}
+.cam-stamp .pin::before{content:"";position:absolute;top:-15px;left:-3px;width:6px;height:6px;border-radius:50%;background:#fff;z-index:2}
+.cam-stamp .glabel{position:absolute;left:4px;bottom:3px;font-size:9px;font-weight:700;color:#fff;letter-spacing:.5px;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.cam-stamp .info{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.cam-stamp .city{font-size:14px;font-weight:700;letter-spacing:.2px;display:flex;align-items:center;gap:6px}
+.cam-stamp .flag{display:inline-block;width:14px;height:9px;background:linear-gradient(180deg,#FF9933 33%,#fff 33% 66%,#138808 66%);border-radius:1px;flex-shrink:0}
+.cam-stamp .addr{font-size:10px;line-height:1.3;opacity:.95;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cam-stamp .latlng{font-size:10px;font-weight:500;font-family:'JetBrains Mono',monospace;opacity:.95}
+.cam-stamp .dt{font-size:9.5px;opacity:.85}
+.cam-shutter{position:absolute;left:50%;bottom:24px;bottom:max(24px,env(safe-area-inset-bottom));transform:translateX(-50%);width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.18);border:3px solid rgba(255,255,255,.85);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:3;transition:.15s}
+.cam-shutter:active{transform:translateX(-50%) scale(.92)}
+.cam-shutter::after{content:"";width:56px;height:56px;border-radius:50%;background:#fff;transition:.15s}
+.cam-shutter:disabled{opacity:.4;cursor:not-allowed}
+.cam-shutter:disabled::after{background:#bbb}
 </style>
 </head>
 <body>
@@ -143,6 +177,29 @@ button,input{font-family:inherit}input{font-size:16px}
 <div class="toast" id="toast"></div>
 <div class="overlay" id="overlay"><div class="ring"></div><p id="overlay-text">Working…</p></div>
 <div class="flash" id="flash"><div class="bc">✓</div><h2 id="flash-title">Vehicle Saved!</h2><div class="pl" id="flash-plate">—</div><div class="meta" id="flash-meta"></div><div class="nx">Ready for next vehicle…</div></div>
+
+<!-- In-app camera with live GPS stamp preview -->
+<div class="cam-modal" id="cam-modal">
+  <video class="cam-feed" id="cam-feed" autoplay playsinline muted></video>
+  <div class="cam-top">
+    <button class="cam-cancel" onclick="closeInAppCamera()">✕</button>
+    <span class="cam-slot" id="cam-slot-label">—</span>
+    <span class="cam-gps warn" id="cam-gps-chip"><span class="live-d"></span><span id="cam-gps-txt">Locating…</span></span>
+  </div>
+  <div class="cam-stamp" id="cam-stamp">
+    <div class="map">
+      <div class="pin"></div>
+      <div class="glabel">Google</div>
+    </div>
+    <div class="info">
+      <div class="city" id="cam-stamp-city">— <span class="flag"></span></div>
+      <div class="addr" id="cam-stamp-addr">Getting address…</div>
+      <div class="latlng" id="cam-stamp-latlng">Lat — Long —</div>
+      <div class="dt" id="cam-stamp-dt">—</div>
+    </div>
+  </div>
+  <button class="cam-shutter" id="cam-shutter" onclick="captureFromInAppCamera()" disabled aria-label="Capture"></button>
+</div>
 
 <script>
 "use strict";
@@ -807,8 +864,146 @@ window.capturePhoto = function(key){
   }
   touchActivity();
   state._capturingKey = key;
-  $('cam-input').click();
+  openInAppCamera(key);
 };
+
+// ─── IN-APP CAMERA with live GPS stamp preview ───
+var camStream = null;
+var camStampTimer = null;
+
+function openInAppCamera(key){
+  var slot = state.slots.find(function(s){ return s.key === key; });
+  $('cam-slot-label').textContent = slot ? slot.label : 'Capture';
+  $('cam-modal').classList.add('show');
+  $('cam-shutter').disabled = true;
+
+  // Start live stamp preview (updates every 1.5 sec with current GPS + time)
+  updateCamStampPreview();
+  camStampTimer = setInterval(updateCamStampPreview, 1500);
+
+  // Request back camera with high resolution
+  navigator.mediaDevices.getUserMedia({
+    video: {
+      facingMode: { ideal: 'environment' },
+      width: { ideal: 1920 },
+      height: { ideal: 1440 }
+    },
+    audio: false
+  }).then(function(stream){
+    camStream = stream;
+    var v = $('cam-feed');
+    v.srcObject = stream;
+    v.onloadedmetadata = function(){
+      v.play();
+      $('cam-shutter').disabled = false;
+    };
+  }).catch(function(err){
+    console.error('Camera open failed:', err);
+    toast('Camera permission denied — falling back', 'error');
+    closeInAppCamera();
+    // Fallback to native file input
+    $('cam-input').click();
+  });
+}
+
+function updateCamStampPreview(){
+  // GPS chip top-right
+  var chip = $('cam-gps-chip');
+  var chipTxt = $('cam-gps-txt');
+  if (state.gps.lat != null && state.gps.lng != null){
+    chip.className = 'cam-gps';
+    chipTxt.textContent = '±' + Math.round(state.gps.accuracy || 0) + 'm';
+  } else {
+    chip.className = 'cam-gps warn';
+    chipTxt.textContent = 'Locating…';
+  }
+
+  // Live stamp text
+  var a = state.gps.addressObj || {};
+  var city = a.city || a.town || a.village || a.suburb || a.county || '—';
+  var stateName = a.state || '';
+  var country = a.country || 'India';
+  var cityLine = [city, stateName, country].filter(Boolean).join(', ');
+  $('cam-stamp-city').innerHTML = escapeHtml(cityLine) + ' <span class="flag"></span>';
+
+  var addr = state.gps.address || 'Getting address…';
+  if (a.postcode && addr.indexOf(a.postcode) === -1) addr += ', ' + a.postcode;
+  $('cam-stamp-addr').textContent = addr;
+
+  var lat = state.gps.lat ? state.gps.lat.toFixed(6) : '—';
+  var lng = state.gps.lng ? state.gps.lng.toFixed(6) : '—';
+  $('cam-stamp-latlng').textContent = 'Lat ' + lat + '°  Long ' + lng + '°';
+
+  var now = new Date();
+  var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var dayName = days[now.getDay()];
+  var dd = String(now.getDate()).padStart(2,'0');
+  var mm = String(now.getMonth()+1).padStart(2,'0');
+  var yyyy = now.getFullYear();
+  var hh = now.getHours();
+  var min = String(now.getMinutes()).padStart(2,'0');
+  var ampm = hh >= 12 ? 'PM' : 'AM';
+  hh = ((hh + 11) % 12) + 1;
+  $('cam-stamp-dt').textContent = dayName + ', ' + dd + '/' + mm + '/' + yyyy + ' ' + String(hh).padStart(2,'0') + ':' + min + ' ' + ampm;
+}
+
+function captureFromInAppCamera(){
+  var v = $('cam-feed');
+  if (!v.videoWidth || !v.videoHeight){ toast('Camera not ready','warn'); return; }
+  $('cam-shutter').disabled = true;
+
+  // Capture frame from video stream
+  var canvas = document.createElement('canvas');
+  canvas.width = v.videoWidth;
+  canvas.height = v.videoHeight;
+  canvas.getContext('2d').drawImage(v, 0, 0, canvas.width, canvas.height);
+
+  canvas.toBlob(function(blob){
+    if (!blob){ toast('Capture failed','error'); $('cam-shutter').disabled = false; return; }
+    var capturedFile = new File([blob], 'capture-'+Date.now()+'.jpg', { type: 'image/jpeg' });
+    closeInAppCamera();
+    processCapturedFile(capturedFile);
+  }, 'image/jpeg', 0.92);
+}
+
+function closeInAppCamera(){
+  $('cam-modal').classList.remove('show');
+  if (camStream){
+    camStream.getTracks().forEach(function(t){ try{ t.stop(); } catch(e){} });
+    camStream = null;
+  }
+  if (camStampTimer){ clearInterval(camStampTimer); camStampTimer = null; }
+  var v = $('cam-feed');
+  if (v.srcObject){ v.srcObject = null; }
+}
+
+// Shared post-capture pipeline (called from in-app camera AND fallback file input)
+function processCapturedFile(file){
+  var key = state._capturingKey;
+  loader(true, 'Fresh GPS lock…');
+  ensureFreshGps().then(function(){
+    loader(true, 'Stamping GPS…');
+    return stampGps(file);
+  }).then(function(stamped){
+    loader(false);
+    state.photos[key] = { blob: stamped.blob, previewUrl: URL.createObjectURL(stamped.blob), originalBlob: file, _queued: false };
+    renderPhotoGrid();
+
+    saveToGallery(stamped.blob, key);
+
+    var firstKey = state.slots.find(function(s){ return s.mode === 'hood'; });
+    var primaryKey = firstKey ? firstKey.key : (state.slots[0] && state.slots[0].key);
+    if (key === primaryKey && !state.ocrAttempted && !state.vehicleNumber){
+      state.ocrAttempted = true;
+      runPlateOcr(file);
+    }
+
+    queuePhotoWhenReady(key);
+
+    var allFilled = state.slots.every(function(s){ return state.photos[s.key] || state.serverPhotoUrls[s.key]; });
+    if (allFilled){ setTimeout(finishVehicleSession, 600); }
+  }).catch(function(err){ loader(false); console.error(err); toast('Stamp error','error'); });
+}
 
 window.endSession = function(){
   if (Object.keys(state.photos).length > 0){
@@ -836,36 +1031,7 @@ window.endSession = function(){
 $('cam-input').addEventListener('change', function(e){
   var file = e.target.files[0];
   if (!file) return;
-  var key = state._capturingKey;
-
-  loader(true, 'Fresh GPS lock…');
-  // Force a fresh GPS reading (maximumAge:0) for 100% accuracy on this photo
-  ensureFreshGps().then(function(){
-    loader(true, 'Stamping GPS…');
-    return stampGps(file);
-  }).then(function(stamped){
-    loader(false);
-    state.photos[key] = { blob: stamped.blob, previewUrl: URL.createObjectURL(stamped.blob), originalBlob: file, _queued: false };
-    renderPhotoGrid();
-
-    // Save to phone gallery silently — uses FS API folder, falls back to Downloads
-    saveToGallery(stamped.blob, key);
-
-    // First captured photo of session → run OCR
-    var firstKey = state.slots.find(function(s){ return s.mode === 'hood'; });
-    var primaryKey = firstKey ? firstKey.key : (state.slots[0] && state.slots[0].key);
-    if (key === primaryKey && !state.ocrAttempted && !state.vehicleNumber){
-      state.ocrAttempted = true;
-      runPlateOcr(file);
-    }
-
-    // Queue silently — but wait for OCR if it's running so folder gets correct vehicle_number
-    queuePhotoWhenReady(key);
-
-    // Check if all slots filled → auto-advance
-    var allFilled = state.slots.every(function(s){ return state.photos[s.key] || state.serverPhotoUrls[s.key]; });
-    if (allFilled){ setTimeout(finishVehicleSession, 600); }
-  }).catch(function(err){ loader(false); console.error(err); toast('Stamp error','error'); });
+  processCapturedFile(file);
   e.target.value = '';
 });
 
@@ -936,8 +1102,8 @@ function stampGps(file){
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
     var W = canvas.width, H = canvas.height;
-    var oH = Math.round(H * 0.22);
-    var oY = H - oH;
+    var oH = Math.round(H * 0.18);
+    var oY = 0;
     var pad = Math.round(oH * 0.08);
     var mS = oH - 2*pad;
 
