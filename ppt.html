@@ -1,0 +1,1349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prajapati GPS — PPT Generator v4</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<script>
+window.PPTX_LIB_LOADED = false;
+function loadPptxLib() {
+  return new Promise((resolve, reject) => {
+    const cdnUrls = [
+      'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js',
+      'https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js',
+      'https://unpkg.com/pptxgenjs@3.12.0/dist/pptxgen.bundle.js'
+    ];
+    let attempt = 0;
+    function tryNext() {
+      if (attempt >= cdnUrls.length) { reject(new Error('All CDNs failed')); return; }
+      const url = cdnUrls[attempt++];
+      console.log('[Library] Trying:', url);
+      const script = document.createElement('script');
+      script.src = url;
+      script.async = false;
+      script.onload = () => {
+        const lib = window.PptxGenJS || window.pptxgen || window.PptxGen;
+        if (lib) { window.PPTX_LIB_LOADED = true; window.PptxGenJS = lib; resolve(lib); }
+        else { script.remove(); tryNext(); }
+      };
+      script.onerror = () => { script.remove(); tryNext(); };
+      document.head.appendChild(script);
+    }
+    tryNext();
+  });
+}
+const pptxLibPromise = loadPptxLib();
+</script>
+
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background: #f5f6f8;
+  color: #0B1957;
+  min-height: 100vh;
+  padding: 24px;
+}
+.container { max-width: 1200px; margin: 0 auto; }
+
+.header {
+  background: #fff;
+  border-radius: 16px;
+  padding: 28px 32px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.header-left h1 { font-size: 24px; font-weight: 700; color: #0B1957; margin-bottom: 6px; }
+.header-left p { font-size: 14px; color: #6b7280; }
+
+.lib-status {
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+}
+.lib-status.loading { background: #fef3c7; color: #92400e; }
+.lib-status.ready { background: #d1fae5; color: #065f46; }
+.lib-status.error { background: #fee2e2; color: #991b1b; cursor: pointer; }
+
+.filters, .preview {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px 28px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.filters h2, .preview-header h2 {
+  font-size: 14px; font-weight: 600; color: #6b7280;
+  text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 16px;
+}
+.filter-row {
+  display: grid; grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 16px; margin-bottom: 16px;
+}
+.filter-group label {
+  display: block; font-size: 12px; font-weight: 600;
+  color: #6b7280; margin-bottom: 6px;
+}
+.filter-group select, .filter-group input {
+  width: 100%; padding: 10px 12px; font-size: 14px;
+  border: 1px solid #e5e7eb; border-radius: 8px;
+  background: #fff; font-family: inherit; color: #0B1957; outline: none;
+}
+.filter-group select:focus, .filter-group input:focus { border-color: #26d0ce; }
+
+.btn {
+  padding: 12px 24px; font-size: 14px; font-weight: 600;
+  border: none; border-radius: 8px; cursor: pointer;
+  font-family: inherit; transition: all 0.15s;
+}
+.btn-primary { background: #0B1957; color: #fff; }
+.btn-primary:hover { background: #1a2980; }
+.btn-primary:disabled { background: #cbd5e1; cursor: not-allowed; }
+.btn-accent { background: #26d0ce; color: #0B1957; }
+.btn-accent:hover { background: #1bbab8; }
+.btn-accent:disabled { background: #cbd5e1; cursor: not-allowed; color: #6b7280; }
+
+.preview-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.preview-stats {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 12px; margin-bottom: 20px;
+}
+.stat-card { background: #f8fafc; border-radius: 12px; padding: 16px 18px; }
+.stat-card .label {
+  font-size: 11px; color: #6b7280; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;
+}
+.stat-card .value { font-size: 24px; font-weight: 700; color: #0B1957; }
+.stat-card .value.accent { color: #26d0ce; }
+
+.vehicle-list {
+  max-height: 400px; overflow-y: auto;
+  border: 1px solid #e5e7eb; border-radius: 12px;
+}
+.vehicle-row {
+  display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+  padding: 12px 16px; border-bottom: 1px solid #f1f5f9;
+  font-size: 13px; align-items: center;
+}
+.vehicle-row:last-child { border-bottom: none; }
+.vehicle-row.header {
+  background: #f8fafc; font-weight: 600; color: #6b7280;
+  text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;
+}
+.vehicle-row .vh-num { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+.mode-pill {
+  display: inline-block; padding: 3px 10px; border-radius: 12px;
+  font-size: 11px; font-weight: 600;
+}
+.mode-pill.hood { background: #dbeafe; color: #1e40af; }
+.mode-pill.back_panel { background: #fef3c7; color: #92400e; }
+
+.empty-state { padding: 40px; text-align: center; color: #9ca3af; font-size: 13px; }
+
+.branding-control {
+  margin-top: 16px; padding: 16px 20px;
+  background: #f0fdfa; border-left: 4px solid #26d0ce; border-radius: 8px;
+}
+.branding-control h3 {
+  font-size: 13px; font-weight: 600; color: #134e4a;
+  margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.branding-options {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px; margin-bottom: 10px;
+}
+.branding-option {
+  padding: 12px 14px; background: #fff; border: 2px solid #e5e7eb;
+  border-radius: 8px; cursor: pointer; transition: all 0.15s;
+}
+.branding-option:hover { border-color: #26d0ce; }
+.branding-option.selected { border-color: #0B1957; background: #f0fdfa; }
+.branding-option .opt-title { font-size: 13px; font-weight: 700; color: #0B1957; margin-bottom: 2px; }
+.branding-option .opt-desc { font-size: 11px; color: #6b7280; line-height: 1.4; }
+.branding-info {
+  font-size: 12px; color: #134e4a; margin-top: 8px;
+  padding-top: 8px; border-top: 1px solid #99f6e4;
+}
+.branding-info strong { font-weight: 600; }
+.saved-tag, .override-tag {
+  display: inline-block; padding: 2px 8px; border-radius: 10px;
+  font-size: 10px; font-weight: 600; margin-left: 8px;
+}
+.saved-tag { background: #d1fae5; color: #065f46; }
+.override-tag { background: #fef3c7; color: #92400e; }
+
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(11, 25, 87, 0.6);
+  display: none; align-items: center; justify-content: center; z-index: 1000;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: #fff; border-radius: 16px; padding: 32px;
+  min-width: 400px; max-width: 500px;
+}
+.modal h3 { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+.modal .progress-bar {
+  width: 100%; height: 8px; background: #f1f5f9;
+  border-radius: 4px; overflow: hidden; margin-bottom: 12px;
+}
+.modal .progress-fill {
+  height: 100%; background: #26d0ce; width: 0%;
+  transition: width 0.3s;
+}
+.modal .progress-text { font-size: 13px; color: #6b7280; }
+
+.toast {
+  position: fixed; top: 24px; right: 24px; background: #fff;
+  border-radius: 12px; padding: 14px 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  font-size: 14px; font-weight: 500; display: none;
+  z-index: 1001; max-width: 400px;
+}
+.toast.show { display: block; }
+.toast.success { background: #10b981; color: #fff; }
+.toast.error { background: #ef4444; color: #fff; }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="header">
+    <div class="header-left">
+      <h1>📊 PPT Report Generator</h1>
+      <p>Professional vehicle branding photo report</p>
+    </div>
+    <div class="lib-status loading" id="libStatus">⏳ Loading library...</div>
+  </div>
+
+  <div class="filters">
+    <h2>Filters</h2>
+    <div class="filter-row">
+      <div class="filter-group">
+        <label>Campaign</label>
+        <select id="campaignFilter">
+          <option value="">Loading campaigns...</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>City (optional)</label>
+        <select id="cityFilter">
+          <option value="">All cities</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>From Date</label>
+        <input type="date" id="fromDate">
+      </div>
+      <div class="filter-group">
+        <label>To Date</label>
+        <input type="date" id="toDate">
+      </div>
+      <div class="filter-group">
+        <label>Mode</label>
+        <select id="modeFilter">
+          <option value="all">All Modes</option>
+          <option value="hood">Hood Only</option>
+          <option value="back_panel">Back Panel Only</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="loadVehicles()">Load Vehicles</button>
+    
+    <div class="branding-control" id="brandingControl" style="display: none;">
+      <h3>🎨 Branding Mode (Override)</h3>
+      <div class="branding-options">
+        <div class="branding-option" data-brand="full" onclick="selectBranding('full')">
+          <div class="opt-title">🏢 Full Prajapati</div>
+          <div class="opt-desc">Direct client · With Prajapati logo + footer</div>
+        </div>
+        <div class="branding-option" data-brand="clean" onclick="selectBranding('clean')">
+          <div class="opt-title">🤝 White Label</div>
+          <div class="opt-desc">Agency client · No branding</div>
+        </div>
+        <div class="branding-option" data-brand="custom" onclick="selectBranding('custom')">
+          <div class="opt-title">🎨 Custom</div>
+          <div class="opt-desc">Agency with their own logo</div>
+        </div>
+      </div>
+      <div class="branding-info">
+        <strong>Selected:</strong> <span id="brandingModeName">—</span>
+        <span id="brandingTag"></span>
+        <br><span id="brandingModeDesc" style="font-size: 11px; opacity: 0.8;">—</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="preview" id="preview" style="display: none;">
+    <div class="preview-header">
+      <h2>Preview</h2>
+      <button class="btn btn-accent" id="generateBtn" onclick="generatePPT()" disabled>📥 Generate PPT</button>
+    </div>
+    
+    <div class="preview-stats">
+      <div class="stat-card">
+        <div class="label">Total Vehicles</div>
+        <div class="value" id="statVehicles">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Total Photos</div>
+        <div class="value accent" id="statPhotos">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Hood Mode</div>
+        <div class="value" id="statHood">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Back Panel</div>
+        <div class="value" id="statBackPanel">0</div>
+      </div>
+    </div>
+
+    <div class="vehicle-list">
+      <div class="vehicle-row header">
+        <div>Vehicle</div><div>Mode</div><div>Photos</div><div>Date</div><div>Member</div>
+      </div>
+      <div id="vehicleListBody">
+        <div class="empty-state">Filters select karke "Load Vehicles" dabao</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h3 id="modalTitle">Generating PPT...</h3>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="progress-text" id="progressText">Starting...</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+const CONFIG = {
+  supabaseUrl: 'https://fpbktcgtspqsqpaytslv.supabase.co',
+  supabaseKey: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j'
+};
+
+// ─── Slide canvas (LAYOUT_WIDE = 13.333" × 7.5") ───
+const W = 13.333;
+const H = 7.5;
+
+let state = {
+  campaigns: [],
+  selectedCampaign: null,
+  savedBrandingMode: 'full',
+  activeBrandingMode: 'full',
+  isOverride: false,
+  customLogo: null,
+  customBrand: 'PRAJAPATI',
+  customWebsite: 'prajapatiadvertising.co.in',
+  vehicles: []
+};
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (type || '');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function api(path, options) {
+  options = options || {};
+  options.headers = options.headers || {};
+  options.headers.apikey = CONFIG.supabaseKey;
+  options.headers.Authorization = 'Bearer ' + CONFIG.supabaseKey;
+  if (options.body && typeof options.body !== 'string') {
+    options.headers['Content-Type'] = 'application/json';
+    options.body = JSON.stringify(options.body);
+  }
+  return fetch(CONFIG.supabaseUrl + path, options).then(r => {
+    if (!r.ok) throw new Error('API ' + r.status);
+    return r.json();
+  });
+}
+
+function istDateStr(d) {
+  d = d || new Date();
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const istDate = new Date(d.getTime() + istOffset);
+  return istDate.toISOString().split('T')[0];
+}
+
+function dateRangeUTC(fromDateStr, toDateStr) {
+  const from = new Date(fromDateStr + 'T00:00:00+05:30').toISOString();
+  const to = new Date(toDateStr + 'T23:59:59+05:30').toISOString();
+  return { from, to };
+}
+
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => 
+    ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('t');
+  const campaignFromUrl = params.get('campaign');
+  const fromUrl = params.get('from');
+  const toUrl = params.get('to');
+  const cityUrl = params.get('city');
+  const modeUrl = params.get('mode');
+
+  const today = istDateStr();
+  const monthAgo = new Date();
+  monthAgo.setDate(monthAgo.getDate() - 30);
+  document.getElementById('fromDate').value = fromUrl || istDateStr(monthAgo);
+  document.getElementById('toDate').value = toUrl || today;
+  if (modeUrl) {
+    const ms = document.getElementById('modeFilter');
+    if (ms.querySelector('option[value="' + modeUrl + '"]')) ms.value = modeUrl;
+  }
+
+  // If token present, validate it first (client access mode)
+  if (token) {
+    state.clientToken = token;
+    validateClientToken(token).then(tokenRow => {
+      if (!tokenRow) {
+        showAccessError('Link not valid', 'This access link has expired or been revoked.');
+        return;
+      }
+      state.tokenRow = tokenRow;
+      // Lock campaign to the one in token, hide other campaigns
+      lockToCampaign(tokenRow.campaign_key);
+      loadCampaigns().then(() => {
+        // Auto-select the token's campaign
+        const sel = document.getElementById('campaignFilter');
+        sel.value = tokenRow.campaign_key;
+        onCampaignChange();
+        // Auto-load if URL params are sufficient
+        setTimeout(() => {
+          if (cityUrl) document.getElementById('cityFilter').value = cityUrl;
+          if (fromUrl && toUrl) loadVehicles();
+        }, 800);
+      });
+    }).catch(err => {
+      showAccessError('Unable to verify access', 'Network error — please refresh and try again.');
+    });
+  } else {
+    // Admin / direct access
+    loadCampaigns().then(() => {
+      // Auto-select if URL has campaign
+      if (campaignFromUrl) {
+        const sel = document.getElementById('campaignFilter');
+        if (sel.querySelector('option[value="' + campaignFromUrl + '"]')) {
+          sel.value = campaignFromUrl;
+          onCampaignChange();
+          setTimeout(() => {
+            if (cityUrl) document.getElementById('cityFilter').value = cityUrl;
+            if (fromUrl && toUrl) loadVehicles();
+          }, 800);
+        }
+      }
+    });
+  }
+  
+  pptxLibPromise.then(() => {
+    document.getElementById('libStatus').textContent = '✓ Library ready';
+    document.getElementById('libStatus').className = 'lib-status ready';
+    if (state.vehicles.length > 0) document.getElementById('generateBtn').disabled = false;
+  }).catch(err => {
+    document.getElementById('libStatus').textContent = '✗ Library failed (click to retry)';
+    document.getElementById('libStatus').className = 'lib-status error';
+    document.getElementById('libStatus').onclick = () => location.reload();
+    showToast('Library load fail. Internet check karo.', 'error');
+  });
+});
+
+async function validateClientToken(token) {
+  try {
+    const rows = await api('/rest/v1/trial_client_tokens?token=eq.' + encodeURIComponent(token) + '&select=*');
+    if (!rows || !rows.length) return null;
+    const row = rows[0];
+    if (row.revoked) return null;
+    if (row.expires_at && new Date(row.expires_at) < new Date()) return null;
+    return row;
+  } catch (e) { return null; }
+}
+
+function lockToCampaign(campaignKey) {
+  // Hide branding controls (clients shouldn't change branding)
+  const bc = document.getElementById('brandingControl');
+  if (bc) bc.style.display = 'none';
+}
+
+function showAccessError(title, msg) {
+  document.body.innerHTML = '<div style="position:fixed;inset:0;background:#FBF8F2;display:flex;align-items:center;justify-content:center;padding:30px;text-align:center;font-family:Plus Jakarta Sans, system-ui, sans-serif;">' +
+    '<div style="max-width:460px;background:#fff;padding:36px 32px;border-radius:14px;border:1px solid #DDD2BD;box-shadow:0 8px 32px rgba(0,0,0,0.08);">' +
+    '<div style="font-size:40px;margin-bottom:14px;">⚠</div>' +
+    '<h2 style="font-weight:400;font-size:24px;color:#0E1942;margin-bottom:10px;">' + title + '</h2>' +
+    '<p style="color:#6B6961;font-size:13px;line-height:1.6;margin-bottom:18px;">' + msg + '</p>' +
+    '<div style="font-size:11px;color:#A88737;letter-spacing:0.08em;text-transform:uppercase;padding-top:16px;border-top:1px solid #DDD2BD;margin-top:16px;">' +
+    '<a href="https://prajapatiadvertising.com" style="color:#0E1942;text-decoration:none;font-weight:600;">prajapatiadvertising.com</a>' +
+    ' &nbsp;·&nbsp; +91 99221 38138</div></div></div>';
+}
+
+async function loadCampaigns() {
+  try {
+    const campaigns = await api('/rest/v1/trial_campaigns?select=*&order=name.asc');
+    state.campaigns = campaigns;
+    
+    const select = document.getElementById('campaignFilter');
+    select.innerHTML = '<option value="">Select campaign...</option>';
+    
+    // If client token mode, only show that one campaign
+    let visibleCampaigns = campaigns;
+    if (state.clientToken && state.tokenRow) {
+      visibleCampaigns = campaigns.filter(c => c.key === state.tokenRow.campaign_key);
+    }
+    
+    visibleCampaigns.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.key;
+      opt.textContent = c.name + (c.client_name ? ' (' + c.client_name + ')' : '');
+      select.appendChild(opt);
+    });
+    
+    select.addEventListener('change', onCampaignChange);
+  } catch (err) {
+    console.error('Campaign load error:', err);
+    showToast('Campaigns load nahi hue', 'error');
+  }
+}
+
+function onCampaignChange() {
+  const select = document.getElementById('campaignFilter');
+  const key = select.value;
+  if (!key) { document.getElementById('brandingControl').style.display = 'none'; state.selectedCampaign = null; return; }
+  
+  const campaign = state.campaigns.find(c => c.key === key);
+  state.selectedCampaign = campaign;
+  state.savedBrandingMode = campaign.branding_mode || 'full';
+  state.activeBrandingMode = state.savedBrandingMode;
+  state.isOverride = false;
+  state.customLogo = campaign.custom_logo_url || null;
+  state.customBrand = campaign.custom_brand_name || 'PRAJAPATI';
+  state.customWebsite = campaign.custom_website || 'prajapatiadvertising.co.in';
+  
+  document.getElementById('brandingControl').style.display = 'block';
+  selectBranding(state.savedBrandingMode);
+
+  // Load distinct cities for this campaign
+  loadCitiesForCampaign(key);
+}
+
+async function loadCitiesForCampaign(key) {
+  try {
+    const photos = await api('/rest/v1/trial_photos?campaign_key=eq.' + encodeURIComponent(key) + '&select=city&limit=10000');
+    const cities = {};
+    (photos || []).forEach(p => { if (p.city) cities[p.city] = true; });
+    const list = Object.keys(cities).sort();
+    const sel = document.getElementById('cityFilter');
+    sel.innerHTML = '<option value="">All cities (' + list.length + ')</option>' +
+      list.map(c => '<option value="' + c.replace(/"/g, '&quot;') + '">' + c + '</option>').join('');
+  } catch (err) {
+    console.warn('Cities load failed:', err);
+  }
+}
+
+function selectBranding(mode) {
+  state.activeBrandingMode = mode;
+  state.isOverride = (mode !== state.savedBrandingMode);
+  
+  document.querySelectorAll('.branding-option').forEach(el => {
+    el.classList.toggle('selected', el.dataset.brand === mode);
+  });
+  
+  const nameEl = document.getElementById('brandingModeName');
+  const descEl = document.getElementById('brandingModeDesc');
+  const tagEl = document.getElementById('brandingTag');
+  
+  if (mode === 'full') {
+    nameEl.textContent = 'Full Prajapati Branding';
+    descEl.textContent = 'PPT mein Prajapati logo + "Verified by Prajapati" footer aayega';
+  } else if (mode === 'clean') {
+    nameEl.textContent = 'White Label / Clean';
+    descEl.textContent = 'Koi branding nahi - Agency ko bhejne ke liye safe';
+  } else if (mode === 'custom') {
+    nameEl.textContent = 'Custom Branding (' + state.customBrand + ')';
+    descEl.textContent = 'Custom branding · ' + state.customWebsite;
+  }
+  
+  tagEl.innerHTML = state.isOverride 
+    ? '<span class="override-tag">⚠ Override (DB has: ' + state.savedBrandingMode + ')</span>'
+    : '<span class="saved-tag">✓ From DB</span>';
+}
+
+async function loadVehicles() {
+  const campaignKey = document.getElementById('campaignFilter').value;
+  const fromDate = document.getElementById('fromDate').value;
+  const toDate = document.getElementById('toDate').value;
+  const mode = document.getElementById('modeFilter').value;
+  const cityFilter = document.getElementById('cityFilter').value;
+  
+  if (!campaignKey) { showToast('Pehle campaign select karo', 'error'); return; }
+  if (!fromDate || !toDate) { showToast('Date range select karo', 'error'); return; }
+  
+  showToast('Loading vehicles...', '');
+  
+  try {
+    const range = dateRangeUTC(fromDate, toDate);
+    let url = '/rest/v1/trial_photos?campaign_key=eq.' + encodeURIComponent(campaignKey)
+            + '&captured_at=gte.' + range.from
+            + '&captured_at=lte.' + range.to
+            + '&select=*'
+            + '&order=captured_at.asc&limit=10000';
+    if (mode !== 'all') url += '&mode=eq.' + mode;
+    if (cityFilter) url += '&city=eq.' + encodeURIComponent(cityFilter);
+    if (mode !== 'all') url += '&mode=eq.' + mode;
+    
+    const photos = await api(url);
+    
+    if (!photos || photos.length === 0) {
+      document.getElementById('preview').style.display = 'block';
+      document.getElementById('vehicleListBody').innerHTML = '<div class="empty-state">Is range mein koi photos nahi mile</div>';
+      ['statVehicles','statPhotos','statHood','statBackPanel'].forEach(id => document.getElementById(id).textContent = '0');
+      document.getElementById('generateBtn').disabled = true;
+      state.vehicles = [];
+      return;
+    }
+    
+    const grouped = {};
+    photos.forEach(p => {
+      // Skip recovered orphans (no vehicle number) - they shouldn't be in client PPT
+      if (!p.vehicle_number) return;
+      // Skip recovered photos that have lat=0,lng=0 + 'Recovered' address
+      if (p.latitude === 0 && p.longitude === 0 && p.address && p.address.indexOf('Recovered') === 0) return;
+      const key = p.vehicle_number + '|' + p.mode;
+      if (!grouped[key]) {
+        grouped[key] = {
+          vehicle_number: p.vehicle_number,
+          mode: p.mode,
+          owner_name: p.owner_name,
+          member_name: p.member_name,
+          city: p.city,
+          address: p.address,
+          captured_at: p.captured_at,
+          photos: []
+        };
+      }
+      grouped[key].photos.push(p);
+    });
+    
+    state.vehicles = Object.values(grouped);
+    state.vehicles.forEach(v => v.photos.sort((a, b) => (a.photo_number || 0) - (b.photo_number || 0)));
+    
+    renderPreview();
+  } catch (err) {
+    console.error('Load error:', err);
+    showToast('Load fail: ' + err.message, 'error');
+  }
+}
+
+function renderPreview() {
+  document.getElementById('preview').style.display = 'block';
+  const totalVehicles = state.vehicles.length;
+  const totalPhotos = state.vehicles.reduce((s, v) => s + v.photos.length, 0);
+  const hoodCount = state.vehicles.filter(v => v.mode === 'hood').length;
+  const backPanelCount = state.vehicles.filter(v => v.mode === 'back_panel').length;
+  
+  document.getElementById('statVehicles').textContent = totalVehicles;
+  document.getElementById('statPhotos').textContent = totalPhotos;
+  document.getElementById('statHood').textContent = hoodCount;
+  document.getElementById('statBackPanel').textContent = backPanelCount;
+  document.getElementById('generateBtn').disabled = totalVehicles === 0 || !window.PPTX_LIB_LOADED;
+  
+  const body = document.getElementById('vehicleListBody');
+  body.innerHTML = state.vehicles.map(v => {
+    const date = new Date(v.captured_at);
+    const dateStr = date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
+    const modeClass = v.mode === 'hood' ? 'hood' : 'back_panel';
+    const modeLabel = v.mode === 'hood' ? 'Hood' : 'Back Panel';
+    return `
+      <div class="vehicle-row">
+        <div class="vh-num">${escapeHtml(v.vehicle_number)}</div>
+        <div><span class="mode-pill ${modeClass}">${modeLabel}</span></div>
+        <div>${v.photos.length} / ${v.photos[0]?.total_expected || '?'}</div>
+        <div>${dateStr}</div>
+        <div>${escapeHtml(v.member_name || '-')}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ★ KEY FIX: Fetch image AND get its actual dimensions
+// ═══════════════════════════════════════════════════════════════
+async function fetchImageWithDims(url) {
+  try {
+    const res = await fetch(url, { mode: 'cors' });
+    if (!res.ok) throw new Error('Image fetch failed');
+    const blob = await res.blob();
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+    
+    // Get actual image dimensions
+    const dims = await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+      img.onerror = () => resolve({ w: 1080, h: 1920 }); // fallback
+      img.src = dataUrl;
+    });
+    
+    return { dataUrl, ...dims };
+  } catch (err) {
+    console.warn('Image fetch failed:', url);
+    return null;
+  }
+}
+
+// ─── Calculate actual fit-within-box dimensions (no stretching) ───
+function fitImage(imgW, imgH, boxW, boxH) {
+  const imgAspect = imgW / imgH;
+  const boxAspect = boxW / boxH;
+  
+  let finalW, finalH;
+  if (imgAspect > boxAspect) {
+    // Image wider than box → fit by width
+    finalW = boxW;
+    finalH = boxW / imgAspect;
+  } else {
+    // Image taller than box → fit by height
+    finalH = boxH;
+    finalW = boxH * imgAspect;
+  }
+  
+  // Center within box
+  const offsetX = (boxW - finalW) / 2;
+  const offsetY = (boxH - finalH) / 2;
+  
+  return { w: finalW, h: finalH, ox: offsetX, oy: offsetY };
+}
+
+function showModal(title, text) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('progressText').textContent = text;
+  document.getElementById('modal').classList.add('show');
+}
+function hideModal() { document.getElementById('modal').classList.remove('show'); }
+function updateProgress(percent, text) {
+  document.getElementById('progressFill').style.width = percent + '%';
+  document.getElementById('progressText').textContent = text;
+}
+
+async function generatePPT() {
+  if (!window.PPTX_LIB_LOADED) { showToast('Library abhi load nahi hui', 'error'); return; }
+  if (state.vehicles.length === 0) { showToast('Koi vehicles nahi hain', 'error'); return; }
+  
+  showModal('Generating PPT...', 'Preparing slides...');
+  
+  try {
+    const PptxLib = window.PptxGenJS || window.pptxgen;
+    if (!PptxLib) throw new Error('Library not available');
+    
+    const pptx = new PptxLib();
+    pptx.layout = 'LAYOUT_WIDE';
+    
+    const campaign = state.selectedCampaign;
+    const brand = getBrandingConfig(state.activeBrandingMode);
+    
+    addCoverSlide(pptx, campaign, brand);
+    
+    const totalVehicles = state.vehicles.length;
+    let processed = 0;
+    
+    for (const vehicle of state.vehicles) {
+      processed++;
+      updateProgress((processed / totalVehicles) * 90,
+        `Slide ${processed} of ${totalVehicles}: ${vehicle.vehicle_number}`);
+      
+      // Fetch all photos with dimensions
+      const photoData = [];
+      for (const photo of vehicle.photos) {
+        const result = await fetchImageWithDims(photo.public_url);
+        photoData.push(result);
+      }
+      
+      if (vehicle.mode === 'hood') {
+        addHoodSlide(pptx, vehicle, photoData, campaign, brand);
+      } else {
+        addBackPanelSlide(pptx, vehicle, photoData, campaign, brand);
+      }
+    }
+    
+    addSummarySlide(pptx, campaign, brand);
+    
+    updateProgress(95, 'Saving file...');
+    const filename = `${campaign.name.replace(/[^a-zA-Z0-9]/g, '_')}_${istDateStr()}.pptx`;
+    await pptx.writeFile({ fileName: filename });
+    
+    updateProgress(100, 'Done!');
+    setTimeout(() => { hideModal(); showToast('✓ PPT generated successfully!', 'success'); }, 500);
+    
+  } catch (err) {
+    console.error('PPT generation error:', err);
+    hideModal();
+    showToast('PPT fail: ' + err.message, 'error');
+  }
+}
+
+function getBrandingConfig(mode) {
+  if (mode === 'clean') {
+    return {
+      mode: 'clean', primaryColor: '1A1A1A', accentColor: '666666',
+      showLogo: false, showFooter: false,
+      brandName: '', footerText: '', footerWebsite: ''
+    };
+  } else if (mode === 'custom') {
+    return {
+      mode: 'custom', primaryColor: '534AB7', accentColor: '7F77DD',
+      showLogo: true, showFooter: true,
+      brandName: state.customBrand,
+      logoText: state.customBrand,
+      footerText: 'Verified by ' + state.customBrand,
+      footerWebsite: state.customWebsite
+    };
+  } else {
+    return {
+      mode: 'full', primaryColor: '0B1957', accentColor: '26D0CE',
+      showLogo: true, showFooter: true,
+      brandName: 'PRAJAPATI ADVERTISING',
+      logoText: 'PRAJAPATI',
+      footerText: 'Verified by Prajapati Advertising',
+      footerWebsite: 'prajapatiadvertising.co.in'
+    };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ★ COVER SLIDE — Solid Navy Blue, White Fonts, Professional
+// ═══════════════════════════════════════════════════════════════
+function addCoverSlide(pptx, campaign, brand) {
+  const slide = pptx.addSlide();
+  
+  // Solid navy background (no split, no gradient)
+  slide.background = { color: brand.primaryColor };
+  
+  // Single subtle accent line on left edge
+  slide.addShape(pptx.ShapeType.rect, {
+    x: 0, y: 0, w: 0.15, h: H,
+    fill: { color: brand.accentColor },
+    line: { color: brand.accentColor, width: 0 }
+  });
+  
+  // Brand name (top left, only if branded)
+  if (brand.mode !== 'clean' && brand.brandName) {
+    slide.addText(brand.brandName, {
+      x: 0.7, y: 0.6, w: 8, h: 0.4,
+      fontSize: 12, fontFace: 'Plus Jakarta Sans',
+      color: 'FFFFFF', bold: true,
+      charSpacing: 3,
+      align: 'left', valign: 'middle'
+    });
+  }
+  
+  // "CAMPAIGN REPORT" small label
+  slide.addText('CAMPAIGN REPORT', {
+    x: 0.7, y: 2.6, w: 12, h: 0.4,
+    fontSize: 14, fontFace: 'Plus Jakarta Sans',
+    color: brand.accentColor, bold: true,
+    charSpacing: 4,
+    align: 'left', valign: 'middle'
+  });
+  
+  // Campaign name (huge)
+  slide.addText(campaign.name || 'Campaign Report', {
+    x: 0.7, y: 3.1, w: 12, h: 1.5,
+    fontSize: 54, fontFace: 'Plus Jakarta Sans',
+    color: 'FFFFFF', bold: true,
+    align: 'left', valign: 'middle'
+  });
+  
+  // Client name
+  if (campaign.client_name) {
+    slide.addText('Prepared for ' + campaign.client_name, {
+      x: 0.7, y: 4.7, w: 12, h: 0.5,
+      fontSize: 18, fontFace: 'Plus Jakarta Sans',
+      color: 'FFFFFF',
+      align: 'left'
+    });
+  }
+  
+  // Divider line
+  slide.addShape(pptx.ShapeType.line, {
+    x: 0.7, y: 5.4, w: 1.2, h: 0,
+    line: { color: brand.accentColor, width: 2 }
+  });
+  
+  // Stats row (Period + Vehicle count)
+  const fromDate = document.getElementById('fromDate').value;
+  const toDate = document.getElementById('toDate').value;
+  const dateRangeStr = fromDate === toDate ? formatDate(fromDate) : formatDate(fromDate) + ' — ' + formatDate(toDate);
+  
+  // Period label
+  slide.addText('PERIOD', {
+    x: 0.7, y: 5.7, w: 5, h: 0.25,
+    fontSize: 9, fontFace: 'Plus Jakarta Sans',
+    color: brand.accentColor, bold: true,
+    charSpacing: 3, align: 'left'
+  });
+  slide.addText(dateRangeStr, {
+    x: 0.7, y: 5.95, w: 5, h: 0.4,
+    fontSize: 16, fontFace: 'Plus Jakarta Sans',
+    color: 'FFFFFF', bold: true,
+    align: 'left'
+  });
+  
+  // Vehicle count
+  slide.addText('VEHICLES COVERED', {
+    x: 6, y: 5.7, w: 5, h: 0.25,
+    fontSize: 9, fontFace: 'Plus Jakarta Sans',
+    color: brand.accentColor, bold: true,
+    charSpacing: 3, align: 'left'
+  });
+  slide.addText(String(state.vehicles.length), {
+    x: 6, y: 5.95, w: 5, h: 0.4,
+    fontSize: 16, fontFace: 'Plus Jakarta Sans',
+    color: 'FFFFFF', bold: true,
+    align: 'left'
+  });
+  
+  // Footer (bottom left)
+  if (brand.showFooter) {
+    slide.addText(brand.footerText, {
+      x: 0.7, y: 6.95, w: 6, h: 0.3,
+      fontSize: 9, fontFace: 'Plus Jakarta Sans',
+      color: 'FFFFFF', italic: true,
+      align: 'left'
+    });
+    slide.addText(brand.footerWebsite, {
+      x: 7, y: 6.95, w: 5.7, h: 0.3,
+      fontSize: 9, fontFace: 'Plus Jakarta Sans',
+      color: 'FFFFFF',
+      align: 'right'
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ★ HOOD SLIDE — Photos NEVER stretched (auto-fit by aspect)
+// ═══════════════════════════════════════════════════════════════
+function addHoodSlide(pptx, vehicle, photoData, campaign, brand) {
+  const slide = pptx.addSlide();
+  slide.background = { color: 'FFFFFF' };
+  
+  // ─── HEADER (slim navy bar) ───
+  slide.addShape(pptx.ShapeType.rect, {
+    x: 0, y: 0, w: W, h: 0.65,
+    fill: { color: brand.primaryColor },
+    line: { color: brand.primaryColor, width: 0 }
+  });
+  
+  // Brand label (left)
+  if (brand.showLogo && brand.logoText) {
+    slide.addText(brand.logoText, {
+      x: 0.4, y: 0.18, w: 1.5, h: 0.3,
+      fontSize: 9, fontFace: 'Plus Jakarta Sans',
+      color: 'FFFFFF', bold: true,
+      charSpacing: 3,
+      align: 'left', valign: 'middle'
+    });
+  }
+  
+  // Vehicle number (center-left, biggest element)
+  slide.addText(vehicle.vehicle_number, {
+    x: brand.showLogo ? 1.9 : 0.4, y: 0.1, w: 6, h: 0.45,
+    fontSize: 22, fontFace: 'JetBrains Mono',
+    color: 'FFFFFF', bold: true,
+    align: 'left', valign: 'middle'
+  });
+  
+  // Mode + Campaign (right)
+  slide.addText('HOOD BRANDING  ·  ' + campaign.name, {
+    x: 7, y: 0.15, w: 5.93, h: 0.35,
+    fontSize: 11, fontFace: 'Plus Jakarta Sans',
+    color: 'FFFFFF',
+    charSpacing: 1,
+    align: 'right', valign: 'middle'
+  });
+  
+  // ─── DETAILS STRIP (clean, no fill bar) ───
+  const dateStr = formatDateFromTimestamp(vehicle.captured_at);
+  const locationStr = vehicle.city || (vehicle.address ? vehicle.address.split(',')[0] : 'India');
+  const workerStr = vehicle.member_name || 'Field Team';
+  
+  // Subtle divider line below header
+  slide.addShape(pptx.ShapeType.line, {
+    x: 0, y: 1.45, w: W, h: 0,
+    line: { color: 'E5E7EB', width: 0.5 }
+  });
+  
+  const colWidth = (W - 0.8) / 4;
+  const detailsY = 0.85;
+  const detailsData = [
+    { label: 'VEHICLE NO.', value: vehicle.vehicle_number, mono: true },
+    { label: 'CAPTURED BY', value: workerStr },
+    { label: 'DATE', value: dateStr },
+    { label: 'LOCATION', value: locationStr }
+  ];
+  
+  detailsData.forEach((item, idx) => {
+    const x = 0.4 + idx * colWidth;
+    slide.addText(item.label, {
+      x: x, y: detailsY, w: colWidth - 0.2, h: 0.2,
+      fontSize: 8, fontFace: 'Plus Jakarta Sans',
+      color: '9CA3AF', bold: true,
+      charSpacing: 2,
+      align: 'left'
+    });
+    slide.addText(item.value, {
+      x: x, y: detailsY + 0.2, w: colWidth - 0.2, h: 0.3,
+      fontSize: 14,
+      fontFace: item.mono ? 'JetBrains Mono' : 'Plus Jakarta Sans',
+      color: '0B1957', bold: true,
+      align: 'left'
+    });
+  });
+  
+  // ─── PHOTOS (3 columns, FIT not stretch) ───
+  const labels = ['Front View', 'Left Side', 'Right Side'];
+  const photoY = 1.7;
+  const photoH = 4.9;
+  const labelY = photoY + photoH + 0.15;
+  const totalGap = 0.3;
+  const photoBoxW = (W - 0.8 - totalGap * 2) / 3; // 3 boxes with 0.3" gaps, 0.4" margins
+  
+  for (let i = 0; i < 3; i++) {
+    const boxX = 0.4 + i * (photoBoxW + totalGap);
+    const photo = photoData[i];
+    
+    // Box frame (very subtle border for empty space hint)
+    slide.addShape(pptx.ShapeType.rect, {
+      x: boxX, y: photoY, w: photoBoxW, h: photoH,
+      fill: { color: 'F8FAFC' },
+      line: { color: 'F1F5F9', width: 0.5 }
+    });
+    
+    if (photo && photo.dataUrl) {
+      // ★ FIT image to box (no stretch) - calculate actual dimensions
+      const fit = fitImage(photo.w, photo.h, photoBoxW, photoH);
+      slide.addImage({
+        data: photo.dataUrl,
+        x: boxX + fit.ox,
+        y: photoY + fit.oy,
+        w: fit.w,
+        h: fit.h
+      });
+    } else {
+      slide.addText('Photo not available', {
+        x: boxX, y: photoY, w: photoBoxW, h: photoH,
+        fontSize: 11, color: '9CA3AF',
+        align: 'center', valign: 'middle'
+      });
+    }
+    
+    // Label below photo
+    if (labels[i]) {
+      slide.addText(labels[i], {
+        x: boxX, y: labelY, w: photoBoxW, h: 0.3,
+        fontSize: 11, fontFace: 'Plus Jakarta Sans',
+        color: '0B1957', bold: true,
+        align: 'center'
+      });
+    }
+  }
+  
+  // ─── FOOTER (subtle, bottom edge only) ───
+  if (brand.showFooter) {
+    slide.addShape(pptx.ShapeType.line, {
+      x: 0.4, y: 7.15, w: W - 0.8, h: 0,
+      line: { color: 'E5E7EB', width: 0.5 }
+    });
+    
+    slide.addText(brand.footerText, {
+      x: 0.4, y: 7.2, w: 6, h: 0.25,
+      fontSize: 8, fontFace: 'Plus Jakarta Sans',
+      color: '9CA3AF', italic: true,
+      align: 'left', valign: 'middle'
+    });
+    slide.addText(brand.footerWebsite, {
+      x: 6.93, y: 7.2, w: 6, h: 0.25,
+      fontSize: 8, fontFace: 'Plus Jakarta Sans',
+      color: '9CA3AF',
+      align: 'right', valign: 'middle'
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ★ BACK PANEL SLIDE — Single photo, larger, professional
+// ═══════════════════════════════════════════════════════════════
+function addBackPanelSlide(pptx, vehicle, photoData, campaign, brand) {
+  const slide = pptx.addSlide();
+  slide.background = { color: 'FFFFFF' };
+  
+  // Header bar
+  slide.addShape(pptx.ShapeType.rect, {
+    x: 0, y: 0, w: W, h: 0.65,
+    fill: { color: brand.primaryColor },
+    line: { color: brand.primaryColor, width: 0 }
+  });
+  
+  if (brand.showLogo && brand.logoText) {
+    slide.addText(brand.logoText, {
+      x: 0.4, y: 0.18, w: 1.5, h: 0.3,
+      fontSize: 9, fontFace: 'Plus Jakarta Sans',
+      color: 'FFFFFF', bold: true,
+      charSpacing: 3,
+      align: 'left', valign: 'middle'
+    });
+  }
+  
+  slide.addText(vehicle.vehicle_number, {
+    x: brand.showLogo ? 1.9 : 0.4, y: 0.1, w: 6, h: 0.45,
+    fontSize: 22, fontFace: 'JetBrains Mono',
+    color: 'FFFFFF', bold: true,
+    align: 'left', valign: 'middle'
+  });
+  
+  slide.addText('BACK PANEL  ·  ' + campaign.name, {
+    x: 7, y: 0.15, w: 5.93, h: 0.35,
+    fontSize: 11, fontFace: 'Plus Jakarta Sans',
+    color: 'FFFFFF',
+    charSpacing: 1,
+    align: 'right', valign: 'middle'
+  });
+  
+  // Details strip
+  const dateStr = formatDateFromTimestamp(vehicle.captured_at);
+  const locationStr = vehicle.city || (vehicle.address ? vehicle.address.split(',')[0] : 'India');
+  const workerStr = vehicle.member_name || 'Field Team';
+  
+  slide.addShape(pptx.ShapeType.line, {
+    x: 0, y: 1.45, w: W, h: 0,
+    line: { color: 'E5E7EB', width: 0.5 }
+  });
+  
+  const colWidth = (W - 0.8) / 4;
+  const detailsY = 0.85;
+  const detailsData = [
+    { label: 'VEHICLE NO.', value: vehicle.vehicle_number, mono: true },
+    { label: 'CAPTURED BY', value: workerStr },
+    { label: 'DATE', value: dateStr },
+    { label: 'LOCATION', value: locationStr }
+  ];
+  
+  detailsData.forEach((item, idx) => {
+    const x = 0.4 + idx * colWidth;
+    slide.addText(item.label, {
+      x: x, y: detailsY, w: colWidth - 0.2, h: 0.2,
+      fontSize: 8, fontFace: 'Plus Jakarta Sans',
+      color: '9CA3AF', bold: true, charSpacing: 2, align: 'left'
+    });
+    slide.addText(item.value, {
+      x: x, y: detailsY + 0.2, w: colWidth - 0.2, h: 0.3,
+      fontSize: 14,
+      fontFace: item.mono ? 'JetBrains Mono' : 'Plus Jakarta Sans',
+      color: '0B1957', bold: true, align: 'left'
+    });
+  });
+  
+  // Single photo - centered, fit to box
+  const photoY = 1.7;
+  const photoH = 4.9;
+  const photoBoxW = 7.5;
+  const photoBoxX = (W - photoBoxW) / 2;
+  
+  slide.addShape(pptx.ShapeType.rect, {
+    x: photoBoxX, y: photoY, w: photoBoxW, h: photoH,
+    fill: { color: 'F8FAFC' },
+    line: { color: 'F1F5F9', width: 0.5 }
+  });
+  
+  const photo = photoData[0];
+  if (photo && photo.dataUrl) {
+    const fit = fitImage(photo.w, photo.h, photoBoxW, photoH);
+    slide.addImage({
+      data: photo.dataUrl,
+      x: photoBoxX + fit.ox,
+      y: photoY + fit.oy,
+      w: fit.w,
+      h: fit.h
+    });
+  } else {
+    slide.addText('Photo not available', {
+      x: photoBoxX, y: photoY, w: photoBoxW, h: photoH,
+      fontSize: 12, color: '9CA3AF',
+      align: 'center', valign: 'middle'
+    });
+  }
+  
+  // Footer
+  if (brand.showFooter) {
+    slide.addShape(pptx.ShapeType.line, {
+      x: 0.4, y: 7.15, w: W - 0.8, h: 0,
+      line: { color: 'E5E7EB', width: 0.5 }
+    });
+    slide.addText(brand.footerText, {
+      x: 0.4, y: 7.2, w: 6, h: 0.25,
+      fontSize: 8, fontFace: 'Plus Jakarta Sans',
+      color: '9CA3AF', italic: true,
+      align: 'left', valign: 'middle'
+    });
+    slide.addText(brand.footerWebsite, {
+      x: 6.93, y: 7.2, w: 6, h: 0.25,
+      fontSize: 8, fontFace: 'Plus Jakarta Sans',
+      color: '9CA3AF',
+      align: 'right', valign: 'middle'
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ★ SUMMARY SLIDE — Big stats, professional
+// ═══════════════════════════════════════════════════════════════
+function addSummarySlide(pptx, campaign, brand) {
+  const slide = pptx.addSlide();
+  slide.background = { color: brand.primaryColor };
+  
+  // Accent line on left edge
+  slide.addShape(pptx.ShapeType.rect, {
+    x: 0, y: 0, w: 0.15, h: H,
+    fill: { color: brand.accentColor },
+    line: { color: brand.accentColor, width: 0 }
+  });
+  
+  // Title
+  slide.addText('SUMMARY', {
+    x: 0.7, y: 0.7, w: 12, h: 0.4,
+    fontSize: 14, fontFace: 'Plus Jakarta Sans',
+    color: brand.accentColor, bold: true,
+    charSpacing: 4, align: 'left'
+  });
+  
+  slide.addText(campaign.name, {
+    x: 0.7, y: 1.15, w: 12, h: 0.7,
+    fontSize: 36, fontFace: 'Plus Jakarta Sans',
+    color: 'FFFFFF', bold: true,
+    align: 'left'
+  });
+  
+  if (campaign.client_name) {
+    slide.addText(campaign.client_name, {
+      x: 0.7, y: 1.85, w: 12, h: 0.4,
+      fontSize: 16, fontFace: 'Plus Jakarta Sans',
+      color: 'FFFFFF',
+      align: 'left'
+    });
+  }
+  
+  // Stats - 2x2 grid, big numbers
+  const totalVehicles = state.vehicles.length;
+  const totalPhotos = state.vehicles.reduce((s, v) => s + v.photos.length, 0);
+  const hoodCount = state.vehicles.filter(v => v.mode === 'hood').length;
+  const backPanelCount = state.vehicles.filter(v => v.mode === 'back_panel').length;
+  
+  const stats = [
+    { label: 'TOTAL VEHICLES', value: totalVehicles },
+    { label: 'TOTAL PHOTOS', value: totalPhotos },
+    { label: 'HOOD BRANDING', value: hoodCount },
+    { label: 'BACK PANEL', value: backPanelCount }
+  ];
+  
+  const cardW = 5.8;
+  const cardH = 1.7;
+  const cardGap = 0.4;
+  const startX = 0.7;
+  const startY = 2.9;
+  
+  stats.forEach((stat, idx) => {
+    const col = idx % 2;
+    const row = Math.floor(idx / 2);
+    const x = startX + col * (cardW + cardGap);
+    const y = startY + row * (cardH + cardGap);
+    
+    slide.addText(stat.label, {
+      x: x, y: y, w: cardW, h: 0.3,
+      fontSize: 10, fontFace: 'Plus Jakarta Sans',
+      color: brand.accentColor, bold: true,
+      charSpacing: 3, align: 'left'
+    });
+    
+    slide.addText(String(stat.value), {
+      x: x, y: y + 0.3, w: cardW, h: 1.2,
+      fontSize: 72, fontFace: 'Plus Jakarta Sans',
+      color: 'FFFFFF', bold: true,
+      align: 'left', valign: 'middle'
+    });
+  });
+  
+  // Bottom info
+  const fromDate = document.getElementById('fromDate').value;
+  const toDate = document.getElementById('toDate').value;
+  const dateRangeStr = fromDate === toDate ? formatDate(fromDate) : formatDate(fromDate) + ' — ' + formatDate(toDate);
+  
+  const generatedAt = new Date().toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+  
+  slide.addText('PERIOD  ·  ' + dateRangeStr, {
+    x: 0.7, y: 6.5, w: 12, h: 0.3,
+    fontSize: 11, fontFace: 'Plus Jakarta Sans',
+    color: 'FFFFFF', charSpacing: 2,
+    align: 'left'
+  });
+  slide.addText('GENERATED  ·  ' + generatedAt, {
+    x: 0.7, y: 6.85, w: 12, h: 0.3,
+    fontSize: 11, fontFace: 'Plus Jakarta Sans',
+    color: 'FFFFFF', charSpacing: 2,
+    align: 'left'
+  });
+  
+  if (brand.showFooter) {
+    slide.addText(brand.footerText + '  ·  ' + brand.footerWebsite, {
+      x: 0.7, y: 7.15, w: 12, h: 0.3,
+      fontSize: 9, fontFace: 'Plus Jakarta Sans',
+      color: 'FFFFFF', italic: true,
+      align: 'left'
+    });
+  }
+}
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00+05:30');
+  return d.toLocaleDateString('en-IN', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    timeZone: 'Asia/Kolkata'
+  });
+}
+
+function formatDateFromTimestamp(timestamp) {
+  const d = new Date(timestamp);
+  return d.toLocaleDateString('en-IN', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    timeZone: 'Asia/Kolkata'
+  });
+}
+
+</script>
+
+</body>
+</html>

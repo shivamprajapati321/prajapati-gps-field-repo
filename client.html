@@ -251,6 +251,7 @@ img { max-width: 100%; display: block; }
   </div>
   <div class="topbar-r">
     <div class="live-pill connecting" id="live-pill"><div class="dot"></div><span id="live-label">Connecting…</span></div>
+    <button class="action-btn" onclick="openPPTGen()">📊 Generate PPT</button>
     <button class="action-btn primary" onclick="window.print()">Download Report</button>
   </div>
 </div>
@@ -816,6 +817,11 @@ window.openPhoto = function(url){
 window.closePhotoModal = function(){
   $('photo-modal').classList.remove('show');
   setTimeout(function(){ $('photo-modal-img').src = ''; }, 300);
+};
+window.openPPTGen = function(){
+  if (!state.token || !state.tokenRow) return;
+  var url = '/ppt.html?t=' + encodeURIComponent(state.token) + '&campaign=' + encodeURIComponent(state.tokenRow.campaign_key);
+  window.open(url, '_blank');
 };
 
 function setLivePill(mode, label){

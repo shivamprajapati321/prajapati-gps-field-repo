@@ -341,6 +341,7 @@ label { display: block; font-size: 10px; font-weight: 600; text-transform: upper
         <div><label>Campaign</label><select id="photoCampaign"><option value="">All</option></select></div>
         <div><label>Member</label><select id="photoMember"><option value="">All</option></select></div>
         <button class="btn" onclick="loadPhotos()">Filter</button>
+        <button class="btn" style="background:#0f1c5e; color:#fff;" onclick="openPPTGenerator()">📊 Generate PPT</button>
       </div>
     </div>
     <div id="photosList"><div class="empty-state">Filter karo aur photos load karo</div></div>
@@ -1216,6 +1217,21 @@ function handleNewPhoto(photo) {
     var activeTab = document.querySelector('.tab.active');
     if (activeTab && activeTab.dataset.tab === 'photos') loadPhotos(true);
   }, 600);
+}
+
+function openPPTGenerator() {
+  // Pick up current filter state
+  var campaign = document.getElementById('photoCampaign').value;
+  var fromDate = document.getElementById('photoDate').value;
+  var toDate = document.getElementById('photoDateEnd').value;
+  
+  var params = [];
+  if (campaign) params.push('campaign=' + encodeURIComponent(campaign));
+  if (fromDate) params.push('from=' + fromDate);
+  if (toDate) params.push('to=' + toDate);
+  
+  var url = '/ppt.html' + (params.length ? '?' + params.join('&') : '');
+  window.open(url, '_blank');
 }
 
 // ============================================================
