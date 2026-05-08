@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign in · Prajapati Sales CRM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght,ital@9..144,300..900,0..1&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #0F1C5E;
+  --navy-2: #1A2980;
+  --navy-deep: #060D33;
+  --navy-light: #2A3FA0;
+  --gold: #F5B800;
+  --gold-dk: #C9A14F;
+  --gold-light: #FFD15C;
+  --cream: #FBF8F2;
+  --bg: #F5F6FA;
+  --card: #FFFFFF;
+  --ink: #0B1024;
+  --mute: #6B7184;
+  --line: #E5E7ED;
+  --green: #10B981;
+  --red: #DC2626;
+  --serif: 'Fraunces', Georgia, serif;
+  --sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  font-family: var(--sans);
+  background: var(--navy-deep);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; }
+input { font-family: inherit; }
+
+.bg {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(245,184,0,0.18), transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(124,58,237,0.18), transparent 50%),
+    linear-gradient(135deg, var(--navy-deep), var(--navy));
+  z-index: -1;
+}
+
+.shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.card {
+  background: var(--card);
+  border-radius: 24px;
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--gold), var(--gold-light), var(--gold));
+}
+
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 28px;
+}
+.brand-mark {
+  width: 56px; height: 56px;
+  background: linear-gradient(135deg, var(--navy), var(--navy-light));
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--gold-light);
+  font-weight: 800; font-size: 20px;
+  box-shadow: 0 8px 20px rgba(15,28,94,0.3);
+}
+.brand-text {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--navy);
+}
+.brand-text small {
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--sans);
+  color: var(--mute);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  display: block;
+  margin-top: 2px;
+}
+
+h1 {
+  font-family: var(--serif);
+  font-size: 32px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin-bottom: 8px;
+  line-height: 1.1;
+}
+h1 em { font-style: italic; color: var(--navy); }
+
+p.sub {
+  color: var(--mute);
+  font-size: 14px;
+  margin-bottom: 28px;
+  line-height: 1.5;
+}
+
+.form-group {
+  margin-bottom: 18px;
+}
+.form-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mute);
+  margin-bottom: 8px;
+}
+.input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.input-prefix {
+  position: absolute;
+  left: 14px;
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--navy);
+  pointer-events: none;
+}
+.form-input {
+  width: 100%;
+  padding: 14px 14px 14px 56px;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: var(--mono);
+  letter-spacing: 0.02em;
+  transition: all 0.15s;
+  background: white;
+  color: var(--ink);
+}
+.form-input:focus {
+  outline: none;
+  border-color: var(--navy);
+  box-shadow: 0 0 0 4px rgba(15,28,94,0.08);
+}
+.form-input.error {
+  border-color: var(--red);
+  box-shadow: 0 0 0 4px rgba(220,38,38,0.08);
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, var(--navy), var(--navy-light));
+  color: white;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(15,28,94,0.3);
+}
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.btn-primary::after {
+  content: '→';
+  margin-left: 10px;
+  display: inline-block;
+  transition: transform 0.2s;
+}
+.btn-primary:hover::after { transform: translateX(4px); }
+
+.error-msg {
+  background: #FEE2E2;
+  color: #B91C1C;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  display: none;
+  align-items: center;
+  gap: 8px;
+}
+.error-msg.show { display: flex; }
+
+.success-card {
+  text-align: center;
+  padding: 20px 0;
+  display: none;
+}
+.success-card.show { display: block; }
+.success-icon {
+  width: 64px; height: 64px;
+  background: linear-gradient(135deg, var(--green), #059669);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 16px;
+  color: white;
+  font-size: 28px;
+  animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes pop {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+.success-name {
+  font-family: var(--serif);
+  font-size: 24px;
+  font-weight: 500;
+  color: var(--navy);
+  margin-bottom: 6px;
+}
+.success-name em { font-style: italic; color: var(--gold-dk); }
+.success-meta {
+  font-size: 13px;
+  color: var(--mute);
+  margin-bottom: 20px;
+}
+.success-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(16,185,129,0.12);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--green);
+}
+
+.help-row {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--mute);
+  text-align: center;
+  line-height: 1.6;
+}
+.help-row strong { color: var(--navy); }
+.help-row code {
+  font-family: var(--mono);
+  background: var(--bg);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.test-users {
+  margin-top: 16px;
+  padding: 14px;
+  background: var(--bg);
+  border-radius: 12px;
+}
+.test-users-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mute);
+  margin-bottom: 10px;
+}
+.test-user {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.test-user:hover {
+  background: white;
+}
+.test-user-name {
+  font-weight: 700;
+  color: var(--ink);
+}
+.test-user-role {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+}
+.role-admin { background: rgba(245,184,0,0.15); color: var(--gold-dk); }
+.role-sales { background: rgba(16,185,129,0.12); color: var(--green); }
+.test-user-phone {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--mute);
+  font-weight: 600;
+}
+
+.spinner {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="bg"></div>
+
+<div class="shell">
+  <div class="card">
+
+    <!-- Login form -->
+    <div id="loginForm">
+      <div class="brand-row">
+        <div class="brand-mark">PA</div>
+        <div class="brand-text">
+          Prajapati Sales
+          <small>CRM Workspace</small>
+        </div>
+      </div>
+
+      <h1>Welcome <em>back</em></h1>
+      <p class="sub">Apna registered phone number daal — workspace open ho jaayega.</p>
+
+      <div id="errorMsg" class="error-msg">
+        <span>⚠️</span>
+        <span id="errorText">Phone number not found</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Phone Number</label>
+        <div class="input-wrap">
+          <span class="input-prefix">+91</span>
+          <input
+            type="tel"
+            id="phoneInput"
+            class="form-input"
+            placeholder="98765 43210"
+            maxlength="10"
+            autocomplete="tel"
+            autofocus
+          />
+        </div>
+      </div>
+
+      <button class="btn-primary" id="loginBtn" onclick="handleLogin()">
+        Sign in
+      </button>
+
+      <div class="test-users" id="testUsersList">
+        <div class="test-users-label">⚡ Quick login (tap to use)</div>
+        <div id="testUsersBody">Loading users...</div>
+      </div>
+
+      <div class="help-row">
+        Naya account chahiye? <strong>Shivam sir</strong> se baat kar.<br>
+        Internal use only · <code>v1.0</code>
+      </div>
+    </div>
+
+    <!-- Success state -->
+    <div id="successCard" class="success-card">
+      <div class="success-icon">✓</div>
+      <div class="success-name">Welcome, <em id="userName">User</em></div>
+      <div class="success-meta" id="userMeta">Loading workspace...</div>
+      <div class="success-pill">
+        <span class="spinner"></span>
+        Redirecting to dashboard
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Make available globally for onclick handlers
+window.supabase = supabase;
+
+// Check if already logged in
+const existing = localStorage.getItem('prajapati_crm_user');
+if (existing) {
+  try {
+    const user = JSON.parse(existing);
+    if (user && user.id) {
+      // Already logged in, redirect
+      window.location.href = 'crm.html';
+    }
+  } catch(e) { /* ignore */ }
+}
+
+// Format phone input as user types
+const phoneInput = document.getElementById('phoneInput');
+phoneInput.addEventListener('input', (e) => {
+  // Strip non-digits
+  let val = e.target.value.replace(/\D/g, '');
+  // Limit to 10 digits
+  if (val.length > 10) val = val.slice(0, 10);
+  e.target.value = val;
+  // Clear error on type
+  document.getElementById('errorMsg').classList.remove('show');
+  e.target.classList.remove('error');
+});
+
+// Enter key submits
+phoneInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') handleLogin();
+});
+
+// Load test users for quick login
+async function loadTestUsers() {
+  const { data, error } = await supabase
+    .from('trial_sales_users')
+    .select('emp_id, full_name, phone, role')
+    .eq('is_active', true)
+    .order('emp_id');
+
+  const body = document.getElementById('testUsersBody');
+
+  if (error) {
+    body.innerHTML = `<div style="color:var(--red);font-size:12px">Error: ${error.message}<br>Check schema is deployed.</div>`;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    body.innerHTML = `<div style="color:var(--mute);font-size:12px">No users found. Run schema first.</div>`;
+    return;
+  }
+
+  body.innerHTML = data.map(u => `
+    <div class="test-user" onclick="quickLogin('${u.phone}')">
+      <div>
+        <span class="test-user-name">${u.full_name}</span>
+        <span class="test-user-role role-${u.role}">${u.role}</span>
+      </div>
+      <div class="test-user-phone">${u.phone.replace('+91', '')}</div>
+    </div>
+  `).join('');
+}
+
+window.quickLogin = function(phone) {
+  const stripped = phone.replace('+91', '');
+  document.getElementById('phoneInput').value = stripped;
+  handleLogin();
+};
+
+window.handleLogin = async function() {
+  const raw = document.getElementById('phoneInput').value.trim();
+
+  if (!raw || raw.length !== 10) {
+    showError('Please enter a 10-digit phone number');
+    return;
+  }
+
+  const phone = '+91' + raw;
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Checking...';
+
+  // Look up user
+  const { data, error } = await supabase
+    .from('trial_sales_users')
+    .select('*')
+    .eq('phone', phone)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (error) {
+    showError('Database error: ' + error.message);
+    btn.disabled = false;
+    btn.innerHTML = 'Sign in';
+    return;
+  }
+
+  if (!data) {
+    showError('Phone number not registered. Contact admin.');
+    btn.disabled = false;
+    btn.innerHTML = 'Sign in';
+    return;
+  }
+
+  // Save to localStorage
+  localStorage.setItem('prajapati_crm_user', JSON.stringify({
+    id: data.id,
+    emp_id: data.emp_id,
+    full_name: data.full_name,
+    phone: data.phone,
+    email: data.email,
+    role: data.role,
+    monthly_target: data.monthly_target,
+    avatar_color: data.avatar_color,
+    login_at: new Date().toISOString()
+  }));
+
+  // Show success state
+  document.getElementById('loginForm').style.display = 'none';
+  document.getElementById('successCard').classList.add('show');
+  document.getElementById('userName').textContent = data.full_name.split(' ')[0];
+  document.getElementById('userMeta').textContent =
+    `${data.role === 'admin' ? '👑 Admin' : '📊 Sales'} · Emp ${data.emp_id}`;
+
+  // Redirect after 1.2s
+  setTimeout(() => {
+    window.location.href = 'crm.html';
+  }, 1200);
+};
+
+function showError(msg) {
+  const errEl = document.getElementById('errorMsg');
+  document.getElementById('errorText').textContent = msg;
+  errEl.classList.add('show');
+  document.getElementById('phoneInput').classList.add('error');
+  setTimeout(() => {
+    errEl.classList.remove('show');
+    document.getElementById('phoneInput').classList.remove('error');
+  }, 4000);
+}
+
+// Initial load
+loadTestUsers();
+</script>
+</body>
+</html>

@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Sales · Prajapati Advertising</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght,ital@9..144,300..900,0..1&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #0F1C5E; --navy-2: #1A2980; --navy-deep: #060D33; --navy-light: #2A3FA0;
+  --gold: #F5B800; --gold-dk: #C9A14F; --gold-light: #FFD15C;
+  --cream: #FBF8F2; --cream-2: #F4F0E6;
+  --bg: #F5F6FA; --card: #FFFFFF;
+  --ink: #0B1024; --ink-2: #2A2E3F;
+  --mute: #6B7184; --mute-2: #9CA3AF;
+  --line: #E5E7ED; --line-2: #EFF1F5;
+  --green: #10B981; --green-vibrant: #22C55E; --green-soft: #DCFCE7;
+  --red: #DC2626; --red-soft: #FEE2E2;
+  --orange: #F97316; --orange-soft: #FFEDD5;
+  --blue: #2563EB; --blue-soft: #DBEAFE;
+  --purple: #7C3AED; --purple-soft: #EDE9FE;
+  --pink: #EC4899; --pink-soft: #FCE7F3;
+  --serif: 'Fraunces', Georgia, serif;
+  --sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { font-family: var(--sans); background: var(--bg); color: var(--ink); -webkit-font-smoothing: antialiased; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; }
+
+/* Topbar */
+.topbar {
+  background: var(--navy); color: var(--cream); height: 64px;
+  display: flex; align-items: center; padding: 0 28px; gap: 24px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  position: sticky; top: 0; z-index: 100;
+}
+.brand {
+  display: flex; align-items: center; gap: 12px;
+  font-family: var(--serif); font-weight: 500; font-size: 18px; letter-spacing: -0.01em;
+}
+.brand-mark {
+  width: 38px; height: 38px;
+  background: linear-gradient(135deg, var(--gold), var(--gold-dk));
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy); font-weight: 800; font-size: 15px;
+  box-shadow: 0 4px 12px rgba(245,184,0,0.3);
+}
+.brand small {
+  font-size: 10px; opacity: 0.5; letter-spacing: 0.2em; text-transform: uppercase;
+  font-family: var(--sans); display: block; font-weight: 600; margin-top: 2px;
+}
+.tab-strip { display: flex; gap: 4px; margin-left: 32px; }
+.tab {
+  padding: 8px 16px; font-size: 13px; font-weight: 600;
+  color: rgba(255,255,255,0.6); border-radius: 8px; cursor: pointer;
+  transition: all 0.2s;
+}
+.tab:hover { color: var(--cream); background: rgba(255,255,255,0.06); }
+.tab.active { background: rgba(245,184,0,0.18); color: var(--gold-light); }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+.streak-pill {
+  display: flex; align-items: center; gap: 8px;
+  background: linear-gradient(135deg, rgba(245,184,0,0.18), rgba(255,209,92,0.08));
+  padding: 7px 14px; border-radius: 999px;
+  border: 1px solid rgba(245,184,0,0.35);
+  font-size: 12px; font-weight: 700; color: var(--gold-light);
+}
+.streak-flame { font-size: 16px; animation: flicker 1.8s infinite; }
+@keyframes flicker {
+  0%, 100% { transform: rotate(-2deg) scale(1); }
+  50% { transform: rotate(2deg) scale(1.08); }
+}
+.user-pill {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 14px 6px 6px; background: rgba(255,255,255,0.08);
+  border-radius: 999px; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s;
+}
+.user-pill:hover { background: rgba(255,255,255,0.14); }
+.user-avatar {
+  width: 30px; height: 30px;
+  background: linear-gradient(135deg, var(--pink), var(--purple));
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-weight: 800; font-size: 12px;
+}
+.user-avatar.a1 { background: linear-gradient(135deg, #FED7AA, #FB923C); color: #7C2D12; }
+.user-avatar.a2 { background: linear-gradient(135deg, #BFDBFE, #3B82F6); color: #1E3A8A; }
+.user-avatar.a3 { background: linear-gradient(135deg, #BBF7D0, #10B981); color: #064E3B; }
+.user-avatar.a4 { background: linear-gradient(135deg, #FBCFE8, #EC4899); color: #831843; }
+.user-avatar.a5 { background: linear-gradient(135deg, #DDD6FE, #8B5CF6); color: #4C1D95; }
+
+/* Layout */
+.shell {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  min-height: calc(100vh - 64px);
+}
+
+/* Sidebar */
+.sidebar {
+  background: var(--card);
+  border-right: 1px solid var(--line);
+  padding: 24px 16px;
+  position: sticky; top: 64px;
+  height: calc(100vh - 64px);
+  overflow-y: auto;
+}
+.side-section { margin-bottom: 28px; }
+.side-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--mute); padding: 0 12px 8px;
+}
+.side-link {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: 8px;
+  font-size: 13px; font-weight: 600; color: var(--ink-2);
+  cursor: pointer; transition: all 0.15s; margin-bottom: 2px;
+}
+.side-link:hover { background: var(--line-2); }
+.side-link.active {
+  background: linear-gradient(90deg, rgba(15,28,94,0.05), transparent);
+  color: var(--navy); box-shadow: inset 3px 0 0 var(--gold);
+}
+.side-link .ico { font-size: 16px; width: 20px; text-align: center; }
+.side-badge {
+  margin-left: auto; background: var(--gold); color: var(--navy);
+  font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 999px;
+}
+.side-card {
+  background: linear-gradient(135deg, var(--navy), var(--navy-light));
+  color: var(--cream); border-radius: 14px;
+  padding: 18px; margin: 8px 4px;
+  position: relative; overflow: hidden;
+}
+.side-card::before {
+  content: ''; position: absolute;
+  top: -50%; right: -30%;
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(245,184,0,0.25), transparent 70%);
+}
+.side-card-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  opacity: 0.7; position: relative;
+}
+.side-card-num {
+  font-family: var(--mono); font-size: 28px; font-weight: 800;
+  margin: 6px 0 2px; position: relative;
+}
+.side-card-sub { font-size: 11px; opacity: 0.75; position: relative; }
+.logout-btn {
+  width: 100%; padding: 10px;
+  background: transparent; color: var(--mute);
+  border: 1px solid var(--line); border-radius: 8px;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.05em;
+  text-transform: uppercase; transition: all 0.15s;
+}
+.logout-btn:hover { color: var(--red); border-color: var(--red); }
+
+/* Main */
+.main { padding: 24px 28px 60px; }
+
+/* Banner — DB connection status */
+.db-banner {
+  background: var(--green-soft);
+  color: #166534;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.db-banner.error { background: var(--red-soft); color: #B91C1C; }
+.db-banner .live-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--green-vibrant);
+  animation: pulse-dot 1.5s infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.3); }
+}
+
+/* HERO */
+.hero {
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 60%, var(--purple) 110%);
+  color: var(--cream);
+  border-radius: 24px;
+  padding: 36px 36px 32px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 28px;
+}
+.hero::before {
+  content: ''; position: absolute;
+  top: -100px; right: -80px;
+  width: 380px; height: 380px;
+  background: radial-gradient(circle, rgba(245,184,0,0.28), transparent 60%);
+}
+.hero::after {
+  content: ''; position: absolute;
+  bottom: -120px; left: 30%;
+  width: 320px; height: 320px;
+  background: radial-gradient(circle, rgba(236,72,153,0.18), transparent 60%);
+}
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 32px;
+  position: relative;
+  z-index: 1;
+  align-items: center;
+}
+.hero-greeting {
+  font-size: 13px; font-weight: 600; opacity: 0.7;
+  letter-spacing: 0.05em; margin-bottom: 6px;
+}
+.hero-greeting .dot-live {
+  display: inline-block; width: 6px; height: 6px;
+  background: var(--green-vibrant); border-radius: 50%;
+  margin-right: 6px; vertical-align: middle;
+  animation: pulse-dot 1.5s infinite;
+}
+.hero-name {
+  font-family: var(--serif);
+  font-size: 44px; font-weight: 400;
+  letter-spacing: -0.02em; line-height: 1.05;
+  margin-bottom: 14px;
+}
+.hero-name em { font-style: italic; color: var(--gold-light); }
+.hero-tagline {
+  font-size: 15px; opacity: 0.78;
+  max-width: 480px; line-height: 1.55;
+  margin-bottom: 20px;
+}
+.hero-tagline strong { color: var(--gold-light); }
+.hero-stats { display: flex; gap: 28px; margin-top: 12px; }
+.hero-stat-item { display: flex; flex-direction: column; }
+.hero-stat-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.14em;
+  text-transform: uppercase; opacity: 0.6; margin-bottom: 4px;
+}
+.hero-stat-val { font-family: var(--mono); font-size: 22px; font-weight: 800; }
+.hero-stat-val span { font-size: 14px; opacity: 0.55; font-weight: 500; }
+
+/* Progress ring */
+.progress-ring-wrap { display: flex; flex-direction: column; align-items: center; position: relative; }
+.progress-ring { position: relative; width: 220px; height: 220px; }
+.progress-ring svg { transform: rotate(-90deg); }
+.progress-ring-text {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+.progress-ring-pct {
+  font-family: var(--mono); font-size: 44px; font-weight: 800;
+  color: var(--gold-light); line-height: 1; letter-spacing: -0.02em;
+}
+.progress-ring-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.14em;
+  text-transform: uppercase; opacity: 0.65; margin-top: 8px;
+}
+.progress-ring-sub {
+  font-family: var(--mono); font-size: 13px; opacity: 0.85;
+  margin-top: 6px; font-weight: 600;
+}
+
+/* Stat grid */
+.stat-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 16px; margin-bottom: 32px;
+}
+.stat-card {
+  background: var(--card); border-radius: 16px; padding: 22px;
+  border: 1px solid var(--line); position: relative; overflow: hidden;
+  transition: all 0.25s;
+}
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 40px rgba(15,28,94,0.10);
+  border-color: var(--gold);
+}
+.stat-card .ico-wrap {
+  width: 40px; height: 40px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; margin-bottom: 14px;
+}
+.stat-card.blue .ico-wrap { background: var(--blue-soft); color: var(--blue); }
+.stat-card.green .ico-wrap { background: var(--green-soft); color: var(--green); }
+.stat-card.gold .ico-wrap { background: rgba(245,184,0,0.16); color: var(--gold-dk); }
+.stat-card.purple .ico-wrap { background: var(--purple-soft); color: var(--purple); }
+.stat-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--mute); margin-bottom: 6px;
+}
+.stat-num {
+  font-family: var(--mono); font-size: 30px; font-weight: 800;
+  letter-spacing: -0.02em; color: var(--ink); line-height: 1.05;
+}
+.stat-num span { font-size: 14px; color: var(--mute); font-weight: 500; }
+.stat-foot {
+  font-size: 12px; color: var(--mute);
+  margin-top: 8px; display: flex; align-items: center; gap: 6px;
+}
+.stat-foot .up { color: var(--green); font-weight: 700; }
+.stat-foot .down { color: var(--red); font-weight: 700; }
+
+/* Target card */
+.target-card {
+  background: linear-gradient(135deg, #FFFEFB, var(--cream-2));
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 28px; margin-bottom: 28px;
+  position: relative; overflow: hidden;
+}
+.target-card::before {
+  content: ''; position: absolute;
+  top: 0; right: 0; width: 340px; height: 340px;
+  background: radial-gradient(circle at top right, rgba(245,184,0,0.15), transparent 60%);
+}
+.target-grid {
+  display: grid; grid-template-columns: 1.3fr 1fr;
+  gap: 32px; position: relative; z-index: 1; align-items: center;
+}
+.target-left h3 {
+  font-family: var(--serif); font-size: 22px; font-weight: 400;
+  margin-bottom: 6px; color: var(--navy);
+}
+.target-left h3 em { font-style: italic; color: var(--gold-dk); }
+.target-left .sub { font-size: 13px; color: var(--mute); margin-bottom: 18px; }
+.target-bar-wrap {
+  background: rgba(15,28,94,0.06); border-radius: 999px;
+  height: 18px; overflow: hidden; margin-bottom: 14px; position: relative;
+}
+.target-bar {
+  background: linear-gradient(90deg, var(--gold), var(--gold-light));
+  height: 100%; border-radius: 999px; position: relative;
+  box-shadow: 0 2px 12px rgba(245,184,0,0.4);
+  transition: width 1.4s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 0%;
+}
+.target-bar::after {
+  content: ''; position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+  animation: shimmer 2.5s infinite;
+}
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.target-readings {
+  display: flex; justify-content: space-between;
+  font-size: 12px; font-weight: 600; color: var(--mute);
+}
+.target-readings strong {
+  font-family: var(--mono); font-size: 18px; color: var(--navy);
+  font-weight: 800; display: block; margin-bottom: 2px;
+}
+.target-readings .achieve { color: var(--green); }
+.target-right {
+  background: white; border: 1px solid var(--line);
+  border-radius: 14px; padding: 22px;
+}
+.target-right .row {
+  display: flex; justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line-2); font-size: 13px;
+}
+.target-right .row:last-child { border-bottom: none; }
+.target-right .row-label { color: var(--mute); font-weight: 600; }
+.target-right .row-val { font-family: var(--mono); font-weight: 700; color: var(--ink); }
+.target-right .row-val.green { color: var(--green); }
+.target-right .row-val.gold { color: var(--gold-dk); }
+
+/* Two col */
+.two-col {
+  display: grid; grid-template-columns: 1.4fr 1fr;
+  gap: 24px; margin-bottom: 28px;
+}
+
+/* Section header */
+.sec-head {
+  display: flex; align-items: end; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.sec-title {
+  font-family: var(--serif); font-weight: 400;
+  font-size: 24px; letter-spacing: -0.01em; color: var(--ink);
+}
+.sec-title em { font-style: italic; color: var(--navy); }
+.sec-sub { font-size: 12px; color: var(--mute); margin-top: 2px; }
+.sec-action {
+  font-size: 12px; font-weight: 700; color: var(--navy);
+  text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer;
+}
+.sec-action:hover { color: var(--gold-dk); }
+
+/* Leads card */
+.leads-card {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 18px; padding: 24px;
+}
+.empty-state {
+  text-align: center; padding: 40px 20px;
+}
+.empty-state-icon {
+  font-size: 48px; margin-bottom: 12px; opacity: 0.5;
+}
+.empty-state-title {
+  font-family: var(--serif); font-size: 20px;
+  font-weight: 500; color: var(--navy); margin-bottom: 6px;
+}
+.empty-state-sub { font-size: 13px; color: var(--mute); }
+.lead-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 0; border-bottom: 1px solid var(--line-2);
+  cursor: pointer; transition: all 0.15s;
+}
+.lead-row:hover {
+  background: var(--cream); margin: 0 -14px;
+  padding: 14px; border-radius: 10px;
+  border-bottom: 1px solid transparent;
+}
+.lead-row:last-child { border-bottom: none; }
+.lead-avatar {
+  width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 14px; font-family: var(--mono);
+  flex-shrink: 0;
+}
+.lead-avatar.a1 { background: linear-gradient(135deg, #FEF3C7, #FED7AA); color: #92400E; }
+.lead-avatar.a2 { background: linear-gradient(135deg, #DBEAFE, #C7D2FE); color: #3730A3; }
+.lead-avatar.a3 { background: linear-gradient(135deg, #DCFCE7, #BBF7D0); color: #166534; }
+.lead-avatar.a4 { background: linear-gradient(135deg, #FCE7F3, #FBCFE8); color: #9D174D; }
+.lead-avatar.a5 { background: linear-gradient(135deg, #EDE9FE, #DDD6FE); color: #5B21B6; }
+.lead-info { flex: 1; min-width: 0; }
+.lead-name { font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 2px; }
+.lead-meta {
+  font-size: 12px; color: var(--mute);
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+}
+.lead-meta .src-pill {
+  font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.src-pill.justdial { background: var(--orange-soft); color: var(--orange); }
+.src-pill.indiamart { background: var(--blue-soft); color: var(--blue); }
+.src-pill.meta_ads { background: var(--purple-soft); color: var(--purple); }
+.src-pill.direct { background: var(--green-soft); color: var(--green); }
+.src-pill.tradeindia { background: var(--pink-soft); color: var(--pink); }
+.src-pill.reference { background: rgba(245,184,0,0.18); color: var(--gold-dk); }
+.lead-stage {
+  font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 8px;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.stage-new { background: var(--blue-soft); color: var(--blue); }
+.stage-contacted { background: var(--orange-soft); color: var(--orange); }
+.stage-qualified { background: rgba(245,184,0,0.18); color: var(--gold-dk); }
+.stage-quoted { background: var(--purple-soft); color: var(--purple); }
+.stage-negotiating { background: var(--pink-soft); color: var(--pink); }
+.stage-won { background: var(--green-soft); color: var(--green); }
+.stage-lost { background: var(--red-soft); color: var(--red); }
+.lead-score { display: flex; flex-direction: column; align-items: end; }
+.lead-score-num {
+  font-family: var(--mono); font-size: 16px; font-weight: 800; color: var(--green);
+}
+.lead-score-num.med { color: var(--gold-dk); }
+.lead-score-num.low { color: var(--mute); }
+.lead-score-label {
+  font-size: 10px; color: var(--mute); font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.lead-amount {
+  font-family: var(--mono); font-size: 14px; font-weight: 800; color: var(--navy);
+}
+
+/* Rank card */
+.rank-card {
+  background: linear-gradient(135deg, var(--navy-deep), var(--navy));
+  color: var(--cream); border-radius: 18px;
+  padding: 24px; position: relative; overflow: hidden;
+}
+.rank-card::before {
+  content: ''; position: absolute;
+  top: -60px; right: -60px;
+  width: 220px; height: 220px;
+  background: radial-gradient(circle, rgba(245,184,0,0.25), transparent 70%);
+}
+.rank-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px; position: relative;
+}
+.rank-head h3 {
+  font-family: var(--serif); font-size: 18px; font-weight: 400;
+}
+.rank-head h3 em { color: var(--gold-light); font-style: italic; }
+.rank-trophy { font-size: 24px; }
+.rank-position {
+  display: flex; align-items: end; gap: 14px;
+  margin-bottom: 18px; position: relative;
+}
+.rank-num {
+  font-family: var(--serif); font-size: 80px; font-weight: 600;
+  font-style: italic; color: var(--gold-light);
+  line-height: 1; letter-spacing: -0.04em;
+}
+.rank-of { font-size: 13px; opacity: 0.65; margin-bottom: 18px; }
+.rank-of strong {
+  font-family: var(--mono); font-weight: 700; display: block;
+  font-size: 16px; margin-bottom: 2px; opacity: 1;
+}
+.rank-list { position: relative; }
+.rank-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 13px;
+}
+.rank-row:last-child { border-bottom: none; }
+.rank-row.me {
+  background: rgba(245,184,0,0.08); margin: 0 -10px;
+  padding: 10px; border-radius: 8px;
+  border-bottom: 1px solid transparent;
+}
+.rank-pos {
+  font-family: var(--mono); font-size: 14px; font-weight: 800;
+  width: 24px; color: var(--gold-light);
+}
+.rank-pos.gold { color: var(--gold); }
+.rank-name { flex: 1; font-weight: 600; }
+.rank-name.me-name { font-weight: 800; color: var(--gold-light); }
+.rank-name.me-name::after {
+  content: 'YOU';
+  background: var(--gold); color: var(--navy);
+  font-size: 9px; font-weight: 800;
+  padding: 2px 6px; border-radius: 4px;
+  margin-left: 8px; letter-spacing: 0.05em;
+}
+.rank-val { font-family: var(--mono); font-weight: 700; font-size: 12px; opacity: 0.85; }
+
+/* Tab content */
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Loading */
+.skeleton {
+  background: linear-gradient(90deg, var(--line-2) 0%, var(--line) 50%, var(--line-2) 100%);
+  background-size: 200% 100%;
+  animation: skeleton 1.4s infinite;
+  border-radius: 8px;
+}
+@keyframes skeleton {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Footer */
+.foot {
+  text-align: center; font-size: 11px; color: var(--mute);
+  padding: 32px 0 20px; letter-spacing: 0.04em;
+}
+.foot strong { color: var(--navy); }
+
+/* Coming soon banner */
+.coming-soon {
+  background: linear-gradient(135deg, var(--cream-2), var(--cream));
+  border: 2px dashed var(--gold-dk);
+  border-radius: 18px;
+  padding: 60px 30px; text-align: center;
+}
+.coming-soon .icon { font-size: 56px; margin-bottom: 16px; }
+.coming-soon h3 {
+  font-family: var(--serif); font-size: 26px; font-weight: 400;
+  color: var(--navy); margin-bottom: 8px;
+}
+.coming-soon h3 em { font-style: italic; color: var(--gold-dk); }
+.coming-soon p {
+  color: var(--mute); font-size: 14px; max-width: 420px;
+  margin: 0 auto 16px; line-height: 1.6;
+}
+.coming-soon .phase {
+  display: inline-block; padding: 6px 14px;
+  background: var(--navy); color: var(--cream);
+  border-radius: 999px; font-size: 11px;
+  font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+}
+
+@media (max-width: 920px) {
+  .shell { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+  .two-col { grid-template-columns: 1fr; }
+  .hero-grid { grid-template-columns: 1fr; }
+  .target-grid { grid-template-columns: 1fr; }
+  .hero-name { font-size: 32px; }
+  .tab-strip { display: none; }
+  .main { padding: 16px; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">PA</div>
+    <div>Prajapati Sales<small>My Workspace</small></div>
+  </div>
+  <div class="tab-strip">
+    <div class="tab active" data-tab="home">My Day</div>
+    <div class="tab" data-tab="leads">My Leads</div>
+    <div class="tab" data-tab="orders">My Orders</div>
+    <div class="tab" data-tab="achievements">Achievements</div>
+  </div>
+  <div class="topbar-right">
+    <div class="streak-pill">
+      <span class="streak-flame">🔥</span>
+      <span id="streakDays">— day streak</span>
+    </div>
+    <div class="user-pill" onclick="logout()">
+      <div class="user-avatar a4" id="userAvatar">--</div>
+      <span id="userName">Loading…</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="side-section">
+      <div class="side-label">My Workspace</div>
+      <div class="side-link active" onclick="switchTab('home')"><span class="ico">🏠</span> My Day</div>
+      <div class="side-link" onclick="switchTab('leads')"><span class="ico">👤</span> My Leads <span class="side-badge" id="sideLeadsBadge">0</span></div>
+      <div class="side-link"><span class="ico">📋</span> Active Quotes <span class="side-badge" id="sideQuotesBadge">0</span></div>
+      <div class="side-link" onclick="switchTab('orders')"><span class="ico">📦</span> My Orders <span class="side-badge" id="sideOrdersBadge">0</span></div>
+    </div>
+
+    <div class="side-section">
+      <div class="side-label">Team</div>
+      <div class="side-link"><span class="ico">🏆</span> Leaderboard</div>
+      <div class="side-link"><span class="ico">👥</span> Team Stats</div>
+    </div>
+
+    <div class="side-section">
+      <div class="side-label">Tools</div>
+      <a href="https://prajapati-gps-field-repo.vercel.app/field.html" target="_blank" style="text-decoration:none;color:inherit">
+        <div class="side-link"><span class="ico">📸</span> GPS Field App</div>
+      </a>
+      <a href="https://prajapati-gps-field-repo.vercel.app/admin.html" target="_blank" style="text-decoration:none;color:inherit">
+        <div class="side-link"><span class="ico">📊</span> Field Admin</div>
+      </a>
+      <div class="side-link"><span class="ico">🔗</span> Client Reports</div>
+    </div>
+
+    <div class="side-card">
+      <div class="side-card-label">This month</div>
+      <div class="side-card-num" id="sideAchieved">₹—</div>
+      <div class="side-card-sub" id="sideAchievedPct">— of target</div>
+    </div>
+
+    <button class="logout-btn" onclick="logout()">Sign out</button>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <div id="dbBanner" class="db-banner">
+      <span class="live-dot"></span>
+      <span id="dbBannerText">Connected to Supabase · Real-time updates enabled</span>
+    </div>
+
+    <!-- ─────────── TAB: MY DAY ─────────── -->
+    <div class="tab-content active" id="tab-home">
+
+      <!-- HERO -->
+      <section class="hero">
+        <div class="hero-grid">
+          <div>
+            <div class="hero-greeting"><span class="dot-live"></span><span id="heroDateTime">Loading…</span></div>
+            <h1 class="hero-name">Namaste, <em id="heroFirstName">…</em> 👋</h1>
+            <p class="hero-tagline" id="heroTagline">Loading your sales picture…</p>
+            <div class="hero-stats">
+              <div class="hero-stat-item">
+                <div class="hero-stat-label">Active Leads</div>
+                <div class="hero-stat-val" id="heroActiveLeads">—</div>
+              </div>
+              <div class="hero-stat-item">
+                <div class="hero-stat-label">Hot Leads</div>
+                <div class="hero-stat-val" id="heroHotLeads">—</div>
+              </div>
+              <div class="hero-stat-item">
+                <div class="hero-stat-label">Followup Due</div>
+                <div class="hero-stat-val" id="heroFollowupDue">—</div>
+              </div>
+              <div class="hero-stat-item">
+                <div class="hero-stat-label">My Rank</div>
+                <div class="hero-stat-val" id="heroRank">—<span> / —</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="progress-ring-wrap">
+            <div class="progress-ring">
+              <svg width="220" height="220" viewBox="0 0 220 220">
+                <circle cx="110" cy="110" r="92" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="14"/>
+                <circle id="progressCircle" cx="110" cy="110" r="92" fill="none" stroke="url(#ringGradient)" stroke-width="14"
+                  stroke-dasharray="578" stroke-dashoffset="578" stroke-linecap="round"/>
+                <defs>
+                  <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#FFD15C"/>
+                    <stop offset="100%" stop-color="#F5B800"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div class="progress-ring-text">
+                <div class="progress-ring-pct" id="ringPct">0%</div>
+                <div class="progress-ring-label">Monthly Target</div>
+                <div class="progress-ring-sub" id="ringSub">₹0 / ₹0</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- STAT GRID -->
+      <div class="stat-grid">
+        <div class="stat-card blue">
+          <div class="ico-wrap">👥</div>
+          <div class="stat-label">My Active Leads</div>
+          <div class="stat-num" id="statLeads">—</div>
+          <div class="stat-foot" id="statLeadsFoot">Loading…</div>
+        </div>
+        <div class="stat-card gold">
+          <div class="ico-wrap">💰</div>
+          <div class="stat-label">My Open Pipeline</div>
+          <div class="stat-num" id="statPipeline">₹—</div>
+          <div class="stat-foot" id="statPipelineFoot">Loading…</div>
+        </div>
+        <div class="stat-card purple">
+          <div class="ico-wrap">📋</div>
+          <div class="stat-label">Quotes Sent</div>
+          <div class="stat-num" id="statQuotes">—</div>
+          <div class="stat-foot" id="statQuotesFoot">Loading…</div>
+        </div>
+        <div class="stat-card green">
+          <div class="ico-wrap">🏆</div>
+          <div class="stat-label">Won This Month</div>
+          <div class="stat-num" id="statWon">—</div>
+          <div class="stat-foot" id="statWonFoot">Loading…</div>
+        </div>
+      </div>
+
+      <!-- TARGET CARD -->
+      <div class="target-card">
+        <div class="target-grid">
+          <div class="target-left">
+            <h3>Monthly target — <em id="targetMonth">—</em></h3>
+            <p class="sub" id="targetSub">Loading…</p>
+            <div class="target-bar-wrap">
+              <div class="target-bar" id="targetBar"></div>
+            </div>
+            <div class="target-readings">
+              <div>
+                <strong class="achieve" style="color:var(--green)" id="targetAchieved">₹0</strong>
+                Achieved
+              </div>
+              <div style="text-align:center">
+                <strong id="targetPending">₹0</strong>
+                Pending
+              </div>
+              <div style="text-align:right">
+                <strong id="targetTotal">₹0</strong>
+                Target
+              </div>
+            </div>
+          </div>
+          <div class="target-right">
+            <div class="row">
+              <span class="row-label">Daily target</span>
+              <span class="row-val" id="dailyTarget">₹—</span>
+            </div>
+            <div class="row">
+              <span class="row-label">Days remaining</span>
+              <span class="row-val" id="daysRemaining">—</span>
+            </div>
+            <div class="row">
+              <span class="row-label">Avg needed/day</span>
+              <span class="row-val gold" id="avgNeeded">₹—</span>
+            </div>
+            <div class="row">
+              <span class="row-label">Streak</span>
+              <span class="row-val gold" id="streakRow">🔥 — days</span>
+            </div>
+            <div class="row">
+              <span class="row-label">Bonus eligibility</span>
+              <span class="row-val" id="bonusEligible">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TWO COL: My Leads + Rank -->
+      <div class="two-col">
+        <div class="leads-card">
+          <div class="sec-head" style="margin-bottom:8px">
+            <div>
+              <div class="sec-title">My hot <em>leads</em></div>
+              <div class="sec-sub">Top 5 by AI score · only assigned to you</div>
+            </div>
+            <div class="sec-action" onclick="switchTab('leads')">View all →</div>
+          </div>
+          <div id="hotLeadsBody">
+            <div class="empty-state">
+              <div class="empty-state-icon">⏳</div>
+              <div class="empty-state-sub">Loading leads…</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="rank-card">
+          <div class="rank-head">
+            <h3>My <em>leaderboard</em> rank</h3>
+            <span class="rank-trophy" id="rankTrophy">🏆</span>
+          </div>
+          <div class="rank-position">
+            <div class="rank-num" id="rankNum">—</div>
+            <div class="rank-of">
+              <strong id="rankOf">of —</strong>
+              sales reps
+            </div>
+          </div>
+          <div class="rank-list" id="rankList">
+            <div style="padding:20px;text-align:center;opacity:0.6;font-size:12px">Loading rankings…</div>
+          </div>
+          <div id="rankTip" style="margin-top:18px; padding:12px; background:rgba(245,184,0,0.1); border-radius:10px; font-size:12px; position:relative; display:none">
+            💡 <span id="rankTipText"></span>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /tab-home -->
+
+    <!-- ─────────── TAB: MY LEADS ─────────── -->
+    <div class="tab-content" id="tab-leads">
+      <div class="sec-head">
+        <div>
+          <div class="sec-title">My <em>leads</em></div>
+          <div class="sec-sub" id="leadsCountSub">— total · sirf tumhe assigned</div>
+        </div>
+      </div>
+      <div class="leads-card" id="allLeadsBody">
+        <div class="empty-state">
+          <div class="empty-state-icon">⏳</div>
+          <div class="empty-state-sub">Loading leads…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─────────── TAB: MY ORDERS ─────────── -->
+    <div class="tab-content" id="tab-orders">
+      <div class="sec-head">
+        <div>
+          <div class="sec-title">My <em>orders</em></div>
+          <div class="sec-sub" id="ordersCountSub">— active · live status from departments</div>
+        </div>
+      </div>
+      <div class="leads-card" id="allOrdersBody">
+        <div class="empty-state">
+          <div class="empty-state-icon">📦</div>
+          <div class="empty-state-title">No orders yet</div>
+          <div class="empty-state-sub">Lead won hote hi yahan order ban ke aa jaayega.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─────────── TAB: ACHIEVEMENTS ─────────── -->
+    <div class="tab-content" id="tab-achievements">
+      <div class="coming-soon">
+        <div class="icon">🏆</div>
+        <h3>Achievements <em>coming soon</em></h3>
+        <p>Badges, streaks, milestones — sab Phase 3.3 mein launch hoga. Pehle leads aur orders ka flow stable kar lete hain.</p>
+        <div class="phase">Phase 3.3 · Next sprint</div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <strong>Prajapati Advertising</strong> · Sales Workspace v1.0 · <span id="footUser">—</span> · May 2026
+    </div>
+
+  </main>
+</div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ─── Auth check ───
+const userJSON = localStorage.getItem('prajapati_crm_user');
+if (!userJSON) {
+  window.location.href = 'crm-login.html';
+}
+let CURRENT_USER;
+try {
+  CURRENT_USER = JSON.parse(userJSON);
+  if (!CURRENT_USER || !CURRENT_USER.id) throw new Error('Invalid user');
+} catch (e) {
+  localStorage.removeItem('prajapati_crm_user');
+  window.location.href = 'crm-login.html';
+}
+
+// Make available globally
+window.supabase = supabase;
+window.CURRENT_USER = CURRENT_USER;
+
+// ─── Logout ───
+window.logout = function() {
+  if (confirm('Sign out karna hai?')) {
+    localStorage.removeItem('prajapati_crm_user');
+    window.location.href = 'crm-login.html';
+  }
+};
+
+// ─── Tab switching ───
+window.switchTab = function(tabName) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  const tabBtn = document.querySelector(`.tab[data-tab="${tabName}"]`);
+  if (tabBtn) tabBtn.classList.add('active');
+  const content = document.getElementById('tab-' + tabName);
+  if (content) content.classList.add('active');
+
+  document.querySelectorAll('.side-link').forEach(l => l.classList.remove('active'));
+  const sideLink = Array.from(document.querySelectorAll('.side-link'))
+    .find(l => l.getAttribute('onclick')?.includes(`'${tabName}'`));
+  if (sideLink) sideLink.classList.add('active');
+
+  if (tabName === 'leads') loadAllLeads();
+  if (tabName === 'orders') loadAllOrders();
+
+  window.scrollTo({top: 0, behavior: 'smooth'});
+};
+document.querySelectorAll('.tab[data-tab]').forEach(tab => {
+  tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+});
+
+// ─── Init UI with user info ───
+function initUserUI() {
+  const firstName = CURRENT_USER.full_name.split(' ')[0];
+  const initials = CURRENT_USER.full_name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+  document.getElementById('userName').textContent = `${firstName} · Emp ${CURRENT_USER.emp_id}`;
+  document.getElementById('userAvatar').textContent = initials;
+  document.getElementById('userAvatar').className = 'user-avatar ' + (CURRENT_USER.avatar_color || 'a4');
+  document.getElementById('heroFirstName').textContent = firstName;
+  document.getElementById('footUser').textContent = `${CURRENT_USER.full_name}, Emp ${CURRENT_USER.emp_id}`;
+
+  // Date/time
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-IN', {
+    weekday: 'long', day: 'numeric', month: 'short', year: 'numeric'
+  });
+  const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  document.getElementById('heroDateTime').textContent = `${dateStr} · ${timeStr}`;
+
+  // Month name
+  const monthName = now.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+  document.getElementById('targetMonth').textContent = monthName;
+}
+
+// ─── Helpers ───
+function fmtINR(n) {
+  if (!n || n === 0) return '₹0';
+  if (n >= 10000000) return '₹' + (n/10000000).toFixed(2) + 'Cr';
+  if (n >= 100000) return '₹' + (n/100000).toFixed(2) + 'L';
+  if (n >= 1000) return '₹' + (n/1000).toFixed(0) + 'K';
+  return '₹' + n.toFixed(0);
+}
+function fmtINRfull(n) {
+  return '₹' + (n || 0).toLocaleString('en-IN');
+}
+function avatarChar(name) {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+}
+function avatarColorForName(name) {
+  if (!name) return 'a1';
+  const colors = ['a1','a2','a3','a4','a5'];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+  return colors[Math.abs(h) % 5];
+}
+function timeSince(iso) {
+  if (!iso) return 'never';
+  const diff = Date.now() - new Date(iso).getTime();
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return Math.floor(diff/60000) + 'm ago';
+  if (diff < 86400000) return Math.floor(diff/3600000) + 'h ago';
+  return Math.floor(diff/86400000) + 'd ago';
+}
+
+// ─── Load dashboard data ───
+async function loadDashboard() {
+  // 1. My leads
+  const { data: leads, error: leadsErr } = await supabase
+    .from('trial_leads')
+    .select('*')
+    .eq('assigned_to', CURRENT_USER.id);
+
+  if (leadsErr) {
+    showError('Could not load leads: ' + leadsErr.message);
+    return;
+  }
+
+  const activeLeads = (leads || []).filter(l =>
+    !['won','lost'].includes(l.stage)
+  );
+  const hotLeads = activeLeads.filter(l => l.priority === 'hot' || (l.ai_score && l.ai_score >= 80));
+  const quotedLeads = activeLeads.filter(l => l.stage === 'quoted' || l.stage === 'negotiating');
+  const followupDue = activeLeads.filter(l =>
+    l.next_followup_at && new Date(l.next_followup_at) <= new Date()
+  );
+
+  // Won this month
+  const monthStart = new Date();
+  monthStart.setDate(1); monthStart.setHours(0,0,0,0);
+  const wonThisMonth = (leads || []).filter(l =>
+    l.stage === 'won' && l.won_at && new Date(l.won_at) >= monthStart
+  );
+
+  const openPipeline = activeLeads.reduce((sum, l) => sum + (Number(l.estimated_value) || 0), 0);
+  const wonAmount = wonThisMonth.reduce((sum, l) => sum + (Number(l.estimated_value) || 0), 0);
+
+  // 2. Targets
+  const now = new Date();
+  const { data: targetRow } = await supabase
+    .from('trial_sales_targets')
+    .select('*')
+    .eq('user_id', CURRENT_USER.id)
+    .eq('year', now.getFullYear())
+    .eq('month', now.getMonth() + 1)
+    .maybeSingle();
+
+  const targetAmount = Number(targetRow?.target_amount) || Number(CURRENT_USER.monthly_target) || 500000;
+  const achievedPct = targetAmount > 0 ? Math.min(100, Math.round((wonAmount / targetAmount) * 100)) : 0;
+  const pending = Math.max(0, targetAmount - wonAmount);
+
+  // Days remaining in month
+  const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const daysRemaining = lastDayOfMonth - now.getDate();
+  const dailyTarget = Math.round(targetAmount / lastDayOfMonth);
+  const avgNeeded = daysRemaining > 0 ? Math.round(pending / daysRemaining) : 0;
+
+  // 3. Update UI - Hero stats
+  document.getElementById('heroActiveLeads').textContent = activeLeads.length;
+  document.getElementById('heroHotLeads').textContent = hotLeads.length;
+  document.getElementById('heroFollowupDue').textContent = followupDue.length;
+
+  // Stat cards
+  document.getElementById('statLeads').textContent = activeLeads.length;
+  document.getElementById('statLeadsFoot').innerHTML = activeLeads.length > 0
+    ? `<span class="up">${hotLeads.length} hot</span> · ${followupDue.length} followup due`
+    : 'No active leads — admin se assign karwa';
+
+  document.getElementById('statPipeline').innerHTML = openPipeline >= 100000
+    ? `₹${(openPipeline/100000).toFixed(1)}<span>L</span>`
+    : fmtINR(openPipeline);
+  document.getElementById('statPipelineFoot').textContent = activeLeads.length + ' active deals';
+
+  document.getElementById('statQuotes').textContent = quotedLeads.length;
+  document.getElementById('statQuotesFoot').textContent = quotedLeads.length > 0
+    ? quotedLeads.length + ' awaiting client response'
+    : 'No quotes sent yet';
+
+  document.getElementById('statWon').innerHTML = `${wonThisMonth.length}<span> · ${fmtINR(wonAmount)}</span>`;
+  document.getElementById('statWonFoot').textContent = wonThisMonth.length > 0
+    ? `${achievedPct}% of monthly target`
+    : 'Khaata abhi khali — chalo close karte hain';
+
+  // Target card
+  document.getElementById('ringPct').textContent = achievedPct + '%';
+  document.getElementById('ringSub').textContent = `${fmtINR(wonAmount)} / ${fmtINR(targetAmount)}`;
+  // Animate ring
+  const circumference = 578;
+  const offset = circumference - (circumference * achievedPct / 100);
+  const circle = document.getElementById('progressCircle');
+  setTimeout(() => {
+    circle.style.transition = 'stroke-dashoffset 1.6s cubic-bezier(0.4,0,0.2,1)';
+    circle.style.strokeDashoffset = offset;
+  }, 200);
+
+  document.getElementById('targetSub').innerHTML =
+    `${daysRemaining} days remaining · Daily avg needed: <strong style="color:var(--navy)">${fmtINRfull(avgNeeded)}/day</strong> to hit ${fmtINR(targetAmount)}`;
+  document.getElementById('targetAchieved').textContent = fmtINR(wonAmount);
+  document.getElementById('targetPending').textContent = fmtINR(pending);
+  document.getElementById('targetTotal').textContent = fmtINR(targetAmount);
+
+  // Animate target bar
+  setTimeout(() => {
+    document.getElementById('targetBar').style.width = achievedPct + '%';
+  }, 300);
+
+  // Right side rows
+  document.getElementById('dailyTarget').textContent = fmtINRfull(dailyTarget);
+  document.getElementById('daysRemaining').textContent = daysRemaining + ' days';
+  document.getElementById('avgNeeded').textContent = fmtINRfull(avgNeeded);
+  document.getElementById('streakRow').textContent = '🔥 — days';
+  document.getElementById('bonusEligible').innerHTML = achievedPct >= 80
+    ? '<span style="color:var(--green)">Track ✓</span>'
+    : `<span style="color:var(--mute)">${achievedPct}% complete</span>`;
+
+  // Sidebar
+  document.getElementById('sideLeadsBadge').textContent = activeLeads.length;
+  document.getElementById('sideQuotesBadge').textContent = quotedLeads.length;
+  document.getElementById('sideAchieved').textContent = fmtINR(wonAmount);
+  document.getElementById('sideAchievedPct').textContent = `${achievedPct}% of target`;
+
+  // Tagline
+  if (activeLeads.length === 0) {
+    document.getElementById('heroTagline').innerHTML =
+      `Workspace ready, lekin abhi koi leads assigned nahi. <strong>Admin se baat kar</strong> — phir momentum start karte hain.`;
+  } else {
+    document.getElementById('heroTagline').innerHTML =
+      `Tum target ke <strong>${achievedPct}% pe ho</strong>. ${pending > 0 ? fmtINR(pending) + ' aur close karna hai is mahine.' : 'Target hit! 🎉'}`;
+  }
+
+  // 4. Hot leads list (top 5 by AI score / value)
+  const sortedLeads = [...activeLeads].sort((a, b) => {
+    const scoreA = (a.ai_score || 0) * 100 + (Number(a.estimated_value) || 0) / 1000;
+    const scoreB = (b.ai_score || 0) * 100 + (Number(b.estimated_value) || 0) / 1000;
+    return scoreB - scoreA;
+  });
+  renderLeadsList(sortedLeads.slice(0, 5), 'hotLeadsBody');
+
+  // 5. Leaderboard
+  await loadLeaderboard(wonAmount);
+
+  // Save for tab switches
+  window._allLeads = leads || [];
+  window._activeLeads = activeLeads;
+}
+
+function renderLeadsList(leads, targetId) {
+  const target = document.getElementById(targetId);
+  if (!leads || leads.length === 0) {
+    target.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">📭</div>
+        <div class="empty-state-title">No leads yet</div>
+        <div class="empty-state-sub">Admin se leads assign karwa, ya khud add kar (next phase).</div>
+      </div>
+    `;
+    return;
+  }
+
+  target.innerHTML = leads.map(lead => {
+    const avatar = avatarChar(lead.client_name);
+    const color = avatarColorForName(lead.client_name);
+    const score = lead.ai_score || 0;
+    const scoreClass = score >= 80 ? '' : score >= 60 ? 'med' : 'low';
+    const stageDisplay = (lead.stage || 'new').replace('_', ' ');
+
+    let metaParts = [];
+    if (lead.source) {
+      const srcKey = lead.source.replace(/[^a-z_]/gi, '');
+      metaParts.push(`<span class="src-pill ${srcKey}">${lead.source.replace('_', ' ')}</span>`);
+    }
+    if (lead.client_city) metaParts.push(lead.client_city);
+    if (lead.last_contacted_at) metaParts.push('Last: ' + timeSince(lead.last_contacted_at));
+
+    return `
+      <div class="lead-row" onclick="alert('Lead detail screen — Phase 3.2 mein aayega')">
+        <div class="lead-avatar ${color}">${avatar}</div>
+        <div class="lead-info">
+          <div class="lead-name">${lead.client_company || lead.client_name}</div>
+          <div class="lead-meta">${metaParts.join('')}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="lead-amount">${fmtINR(lead.estimated_value || 0)}</div>
+          <span class="lead-stage stage-${lead.stage || 'new'}" style="margin-top:4px;display:inline-block">${stageDisplay}</span>
+        </div>
+        <div class="lead-score">
+          <div class="lead-score-num ${scoreClass}">${score || '—'}</div>
+          <div class="lead-score-label">AI Score</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function loadLeaderboard(myWon) {
+  // Get all sales users (not admin)
+  const { data: users } = await supabase
+    .from('trial_sales_users')
+    .select('id, full_name, emp_id')
+    .eq('role', 'sales')
+    .eq('is_active', true);
+
+  if (!users) return;
+
+  // For each user, sum won amount this month
+  const monthStart = new Date();
+  monthStart.setDate(1); monthStart.setHours(0,0,0,0);
+
+  const { data: wonLeads } = await supabase
+    .from('trial_leads')
+    .select('assigned_to, estimated_value, won_at, stage')
+    .eq('stage', 'won')
+    .gte('won_at', monthStart.toISOString());
+
+  const wonByUser = {};
+  (wonLeads || []).forEach(l => {
+    if (l.assigned_to) {
+      wonByUser[l.assigned_to] = (wonByUser[l.assigned_to] || 0) + (Number(l.estimated_value) || 0);
+    }
+  });
+
+  const leaderboard = users.map(u => ({
+    ...u,
+    won_amount: wonByUser[u.id] || 0,
+    is_me: u.id === CURRENT_USER.id
+  }));
+
+  leaderboard.sort((a, b) => b.won_amount - a.won_amount);
+
+  const myRank = leaderboard.findIndex(u => u.is_me) + 1;
+  const totalReps = leaderboard.length;
+
+  // Update hero rank
+  document.getElementById('heroRank').innerHTML = `#${myRank}<span> / ${totalReps}</span>`;
+  document.getElementById('rankNum').textContent = '#' + myRank;
+  document.getElementById('rankOf').textContent = 'of ' + totalReps;
+
+  // Trophy
+  const trophy = myRank === 1 ? '🥇' : myRank === 2 ? '🥈' : myRank === 3 ? '🥉' : '🏆';
+  document.getElementById('rankTrophy').textContent = trophy;
+
+  // List
+  document.getElementById('rankList').innerHTML = leaderboard.map((u, i) => {
+    const pos = i + 1;
+    let posDisplay = pos;
+    let posClass = '';
+    if (pos === 1) { posDisplay = '🥇'; posClass = 'gold'; }
+    else if (pos === 2) posDisplay = '🥈';
+    else if (pos === 3) posDisplay = '🥉';
+
+    return `
+      <div class="rank-row ${u.is_me ? 'me' : ''}">
+        <div class="rank-pos ${posClass}">${posDisplay}</div>
+        <div class="rank-name ${u.is_me ? 'me-name' : ''}">${u.full_name}</div>
+        <div class="rank-val">${fmtINR(u.won_amount)}</div>
+      </div>
+    `;
+  }).join('');
+
+  // Tip
+  if (myRank > 1) {
+    const aboveMe = leaderboard[myRank - 2];
+    const gap = aboveMe.won_amount - myWon;
+    if (gap > 0) {
+      document.getElementById('rankTip').style.display = 'block';
+      document.getElementById('rankTipText').innerHTML =
+        `<strong style="color:var(--gold-light)">${aboveMe.full_name.split(' ')[0]}</strong> se sirf <strong style="color:var(--gold-light)">${fmtINR(gap)}</strong> peeche — ek deal close kar ke #${myRank-1} ban jaa.`;
+    }
+  } else if (myRank === 1) {
+    document.getElementById('rankTip').style.display = 'block';
+    document.getElementById('rankTipText').innerHTML =
+      `🎉 <strong style="color:var(--gold-light)">Top of the board!</strong> Lead bana ke rakho.`;
+  }
+}
+
+// ─── Load all leads (Tab 2) ───
+async function loadAllLeads() {
+  const target = document.getElementById('allLeadsBody');
+  target.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⏳</div><div class="empty-state-sub">Loading…</div></div>';
+
+  const { data, error } = await supabase
+    .from('trial_leads')
+    .select('*')
+    .eq('assigned_to', CURRENT_USER.id)
+    .order('updated_at', { ascending: false });
+
+  if (error) {
+    target.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="empty-state-title">Error</div><div class="empty-state-sub">${error.message}</div></div>`;
+    return;
+  }
+
+  const active = (data || []).filter(l => !['won','lost'].includes(l.stage));
+  document.getElementById('leadsCountSub').textContent = `${active.length} active · ${data?.length || 0} total`;
+
+  if (!data || data.length === 0) {
+    target.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">📭</div>
+        <div class="empty-state-title">Koi leads nahi</div>
+        <div class="empty-state-sub">Admin panel se add karo, ya phir admin se assignment karwao.</div>
+      </div>
+    `;
+    return;
+  }
+
+  renderLeadsList(data, 'allLeadsBody');
+}
+
+// ─── Load all orders (Tab 3) ───
+async function loadAllOrders() {
+  const target = document.getElementById('allOrdersBody');
+  target.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⏳</div><div class="empty-state-sub">Loading…</div></div>';
+
+  const { data, error } = await supabase
+    .from('trial_sales_orders')
+    .select('*')
+    .eq('sales_person_id', CURRENT_USER.id)
+    .order('updated_at', { ascending: false });
+
+  if (error) {
+    target.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="empty-state-title">Error</div><div class="empty-state-sub">${error.message}</div></div>`;
+    return;
+  }
+
+  document.getElementById('sideOrdersBadge').textContent = data?.length || 0;
+  document.getElementById('ordersCountSub').textContent = `${data?.length || 0} active · live status from departments`;
+
+  if (!data || data.length === 0) {
+    target.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">📦</div>
+        <div class="empty-state-title">No orders yet</div>
+        <div class="empty-state-sub">Lead won hote hi yahan order ban ke aa jaayega. Order tracker Phase 3.3 mein full activate hoga.</div>
+      </div>
+    `;
+    return;
+  }
+
+  // Render order cards
+  target.innerHTML = data.map(o => {
+    const stages = ['confirmed','design','sample_approval','printing','stitching','execution','delivery','payment'];
+    const stageIdx = stages.indexOf(o.current_stage);
+    const stageDots = stages.map((s, i) => {
+      let cls = '';
+      if (i < stageIdx) cls = 'done';
+      else if (i === stageIdx) cls = 'active';
+      return `<div style="flex:1;height:6px;background:${cls === 'done' ? 'var(--green)' : cls === 'active' ? 'var(--gold)' : 'var(--line)'};border-radius:999px"></div>`;
+    }).join('');
+
+    return `
+      <div style="padding:18px;border:1px solid var(--line);border-radius:14px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px">
+          <div>
+            <div style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--mute);letter-spacing:0.05em">${o.order_number}</div>
+            <div style="font-size:15px;font-weight:700;color:var(--ink);margin-top:2px">${o.client_name}</div>
+          </div>
+          <div style="font-family:var(--mono);font-size:14px;font-weight:800;color:var(--green)">${fmtINR(o.total_amount)}</div>
+        </div>
+        <div style="display:flex;gap:4px;margin:14px 0 10px">${stageDots}</div>
+        <div style="display:flex;justify-content:space-between;font-size:12px">
+          <span style="font-weight:600;color:var(--ink)">Stage: ${o.current_stage.replace('_',' ')}</span>
+          <span style="font-family:var(--mono);font-weight:800;color:var(--gold-dk)">${o.current_stage_pct || 0}%</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ─── Realtime subscriptions ───
+function setupRealtime() {
+  // Subscribe to leads changes
+  supabase.channel('crm-leads-' + CURRENT_USER.id)
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'trial_leads', filter: `assigned_to=eq.${CURRENT_USER.id}` },
+      (payload) => {
+        console.log('Lead change:', payload);
+        loadDashboard(); // Reload on any change
+        if (document.getElementById('tab-leads').classList.contains('active')) {
+          loadAllLeads();
+        }
+      }
+    )
+    .subscribe();
+
+  // Subscribe to orders changes
+  supabase.channel('crm-orders-' + CURRENT_USER.id)
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'trial_sales_orders', filter: `sales_person_id=eq.${CURRENT_USER.id}` },
+      () => {
+        if (document.getElementById('tab-orders').classList.contains('active')) {
+          loadAllOrders();
+        }
+      }
+    )
+    .subscribe();
+}
+
+function showError(msg) {
+  const banner = document.getElementById('dbBanner');
+  banner.classList.add('error');
+  banner.querySelector('.live-dot').style.background = 'var(--red)';
+  document.getElementById('dbBannerText').textContent = msg;
+}
+
+// ─── INIT ───
+initUserUI();
+loadDashboard().catch(e => {
+  console.error(e);
+  showError('Could not load dashboard: ' + e.message);
+});
+setupRealtime();
+
+// Refresh every 60s
+setInterval(() => {
+  if (document.getElementById('tab-home').classList.contains('active')) {
+    loadDashboard();
+  }
+}, 60000);
+</script>
+</body>
+</html>
