@@ -1,0 +1,1521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Order Tracker · Prajapati CRM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght,ital@9..144,300..900,0..1&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #0F1C5E; --navy-2: #1A2980; --navy-deep: #060D33; --navy-light: #2A3FA0;
+  --gold: #F5B800; --gold-dk: #C9A14F; --gold-light: #FFD15C;
+  --cream: #FBF8F2; --cream-2: #F4F0E6;
+  --bg: #F5F6FA; --card: #FFFFFF;
+  --ink: #0B1024; --ink-2: #2A2E3F;
+  --mute: #6B7184; --mute-2: #9CA3AF;
+  --line: #E5E7ED; --line-2: #EFF1F5;
+  --green: #10B981; --green-vibrant: #22C55E; --green-soft: #DCFCE7;
+  --red: #DC2626; --red-soft: #FEE2E2;
+  --orange: #F97316; --orange-soft: #FFEDD5;
+  --blue: #2563EB; --blue-soft: #DBEAFE;
+  --purple: #7C3AED; --purple-soft: #EDE9FE;
+  --pink: #EC4899; --pink-soft: #FCE7F3;
+  --teal: #14B8A6; --teal-soft: #CCFBF1;
+  --serif: 'Fraunces', Georgia, serif;
+  --sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { font-family: var(--sans); background: var(--bg); color: var(--ink); -webkit-font-smoothing: antialiased; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; }
+input, select, textarea { font-family: inherit; }
+
+/* ─── Topbar ─── */
+.topbar {
+  background: var(--navy); color: var(--cream); height: 64px;
+  display: flex; align-items: center; padding: 0 28px; gap: 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  position: sticky; top: 0; z-index: 100;
+}
+.back-btn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; border-radius: 8px;
+  background: rgba(255,255,255,0.08);
+  color: var(--cream); font-size: 13px; font-weight: 600;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+.back-btn:hover { background: rgba(255,255,255,0.15); transform: translateX(-2px); }
+.brand-mini { display: flex; align-items: center; gap: 10px; font-family: var(--serif); font-weight: 500; font-size: 16px; }
+.brand-mark {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--gold), var(--gold-dk));
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy); font-weight: 800; font-size: 13px;
+}
+.order-id-pill {
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  color: rgba(255,255,255,0.6);
+  padding: 4px 10px; border-radius: 999px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.live-pill {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 11px; border-radius: 999px;
+  background: rgba(34,197,94,0.15);
+  border: 1px solid rgba(34,197,94,0.3);
+  font-size: 11px; font-weight: 700;
+  color: var(--green-vibrant);
+  margin-left: auto;
+}
+.live-pill .dot {
+  width: 6px; height: 6px;
+  background: var(--green-vibrant);
+  border-radius: 50%;
+  animation: pulseDot 1.5s infinite;
+}
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.3); }
+}
+
+.user-pill {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px 6px 6px; background: rgba(255,255,255,0.08);
+  border-radius: 999px; font-size: 12px; font-weight: 600;
+}
+.user-avatar {
+  width: 26px; height: 26px;
+  background: linear-gradient(135deg, var(--gold), var(--gold-dk));
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy); font-weight: 800; font-size: 11px;
+}
+
+/* ─── Main ─── */
+.main { max-width: 1280px; margin: 0 auto; padding: 24px 28px 60px; }
+
+/* ═══════════ HERO ═══════════ */
+.hero {
+  background: linear-gradient(135deg, var(--navy-deep) 0%, var(--navy) 50%, var(--purple) 130%);
+  color: var(--cream);
+  border-radius: 24px;
+  padding: 36px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 24px;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: heroIn 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes heroIn { to { opacity: 1; transform: translateY(0); } }
+.hero::before {
+  content: ''; position: absolute;
+  top: -120px; right: -80px;
+  width: 420px; height: 420px;
+  background: radial-gradient(circle, rgba(245,184,0,0.28), transparent 60%);
+  animation: glow 8s ease-in-out infinite;
+}
+.hero::after {
+  content: ''; position: absolute;
+  bottom: -150px; left: 20%;
+  width: 350px; height: 350px;
+  background: radial-gradient(circle, rgba(34,197,94,0.18), transparent 60%);
+  animation: glow 10s ease-in-out infinite reverse;
+}
+@keyframes glow {
+  0%, 100% { transform: scale(1) translate(0, 0); }
+  50% { transform: scale(1.1) translate(20px, -10px); }
+}
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1fr 240px;
+  gap: 36px;
+  position: relative;
+  z-index: 1;
+  align-items: center;
+}
+.hero-tags { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 700;
+  padding: 5px 11px; border-radius: 999px;
+  letter-spacing: 0.05em; text-transform: uppercase;
+}
+.tag-stage {
+  background: rgba(245,184,0,0.2); color: var(--gold-light);
+  border: 1px solid rgba(245,184,0,0.35);
+}
+.tag-status {
+  background: rgba(255,255,255,0.12); color: var(--cream);
+  border: 1px solid rgba(255,255,255,0.15);
+}
+
+.hero-name {
+  font-family: var(--serif);
+  font-size: 38px; font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-bottom: 8px;
+}
+.hero-name em { font-style: italic; color: var(--gold-light); }
+.hero-sub { font-size: 14px; opacity: 0.78; margin-top: 4px; }
+.hero-meta-row {
+  display: flex; gap: 24px; margin-top: 22px;
+  padding-top: 22px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  flex-wrap: wrap;
+}
+.hero-meta-item { display: flex; flex-direction: column; }
+.hero-meta-label {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  opacity: 0.55; margin-bottom: 4px;
+}
+.hero-meta-val {
+  font-family: var(--mono);
+  font-size: 16px; font-weight: 800;
+  color: var(--gold-light);
+}
+
+/* Progress dial */
+.progress-dial-wrap { display: flex; flex-direction: column; align-items: center; }
+.progress-dial { position: relative; width: 220px; height: 220px; }
+.progress-dial svg { transform: rotate(-90deg); }
+.progress-dial circle.bg { stroke: rgba(255,255,255,0.1); }
+.progress-dial circle.fg { transition: stroke-dashoffset 1.6s cubic-bezier(0.4, 0, 0.2, 1); }
+.dial-text {
+  position: absolute;
+  inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+.dial-pct {
+  font-family: var(--mono);
+  font-size: 56px; font-weight: 800;
+  color: var(--gold-light);
+  line-height: 1;
+}
+.dial-label {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  opacity: 0.65; margin-top: 6px;
+}
+.dial-stage {
+  font-size: 12px; font-weight: 700;
+  margin-top: 4px;
+  color: var(--cream);
+}
+
+/* ═══════════ STAGE PIPELINE (the killer feature) ═══════════ */
+.pipeline-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 28px;
+  margin-bottom: 24px;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: cardIn 0.6s 0.15s forwards;
+}
+@keyframes cardIn { to { opacity: 1; transform: translateY(0); } }
+
+.pipeline-head {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 20px;
+}
+.pipeline-title {
+  font-family: var(--serif);
+  font-size: 24px; font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.pipeline-title em { font-style: italic; color: var(--gold-dk); }
+.pipeline-stats {
+  display: flex; gap: 20px; font-size: 12px;
+}
+.pipeline-stat-item {
+  display: flex; flex-direction: column;
+}
+.pipeline-stat-item .lbl { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mute); }
+.pipeline-stat-item .val { font-family: var(--mono); font-weight: 800; color: var(--ink); margin-top: 2px; }
+.pipeline-stat-item .val.green { color: var(--green); }
+.pipeline-stat-item .val.gold { color: var(--gold-dk); }
+
+.stages-track {
+  position: relative;
+  padding: 8px 0 30px;
+}
+
+.stage-row {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+  position: relative;
+  cursor: pointer;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  transition: all 0.2s;
+}
+.stage-row:hover {
+  background: var(--cream);
+  border-color: var(--gold);
+  transform: translateX(4px);
+}
+.stage-row.completed {
+  background: var(--green-soft);
+  border-color: rgba(16,185,129,0.3);
+}
+.stage-row.in_progress {
+  background: linear-gradient(135deg, #FFFEFB, var(--cream-2));
+  border-color: var(--gold);
+  box-shadow: 0 4px 14px rgba(245,184,0,0.15);
+}
+.stage-row.in_progress::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: 4px;
+  background: var(--gold);
+  border-radius: 12px 0 0 12px;
+  animation: liveBar 2s infinite;
+}
+@keyframes liveBar {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.stage-row.blocked {
+  background: var(--red-soft);
+  border-color: rgba(220,38,38,0.3);
+}
+
+.stage-num-wrap {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 6px;
+}
+.stage-num-circle {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 3px solid var(--line);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono);
+  font-size: 18px; font-weight: 800;
+  color: var(--mute);
+  position: relative;
+}
+.stage-row.completed .stage-num-circle {
+  background: var(--green);
+  border-color: var(--green);
+  color: white;
+}
+.stage-row.completed .stage-num-circle::after { content: '✓'; font-size: 24px; }
+.stage-row.completed .stage-num-circle .num { display: none; }
+
+.stage-row.in_progress .stage-num-circle {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--navy);
+  box-shadow: 0 0 0 6px rgba(245,184,0,0.15);
+  animation: stageActive 2s infinite;
+}
+@keyframes stageActive {
+  0%, 100% { box-shadow: 0 0 0 6px rgba(245,184,0,0.15); }
+  50% { box-shadow: 0 0 0 10px rgba(245,184,0,0.05); }
+}
+
+.stage-row.blocked .stage-num-circle {
+  background: var(--red);
+  border-color: var(--red);
+  color: white;
+}
+.stage-row.blocked .stage-num-circle::after { content: '⚠'; font-size: 20px; }
+.stage-row.blocked .stage-num-circle .num { display: none; }
+
+.stage-emoji {
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 600;
+  color: var(--mute);
+}
+
+.stage-content {
+  display: flex; flex-direction: column;
+  justify-content: center;
+}
+.stage-name {
+  font-family: var(--serif);
+  font-size: 18px; font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 4px;
+  letter-spacing: -0.01em;
+}
+.stage-row.in_progress .stage-name { color: var(--navy); font-weight: 600; }
+.stage-row.completed .stage-name { color: var(--green); }
+
+.stage-status-line {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  font-size: 12px; color: var(--mute);
+  margin-bottom: 8px;
+}
+.stage-status-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 800;
+  padding: 3px 9px; border-radius: 999px;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.status-pending { background: var(--line); color: var(--mute); }
+.status-in_progress { background: var(--gold); color: var(--navy); animation: pulse 2s infinite; }
+.status-completed { background: var(--green); color: white; }
+.status-blocked { background: var(--red); color: white; }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.stage-progress-wrap {
+  margin-top: 6px;
+  background: rgba(15,28,94,0.06);
+  border-radius: 999px;
+  height: 8px;
+  overflow: hidden;
+  position: relative;
+}
+.stage-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold), var(--gold-light));
+  border-radius: 999px;
+  transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+.stage-progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  animation: shimmer 2s infinite;
+}
+@keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+
+.stage-progress-text {
+  font-family: var(--mono);
+  font-size: 11px; font-weight: 700;
+  color: var(--ink-2);
+  margin-top: 4px;
+  text-align: right;
+}
+
+.stage-meta {
+  display: flex; gap: 14px; flex-wrap: wrap;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--mute);
+}
+.stage-meta-item {
+  display: flex; align-items: center; gap: 4px;
+}
+.stage-meta-item strong { color: var(--ink-2); font-weight: 700; }
+
+.stage-notes {
+  font-size: 12px;
+  color: var(--ink-2);
+  margin-top: 8px;
+  font-style: italic;
+  padding: 8px 12px;
+  background: rgba(245,184,0,0.08);
+  border-radius: 8px;
+  border-left: 3px solid var(--gold);
+}
+
+.stage-row.blocked .stage-notes {
+  background: rgba(220,38,38,0.08);
+  border-left-color: var(--red);
+  color: var(--red);
+  font-weight: 600;
+}
+
+/* ═══════════ Two col bottom ═══════════ */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 920px) { .two-col { grid-template-columns: 1fr; } }
+
+.panel {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 22px;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: cardIn 0.5s forwards;
+}
+.panel.delay-1 { animation-delay: 0.25s; }
+.panel.delay-2 { animation-delay: 0.35s; }
+.panel.delay-3 { animation-delay: 0.45s; }
+
+.panel-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.panel-title {
+  font-family: var(--serif);
+  font-size: 18px; font-weight: 500;
+  color: var(--navy);
+}
+.panel-title em { font-style: italic; color: var(--gold-dk); }
+.panel-action {
+  font-size: 11px; font-weight: 700;
+  color: var(--navy);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 6px;
+  transition: all 0.15s;
+}
+.panel-action:hover { background: var(--cream); color: var(--gold-dk); }
+
+/* Department contacts */
+.dept-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line-2);
+}
+.dept-row:last-child { border-bottom: none; }
+.dept-icon {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  background: var(--cream);
+}
+.dept-icon.design { background: var(--purple-soft); color: var(--purple); }
+.dept-icon.printing { background: var(--blue-soft); color: var(--blue); }
+.dept-icon.stitching { background: var(--orange-soft); color: var(--orange); }
+.dept-icon.execution { background: var(--green-soft); color: var(--green); }
+.dept-icon.delivery { background: var(--pink-soft); color: var(--pink); }
+.dept-icon.accounts { background: rgba(245,184,0,0.15); color: var(--gold-dk); }
+.dept-info { flex: 1; }
+.dept-name { font-weight: 700; color: var(--ink); font-size: 13px; }
+.dept-role { font-size: 11px; color: var(--mute); font-weight: 600; }
+.dept-call-btn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--green);
+  color: white;
+  font-size: 12px; font-weight: 700;
+  display: flex; align-items: center; gap: 6px;
+  transition: all 0.15s;
+}
+.dept-call-btn:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(16,185,129,0.3); }
+
+/* Activity timeline (small) */
+.timeline {
+  position: relative;
+  padding-left: 24px;
+}
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 6px; bottom: 6px;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--gold), var(--line));
+}
+.timeline-item {
+  position: relative;
+  padding-bottom: 16px;
+  font-size: 13px;
+}
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -21px;
+  top: 4px;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--card);
+  border: 3px solid var(--gold);
+}
+.timeline-time { font-size: 11px; color: var(--mute); font-weight: 700; }
+.timeline-text { color: var(--ink); margin-top: 2px; line-height: 1.5; }
+.timeline-text strong { color: var(--navy); }
+
+/* Quick info card */
+.info-row {
+  display: flex; justify-content: space-between;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line-2);
+  font-size: 13px;
+}
+.info-row:last-child { border-bottom: none; }
+.info-label { color: var(--mute); font-weight: 600; }
+.info-val { font-weight: 700; color: var(--ink); text-align: right; }
+.info-val.mono { font-family: var(--mono); }
+.info-val.gold { color: var(--gold-dk); }
+.info-val.green { color: var(--green); font-size: 16px; }
+
+/* Client portal share box */
+.share-box {
+  background: linear-gradient(135deg, var(--cream), white);
+  border: 1px solid var(--gold);
+  border-radius: 12px;
+  padding: 14px;
+  margin-top: 12px;
+}
+.share-url {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--navy);
+  background: white;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  word-break: break-all;
+  margin: 8px 0;
+  font-weight: 600;
+}
+
+/* Modals */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(6,13,51,0.6);
+  backdrop-filter: blur(6px);
+  z-index: 999;
+  display: none;
+  align-items: center; justify-content: center;
+  padding: 20px;
+}
+.modal-overlay.show { display: flex; animation: overlayIn 0.2s; }
+@keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
+.modal {
+  background: var(--card);
+  border-radius: 20px;
+  width: 100%; max-width: 540px;
+  max-height: 92vh; overflow-y: auto;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+  animation: modalIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.92) translateY(20px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.modal-head {
+  padding: 22px 24px 16px;
+  border-bottom: 1px solid var(--line);
+  display: flex; justify-content: space-between; align-items: start;
+}
+.modal-title { font-family: var(--serif); font-size: 22px; font-weight: 500; color: var(--navy); }
+.modal-title em { font-style: italic; color: var(--gold-dk); }
+.modal-close {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: var(--bg); color: var(--mute);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+.modal-close:hover { background: var(--line); color: var(--ink); }
+.modal-body { padding: 22px 24px; }
+.modal-foot {
+  padding: 16px 24px;
+  border-top: 1px solid var(--line);
+  display: flex; gap: 10px; justify-content: end;
+  background: var(--cream);
+  border-radius: 0 0 20px 20px;
+}
+
+.form-row { margin-bottom: 14px; }
+.form-row.split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-label {
+  display: block;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--mute); margin-bottom: 6px;
+}
+.form-input, .form-select, .form-textarea {
+  width: 100%;
+  padding: 11px 14px;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  font-size: 14px; font-weight: 500;
+  background: white; color: var(--ink);
+  transition: all 0.15s;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  outline: none;
+  border-color: var(--navy);
+  box-shadow: 0 0 0 3px rgba(15,28,94,0.06);
+}
+.form-textarea { resize: vertical; min-height: 80px; font-family: inherit; }
+
+.btn {
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 13px; font-weight: 700;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: all 0.15s;
+}
+.btn.ghost { background: white; color: var(--ink-2); border: 1px solid var(--line); }
+.btn.ghost:hover { border-color: var(--navy); color: var(--navy); }
+.btn.primary {
+  background: linear-gradient(135deg, var(--navy), var(--navy-light));
+  color: white;
+}
+.btn.primary:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(15,28,94,0.25); }
+.btn.success {
+  background: linear-gradient(135deg, var(--green), #059669);
+  color: white;
+}
+.btn.success:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(16,185,129,0.3); }
+.btn.danger { background: var(--red); color: white; }
+.btn.gold {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dk));
+  color: var(--navy);
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 24px; right: 24px;
+  background: var(--ink); color: white;
+  padding: 14px 22px; border-radius: 12px;
+  font-size: 13px; font-weight: 600;
+  z-index: 9999;
+  box-shadow: 0 14px 30px rgba(0,0,0,0.3);
+  display: flex; align-items: center; gap: 10px;
+  transform: translateY(80px); opacity: 0;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.success { background: var(--green); }
+.toast.error { background: var(--red); }
+
+/* Confetti */
+.confetti { position: fixed; inset: 0; pointer-events: none; z-index: 9998; }
+.confetti-piece {
+  position: absolute; width: 10px; height: 16px;
+  border-radius: 2px;
+  animation: confettiFall 3s ease-out forwards;
+}
+@keyframes confettiFall {
+  0% { transform: translateY(-50px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+
+.spinner-sm {
+  display: inline-block; width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.full-loading {
+  min-height: 80vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px;
+}
+.loading-spinner {
+  width: 48px; height: 48px;
+  border: 4px solid var(--line);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@media (max-width: 920px) {
+  .main { padding: 16px; }
+  .hero { padding: 24px; }
+  .hero-grid { grid-template-columns: 1fr; }
+  .hero-name { font-size: 26px; }
+  .progress-dial { width: 180px; height: 180px; }
+  .stage-row { grid-template-columns: 60px 1fr; padding: 10px; }
+  .stage-num-circle { width: 44px; height: 44px; font-size: 14px; }
+  .pipeline-card { padding: 18px; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <a href="javascript:goBack()" class="back-btn">
+    <span>←</span><span>Back</span>
+  </a>
+  <div class="brand-mini">
+    <div class="brand-mark">PA</div>
+    <span>Order Tracker</span>
+  </div>
+  <span class="order-id-pill" id="orderIdPill">Loading…</span>
+  <span class="live-pill"><span class="dot"></span> LIVE</span>
+  <div class="user-pill">
+    <div class="user-avatar" id="userAvatar">--</div>
+    <span id="userName">Loading…</span>
+  </div>
+</header>
+
+<main class="main" id="mainContent">
+  <div class="full-loading">
+    <div class="loading-spinner"></div>
+    <div style="font-family:var(--serif);font-size:18px;color:var(--mute);font-style:italic">Loading order details…</div>
+  </div>
+</main>
+
+<!-- TEMPLATE -->
+<template id="orderTemplate">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-grid">
+      <div>
+        <div class="hero-tags" id="heroTags"></div>
+        <h1 class="hero-name" id="heroName">Order</h1>
+        <div class="hero-sub" id="heroSub">Client · City</div>
+
+        <div class="hero-meta-row">
+          <div class="hero-meta-item">
+            <div class="hero-meta-label">Order Total</div>
+            <div class="hero-meta-val" id="heroTotal">—</div>
+          </div>
+          <div class="hero-meta-item">
+            <div class="hero-meta-label">Paid</div>
+            <div class="hero-meta-val" id="heroPaid">—</div>
+          </div>
+          <div class="hero-meta-item">
+            <div class="hero-meta-label">Pending</div>
+            <div class="hero-meta-val" id="heroPending">—</div>
+          </div>
+          <div class="hero-meta-item">
+            <div class="hero-meta-label">Sales Person</div>
+            <div class="hero-meta-val" id="heroSales">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="progress-dial-wrap">
+        <div class="progress-dial">
+          <svg width="220" height="220" viewBox="0 0 220 220">
+            <circle class="bg" cx="110" cy="110" r="92" fill="none" stroke-width="14"/>
+            <circle class="fg" id="dialCircle" cx="110" cy="110" r="92" fill="none" stroke="url(#dialGrad)" stroke-width="14"
+              stroke-dasharray="578" stroke-dashoffset="578" stroke-linecap="round"/>
+            <defs>
+              <linearGradient id="dialGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#22C55E"/>
+                <stop offset="100%" stop-color="#FFD15C"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="dial-text">
+            <div class="dial-pct" id="dialPct">0%</div>
+            <div class="dial-label">Progress</div>
+            <div class="dial-stage" id="dialStage">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STAGE PIPELINE (the killer feature) -->
+  <section class="pipeline-card">
+    <div class="pipeline-head">
+      <div>
+        <div class="pipeline-title">Order <em>lifecycle</em></div>
+        <div style="font-size:12px;color:var(--mute);margin-top:4px;font-weight:600">8 stages from confirmed to payment</div>
+      </div>
+      <div class="pipeline-stats">
+        <div class="pipeline-stat-item">
+          <div class="lbl">Done</div>
+          <div class="val green" id="statsCompleted">0</div>
+        </div>
+        <div class="pipeline-stat-item">
+          <div class="lbl">Active</div>
+          <div class="val gold" id="statsActive">0</div>
+        </div>
+        <div class="pipeline-stat-item">
+          <div class="lbl">Days</div>
+          <div class="val" id="statsDays">0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stages-track" id="stagesTrack"></div>
+  </section>
+
+  <!-- TWO COL: Departments + Activity timeline -->
+  <div class="two-col">
+
+    <!-- Departments -->
+    <div class="panel delay-1">
+      <div class="panel-head">
+        <div class="panel-title">Department <em>contacts</em></div>
+      </div>
+      <div id="deptList"></div>
+    </div>
+
+    <!-- Activity timeline -->
+    <div class="panel delay-2">
+      <div class="panel-head">
+        <div class="panel-title">Stage <em>activity</em></div>
+      </div>
+      <div class="timeline" id="orderTimeline"></div>
+    </div>
+  </div>
+
+  <!-- TWO COL 2: Order info + Client share -->
+  <div class="two-col" style="margin-top:20px">
+    <div class="panel delay-3">
+      <div class="panel-head">
+        <div class="panel-title">Order <em>details</em></div>
+      </div>
+      <div id="orderInfo"></div>
+    </div>
+
+    <div class="panel delay-3">
+      <div class="panel-head">
+        <div class="panel-title">Client <em>portal</em></div>
+        <span class="panel-action" id="generatePortalBtn" onclick="generatePortalLink()">+ Generate</span>
+      </div>
+      <div id="portalArea">
+        <div style="font-size:13px;color:var(--mute);text-align:center;padding:20px">
+          📊 Share live status with client.<br>
+          <span style="font-size:11px">Generate token → send WhatsApp link → client sees real-time progress</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</template>
+
+<!-- ═══════════ MODAL: Update Stage ═══════════ -->
+<div class="modal-overlay" id="modalStageUpdate">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="stageUpdateTitle">Update <em>stage</em></div>
+        <div style="font-size:12px;color:var(--mute);margin-top:4px" id="stageUpdateSub">—</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modalStageUpdate')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="updateStageKey">
+      <div class="form-row">
+        <label class="form-label">Status</label>
+        <select class="form-select" id="updateStatus">
+          <option value="pending">⚪ Pending</option>
+          <option value="in_progress">🟡 In Progress</option>
+          <option value="completed">✅ Completed</option>
+          <option value="blocked">🔴 Blocked</option>
+        </select>
+      </div>
+
+      <div class="form-row split">
+        <div>
+          <label class="form-label">Progress current</label>
+          <input type="number" class="form-input" id="updateCurrent" placeholder="287">
+        </div>
+        <div>
+          <label class="form-label">Progress total</label>
+          <input type="number" class="form-input" id="updateTotal" placeholder="400">
+        </div>
+      </div>
+
+      <div class="form-row" id="blockerRow" style="display:none">
+        <label class="form-label">Blocker reason</label>
+        <textarea class="form-textarea" id="updateBlocker" placeholder="Why blocked..."></textarea>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Notes / update</label>
+        <textarea class="form-textarea" id="updateNotes" placeholder="What was done at this stage..."></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" onclick="closeModal('modalStageUpdate')">Cancel</button>
+      <button class="btn primary" id="btnSaveStage" onclick="saveStageUpdate()">Save Update</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <span id="toastIcon">✓</span>
+  <span id="toastText">Done</span>
+</div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+window.supabase = supabase;
+
+// ─── Auth ───
+const userJSON = localStorage.getItem('prajapati_crm_user');
+if (!userJSON) window.location.href = 'crm-login.html';
+let CURRENT_USER;
+try {
+  CURRENT_USER = JSON.parse(userJSON);
+  if (!CURRENT_USER || !CURRENT_USER.id) throw new Error();
+} catch (e) {
+  localStorage.removeItem('prajapati_crm_user');
+  window.location.href = 'crm-login.html';
+}
+window.CURRENT_USER = CURRENT_USER;
+
+// ─── Get order ID from URL ───
+const params = new URLSearchParams(location.search);
+const ORDER_ID = params.get('id');
+if (!ORDER_ID) {
+  document.getElementById('mainContent').innerHTML = `
+    <div class="full-loading">
+      <div style="font-size:48px">⚠️</div>
+      <div style="font-family:var(--serif);font-size:18px;color:var(--mute);font-style:italic">No order ID provided</div>
+      <a href="crm.html" class="btn primary" style="text-decoration:none;margin-top:12px">← Back</a>
+    </div>`;
+  throw new Error('No order ID');
+}
+
+// ─── Globals ───
+let ORDER = null;
+let STAGES = [];
+let DEPT_CONTACTS = [];
+
+// ─── Stage definitions ───
+const STAGE_DEFS = [
+  { key: 'confirmed',       name: 'Order Confirmed', emoji: '🎯', dept: null,         desc: 'Lead won, order created' },
+  { key: 'design',          name: 'Design',          emoji: '🎨', dept: 'design',     desc: 'Designer creates artwork' },
+  { key: 'sample_approval', name: 'Sample Approval', emoji: '👁️', dept: null,         desc: 'Client reviews and approves design' },
+  { key: 'printing',        name: 'Printing',        emoji: '🖨️', dept: 'printing',   desc: 'Print production starts' },
+  { key: 'stitching',       name: 'Stitching',       emoji: '✂️', dept: 'stitching',  desc: 'Vinyl stitched on covers' },
+  { key: 'execution',       name: 'Execution (Field)', emoji: '🛺', dept: 'execution', desc: 'Field team installs/wraps with GPS photos' },
+  { key: 'delivery',        name: 'Delivery',        emoji: '🚚', dept: 'delivery',   desc: 'Final delivery and handover' },
+  { key: 'payment',         name: 'Payment',         emoji: '💰', dept: 'accounts',   desc: 'Final payment settlement' }
+];
+
+// ─── Helpers ───
+function fmtINR(n) {
+  if (!n) return '₹0';
+  if (n >= 10000000) return '₹' + (n/10000000).toFixed(2) + 'Cr';
+  if (n >= 100000) return '₹' + (n/100000).toFixed(2) + 'L';
+  if (n >= 1000) return '₹' + (n/1000).toFixed(0) + 'K';
+  return '₹' + n;
+}
+function fmtINRfull(n) { return '₹' + (n||0).toLocaleString('en-IN'); }
+function fmtDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('en-IN', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit', hour12: true });
+}
+function timeSince(iso) {
+  if (!iso) return '';
+  const diff = Date.now() - new Date(iso).getTime();
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return Math.floor(diff/60000) + 'm ago';
+  if (diff < 86400000) return Math.floor(diff/3600000) + 'h ago';
+  return Math.floor(diff/86400000) + 'd ago';
+}
+function avatarChar(name) {
+  if (!name) return '?';
+  const p = name.trim().split(/\s+/);
+  return p.length === 1 ? p[0].slice(0,2).toUpperCase() : (p[0][0] + p[p.length-1][0]).toUpperCase();
+}
+function showToast(msg, type='success') {
+  const toast = document.getElementById('toast');
+  document.getElementById('toastIcon').textContent = type==='success'?'✓':type==='error'?'✕':'ℹ';
+  document.getElementById('toastText').textContent = msg;
+  toast.className = 'toast show ' + type;
+  setTimeout(() => toast.classList.remove('show'), 3500);
+}
+function confettiBurst() {
+  const colors = ['#F5B800', '#FFD15C', '#10B981', '#7C3AED', '#EC4899', '#2563EB'];
+  const container = document.createElement('div');
+  container.className = 'confetti';
+  document.body.appendChild(container);
+  for (let i = 0; i < 80; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+    piece.style.left = Math.random() * 100 + '%';
+    piece.style.animationDelay = Math.random() * 0.4 + 's';
+    container.appendChild(piece);
+  }
+  setTimeout(() => container.remove(), 4000);
+}
+function animateNumber(elId, from, to, duration) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const start = performance.now();
+  function step(now) {
+    const elapsed = now - start;
+    const progress = Math.min(1, elapsed / duration);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const val = Math.round(from + (to - from) * eased);
+    el.textContent = val + '%';
+    if (progress < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// ─── Init UI ───
+function initUserUI() {
+  const firstName = CURRENT_USER.full_name.split(' ')[0];
+  document.getElementById('userName').textContent = `${firstName} · Emp ${CURRENT_USER.emp_id}`;
+  document.getElementById('userAvatar').textContent = avatarChar(CURRENT_USER.full_name);
+}
+
+// ═══════════════════════════════════════════════════════
+// LOAD ORDER
+// ═══════════════════════════════════════════════════════
+async function loadOrder() {
+  const { data: order, error } = await supabase
+    .from('trial_sales_orders')
+    .select('*')
+    .eq('id', ORDER_ID)
+    .maybeSingle();
+
+  if (error || !order) {
+    document.getElementById('mainContent').innerHTML = `
+      <div class="full-loading">
+        <div style="font-size:48px">⚠️</div>
+        <div style="font-family:var(--serif);font-size:18px;color:var(--mute);font-style:italic">${error?.message || 'Order not found'}</div>
+        <a href="crm.html" class="btn primary" style="text-decoration:none;margin-top:12px">← Back to leads</a>
+      </div>`;
+    return;
+  }
+
+  ORDER = order;
+
+  // Load stages
+  const { data: stages } = await supabase
+    .from('trial_order_stages')
+    .select('*')
+    .eq('order_id', ORDER_ID)
+    .order('created_at');
+  STAGES = stages || [];
+
+  // Load departments
+  const { data: depts } = await supabase
+    .from('trial_department_contacts')
+    .select('*')
+    .eq('is_active', true)
+    .order('department');
+  DEPT_CONTACTS = depts || [];
+
+  // Load sales person
+  let salesPerson = null;
+  if (ORDER.sales_person_id) {
+    const { data } = await supabase
+      .from('trial_sales_users')
+      .select('full_name, emp_id')
+      .eq('id', ORDER.sales_person_id)
+      .maybeSingle();
+    salesPerson = data;
+  }
+
+  ORDER._sales_person = salesPerson;
+
+  renderOrder();
+}
+
+function renderOrder() {
+  const tpl = document.getElementById('orderTemplate');
+  document.getElementById('mainContent').innerHTML = tpl.innerHTML;
+
+  // Order ID
+  document.getElementById('orderIdPill').textContent = ORDER.order_number;
+
+  // Hero tags
+  const tags = [];
+  const currentStageDef = STAGE_DEFS.find(s => s.key === ORDER.current_stage);
+  if (currentStageDef) {
+    tags.push(`<span class="tag tag-stage">${currentStageDef.emoji} ${currentStageDef.name}</span>`);
+  }
+  if (ORDER.priority === 'hot') tags.push(`<span class="tag tag-status" style="background:rgba(220,38,38,0.2);color:#FCA5A5">🔥 Priority</span>`);
+  if (ORDER.client_city) tags.push(`<span class="tag tag-status">📍 ${ORDER.client_city}</span>`);
+  document.getElementById('heroTags').innerHTML = tags.join('');
+
+  // Hero
+  document.getElementById('heroName').innerHTML = `<em>${ORDER.client_name}</em>`;
+  document.getElementById('heroSub').textContent = (ORDER.order_title || ORDER.service_type || 'Order') + ' · ' + (ORDER.client_city || '');
+
+  // Hero meta
+  document.getElementById('heroTotal').textContent = fmtINR(ORDER.total_amount);
+  document.getElementById('heroPaid').textContent = fmtINR(ORDER.paid_amount);
+  document.getElementById('heroPending').textContent = fmtINR(Number(ORDER.total_amount) - Number(ORDER.paid_amount || 0));
+  document.getElementById('heroSales').textContent = ORDER._sales_person?.full_name?.split(' ')[0] || '—';
+
+  // Progress dial
+  const totalStages = STAGE_DEFS.length;
+  const completedStages = STAGES.filter(s => s.status === 'completed').length;
+  const overallPct = Math.round((completedStages / totalStages) * 100);
+
+  setTimeout(() => {
+    const circ = 578;
+    document.getElementById('dialCircle').style.strokeDashoffset = circ - (circ * overallPct / 100);
+    animateNumber('dialPct', 0, overallPct, 1400);
+  }, 300);
+
+  document.getElementById('dialStage').textContent = currentStageDef ? currentStageDef.name : (ORDER.current_stage || '—');
+
+  // Pipeline stats
+  const activeStages = STAGES.filter(s => s.status === 'in_progress').length;
+  document.getElementById('statsCompleted').textContent = `${completedStages}/${totalStages}`;
+  document.getElementById('statsActive').textContent = activeStages;
+
+  // Days running
+  if (ORDER.created_at) {
+    const days = Math.floor((Date.now() - new Date(ORDER.created_at).getTime()) / 86400000);
+    document.getElementById('statsDays').textContent = days;
+  }
+
+  // Render stages
+  renderStages();
+
+  // Render departments
+  renderDepartments();
+
+  // Render activity
+  renderActivity();
+
+  // Render order info
+  renderInfo();
+}
+
+function renderStages() {
+  const html = STAGE_DEFS.map((def, i) => {
+    const stageData = STAGES.find(s => s.stage === def.key) || {
+      stage: def.key, status: 'pending', progress_pct: 0
+    };
+
+    const status = stageData.status || 'pending';
+    const pct = stageData.progress_pct || 0;
+    const current = stageData.progress_current;
+    const total = stageData.progress_total;
+    const notes = stageData.notes;
+    const blocker = stageData.blocker_reason;
+    const startedAt = stageData.started_at;
+    const completedAt = stageData.completed_at;
+
+    let progressText = '';
+    if (current && total) {
+      progressText = `${current.toLocaleString('en-IN')} / ${total.toLocaleString('en-IN')}`;
+    }
+
+    let metaItems = [];
+    if (startedAt) metaItems.push(`<span class="stage-meta-item">⏰ Started: <strong>${fmtDate(startedAt)}</strong></span>`);
+    if (completedAt) metaItems.push(`<span class="stage-meta-item">✅ Done: <strong>${fmtDate(completedAt)}</strong></span>`);
+    if (def.dept) {
+      const dept = DEPT_CONTACTS.find(d => d.department === def.dept);
+      if (dept) metaItems.push(`<span class="stage-meta-item">👤 <strong>${dept.full_name}</strong></span>`);
+    }
+
+    return `
+      <div class="stage-row ${status}" data-stage="${def.key}" onclick="openStageUpdate('${def.key}')">
+        <div class="stage-num-wrap">
+          <div class="stage-num-circle"><span class="num">${i+1}</span></div>
+          <div class="stage-emoji">${def.emoji}</div>
+        </div>
+        <div class="stage-content">
+          <div class="stage-name">${def.name}</div>
+          <div class="stage-status-line">
+            <span class="stage-status-pill status-${status}">${status.replace('_',' ')}</span>
+            <span style="color:var(--mute)">${def.desc}</span>
+          </div>
+          ${status === 'in_progress' && (current || pct > 0) ? `
+            <div class="stage-progress-wrap">
+              <div class="stage-progress-bar" style="width:${pct}%"></div>
+            </div>
+            <div class="stage-progress-text">
+              ${progressText ? progressText + ' · ' : ''}${pct}% complete
+            </div>
+          ` : ''}
+          ${metaItems.length > 0 ? `<div class="stage-meta">${metaItems.join('')}</div>` : ''}
+          ${blocker ? `<div class="stage-notes">⚠️ <strong>Blocker:</strong> ${blocker}</div>` : ''}
+          ${notes && !blocker ? `<div class="stage-notes">${notes}</div>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('stagesTrack').innerHTML = html;
+}
+
+function renderDepartments() {
+  const target = document.getElementById('deptList');
+  if (DEPT_CONTACTS.length === 0) {
+    target.innerHTML = `<div style="text-align:center;padding:20px;color:var(--mute);font-size:13px">No department contacts configured</div>`;
+    return;
+  }
+
+  const deptIcons = {
+    design: '🎨', printing: '🖨️', stitching: '✂️',
+    execution: '🛺', delivery: '🚚', accounts: '💰', sample: '👁️'
+  };
+
+  target.innerHTML = DEPT_CONTACTS.map(d => {
+    const cleanPhone = (d.phone || '').replace(/[^\d+]/g, '');
+    const waPhone = cleanPhone.replace(/^\+/, '');
+
+    return `
+      <div class="dept-row">
+        <div class="dept-icon ${d.department}">${deptIcons[d.department] || '🏢'}</div>
+        <div class="dept-info">
+          <div class="dept-name">${d.full_name}</div>
+          <div class="dept-role">${d.role_title || d.department.charAt(0).toUpperCase() + d.department.slice(1)}</div>
+        </div>
+        <a href="https://wa.me/${waPhone}" target="_blank" class="dept-call-btn">
+          <span>💬</span> WhatsApp
+        </a>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderActivity() {
+  const target = document.getElementById('orderTimeline');
+  const activities = [];
+
+  // Build activity log from stages
+  STAGES.forEach(s => {
+    const def = STAGE_DEFS.find(d => d.key === s.stage);
+    if (!def) return;
+
+    if (s.completed_at) {
+      activities.push({
+        time: s.completed_at,
+        text: `${def.emoji} <strong>${def.name}</strong> completed`,
+        type: 'completed'
+      });
+    } else if (s.started_at && s.status === 'in_progress') {
+      activities.push({
+        time: s.started_at,
+        text: `${def.emoji} <strong>${def.name}</strong> started`,
+        type: 'in_progress'
+      });
+    }
+  });
+
+  // Order created event
+  activities.push({
+    time: ORDER.created_at,
+    text: `🎯 Order <strong>${ORDER.order_number}</strong> created`,
+    type: 'created'
+  });
+
+  activities.sort((a, b) => new Date(b.time) - new Date(a.time));
+
+  if (activities.length === 0) {
+    target.innerHTML = `<div style="text-align:center;padding:20px;color:var(--mute);font-size:13px">No activity yet</div>`;
+    return;
+  }
+
+  target.innerHTML = activities.slice(0, 8).map(a => `
+    <div class="timeline-item">
+      <div class="timeline-time">${fmtDate(a.time)} · ${timeSince(a.time)}</div>
+      <div class="timeline-text">${a.text}</div>
+    </div>
+  `).join('');
+}
+
+function renderInfo() {
+  const target = document.getElementById('orderInfo');
+  const rows = [];
+
+  rows.push({label:'Order #', val: ORDER.order_number, mono:true});
+  rows.push({label:'Created', val: fmtDate(ORDER.created_at)});
+  rows.push({label:'Service', val: (ORDER.service_type || '—').replace(/_/g, ' ')});
+  rows.push({label:'Client', val: ORDER.client_name});
+  if (ORDER.client_phone) rows.push({label:'Phone', val: ORDER.client_phone, mono:true});
+  if (ORDER.client_email) rows.push({label:'Email', val: ORDER.client_email});
+  rows.push({label:'Location', val: ORDER.client_city || '—'});
+  rows.push({label:'Total amount', val: fmtINRfull(ORDER.total_amount), gold:true});
+  rows.push({label:'Pending payment', val: fmtINRfull(Number(ORDER.total_amount) - Number(ORDER.paid_amount||0))});
+
+  if (ORDER.expected_delivery_date) {
+    rows.push({label:'Expected delivery', val: ORDER.expected_delivery_date});
+  }
+
+  target.innerHTML = rows.map(r => {
+    const cls = [r.mono?'mono':'', r.gold?'gold':'', r.green?'green':''].filter(Boolean).join(' ');
+    return `<div class="info-row">
+      <span class="info-label">${r.label}</span>
+      <span class="info-val ${cls}">${r.val}</span>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// STAGE UPDATE
+// ═══════════════════════════════════════════════════════
+
+window.openStageUpdate = function(stageKey) {
+  const def = STAGE_DEFS.find(s => s.key === stageKey);
+  const current = STAGES.find(s => s.stage === stageKey) || { status: 'pending' };
+
+  document.getElementById('stageUpdateTitle').innerHTML = `Update <em>${def.name}</em>`;
+  document.getElementById('stageUpdateSub').textContent = def.desc;
+  document.getElementById('updateStageKey').value = stageKey;
+  document.getElementById('updateStatus').value = current.status || 'pending';
+  document.getElementById('updateCurrent').value = current.progress_current || '';
+  document.getElementById('updateTotal').value = current.progress_total || '';
+  document.getElementById('updateNotes').value = current.notes || '';
+  document.getElementById('updateBlocker').value = current.blocker_reason || '';
+
+  toggleBlockerRow();
+  document.getElementById('updateStatus').onchange = toggleBlockerRow;
+
+  document.getElementById('modalStageUpdate').classList.add('show');
+};
+
+function toggleBlockerRow() {
+  const status = document.getElementById('updateStatus').value;
+  document.getElementById('blockerRow').style.display = status === 'blocked' ? 'block' : 'none';
+}
+
+window.saveStageUpdate = async function() {
+  const btn = document.getElementById('btnSaveStage');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner-sm"></span> Saving…';
+
+  const stageKey = document.getElementById('updateStageKey').value;
+  const status = document.getElementById('updateStatus').value;
+  const current = parseInt(document.getElementById('updateCurrent').value) || null;
+  const total = parseInt(document.getElementById('updateTotal').value) || null;
+  const notes = document.getElementById('updateNotes').value.trim() || null;
+  const blocker = document.getElementById('updateBlocker').value.trim() || null;
+
+  // Calculate pct
+  let pct = null;
+  if (current !== null && total !== null && total > 0) {
+    pct = Math.min(100, Math.round((current / total) * 100));
+  } else if (status === 'completed') {
+    pct = 100;
+  } else if (status === 'pending') {
+    pct = 0;
+  }
+
+  // Use update RPC for atomic stage transition
+  const { error } = await supabase.rpc('update_order_stage', {
+    p_order_id: ORDER_ID,
+    p_stage: stageKey,
+    p_status: status,
+    p_progress_pct: pct,
+    p_progress_current: current,
+    p_progress_total: total,
+    p_notes: notes,
+    p_updated_by: CURRENT_USER.id
+  });
+
+  // Update blocker reason separately if needed
+  if (status === 'blocked' && blocker) {
+    await supabase.from('trial_order_stages').update({
+      blocker_reason: blocker
+    }).eq('order_id', ORDER_ID).eq('stage', stageKey);
+  }
+
+  btn.disabled = false; btn.innerHTML = 'Save Update';
+
+  if (error) return showToast('Update failed: ' + error.message, 'error');
+
+  showToast(`✓ ${stageKey} updated`);
+  if (status === 'completed' && stageKey === 'payment') {
+    confettiBurst();
+    showToast('🎉 Order completed! Full payment received.');
+  } else if (status === 'completed') {
+    confettiBurst();
+  }
+
+  closeModal('modalStageUpdate');
+  await loadOrder();
+};
+
+window.closeModal = function(id) { document.getElementById(id).classList.remove('show'); };
+
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('show'); });
+});
+
+window.goBack = function() {
+  if (document.referrer && document.referrer.includes(location.host)) {
+    history.back();
+  } else {
+    location.href = 'crm.html';
+  }
+};
+
+// ═══════════════════════════════════════════════════════
+// CLIENT PORTAL LINK GENERATION
+// ═══════════════════════════════════════════════════════
+
+window.generatePortalLink = async function() {
+  // Generate a 32-char token
+  const token = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+    .map(b => b.toString(16).padStart(2, '0')).join('');
+
+  // Save to trial_client_tokens
+  const { error } = await supabase.from('trial_client_tokens').insert({
+    token: token,
+    campaign_key: ORDER.campaign_key || ORDER.order_number,
+    client_name: ORDER.client_name,
+    client_whatsapp: ORDER.client_phone,
+    created_by: CURRENT_USER.id,
+    notes: `Auto-generated from order ${ORDER.order_number}`
+  });
+
+  if (error) {
+    showToast('Could not generate link: ' + error.message, 'error');
+    return;
+  }
+
+  const portalUrl = `https://prajapati-gps-field-repo.vercel.app/client.html?t=${token}`;
+  const message = `Namaste ${ORDER.client_name},\n\nApke order ${ORDER.order_number} ka live status yahan dekh sakte hain:\n\n${portalUrl}\n\nReal-time updates as work progresses.\n\nPrajapati Advertising`;
+
+  document.getElementById('portalArea').innerHTML = `
+    <div class="share-box">
+      <div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:6px">✅ Portal generated!</div>
+      <div class="share-url">${portalUrl}</div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <a href="https://wa.me/${(ORDER.client_phone||'').replace(/[^\d]/g,'')}?text=${encodeURIComponent(message)}" target="_blank" class="btn success" style="flex:1;justify-content:center;text-decoration:none;font-size:12px">
+          💬 Send via WhatsApp
+        </a>
+        <button class="btn ghost" onclick="navigator.clipboard.writeText('${portalUrl}').then(() => showToast('📋 Copied'))" style="font-size:12px">📋 Copy</button>
+      </div>
+    </div>
+  `;
+
+  showToast('🔗 Client portal link generated');
+};
+
+// ─── Realtime ───
+function setupRealtime() {
+  supabase.channel('order-' + ORDER_ID)
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'trial_sales_orders', filter: `id=eq.${ORDER_ID}` },
+      () => loadOrder()
+    )
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'trial_order_stages', filter: `order_id=eq.${ORDER_ID}` },
+      () => loadOrder()
+    )
+    .subscribe();
+}
+
+// ─── INIT ───
+initUserUI();
+loadOrder().then(() => {
+  setupRealtime();
+}).catch(e => {
+  console.error(e);
+  showToast('Load error: ' + e.message, 'error');
+});
+</script>
+</body>
+</html>
