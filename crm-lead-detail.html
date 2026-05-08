@@ -1,0 +1,1928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lead Detail · Prajapati CRM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght,ital@9..144,300..900,0..1&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #0F1C5E; --navy-2: #1A2980; --navy-deep: #060D33; --navy-light: #2A3FA0;
+  --gold: #F5B800; --gold-dk: #C9A14F; --gold-light: #FFD15C;
+  --cream: #FBF8F2; --cream-2: #F4F0E6;
+  --bg: #F5F6FA; --card: #FFFFFF;
+  --ink: #0B1024; --ink-2: #2A2E3F;
+  --mute: #6B7184; --mute-2: #9CA3AF;
+  --line: #E5E7ED; --line-2: #EFF1F5;
+  --green: #10B981; --green-vibrant: #22C55E; --green-soft: #DCFCE7;
+  --red: #DC2626; --red-soft: #FEE2E2;
+  --orange: #F97316; --orange-soft: #FFEDD5;
+  --blue: #2563EB; --blue-soft: #DBEAFE;
+  --purple: #7C3AED; --purple-soft: #EDE9FE;
+  --pink: #EC4899; --pink-soft: #FCE7F3;
+  --teal: #14B8A6; --teal-soft: #CCFBF1;
+  --serif: 'Fraunces', Georgia, serif;
+  --sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { font-family: var(--sans); background: var(--bg); color: var(--ink); -webkit-font-smoothing: antialiased; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; }
+input, select, textarea { font-family: inherit; }
+
+/* ─── Topbar ─── */
+.topbar {
+  background: var(--navy); color: var(--cream); height: 64px;
+  display: flex; align-items: center; padding: 0 28px; gap: 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  position: sticky; top: 0; z-index: 100;
+  backdrop-filter: blur(8px);
+}
+.back-btn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; border-radius: 8px;
+  background: rgba(255,255,255,0.08);
+  color: var(--cream); font-size: 13px; font-weight: 600;
+  transition: all 0.2s;
+}
+.back-btn:hover { background: rgba(255,255,255,0.15); transform: translateX(-2px); }
+.brand-mini {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--serif); font-weight: 500; font-size: 16px;
+}
+.brand-mark {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--gold), var(--gold-dk));
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy); font-weight: 800; font-size: 13px;
+}
+.lead-id-pill {
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  color: rgba(255,255,255,0.6);
+  padding: 4px 10px; border-radius: 999px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.user-pill {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px 6px 6px; background: rgba(255,255,255,0.08);
+  border-radius: 999px; font-size: 12px; font-weight: 600;
+}
+.user-avatar {
+  width: 26px; height: 26px;
+  background: linear-gradient(135deg, var(--gold), var(--gold-dk));
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy); font-weight: 800; font-size: 11px;
+}
+
+/* ─── Main ─── */
+.main {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px 28px 60px;
+}
+
+/* ═══════════ HERO ═══════════ */
+.hero {
+  background: linear-gradient(135deg, var(--navy-deep) 0%, var(--navy) 50%, var(--purple) 130%);
+  color: var(--cream);
+  border-radius: 24px;
+  padding: 36px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 24px;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: heroIn 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes heroIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+.hero::before {
+  content: ''; position: absolute;
+  top: -120px; right: -80px;
+  width: 420px; height: 420px;
+  background: radial-gradient(circle, rgba(245,184,0,0.28), transparent 60%);
+  animation: glow 8s ease-in-out infinite;
+}
+.hero::after {
+  content: ''; position: absolute;
+  bottom: -150px; left: 20%;
+  width: 350px; height: 350px;
+  background: radial-gradient(circle, rgba(236,72,153,0.18), transparent 60%);
+  animation: glow 10s ease-in-out infinite reverse;
+}
+@keyframes glow {
+  0%, 100% { transform: scale(1) translate(0, 0); }
+  50% { transform: scale(1.1) translate(20px, -10px); }
+}
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 36px;
+  position: relative;
+  z-index: 1;
+  align-items: center;
+}
+.hero-tags {
+  display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;
+}
+.tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 700;
+  padding: 5px 11px; border-radius: 999px;
+  letter-spacing: 0.05em; text-transform: uppercase;
+}
+.tag-source {
+  background: rgba(255,255,255,0.12);
+  color: var(--cream);
+  border: 1px solid rgba(255,255,255,0.15);
+}
+.tag-priority-hot {
+  background: linear-gradient(135deg, #DC2626, #EC4899);
+  color: white;
+  animation: pulseTag 2s infinite;
+}
+.tag-priority-high {
+  background: linear-gradient(135deg, var(--orange), var(--gold));
+  color: white;
+}
+.tag-priority-medium {
+  background: rgba(37,99,235,0.4);
+  color: #DBEAFE;
+}
+@keyframes pulseTag {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.5); }
+  50% { box-shadow: 0 0 0 8px rgba(220,38,38,0); }
+}
+.tag-repeat {
+  background: linear-gradient(135deg, var(--gold), var(--gold-light));
+  color: var(--navy);
+}
+.tag-repeat::before { content: '🔁'; margin-right: 4px; }
+
+.hero-name {
+  font-family: var(--serif);
+  font-size: 38px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-bottom: 8px;
+}
+.hero-name em {
+  font-style: italic;
+  color: var(--gold-light);
+}
+.hero-contact {
+  display: flex; gap: 20px; margin-top: 16px; flex-wrap: wrap;
+  font-size: 14px; opacity: 0.92;
+}
+.hero-contact-item {
+  display: flex; align-items: center; gap: 8px;
+}
+.hero-contact-item .ic {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.1);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+}
+.hero-meta-row {
+  display: flex; gap: 24px; margin-top: 22px;
+  padding-top: 22px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  flex-wrap: wrap;
+}
+.hero-meta-item {
+  display: flex; flex-direction: column;
+}
+.hero-meta-label {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  opacity: 0.55; margin-bottom: 4px;
+}
+.hero-meta-val {
+  font-family: var(--mono);
+  font-size: 16px; font-weight: 800;
+  color: var(--gold-light);
+}
+
+/* AI Score Ring */
+.score-ring-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+.score-ring {
+  position: relative;
+  width: 200px; height: 200px;
+}
+.score-ring svg { transform: rotate(-90deg); }
+.score-ring circle.bg { stroke: rgba(255,255,255,0.1); }
+.score-ring circle.fg { transition: stroke-dashoffset 1.6s cubic-bezier(0.4, 0, 0.2, 1); }
+.score-ring-text {
+  position: absolute;
+  inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+.score-ring-num {
+  font-family: var(--mono);
+  font-size: 52px; font-weight: 800;
+  color: var(--gold-light);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.score-ring-label {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.65;
+  margin-top: 6px;
+}
+
+/* ═══════════ STAGE PIPELINE ═══════════ */
+.stage-pipeline {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 24px;
+  margin-bottom: 24px;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: cardIn 0.6s 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes cardIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+.stage-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 18px;
+}
+.stage-title {
+  font-family: var(--serif);
+  font-size: 18px; font-weight: 500;
+  color: var(--navy);
+}
+.stage-title em { font-style: italic; color: var(--gold-dk); }
+.stage-current {
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 5px 12px; border-radius: 999px;
+  background: var(--gold);
+  color: var(--navy);
+}
+.stages-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  position: relative;
+}
+.stage-step {
+  display: flex; flex-direction: column;
+  align-items: center; text-align: center;
+  position: relative;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 10px;
+  transition: all 0.2s;
+}
+.stage-step:hover { background: var(--cream); }
+.stage-dot {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--line);
+  border: 3px solid var(--line);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 800;
+  color: var(--mute);
+  margin-bottom: 8px;
+  position: relative;
+  z-index: 2;
+  transition: all 0.3s;
+}
+.stage-step.done .stage-dot {
+  background: var(--green);
+  border-color: var(--green);
+  color: white;
+}
+.stage-step.done .stage-dot::after {
+  content: '✓';
+}
+.stage-step.active .stage-dot {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--navy);
+  box-shadow: 0 0 0 6px rgba(245,184,0,0.2);
+  animation: stageActive 2s infinite;
+}
+@keyframes stageActive {
+  0%, 100% { box-shadow: 0 0 0 6px rgba(245,184,0,0.2); }
+  50% { box-shadow: 0 0 0 10px rgba(245,184,0,0.05); }
+}
+.stage-step.lost .stage-dot {
+  background: var(--red);
+  border-color: var(--red);
+  color: white;
+}
+.stage-step.lost .stage-dot::after { content: '✕'; }
+.stage-name {
+  font-size: 11px; font-weight: 700;
+  color: var(--mute);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.stage-step.done .stage-name { color: var(--green); }
+.stage-step.active .stage-name { color: var(--navy); }
+.stage-line {
+  position: absolute;
+  top: 22px;
+  left: 0; right: 0;
+  height: 3px;
+  background: var(--line);
+  z-index: 1;
+}
+.stage-line-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--green), var(--gold));
+  transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ═══════════ Two col layout ═══════════ */
+.two-col {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+@media (max-width: 920px) {
+  .two-col { grid-template-columns: 1fr; }
+}
+
+.panel {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 22px;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: cardIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.panel.delay-1 { animation-delay: 0.2s; }
+.panel.delay-2 { animation-delay: 0.3s; }
+.panel.delay-3 { animation-delay: 0.4s; }
+
+.panel-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.panel-title {
+  font-family: var(--serif);
+  font-size: 18px; font-weight: 500;
+  color: var(--navy);
+  letter-spacing: -0.01em;
+}
+.panel-title em { font-style: italic; color: var(--gold-dk); }
+.panel-action {
+  font-size: 11px; font-weight: 700;
+  color: var(--navy);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 6px;
+  transition: all 0.15s;
+}
+.panel-action:hover { background: var(--cream); color: var(--gold-dk); }
+
+/* ═══════════ AI Insights Card ═══════════ */
+.ai-card {
+  background: linear-gradient(135deg, #FFFEFB, var(--cream-2));
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 22px;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: cardIn 0.5s 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.ai-card::before {
+  content: '';
+  position: absolute;
+  top: -50px; right: -40px;
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(245,184,0,0.2), transparent 60%);
+}
+.ai-head {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+  position: relative;
+}
+.ai-icon {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--purple), var(--pink));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  box-shadow: 0 8px 20px rgba(124,58,237,0.25);
+}
+.ai-title {
+  font-family: var(--serif);
+  font-size: 20px; font-weight: 500;
+  color: var(--navy);
+}
+.ai-title em { font-style: italic; color: var(--purple); }
+.ai-pulse {
+  display: inline-block;
+  width: 6px; height: 6px;
+  background: var(--green-vibrant);
+  border-radius: 50%;
+  margin-left: 4px;
+  animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.3); }
+}
+
+.ai-body { position: relative; }
+.ai-content {
+  font-size: 14px;
+  color: var(--ink-2);
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+.ai-content strong {
+  color: var(--navy);
+  font-weight: 700;
+}
+.ai-actions {
+  display: flex; gap: 10px; margin-top: 16px;
+}
+.ai-btn {
+  padding: 9px 16px;
+  border-radius: 10px;
+  background: white;
+  color: var(--navy);
+  font-size: 12px; font-weight: 700;
+  border: 1px solid var(--line);
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: all 0.15s;
+}
+.ai-btn:hover {
+  border-color: var(--purple);
+  color: var(--purple);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(124,58,237,0.15);
+}
+.ai-btn.primary {
+  background: linear-gradient(135deg, var(--purple), var(--pink));
+  color: white;
+  border-color: transparent;
+}
+.ai-btn.primary:hover {
+  box-shadow: 0 8px 20px rgba(124,58,237,0.35);
+}
+.ai-loading {
+  text-align: center; padding: 30px 20px;
+  color: var(--mute); font-size: 13px;
+}
+.ai-loading-dots {
+  display: inline-block;
+  margin-top: 8px;
+}
+.ai-loading-dots span {
+  display: inline-block;
+  width: 6px; height: 6px;
+  background: var(--purple);
+  border-radius: 50%;
+  margin: 0 2px;
+  animation: dotBounce 1.4s infinite;
+}
+.ai-loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+.ai-loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes dotBounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.6; }
+  30% { transform: translateY(-6px); opacity: 1; }
+}
+
+/* ═══════════ Activity Timeline ═══════════ */
+.timeline {
+  position: relative;
+  padding-left: 24px;
+}
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 6px; bottom: 6px;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--gold), var(--line));
+}
+.timeline-item {
+  position: relative;
+  padding-bottom: 18px;
+  opacity: 0;
+  transform: translateX(-12px);
+  animation: timelineIn 0.4s forwards;
+}
+@keyframes timelineIn {
+  to { opacity: 1; transform: translateX(0); }
+}
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -21px;
+  top: 6px;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--card);
+  border: 3px solid var(--gold);
+  box-shadow: 0 0 0 3px rgba(245,184,0,0.15);
+}
+.timeline-item.call::before { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
+.timeline-item.email::before { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(124,58,237,0.15); }
+.timeline-item.whatsapp::before { border-color: var(--green); box-shadow: 0 0 0 3px rgba(16,185,129,0.15); }
+.timeline-item.note::before { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(249,115,22,0.15); }
+.timeline-item.stage_change::before { border-color: var(--gold); }
+.timeline-item.assignment::before { border-color: var(--pink); }
+
+.timeline-time {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--mute);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+.timeline-content {
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 600;
+  line-height: 1.5;
+}
+.timeline-content strong { color: var(--navy); }
+.timeline-meta {
+  font-size: 11px;
+  color: var(--mute);
+  margin-top: 3px;
+  font-weight: 500;
+}
+.timeline-empty {
+  text-align: center; padding: 30px 20px;
+  color: var(--mute); font-size: 13px;
+}
+
+/* ═══════════ Quick Actions Bar ═══════════ */
+.actions-bar {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 24px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: cardIn 0.5s 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.action-btn {
+  flex: 1;
+  min-width: 130px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--bg);
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  font-size: 12px; font-weight: 700;
+  color: var(--ink-2);
+  transition: all 0.2s;
+  border: 1px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+.action-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent, rgba(245,184,0,0.05));
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.action-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(15,28,94,0.12);
+  border-color: var(--gold);
+  color: var(--navy);
+}
+.action-btn:hover::before { opacity: 1; }
+.action-btn .ico {
+  font-size: 22px;
+  margin-bottom: 2px;
+  transition: transform 0.2s;
+}
+.action-btn:hover .ico { transform: scale(1.15); }
+.action-btn .label { font-weight: 700; letter-spacing: 0.02em; position: relative; }
+.action-btn .count {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--mute);
+  position: relative;
+}
+.action-btn.primary {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dk));
+  color: var(--navy);
+}
+.action-btn.primary:hover { color: var(--navy); }
+.action-btn.success {
+  background: linear-gradient(135deg, var(--green), #059669);
+  color: white;
+}
+.action-btn.success:hover { color: white; }
+
+/* ═══════════ Stat cards row ═══════════ */
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.stat-mini {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.25s;
+}
+.stat-mini:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 24px rgba(15,28,94,0.08);
+}
+.stat-mini.show { animation: cardIn 0.4s forwards; }
+.stat-mini.show:nth-child(1) { animation-delay: 0.4s; }
+.stat-mini.show:nth-child(2) { animation-delay: 0.45s; }
+.stat-mini.show:nth-child(3) { animation-delay: 0.5s; }
+.stat-mini.show:nth-child(4) { animation-delay: 0.55s; }
+
+.stat-mini .ico-circle {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  margin: 0 auto 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+.stat-mini.score .ico-circle { background: rgba(245,184,0,0.15); color: var(--gold-dk); }
+.stat-mini.calls .ico-circle { background: var(--blue-soft); color: var(--blue); }
+.stat-mini.emails .ico-circle { background: var(--purple-soft); color: var(--purple); }
+.stat-mini.meetings .ico-circle { background: var(--pink-soft); color: var(--pink); }
+.stat-mini-num {
+  font-family: var(--mono);
+  font-size: 28px; font-weight: 800;
+  color: var(--ink);
+  line-height: 1;
+}
+.stat-mini-label {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mute);
+  margin-top: 6px;
+}
+
+/* ═══════════ Info / Notes panels ═══════════ */
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line-2);
+  font-size: 13px;
+  align-items: center;
+}
+.info-row:last-child { border-bottom: none; }
+.info-label {
+  color: var(--mute);
+  font-weight: 600;
+}
+.info-val {
+  font-weight: 700;
+  color: var(--ink);
+  text-align: right;
+}
+.info-val.mono { font-family: var(--mono); }
+.info-val.gold { color: var(--gold-dk); }
+.info-val.green { color: var(--green); }
+.info-val.large { font-size: 16px; }
+
+.notes-box {
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  font-style: italic;
+  position: relative;
+}
+.notes-box::before {
+  content: '"';
+  font-family: var(--serif);
+  font-size: 60px;
+  color: var(--gold);
+  position: absolute;
+  top: -10px; left: 8px;
+  opacity: 0.3;
+  line-height: 1;
+}
+.notes-empty {
+  text-align: center;
+  color: var(--mute);
+  font-size: 13px;
+  padding: 20px;
+}
+
+/* ═══════════ Modals ═══════════ */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(6,13,51,0.6);
+  backdrop-filter: blur(6px);
+  z-index: 999;
+  display: none;
+  align-items: center; justify-content: center;
+  padding: 20px;
+}
+.modal-overlay.show {
+  display: flex;
+  animation: overlayIn 0.2s;
+}
+@keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
+.modal {
+  background: var(--card);
+  border-radius: 20px;
+  width: 100%; max-width: 540px;
+  max-height: 92vh; overflow-y: auto;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+  animation: modalIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.92) translateY(20px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.modal-head {
+  padding: 22px 24px 16px;
+  border-bottom: 1px solid var(--line);
+  display: flex; justify-content: space-between; align-items: start;
+}
+.modal-title {
+  font-family: var(--serif);
+  font-size: 22px; font-weight: 500;
+  color: var(--navy);
+}
+.modal-title em { font-style: italic; color: var(--gold-dk); }
+.modal-close {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: var(--bg); color: var(--mute);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+.modal-close:hover { background: var(--line); color: var(--ink); }
+.modal-body { padding: 22px 24px; }
+.modal-foot {
+  padding: 16px 24px;
+  border-top: 1px solid var(--line);
+  display: flex; gap: 10px; justify-content: end;
+  background: var(--cream);
+  border-radius: 0 0 20px 20px;
+}
+
+.form-row { margin-bottom: 14px; }
+.form-label {
+  display: block;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--mute); margin-bottom: 6px;
+}
+.form-input, .form-select, .form-textarea {
+  width: 100%;
+  padding: 11px 14px;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  font-size: 14px; font-weight: 500;
+  background: white; color: var(--ink);
+  transition: all 0.15s;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  outline: none;
+  border-color: var(--navy);
+  box-shadow: 0 0 0 3px rgba(15,28,94,0.06);
+}
+.form-textarea { resize: vertical; min-height: 100px; font-family: inherit; }
+
+.btn {
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 13px; font-weight: 700;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: all 0.15s;
+}
+.btn.ghost {
+  background: white; color: var(--ink-2);
+  border: 1px solid var(--line);
+}
+.btn.ghost:hover { border-color: var(--navy); color: var(--navy); }
+.btn.primary {
+  background: linear-gradient(135deg, var(--navy), var(--navy-light));
+  color: white;
+}
+.btn.primary:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(15,28,94,0.25); }
+.btn.gold {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dk));
+  color: var(--navy);
+}
+.btn.gold:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(245,184,0,0.3); }
+.btn.success {
+  background: linear-gradient(135deg, var(--green), #059669);
+  color: white;
+}
+.btn.success:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(16,185,129,0.3); }
+.btn.danger {
+  background: var(--red);
+  color: white;
+}
+
+/* ═══════════ Toast ═══════════ */
+.toast {
+  position: fixed;
+  bottom: 24px; right: 24px;
+  background: var(--ink);
+  color: white;
+  padding: 14px 22px;
+  border-radius: 12px;
+  font-size: 13px; font-weight: 600;
+  z-index: 9999;
+  box-shadow: 0 14px 30px rgba(0,0,0,0.3);
+  display: flex; align-items: center; gap: 10px;
+  transform: translateY(80px); opacity: 0;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  max-width: 380px;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.success { background: var(--green); }
+.toast.error { background: var(--red); }
+
+/* Confetti */
+.confetti {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+}
+.confetti-piece {
+  position: absolute;
+  width: 10px; height: 16px;
+  border-radius: 2px;
+  animation: confettiFall 3s ease-out forwards;
+}
+@keyframes confettiFall {
+  0% { transform: translateY(-50px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+
+/* Spinner */
+.spinner-sm {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Loading state */
+.full-loading {
+  min-height: 80vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 16px;
+}
+.loading-spinner {
+  width: 48px; height: 48px;
+  border: 4px solid var(--line);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+.loading-text {
+  font-family: var(--serif);
+  font-size: 18px;
+  color: var(--mute);
+  font-style: italic;
+}
+
+/* Mobile */
+@media (max-width: 920px) {
+  .main { padding: 16px; }
+  .hero { padding: 24px; }
+  .hero-grid { grid-template-columns: 1fr; }
+  .hero-name { font-size: 28px; }
+  .stages-row { grid-template-columns: 1fr; gap: 12px; }
+  .stage-line { display: none; }
+  .stage-step { flex-direction: row; gap: 12px; padding: 10px; }
+  .stage-dot { margin-bottom: 0; }
+  .stat-row { grid-template-columns: repeat(2, 1fr); }
+  .actions-bar { gap: 8px; }
+  .action-btn { min-width: 100px; flex: 1 1 calc(50% - 4px); padding: 10px 8px; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <a href="javascript:goBack()" class="back-btn">
+    <span>←</span>
+    <span>Back</span>
+  </a>
+  <div class="brand-mini">
+    <div class="brand-mark">PA</div>
+    <span>Lead Detail</span>
+  </div>
+  <span class="lead-id-pill" id="leadIdPill">Loading…</span>
+  <div class="topbar-right">
+    <div class="user-pill">
+      <div class="user-avatar" id="userAvatar">--</div>
+      <span id="userName">Loading…</span>
+    </div>
+  </div>
+</header>
+
+<main class="main" id="mainContent">
+  <div class="full-loading" id="fullLoading">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Loading lead details…</div>
+  </div>
+</main>
+
+<!-- TEMPLATE FOR LEAD CONTENT -->
+<template id="leadTemplate">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-grid">
+      <div>
+        <div class="hero-tags" id="heroTags"></div>
+        <h1 class="hero-name" id="heroName">Lead Name</h1>
+        <div style="font-size:14px;opacity:0.78;margin-top:4px" id="heroCompany">Company · City</div>
+
+        <div class="hero-contact" id="heroContact"></div>
+
+        <div class="hero-meta-row">
+          <div class="hero-meta-item">
+            <div class="hero-meta-label">Service</div>
+            <div class="hero-meta-val" id="heroService">—</div>
+          </div>
+          <div class="hero-meta-item">
+            <div class="hero-meta-label">Est. Value</div>
+            <div class="hero-meta-val" id="heroValue">—</div>
+          </div>
+          <div class="hero-meta-item">
+            <div class="hero-meta-label">Source</div>
+            <div class="hero-meta-val" id="heroSource">—</div>
+          </div>
+          <div class="hero-meta-item">
+            <div class="hero-meta-label">Assigned</div>
+            <div class="hero-meta-val" id="heroAssigned">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="score-ring-wrap">
+        <div class="score-ring">
+          <svg width="200" height="200" viewBox="0 0 200 200">
+            <circle class="bg" cx="100" cy="100" r="84" fill="none" stroke-width="12"/>
+            <circle class="fg" id="scoreCircle" cx="100" cy="100" r="84" fill="none" stroke="url(#scoreGrad)" stroke-width="12"
+              stroke-dasharray="528" stroke-dashoffset="528" stroke-linecap="round"/>
+            <defs>
+              <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#FFD15C"/>
+                <stop offset="100%" stop-color="#F5B800"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="score-ring-text">
+            <div class="score-ring-num" id="scoreNum">0</div>
+            <div class="score-ring-label">AI Score</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STAGE PIPELINE -->
+  <section class="stage-pipeline">
+    <div class="stage-head">
+      <div class="stage-title">Pipeline <em>stage</em></div>
+      <span class="stage-current" id="currentStageBadge">—</span>
+    </div>
+    <div class="stages-row" id="stagesRow"></div>
+  </section>
+
+  <!-- QUICK ACTIONS -->
+  <section class="actions-bar">
+    <button class="action-btn primary" onclick="openAction('whatsapp')">
+      <span class="ico">💬</span>
+      <span class="label">WhatsApp</span>
+      <span class="count" id="whatsappCount">— sent</span>
+    </button>
+    <button class="action-btn" onclick="openAction('call')">
+      <span class="ico">📞</span>
+      <span class="label">Log Call</span>
+      <span class="count" id="callCount">— calls</span>
+    </button>
+    <button class="action-btn" onclick="openAction('email')">
+      <span class="ico">✉️</span>
+      <span class="label">Email</span>
+      <span class="count" id="emailCount">— sent</span>
+    </button>
+    <button class="action-btn" onclick="openAction('meeting')">
+      <span class="ico">📅</span>
+      <span class="label">Meeting</span>
+      <span class="count" id="meetingCount">— scheduled</span>
+    </button>
+    <button class="action-btn" onclick="openAction('note')">
+      <span class="ico">📝</span>
+      <span class="label">Add Note</span>
+      <span class="count">Quick</span>
+    </button>
+    <button class="action-btn" onclick="openAction('stage')">
+      <span class="ico">🔄</span>
+      <span class="label">Change Stage</span>
+      <span class="count">Update</span>
+    </button>
+    <button class="action-btn success" onclick="markWon()">
+      <span class="ico">🏆</span>
+      <span class="label">Mark Won</span>
+      <span class="count">Close deal</span>
+    </button>
+  </section>
+
+  <!-- STATS -->
+  <div class="stat-row">
+    <div class="stat-mini show score">
+      <div class="ico-circle">⭐</div>
+      <div class="stat-mini-num" id="statScore">0</div>
+      <div class="stat-mini-label">AI Score</div>
+    </div>
+    <div class="stat-mini show calls">
+      <div class="ico-circle">📞</div>
+      <div class="stat-mini-num" id="statCalls">0</div>
+      <div class="stat-mini-label">Calls Made</div>
+    </div>
+    <div class="stat-mini show emails">
+      <div class="ico-circle">✉️</div>
+      <div class="stat-mini-num" id="statEmails">0</div>
+      <div class="stat-mini-label">Emails</div>
+    </div>
+    <div class="stat-mini show meetings">
+      <div class="ico-circle">📅</div>
+      <div class="stat-mini-num" id="statMeetings">0</div>
+      <div class="stat-mini-label">Meetings</div>
+    </div>
+  </div>
+
+  <!-- AI INSIGHTS CARD -->
+  <div class="ai-card">
+    <div class="ai-head">
+      <div class="ai-icon">🤖</div>
+      <div>
+        <div class="ai-title">AI <em>Insights</em><span class="ai-pulse"></span></div>
+        <div style="font-size:12px;color:var(--mute);margin-top:2px;font-weight:600">Powered by Claude · live analysis</div>
+      </div>
+    </div>
+    <div class="ai-body">
+      <div id="aiContent" class="ai-content"></div>
+      <div class="ai-actions">
+        <button class="ai-btn primary" onclick="runAIAnalyze()">
+          <span>✨</span>
+          <span>Analyze lead</span>
+        </button>
+        <button class="ai-btn" onclick="aiDraft('email')">
+          <span>📧</span>
+          <span>Draft email</span>
+        </button>
+        <button class="ai-btn" onclick="aiDraft('whatsapp')">
+          <span>💬</span>
+          <span>Draft WhatsApp</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TWO COL: Activity Timeline + Info/Notes -->
+  <div class="two-col">
+
+    <!-- Activity Timeline -->
+    <div class="panel delay-1">
+      <div class="panel-head">
+        <div class="panel-title">Activity <em>timeline</em></div>
+        <span class="panel-action" onclick="openAction('note')">+ Add</span>
+      </div>
+      <div class="timeline" id="timelineBody"></div>
+    </div>
+
+    <!-- Info + Notes -->
+    <div>
+      <div class="panel delay-2" style="margin-bottom:20px">
+        <div class="panel-head">
+          <div class="panel-title">Lead <em>info</em></div>
+        </div>
+        <div id="infoBody"></div>
+      </div>
+
+      <div class="panel delay-3">
+        <div class="panel-head">
+          <div class="panel-title"><em>Notes</em></div>
+        </div>
+        <div id="notesBody"></div>
+      </div>
+    </div>
+
+  </div>
+</template>
+
+<!-- ═══════════ MODAL: Activity Action ═══════════ -->
+<div class="modal-overlay" id="modalAction">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="actionTitle">Action</div>
+        <div style="font-size:12px;color:var(--mute);margin-top:4px" id="actionSub">—</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modalAction')">✕</button>
+    </div>
+    <div class="modal-body" id="actionBody">
+      <!-- Dynamic form -->
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" onclick="closeModal('modalAction')">Cancel</button>
+      <button class="btn primary" id="actionSubmit" onclick="submitAction()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ MODAL: AI Draft ═══════════ -->
+<div class="modal-overlay" id="modalAIDraft">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">AI <em id="aiDraftType">draft</em></div>
+        <div style="font-size:12px;color:var(--mute);margin-top:4px">Edit and use</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modalAIDraft')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="aiDraftLoading" class="ai-loading">
+        Generating draft<div class="ai-loading-dots"><span></span><span></span><span></span></div>
+      </div>
+      <textarea id="aiDraftText" class="form-textarea" rows="8" style="display:none;font-size:14px;line-height:1.6"></textarea>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" onclick="closeModal('modalAIDraft')">Cancel</button>
+      <button class="btn ghost" onclick="copyDraft()">📋 Copy</button>
+      <button class="btn gold" id="aiDraftSendBtn" onclick="sendDraft()">📤 Send via WhatsApp</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <span id="toastIcon">✓</span>
+  <span id="toastText">Done</span>
+</div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+window.supabase = supabase;
+
+// ─── Auth ───
+const userJSON = localStorage.getItem('prajapati_crm_user');
+if (!userJSON) window.location.href = 'crm-login.html';
+let CURRENT_USER;
+try {
+  CURRENT_USER = JSON.parse(userJSON);
+  if (!CURRENT_USER || !CURRENT_USER.id) throw new Error();
+} catch (e) {
+  localStorage.removeItem('prajapati_crm_user');
+  window.location.href = 'crm-login.html';
+}
+window.CURRENT_USER = CURRENT_USER;
+
+// ─── Get lead ID from URL ───
+const params = new URLSearchParams(location.search);
+const LEAD_ID = params.get('id');
+if (!LEAD_ID) {
+  document.getElementById('mainContent').innerHTML = `
+    <div class="full-loading">
+      <div style="font-size:48px">⚠️</div>
+      <div class="loading-text">No lead ID provided</div>
+      <a href="crm.html" class="btn primary" style="text-decoration:none">← Go back</a>
+    </div>`;
+  throw new Error('No lead ID');
+}
+
+// ─── Globals ───
+let LEAD = null;
+let ACTIVITIES = [];
+let ASSIGNED_USER = null;
+let CURRENT_ACTION = null;
+
+// ─── Helpers ───
+function fmtINR(n) {
+  if (!n) return '₹0';
+  if (n >= 10000000) return '₹' + (n/10000000).toFixed(2) + 'Cr';
+  if (n >= 100000) return '₹' + (n/100000).toFixed(2) + 'L';
+  if (n >= 1000) return '₹' + (n/1000).toFixed(0) + 'K';
+  return '₹' + n;
+}
+function fmtINRfull(n) { return '₹' + (n || 0).toLocaleString('en-IN'); }
+function timeSince(iso) {
+  if (!iso) return 'never';
+  const diff = Date.now() - new Date(iso).getTime();
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return Math.floor(diff/60000) + 'm ago';
+  if (diff < 86400000) return Math.floor(diff/3600000) + 'h ago';
+  if (diff < 604800000) return Math.floor(diff/86400000) + 'd ago';
+  return new Date(iso).toLocaleDateString('en-IN', { day:'numeric', month:'short' });
+}
+function fmtDateTime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleString('en-IN', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit', hour12: true });
+}
+function showToast(msg, type='success') {
+  const toast = document.getElementById('toast');
+  document.getElementById('toastIcon').textContent = type==='success'?'✓':type==='error'?'✕':'ℹ';
+  document.getElementById('toastText').textContent = msg;
+  toast.className = 'toast show ' + type;
+  setTimeout(() => toast.classList.remove('show'), 3500);
+}
+function avatarChar(name) {
+  if (!name) return '?';
+  const p = name.trim().split(/\s+/);
+  return p.length === 1 ? p[0].slice(0,2).toUpperCase() : (p[0][0] + p[p.length-1][0]).toUpperCase();
+}
+
+// ─── Confetti ───
+function confettiBurst() {
+  const colors = ['#F5B800', '#FFD15C', '#10B981', '#7C3AED', '#EC4899', '#2563EB'];
+  const container = document.createElement('div');
+  container.className = 'confetti';
+  document.body.appendChild(container);
+  for (let i = 0; i < 80; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+    piece.style.left = Math.random() * 100 + '%';
+    piece.style.animationDelay = Math.random() * 0.4 + 's';
+    piece.style.animationDuration = (2.5 + Math.random()) + 's';
+    container.appendChild(piece);
+  }
+  setTimeout(() => container.remove(), 4000);
+}
+
+// ─── Init UI ───
+function initUserUI() {
+  const firstName = CURRENT_USER.full_name.split(' ')[0];
+  document.getElementById('userName').textContent = `${firstName} · Emp ${CURRENT_USER.emp_id}`;
+  document.getElementById('userAvatar').textContent = avatarChar(CURRENT_USER.full_name);
+}
+
+// ─── Load lead ───
+async function loadLead() {
+  const { data, error } = await supabase
+    .from('trial_leads')
+    .select('*')
+    .eq('id', LEAD_ID)
+    .maybeSingle();
+
+  if (error || !data) {
+    document.getElementById('mainContent').innerHTML = `
+      <div class="full-loading">
+        <div style="font-size:48px">⚠️</div>
+        <div class="loading-text">${error?.message || 'Lead not found'}</div>
+        <a href="crm.html" class="btn primary" style="text-decoration:none;margin-top:12px">← Back to leads</a>
+      </div>`;
+    return;
+  }
+
+  LEAD = data;
+
+  // Get assigned user
+  if (LEAD.assigned_to) {
+    const { data: u } = await supabase
+      .from('trial_sales_users')
+      .select('id, full_name, emp_id, avatar_color')
+      .eq('id', LEAD.assigned_to)
+      .maybeSingle();
+    ASSIGNED_USER = u;
+  }
+
+  // Get activities
+  const { data: acts } = await supabase
+    .from('trial_lead_activities')
+    .select('*')
+    .eq('lead_id', LEAD_ID)
+    .order('created_at', { ascending: false });
+  ACTIVITIES = acts || [];
+
+  renderLead();
+}
+
+function renderLead() {
+  // Replace loading with template
+  const tpl = document.getElementById('leadTemplate');
+  document.getElementById('mainContent').innerHTML = tpl.innerHTML;
+
+  // Lead ID pill
+  document.getElementById('leadIdPill').textContent = LEAD.lead_number;
+
+  // Hero tags
+  const tags = [];
+  if (LEAD.priority === 'hot') tags.push('<span class="tag tag-priority-hot">🔥 Hot</span>');
+  else if (LEAD.priority === 'high') tags.push('<span class="tag tag-priority-high">High Priority</span>');
+  else tags.push('<span class="tag tag-priority-medium">Medium</span>');
+
+  if (LEAD.is_repeat_buyer) tags.push(`<span class="tag tag-repeat">Repeat ${LEAD.repeat_count}x</span>`);
+  if (LEAD.source) tags.push(`<span class="tag tag-source">${LEAD.source.replace('_',' ').toUpperCase()}</span>`);
+  document.getElementById('heroTags').innerHTML = tags.join('');
+
+  // Hero name
+  document.getElementById('heroName').innerHTML = LEAD.client_company
+    ? `<em>${LEAD.client_company}</em>`
+    : `<em>${LEAD.client_name}</em>`;
+
+  document.getElementById('heroCompany').textContent =
+    LEAD.client_company
+      ? `${LEAD.client_name} · ${LEAD.client_city || 'City n/a'}`
+      : `${LEAD.client_city || 'City n/a'}`;
+
+  // Hero contact
+  const contactItems = [];
+  if (LEAD.client_phone) contactItems.push(`<div class="hero-contact-item"><span class="ic">📞</span><span>${LEAD.client_phone}</span></div>`);
+  if (LEAD.client_email) contactItems.push(`<div class="hero-contact-item"><span class="ic">✉️</span><span>${LEAD.client_email}</span></div>`);
+  document.getElementById('heroContact').innerHTML = contactItems.join('');
+
+  // Hero meta
+  document.getElementById('heroService').textContent = (LEAD.service_type || '—').replace(/_/g, ' ');
+  document.getElementById('heroValue').textContent = fmtINR(LEAD.estimated_value);
+  document.getElementById('heroSource').textContent = LEAD.source || '—';
+  document.getElementById('heroAssigned').textContent = ASSIGNED_USER?.full_name?.split(' ')[0] || 'Unassigned';
+
+  // Score ring (animated)
+  const score = LEAD.ai_score || 0;
+  document.getElementById('scoreNum').textContent = '0';
+  setTimeout(() => {
+    const circumference = 528;
+    const offset = circumference - (circumference * score / 100);
+    document.getElementById('scoreCircle').style.strokeDashoffset = offset;
+    animateNumber('scoreNum', 0, score, 1400);
+  }, 300);
+
+  // Stage pipeline
+  renderStages();
+
+  // Stat counts (animated)
+  const callCount = ACTIVITIES.filter(a => a.activity_type === 'call' || a.activity_type === 'call_missed').length;
+  const emailCount = ACTIVITIES.filter(a => a.activity_type === 'email').length;
+  const meetingCount = ACTIVITIES.filter(a => a.activity_type === 'meeting').length;
+  const whatsappCount = ACTIVITIES.filter(a => a.activity_type === 'whatsapp').length;
+
+  setTimeout(() => animateNumber('statScore', 0, score, 1200), 500);
+  setTimeout(() => animateNumber('statCalls', 0, callCount, 800), 600);
+  setTimeout(() => animateNumber('statEmails', 0, emailCount, 800), 700);
+  setTimeout(() => animateNumber('statMeetings', 0, meetingCount, 800), 800);
+
+  document.getElementById('callCount').textContent = `${callCount} calls`;
+  document.getElementById('emailCount').textContent = `${emailCount} sent`;
+  document.getElementById('meetingCount').textContent = `${meetingCount} scheduled`;
+  document.getElementById('whatsappCount').textContent = `${whatsappCount} sent`;
+
+  // Activity timeline
+  renderTimeline();
+
+  // Info card
+  renderInfo();
+
+  // Notes
+  renderNotes();
+
+  // AI hint card (default text)
+  document.getElementById('aiContent').innerHTML = `<span style="color:var(--mute)">Click "Analyze lead" to get AI-powered insights about this prospect — why they're hot, what to say next, and conversion strategy.</span>`;
+}
+
+function renderStages() {
+  const stages = [
+    { key: 'new', name: 'New' },
+    { key: 'contacted', name: 'Contacted' },
+    { key: 'qualified', name: 'Qualified' },
+    { key: 'quoted', name: 'Quoted' },
+    { key: 'negotiating', name: 'Negotiate' },
+    { key: 'won', name: 'Won' },
+    { key: 'lost', name: 'Lost' }
+  ];
+  const currentStage = LEAD.stage || 'new';
+  const currentIdx = stages.findIndex(s => s.key === currentStage);
+  const isLost = currentStage === 'lost';
+
+  document.getElementById('currentStageBadge').textContent = currentStage.replace('_', ' ');
+
+  let html = '';
+  stages.forEach((s, i) => {
+    let cls = '';
+    if (s.key === 'lost' && !isLost) {
+      // Skip lost in normal flow
+      return;
+    }
+    if (s.key === 'won' || s.key === 'lost') {
+      // Only show if it's the current
+      if (s.key !== currentStage && currentIdx < 5) return;
+    }
+
+    if (i < currentIdx) cls = 'done';
+    else if (i === currentIdx) cls = isLost ? 'lost' : 'active';
+
+    html += `
+      <div class="stage-step ${cls}" onclick="changeStage('${s.key}')" data-stage="${s.key}">
+        <div class="stage-dot">${cls === '' || cls === 'active' && !isLost ? (i+1) : ''}</div>
+        <div class="stage-name">${s.name}</div>
+      </div>
+    `;
+  });
+
+  document.getElementById('stagesRow').innerHTML = html;
+
+  // Animated line fill
+  // Simple approach: not adding line for now (CSS handles via stage-dot states)
+}
+
+function renderTimeline() {
+  const target = document.getElementById('timelineBody');
+
+  if (ACTIVITIES.length === 0) {
+    target.innerHTML = `
+      <div class="timeline-empty">
+        <div style="font-size:32px;margin-bottom:8px">📭</div>
+        <div>No activities yet.</div>
+        <div style="margin-top:6px;font-size:11px">Use action buttons above to log calls, notes, etc.</div>
+      </div>
+    `;
+    return;
+  }
+
+  target.innerHTML = ACTIVITIES.map((a, i) => {
+    const icon = {
+      call: '📞', call_missed: '📵', email: '✉️', whatsapp: '💬',
+      meeting: '📅', note: '📝', stage_change: '🔄', assignment: '👤',
+      sms: '📱', quote_sent: '📄', order_created: '🎯', file_attached: '📎'
+    }[a.activity_type] || '•';
+
+    const label = (a.activity_type || 'note').replace('_', ' ');
+    return `
+      <div class="timeline-item ${a.activity_type}" style="animation-delay:${i * 0.05}s">
+        <div class="timeline-time">${fmtDateTime(a.created_at)} · ${timeSince(a.created_at)}</div>
+        <div class="timeline-content">${icon} <strong>${label.toUpperCase()}</strong> — ${(a.notes || '').slice(0, 200)}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderInfo() {
+  const target = document.getElementById('infoBody');
+  const rows = [];
+
+  if (LEAD.lead_number) rows.push({label:'Lead #', val: LEAD.lead_number, mono:true});
+  rows.push({label:'Created', val: fmtDateTime(LEAD.created_at)});
+  if (LEAD.last_contacted_at) rows.push({label:'Last contact', val: timeSince(LEAD.last_contacted_at)});
+  if (LEAD.next_followup_at) rows.push({label:'Next followup', val: fmtDateTime(LEAD.next_followup_at), gold:true});
+  rows.push({label:'Phone', val: LEAD.client_phone || '—', mono:true});
+  if (LEAD.client_email) rows.push({label:'Email', val: LEAD.client_email});
+  if (LEAD.client_city) rows.push({label:'Location', val: `${LEAD.client_city}, ${LEAD.client_state || ''}`});
+  rows.push({label:'Source ref', val: LEAD.source_ref || '—', mono:true});
+  rows.push({label:'Est. value', val: fmtINRfull(LEAD.estimated_value), large:true, gold:true});
+  rows.push({label:'Contact attempts', val: LEAD.contact_attempts || 0});
+
+  target.innerHTML = rows.map(r => {
+    const cls = [r.mono?'mono':'', r.gold?'gold':'', r.green?'green':'', r.large?'large':''].filter(Boolean).join(' ');
+    return `<div class="info-row">
+      <span class="info-label">${r.label}</span>
+      <span class="info-val ${cls}">${r.val}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderNotes() {
+  const target = document.getElementById('notesBody');
+  const text = LEAD.notes || LEAD.requirement_text;
+  if (!text) {
+    target.innerHTML = `<div class="notes-empty">No notes yet</div>`;
+    return;
+  }
+  target.innerHTML = `<div class="notes-box">${text}</div>`;
+}
+
+// ─── Animate number count ───
+function animateNumber(elId, from, to, duration) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const start = performance.now();
+  function step(now) {
+    const elapsed = now - start;
+    const progress = Math.min(1, elapsed / duration);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const val = Math.round(from + (to - from) * eased);
+    el.textContent = val;
+    if (progress < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// ═══════════════════════════════════════════════════════
+// ACTIONS
+// ═══════════════════════════════════════════════════════
+
+window.goBack = function() {
+  if (document.referrer && document.referrer.includes(location.host)) {
+    history.back();
+  } else {
+    location.href = 'crm.html';
+  }
+};
+
+window.openModal = function(id) { document.getElementById(id).classList.add('show'); };
+window.closeModal = function(id) { document.getElementById(id).classList.remove('show'); };
+
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('show'); });
+});
+
+window.openAction = function(type) {
+  CURRENT_ACTION = type;
+  const titles = {
+    call: ['Log <em>call</em>', 'Record call attempt with this lead'],
+    email: ['Log <em>email</em>', 'Track email sent to this lead'],
+    whatsapp: ['Log <em>WhatsApp</em>', 'Track WhatsApp sent'],
+    meeting: ['Log <em>meeting</em>', 'Schedule or record meeting'],
+    note: ['Add <em>note</em>', 'Quick observation about this lead'],
+    stage: ['Change <em>stage</em>', 'Update pipeline status']
+  };
+  const [title, sub] = titles[type] || ['Action', ''];
+  document.getElementById('actionTitle').innerHTML = title;
+  document.getElementById('actionSub').textContent = sub;
+
+  const body = document.getElementById('actionBody');
+
+  if (type === 'stage') {
+    body.innerHTML = `
+      <div class="form-row">
+        <label class="form-label">New stage</label>
+        <select class="form-select" id="actionStage">
+          <option value="new">New</option>
+          <option value="contacted">Contacted</option>
+          <option value="qualified">Qualified</option>
+          <option value="quoted">Quoted</option>
+          <option value="negotiating">Negotiating</option>
+          <option value="won">🏆 Won</option>
+          <option value="lost">Lost</option>
+          <option value="on_hold">On Hold</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Notes (optional)</label>
+        <textarea class="form-textarea" id="actionNotes" placeholder="Why this stage change..."></textarea>
+      </div>
+    `;
+    document.getElementById('actionStage').value = LEAD.stage || 'new';
+  } else if (type === 'meeting') {
+    body.innerHTML = `
+      <div class="form-row">
+        <label class="form-label">Meeting date/time</label>
+        <input type="datetime-local" class="form-input" id="actionMeetingDate">
+      </div>
+      <div class="form-row">
+        <label class="form-label">Notes</label>
+        <textarea class="form-textarea" id="actionNotes" placeholder="Site visit, discussion topics..."></textarea>
+      </div>
+    `;
+  } else {
+    const placeholder = {
+      call: 'Spoke about... discussed... follow up...',
+      email: 'Sent quotation... reply received...',
+      whatsapp: 'Sent intro message... auto-reply...',
+      note: 'Important observation about this lead...'
+    }[type] || '';
+
+    body.innerHTML = `
+      <div class="form-row">
+        <label class="form-label">Notes</label>
+        <textarea class="form-textarea" id="actionNotes" placeholder="${placeholder}" autofocus></textarea>
+      </div>
+      ${type === 'call' || type === 'meeting' ? `
+        <div class="form-row">
+          <label class="form-label">Set next followup (optional)</label>
+          <input type="datetime-local" class="form-input" id="actionFollowup">
+        </div>
+      ` : ''}
+    `;
+  }
+
+  openModal('modalAction');
+};
+
+window.submitAction = async function() {
+  const btn = document.getElementById('actionSubmit');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner-sm"></span> Saving…';
+
+  const type = CURRENT_ACTION;
+  const notes = document.getElementById('actionNotes')?.value?.trim() || '';
+  const followup = document.getElementById('actionFollowup')?.value;
+  const meetingDate = document.getElementById('actionMeetingDate')?.value;
+
+  if (type === 'stage') {
+    const newStage = document.getElementById('actionStage').value;
+    const updateData = { stage: newStage };
+    if (newStage === 'won') updateData.won_at = new Date().toISOString();
+    if (newStage === 'lost') updateData.lost_at = new Date().toISOString();
+
+    const { error: e1 } = await supabase.from('trial_leads').update(updateData).eq('id', LEAD_ID);
+    const { error: e2 } = await supabase.from('trial_lead_activities').insert({
+      lead_id: LEAD_ID,
+      user_id: CURRENT_USER.id,
+      activity_type: 'stage_change',
+      notes: `Stage changed: ${LEAD.stage} → ${newStage}${notes ? '. ' + notes : ''}`
+    });
+
+    btn.disabled = false; btn.innerHTML = 'Save';
+    if (e1 || e2) return showToast('Update failed', 'error');
+
+    showToast(`Stage → ${newStage}`);
+    if (newStage === 'won') confettiBurst();
+    closeModal('modalAction');
+    await loadLead();
+    return;
+  }
+
+  // Activity log
+  const activityType = type === 'note' ? 'note' :
+                       type === 'call' ? 'call' :
+                       type === 'email' ? 'email' :
+                       type === 'whatsapp' ? 'whatsapp' :
+                       type === 'meeting' ? 'meeting' : 'note';
+
+  const metadata = {};
+  if (meetingDate) metadata.meeting_date = meetingDate;
+
+  const { error: e1 } = await supabase.from('trial_lead_activities').insert({
+    lead_id: LEAD_ID,
+    user_id: CURRENT_USER.id,
+    activity_type: activityType,
+    notes: notes,
+    metadata: Object.keys(metadata).length > 0 ? metadata : null
+  });
+
+  // Update lead
+  const updates = { last_contacted_at: new Date().toISOString() };
+  if (type === 'call' || type === 'whatsapp') updates.contact_attempts = (LEAD.contact_attempts || 0) + 1;
+  if (followup) updates.next_followup_at = followup;
+  if (meetingDate) updates.next_followup_at = meetingDate;
+
+  const { error: e2 } = await supabase.from('trial_leads').update(updates).eq('id', LEAD_ID);
+
+  btn.disabled = false; btn.innerHTML = 'Save';
+  if (e1 || e2) return showToast('Save failed: ' + (e1?.message || e2?.message), 'error');
+
+  showToast(`✓ ${type} logged`);
+  closeModal('modalAction');
+  await loadLead();
+};
+
+window.changeStage = function(stage) {
+  CURRENT_ACTION = 'stage';
+  openAction('stage');
+  setTimeout(() => {
+    const sel = document.getElementById('actionStage');
+    if (sel) sel.value = stage;
+  }, 100);
+};
+
+window.markWon = async function() {
+  if (!confirm(`Mark "${LEAD.client_company || LEAD.client_name}" as WON? ${fmtINR(LEAD.estimated_value)} will be added to your won pipeline.`)) return;
+
+  const { error } = await supabase.from('trial_leads').update({
+    stage: 'won',
+    won_at: new Date().toISOString()
+  }).eq('id', LEAD_ID);
+
+  await supabase.from('trial_lead_activities').insert({
+    lead_id: LEAD_ID,
+    user_id: CURRENT_USER.id,
+    activity_type: 'stage_change',
+    notes: `🎉 Lead marked as WON by ${CURRENT_USER.full_name}`
+  });
+
+  if (error) return showToast('Failed: ' + error.message, 'error');
+
+  showToast('🎉 WON! Deal closed', 'success');
+  confettiBurst();
+  await loadLead();
+};
+
+// ═══════════════════════════════════════════════════════
+// AI FEATURES (using Claude via API call from artifact)
+// ═══════════════════════════════════════════════════════
+
+window.runAIAnalyze = async function() {
+  const aiBody = document.getElementById('aiContent');
+  aiBody.innerHTML = `<div class="ai-loading">Analyzing this lead<div class="ai-loading-dots"><span></span><span></span><span></span></div></div>`;
+
+  const prompt = `You are a B2B sales coach analyzing a lead for Prajapati Advertising (outdoor advertising company in Pune). Analyze this lead and provide insights in CRISP, ACTIONABLE points (Hinglish OK):
+
+LEAD DATA:
+- Client: ${LEAD.client_name}${LEAD.client_company ? ` (${LEAD.client_company})` : ''}
+- City: ${LEAD.client_city || 'unknown'}
+- Source: ${LEAD.source}
+- AI Score: ${LEAD.ai_score}/100
+- Service: ${LEAD.service_type || 'general'}
+- Est. Value: ₹${LEAD.estimated_value || 0}
+- Stage: ${LEAD.stage}
+- Repeat buyer: ${LEAD.is_repeat_buyer ? 'Yes (' + LEAD.repeat_count + 'x)' : 'No'}
+- Query: ${(LEAD.requirement_text || 'not provided').slice(0, 500)}
+- Activities so far: ${ACTIVITIES.length}
+
+PROVIDE:
+**Why this lead matters:** 2-3 bullet points (one line each)
+**Suggested next action:** 1 specific action (call/quote/meet/etc.) with reasoning
+**Quote strategy:** Price range to suggest + why
+**Risks:** 1-2 concerns to watch out for
+
+Keep it under 200 words. Use Hinglish if helpful. Be direct, no fluff.`;
+
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 800,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+    const data = await res.json();
+    const text = data.content?.[0]?.text || 'AI analysis not available right now.';
+    // Convert markdown bold to <strong>
+    const formatted = text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br>');
+    aiBody.innerHTML = formatted;
+  } catch (e) {
+    aiBody.innerHTML = `<span style="color:var(--red)">AI service unavailable. Try again later.</span>`;
+  }
+};
+
+window.aiDraft = async function(channel) {
+  document.getElementById('aiDraftType').textContent = channel === 'email' ? 'email' : 'WhatsApp';
+  document.getElementById('aiDraftLoading').style.display = 'block';
+  document.getElementById('aiDraftText').style.display = 'none';
+  document.getElementById('aiDraftSendBtn').textContent = channel === 'email' ? '📧 Use as draft' : '📤 Send via WhatsApp';
+  openModal('modalAIDraft');
+
+  const prompt = channel === 'email'
+    ? `Write a professional sales email to ${LEAD.client_name} from Prajapati Advertising. Their company: ${LEAD.client_company || 'not specified'}. Their city: ${LEAD.client_city || 'India'}. Service interested: ${LEAD.service_type || 'outdoor advertising'}. Their query: ${(LEAD.requirement_text || 'general inquiry').slice(0, 300)}.
+
+Email should:
+- Have a strong subject line (mark with "SUBJECT:" prefix on first line)
+- Be 4-5 sentences max
+- Mention specific service benefits
+- Include CTA (call/meet/quote)
+- Sign off as "Prajapati Advertising team"
+- Match their language (English/Hinglish based on context)
+
+Write directly, no preamble.`
+    : `Write a casual but professional WhatsApp message to ${LEAD.client_name} from Prajapati Advertising. Their query: ${(LEAD.requirement_text || 'general inquiry').slice(0, 300)}.
+
+Message should:
+- Be Hinglish if name suggests Indian (warm, friendly tone)
+- 3-4 sentences max
+- Mention you saw their inquiry
+- Offer to share quote/details
+- Include phone +91-9922138138
+- 1-2 emojis max (🙏 ✨ ✓)
+
+Write directly the message text only.`;
+
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 600,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+    const data = await res.json();
+    const text = data.content?.[0]?.text || '';
+
+    document.getElementById('aiDraftLoading').style.display = 'none';
+    document.getElementById('aiDraftText').style.display = 'block';
+    document.getElementById('aiDraftText').value = text.trim();
+  } catch (e) {
+    document.getElementById('aiDraftLoading').innerHTML = `<div style="color:var(--red)">Error generating draft. Try again.</div>`;
+  }
+};
+
+window.copyDraft = function() {
+  const text = document.getElementById('aiDraftText').value;
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('📋 Copied to clipboard');
+  });
+};
+
+window.sendDraft = async function() {
+  const text = document.getElementById('aiDraftText').value;
+  const isEmail = document.getElementById('aiDraftType').textContent === 'email';
+
+  if (isEmail) {
+    // Just log to activities
+    await supabase.from('trial_lead_activities').insert({
+      lead_id: LEAD_ID,
+      user_id: CURRENT_USER.id,
+      activity_type: 'email',
+      notes: 'Email drafted via AI: ' + text.slice(0, 200),
+      metadata: { full_text: text, ai_generated: true }
+    });
+    showToast('Email logged. Copy and send via Gmail.');
+  } else {
+    // WhatsApp - copy + open wa.me link
+    const phone = (LEAD.client_phone || '').replace(/[^\d]/g, '');
+    if (phone) {
+      const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+      window.open(waUrl, '_blank');
+
+      await supabase.from('trial_lead_activities').insert({
+        lead_id: LEAD_ID,
+        user_id: CURRENT_USER.id,
+        activity_type: 'whatsapp',
+        notes: 'WhatsApp drafted via AI: ' + text.slice(0, 200),
+        metadata: { full_text: text, ai_generated: true }
+      });
+
+      showToast('Opening WhatsApp with draft…');
+    } else {
+      showToast('No phone number available', 'error');
+    }
+  }
+
+  closeModal('modalAIDraft');
+  await loadLead();
+};
+
+// ─── Realtime ───
+function setupRealtime() {
+  supabase.channel('lead-' + LEAD_ID)
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'trial_leads', filter: `id=eq.${LEAD_ID}` },
+      () => loadLead()
+    )
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'trial_lead_activities', filter: `lead_id=eq.${LEAD_ID}` },
+      () => loadLead()
+    )
+    .subscribe();
+}
+
+// ─── INIT ───
+initUserUI();
+loadLead().then(() => {
+  setupRealtime();
+}).catch(e => {
+  console.error(e);
+  showToast('Load error: ' + e.message, 'error');
+});
+</script>
+</body>
+</html>
