@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Campaign Live · Prajapati Advertising</title>
+<meta name="description" content="Real-time campaign progress dashboard">
+<meta name="theme-color" content="#0E1942">
+
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,ital@9..144,300..900,0..1&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+:root {
+  --cream: #FBF8F2;
+  --cream-dk: #F1ECDF;
+  --navy: #0E1942;
+  --navy-2: #1A2980;
+  --gold: #C9A14F;
+  --gold-dk: #A88737;
+  --ink: #171716;
+  --mute: #6B6961;
+  --line: #E5DCC9;
+  --green: #2F7D4F;
+  --serif: 'Fraunces', 'Georgia', serif;
+  --sans: 'Manrope', system-ui, sans-serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { font-family: var(--sans); background: var(--cream); color: var(--ink); -webkit-font-smoothing: antialiased; }
+img { max-width: 100%; display: block; }
+
+.boot-screen { position: fixed; inset: 0; background: var(--cream); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; transition: opacity 0.4s; }
+.boot-screen.gone { opacity: 0; pointer-events: none; }
+.boot-screen .logo-card { background: #fff; padding: 18px 28px; border-radius: 14px; box-shadow: 0 8px 32px rgba(0,0,0,0.08); margin-bottom: 24px; }
+.boot-screen .logo-card img { height: 36px; }
+.boot-screen .spinner { width: 32px; height: 32px; border: 2px solid var(--cream-dk); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 16px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.boot-screen .label { font-family: var(--serif); font-size: 14px; color: var(--mute); font-style: italic; }
+
+.error-screen { position: fixed; inset: 0; background: var(--cream); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 9998; padding: 30px; text-align: center; }
+.error-screen.show { display: flex; }
+.error-screen .err-card { max-width: 460px; background: #fff; padding: 36px 32px; border-radius: 14px; border: 1px solid var(--line); box-shadow: 0 8px 32px rgba(0,0,0,0.08); }
+.error-screen .err-icon { font-size: 40px; margin-bottom: 14px; }
+.error-screen h2 { font-family: var(--serif); font-weight: 400; font-size: 28px; color: var(--navy); margin-bottom: 10px; letter-spacing: -0.01em; }
+.error-screen p { color: var(--mute); font-size: 13px; line-height: 1.6; margin-bottom: 18px; }
+.error-screen .err-meta { font-family: var(--serif); font-size: 11px; color: var(--gold-dk); letter-spacing: 0.08em; text-transform: uppercase; padding-top: 16px; border-top: 1px solid var(--line); margin-top: 16px; }
+.error-screen .err-meta a { color: var(--navy); text-decoration: none; font-weight: 600; }
+
+.topbar { display: flex; justify-content: space-between; align-items: center; padding: 18px 40px; border-bottom: 1px solid var(--line); background: var(--cream); position: sticky; top: 0; z-index: 50; backdrop-filter: blur(10px); }
+.topbar-l { display: flex; align-items: center; gap: 18px; min-width: 0; flex: 1; }
+.brand-mark img { height: 28px; }
+.brand-divider { width: 1px; height: 18px; background: var(--line); flex-shrink: 0; }
+.crumb { font-size: 11px; color: var(--mute); letter-spacing: 0.12em; text-transform: uppercase; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topbar-r { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.live-pill { display: inline-flex; align-items: center; gap: 7px; padding: 6px 14px; border-radius: 99px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; background: rgba(47,125,79,0.08); color: var(--green); border: 1px solid rgba(47,125,79,0.2); }
+.live-pill .dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; animation: livePulse 1.6s ease-in-out infinite; }
+.live-pill.polling { background: rgba(245,158,11,0.08); color: #92400e; border-color: rgba(245,158,11,0.2); }
+.live-pill.polling .dot { background: #92400e; }
+.live-pill.off { background: var(--cream-dk); color: var(--mute); border-color: var(--line); }
+.live-pill.off .dot { background: var(--mute); animation: none; }
+.live-pill.connecting { background: var(--cream-dk); color: var(--mute); border-color: var(--line); }
+.live-pill.connecting .dot { background: var(--gold); }
+@keyframes livePulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; box-shadow: 0 0 0 4px rgba(47,125,79,0.15); } }
+.action-btn { padding: 7px 14px; border: 1px solid var(--line); background: #fff; color: var(--navy); border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; letter-spacing: 0.02em; transition: 0.15s; }
+.action-btn:hover { background: var(--navy); color: var(--cream); border-color: var(--navy); }
+.action-btn.primary { background: var(--navy); color: var(--cream); border-color: var(--navy); }
+.action-btn.primary:hover { background: var(--navy-2); }
+
+.container { max-width: 1320px; margin: 0 auto; padding: 0 40px; }
+
+.hero { padding: 60px 0 40px; border-bottom: 1px solid var(--line); position: relative; }
+.hero-kicker { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
+.hero-kicker .label { font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold-dk); }
+.hero-kicker .sep { width: 30px; height: 1px; background: var(--gold); }
+.hero-kicker .client { font-size: 13px; color: var(--mute); font-weight: 500; }
+.hero h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(40px, 6vw, 72px); line-height: 1.04; letter-spacing: -0.02em; color: var(--navy); margin-bottom: 8px; }
+.hero h2.sub-line { font-family: var(--serif); font-weight: 400; font-size: 22px; color: var(--mute); letter-spacing: -0.01em; margin-top: 6px; }
+.hero-meta { display: flex; flex-wrap: wrap; gap: 30px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 12px; color: var(--mute); }
+.hero-meta div { display: flex; align-items: center; gap: 8px; }
+.hero-meta strong { color: var(--ink); font-weight: 600; }
+.hero-meta .icon { font-size: 14px; opacity: 0.6; }
+
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border-bottom: 1px solid var(--line); }
+.stat { background: var(--cream); padding: 36px 32px; position: relative; }
+.stat-label { font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--mute); margin-bottom: 14px; }
+.stat-value { font-family: var(--serif); font-weight: 400; font-size: 56px; line-height: 1; color: var(--navy); letter-spacing: -0.02em; font-feature-settings: 'tnum'; }
+.stat-value sub { font-size: 18px; color: var(--mute); margin-left: 4px; font-feature-settings: 'tnum'; }
+.stat-sub { font-size: 12px; color: var(--mute); margin-top: 10px; display: flex; align-items: center; gap: 6px; }
+.stat-sub .up { color: var(--green); font-weight: 700; }
+.stat-progress { margin-top: 14px; height: 4px; background: var(--cream-dk); border-radius: 99px; overflow: hidden; }
+.stat-progress-bar { height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-dk)); border-radius: 99px; transition: width 0.6s; }
+
+.section { padding: 60px 0; border-bottom: 1px solid var(--line); }
+.section:last-child { border-bottom: none; }
+.section-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 32px; flex-wrap: wrap; gap: 14px; }
+.section-head h2 { font-family: var(--serif); font-weight: 400; font-size: 36px; letter-spacing: -0.01em; color: var(--navy); }
+.section-head .h-sub { font-size: 12px; color: var(--mute); margin-top: 4px; }
+
+.live-grid { display: grid; grid-template-columns: 380px 1fr; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.feed-panel { background: var(--cream); padding: 24px 26px; max-height: 540px; overflow-y: auto; }
+.feed-head { display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+.feed-head h3 { font-family: var(--serif); font-weight: 500; font-size: 18px; color: var(--navy); }
+.feed-head .now { font-size: 10px; color: var(--mute); letter-spacing: 0.08em; }
+.feed-item { padding: 14px 0; border-bottom: 1px solid var(--line); display: flex; gap: 12px; cursor: pointer; transition: 0.15s; }
+.feed-item:hover { padding-left: 4px; }
+.feed-item:last-child { border: none; }
+.feed-item .thumb { width: 56px; height: 56px; flex-shrink: 0; border-radius: 4px; background: var(--cream-dk); overflow: hidden; }
+.feed-item .thumb img { width: 100%; height: 100%; object-fit: cover; }
+.feed-item .body { flex: 1; min-width: 0; }
+.feed-item .plate { font-family: 'Fraunces', monospace; font-weight: 600; font-size: 14px; color: var(--navy); letter-spacing: 0.04em; }
+.feed-item .where { font-size: 11px; color: var(--mute); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.feed-item .when { font-size: 10px; color: var(--gold-dk); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; margin-top: 4px; }
+.feed-item.is-new { animation: feedPop 0.6s ease-out; }
+.feed-item.is-new .plate::before { content: 'NEW · '; color: var(--green); font-size: 10px; font-weight: 700; letter-spacing: 0.08em; }
+@keyframes feedPop { from { background: rgba(47,125,79,0.08); transform: translateX(8px); } to { background: transparent; transform: translateX(0); } }
+.feed-empty { padding: 30px 0; text-align: center; color: var(--mute); font-size: 12px; font-style: italic; font-family: var(--serif); }
+
+#map-container { background: #ddd; min-height: 540px; position: relative; }
+.map-overlay { position: absolute; bottom: 14px; left: 14px; background: rgba(14,25,66,0.95); color: var(--cream); padding: 10px 14px; border-radius: 4px; font-size: 11px; z-index: 1000; backdrop-filter: blur(8px); }
+.map-overlay strong { font-family: var(--serif); font-size: 16px; font-weight: 500; display: block; margin-bottom: 2px; }
+.map-overlay span { opacity: 0.7; letter-spacing: 0.04em; }
+
+.cities { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.city-card { background: var(--cream); padding: 28px 24px; }
+.city-name { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 18px; }
+.city-name h4 { font-family: var(--serif); font-weight: 500; font-size: 22px; color: var(--navy); }
+.city-name .pct { font-size: 12px; color: var(--gold-dk); font-weight: 700; letter-spacing: 0.04em; }
+.city-stats { display: flex; gap: 24px; margin-bottom: 14px; }
+.city-stats div { display: flex; flex-direction: column; }
+.city-stats .num { font-family: var(--serif); font-size: 28px; font-weight: 400; color: var(--ink); font-feature-settings: 'tnum'; }
+.city-stats .lbl { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--mute); margin-top: 2px; }
+.city-bar { height: 3px; background: var(--cream-dk); border-radius: 99px; overflow: hidden; }
+.city-bar > div { height: 100%; background: var(--navy); border-radius: 99px; }
+.city-meta { font-size: 11px; color: var(--mute); margin-top: 12px; }
+
+.chart-card { background: #fff; border: 1px solid var(--line); border-radius: 4px; padding: 32px; }
+.chart-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
+.chart-head .t { font-family: var(--serif); font-weight: 500; font-size: 22px; color: var(--navy); }
+.chart-head .meta { font-size: 11px; color: var(--mute); letter-spacing: 0.04em; }
+.chart-bars { display: flex; align-items: flex-end; gap: 8px; height: 200px; padding: 0 4px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+.chart-bar { flex: 1; background: linear-gradient(180deg, var(--navy-2), var(--navy)); border-radius: 2px 2px 0 0; transition: 0.3s; cursor: pointer; position: relative; min-height: 4px; }
+.chart-bar:hover { background: linear-gradient(180deg, var(--gold), var(--gold-dk)); }
+.chart-bar:hover::after { content: attr(data-tooltip); position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: var(--navy); color: var(--cream); padding: 4px 8px; border-radius: 3px; font-size: 10px; white-space: nowrap; font-family: var(--sans); z-index: 5; }
+.chart-axis { display: flex; gap: 8px; font-size: 9px; color: var(--mute); letter-spacing: 0.04em; }
+.chart-axis div { flex: 1; text-align: center; }
+
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
+.photo-card { aspect-ratio: 4/5; background: var(--cream-dk); border-radius: 4px; overflow: hidden; cursor: pointer; position: relative; }
+.photo-card img { width: 100%; height: 100%; object-fit: cover; transition: 0.4s; }
+.photo-card:hover img { transform: scale(1.05); }
+.photo-card .info { position: absolute; bottom: 0; left: 0; right: 0; padding: 14px; background: linear-gradient(180deg, transparent, rgba(14,25,66,0.95)); color: var(--cream); }
+.photo-card .info .pl { font-family: var(--serif); font-size: 13px; font-weight: 600; letter-spacing: 0.04em; }
+.photo-card .info .pl-meta { font-size: 10px; opacity: 0.85; margin-top: 2px; letter-spacing: 0.04em; }
+.photo-card .new-tag { position: absolute; top: 10px; left: 10px; background: var(--green); color: #fff; font-size: 9px; font-weight: 700; padding: 3px 8px; border-radius: 3px; letter-spacing: 0.08em; z-index: 2; }
+
+.photo-modal { position: fixed; inset: 0; background: rgba(14,25,66,0.95); display: none; align-items: center; justify-content: center; padding: 30px; z-index: 999; }
+.photo-modal.show { display: flex; }
+.photo-modal img { max-width: 100%; max-height: 90vh; border-radius: 4px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+.photo-modal .close { position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.15); color: var(--cream); border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 16px; backdrop-filter: blur(4px); }
+
+.footer { background: var(--navy); color: var(--cream); padding: 50px 40px; text-align: center; }
+.footer .powered { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; opacity: 0.7; margin-bottom: 12px; }
+.footer .brand-line { font-family: var(--serif); font-weight: 400; font-size: 22px; letter-spacing: -0.01em; }
+.footer .brand-line em { color: var(--gold); font-style: italic; }
+.footer .bf { display: flex; justify-content: center; gap: 24px; margin-top: 24px; font-size: 11px; opacity: 0.6; letter-spacing: 0.04em; flex-wrap: wrap; }
+.footer .signature { font-size: 10px; opacity: 0.4; margin-top: 18px; letter-spacing: 0.08em; }
+
+.toast-bar { position: fixed; bottom: 24px; right: 24px; background: var(--navy); color: var(--cream); padding: 14px 20px; border-radius: 6px; box-shadow: 0 12px 40px rgba(0,0,0,0.25); display: flex; align-items: center; gap: 12px; opacity: 0; transform: translateY(20px); transition: 0.4s; z-index: 100; max-width: 380px; pointer-events: none; }
+.toast-bar.show { opacity: 1; transform: translateY(0); }
+.toast-bar .ico { width: 32px; height: 32px; border-radius: 50%; background: var(--green); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 16px; }
+.toast-bar .txt { font-size: 12px; line-height: 1.4; }
+.toast-bar .txt strong { font-family: var(--serif); font-weight: 500; }
+
+@media (max-width: 900px) {
+  .topbar { padding: 14px 20px; }
+  .container { padding: 0 20px; }
+  .hero { padding: 36px 0 28px; }
+  .stats { grid-template-columns: 1fr 1fr; }
+  .live-grid { grid-template-columns: 1fr; }
+  #map-container { min-height: 360px; }
+  .section { padding: 40px 0; }
+  .section-head h2 { font-size: 26px; }
+  .footer { padding: 40px 20px; }
+}
+@media (max-width: 600px) {
+  .hero h1 { font-size: 36px; }
+  .hero h2.sub-line { font-size: 16px; }
+  .stat-value { font-size: 38px; }
+  .stat { padding: 24px 18px; }
+  .topbar-r .action-btn { display: none; }
+  .gallery { grid-template-columns: 1fr 1fr; }
+  .topbar-l .crumb { display: none; }
+}
+
+@media print {
+  .topbar, .footer, .toast-bar, .photo-modal { display: none !important; }
+  .live-pill { display: none; }
+  body { background: white; }
+  .section { page-break-inside: avoid; }
+}
+
+.leaflet-container { font-family: var(--sans) !important; background: var(--cream-dk); }
+.custom-marker { background: var(--gold); width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--cream); box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+.custom-marker.recent { background: var(--green); animation: markerPulse 2s ease-in-out infinite; }
+@keyframes markerPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(47,125,79,0.6); } 50% { box-shadow: 0 0 0 12px rgba(47,125,79,0); } }
+.leaflet-popup-content-wrapper { border-radius: 4px; }
+.leaflet-popup-content { font-family: var(--sans); font-size: 12px; margin: 10px 14px; }
+.leaflet-popup-content strong { font-family: var(--serif); display: block; margin-bottom: 2px; color: var(--navy); }
+</style>
+</head>
+<body>
+
+<div class="boot-screen" id="boot">
+  <div class="logo-card">
+    <img src="/logo-prajapati.png" alt="Prajapati Advertising"
+         onerror="this.onerror=null;this.src='https://prajapatiadvertising.com/wp-content/uploads/2024/11/PA-1536x297.png'">
+  </div>
+  <div class="spinner"></div>
+  <div class="label">Loading your campaign…</div>
+</div>
+
+<div class="error-screen" id="error">
+  <div class="err-card">
+    <div class="err-icon">⚠</div>
+    <h2 id="error-title">Link not valid</h2>
+    <p id="error-msg">The link you used has expired or been revoked. Please contact your account manager for a fresh link.</p>
+    <div class="err-meta">
+      <a href="https://prajapatiadvertising.com" target="_blank">prajapatiadvertising.com</a>
+      &nbsp;·&nbsp; +91 99221 38138
+    </div>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+
+<div class="topbar">
+  <div class="topbar-l">
+    <div class="brand-mark">
+      <img src="/logo-prajapati.png" alt="Prajapati Advertising"
+           onerror="this.onerror=null;this.src='https://prajapatiadvertising.com/wp-content/uploads/2024/11/PA-1536x297.png'">
+    </div>
+    <div class="brand-divider"></div>
+    <span class="crumb" id="crumb">Campaign Live</span>
+  </div>
+  <div class="topbar-r">
+    <div class="live-pill connecting" id="live-pill"><div class="dot"></div><span id="live-label">Connecting…</span></div>
+    <button class="action-btn primary" onclick="window.print()">Download Report</button>
+  </div>
+</div>
+
+<div class="container">
+<section class="hero">
+  <div class="hero-kicker">
+    <span class="label">Active Campaign</span>
+    <span class="sep"></span>
+    <span class="client" id="client-line">—</span>
+  </div>
+  <h1 id="campaign-name">—</h1>
+  <h2 class="sub-line" id="campaign-sub">—</h2>
+  <div class="hero-meta">
+    <div><span class="icon">▣</span><strong id="meta-period">—</strong></div>
+    <div><span class="icon">⌖</span><strong id="meta-cities">—</strong> active</div>
+    <div><span class="icon">⊙</span><strong id="meta-workers">—</strong> deployed</div>
+    <div><span class="icon">⏱</span>Last update <strong id="last-update">—</strong></div>
+  </div>
+</section>
+</div>
+
+<div class="stats">
+  <div class="stat">
+    <div class="stat-label">Target Rickshaws</div>
+    <div class="stat-value" id="stat-target">—</div>
+    <div class="stat-sub" id="stat-target-sub">—</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Captured</div>
+    <div class="stat-value" id="stat-captured">—</div>
+    <div class="stat-progress"><div class="stat-progress-bar" id="stat-progress" style="width: 0%"></div></div>
+    <div class="stat-sub" id="stat-captured-sub">—</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Photos Captured</div>
+    <div class="stat-value" id="stat-photos">—</div>
+    <div class="stat-sub">GPS-stamped · OCR verified</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Days Active</div>
+    <div class="stat-value" id="stat-days">—</div>
+    <div class="stat-sub" id="stat-days-sub">—</div>
+  </div>
+</div>
+
+<div class="container">
+
+<section class="section">
+  <div class="section-head">
+    <div>
+      <h2>Live Capture Feed</h2>
+      <div class="h-sub">Field activity streaming in real-time · auto-refreshes</div>
+    </div>
+  </div>
+  <div class="live-grid">
+    <div class="feed-panel" id="feed">
+      <div class="feed-head"><h3>Recent Activity</h3><span class="now">LIVE</span></div>
+      <div class="feed-empty">Loading feed…</div>
+    </div>
+    <div id="map-container">
+      <div id="map" style="width:100%;height:540px"></div>
+      <div class="map-overlay" id="map-overlay" style="display:none">
+        <strong id="map-overlay-count">0 locations</strong>
+        <span id="map-overlay-cities">—</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="cities-section" style="display:none">
+  <div class="section-head">
+    <div>
+      <h2>City-wise Progress</h2>
+      <div class="h-sub">Distribution across active markets</div>
+    </div>
+  </div>
+  <div class="cities" id="cities-grid"></div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div>
+      <h2>Daily Activity</h2>
+      <div class="h-sub">Vehicles captured per day</div>
+    </div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-head">
+      <div class="t" id="chart-title">—</div>
+      <div class="meta" id="chart-meta">—</div>
+    </div>
+    <div class="chart-bars" id="chart-bars"></div>
+    <div class="chart-axis" id="chart-axis"></div>
+  </div>
+</section>
+
+<section class="section" id="gallery-section">
+  <div class="section-head">
+    <div>
+      <h2>Latest Captures</h2>
+      <div class="h-sub" id="gallery-sub">Most recent vehicles · click to enlarge</div>
+    </div>
+  </div>
+  <div class="gallery" id="gallery"></div>
+</section>
+
+</div>
+
+<div class="footer">
+  <div class="powered">Powered by</div>
+  <div class="brand-line">Prajapati <em>Advertising</em></div>
+  <div class="bf">
+    <span>Pan-India Outdoor Advertising</span>
+    <span>·</span>
+    <span>250+ Cities</span>
+    <span>·</span>
+    <span>prajapatiadvertising.com</span>
+  </div>
+  <div class="signature" id="footer-signature">—</div>
+</div>
+
+<div class="toast-bar" id="toast"><div class="ico">📸</div><div class="txt"></div></div>
+
+<div class="photo-modal" id="photo-modal" onclick="closePhotoModal()">
+  <button class="close">✕</button>
+  <img id="photo-modal-img" src="" alt="">
+</div>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+"use strict";
+
+var CONFIG = {
+  supabaseUrl: 'https://fpbktcgtspqsqpaytslv.supabase.co',
+  supabaseKey: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j'
+};
+
+var state = {
+  token: null, tokenRow: null, campaign: null,
+  photos: [], vehiclesByPlate: {},
+  newPhotoIds: new Set(),
+  liveMode: 'connecting',
+  pollTimer: null, channel: null, sbClient: null,
+  map: null, mapMarkers: {}
+};
+
+function $(id){ return document.getElementById(id); }
+function escapeHtml(s){
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; });
+}
+function fmtTimeAgo(ts){
+  if (!ts) return '—';
+  var diffSec = Math.floor((Date.now() - new Date(ts).getTime()) / 1000);
+  if (diffSec < 60) return 'Just now';
+  if (diffSec < 3600) return Math.floor(diffSec/60) + ' min ago';
+  if (diffSec < 86400) return Math.floor(diffSec/3600) + 'h ago';
+  return Math.floor(diffSec/86400) + 'd ago';
+}
+function fmtDate(d){
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'});
+}
+
+function api(path, options){
+  options = options || {};
+  options.headers = Object.assign({
+    'apikey': CONFIG.supabaseKey,
+    'Authorization': 'Bearer ' + CONFIG.supabaseKey
+  }, options.headers || {});
+  return fetch(CONFIG.supabaseUrl + path, options).then(function(r){
+    if (!r.ok) return r.text().then(function(t){ throw new Error('API '+r.status+': '+t); });
+    if (r.status === 204) return null;
+    return r.text().then(function(t){
+      if (!t) return null;
+      try { return JSON.parse(t); } catch(e){ return null; }
+    });
+  });
+}
+
+function boot(){
+  var params = new URLSearchParams(window.location.search);
+  var token = params.get('t');
+
+  if (!token || token.length < 16){
+    showError('Link not valid', 'No access token found. The link you used may be incomplete.');
+    return;
+  }
+
+  state.token = token;
+  validateToken(token).then(function(tokenRow){
+    if (!tokenRow){
+      showError('Link expired or revoked', 'This access link is no longer valid. Please contact your account manager for a fresh link.');
+      return;
+    }
+    state.tokenRow = tokenRow;
+    return loadCampaign(tokenRow.campaign_key);
+  }).then(function(){
+    if (!state.campaign) return;
+    return loadPhotos();
+  }).then(function(){
+    if (!state.campaign) return;
+    renderAll();
+    startLiveMode();
+    logAccess();
+    hideBoot();
+  }).catch(function(err){
+    console.error('Boot error:', err);
+    showError('Unable to load', 'Network or data error. Please refresh the page or try again in a moment.');
+  });
+}
+
+function showError(title, msg){
+  $('error-title').textContent = title;
+  $('error-msg').textContent = msg;
+  $('boot').classList.add('gone');
+  setTimeout(function(){ $('error').classList.add('show'); }, 200);
+}
+
+function hideBoot(){
+  $('boot').classList.add('gone');
+  $('app').style.display = 'block';
+  setTimeout(function(){ $('boot').style.display = 'none'; }, 500);
+}
+
+function validateToken(token){
+  return api('/rest/v1/trial_client_tokens?token=eq.' + encodeURIComponent(token) + '&select=*')
+    .then(function(rows){
+      if (!rows || !rows.length) return null;
+      var row = rows[0];
+      if (row.revoked) return null;
+      if (row.expires_at && new Date(row.expires_at) < new Date()) return null;
+      return row;
+    });
+}
+
+function loadCampaign(campaignKey){
+  return api('/rest/v1/trial_campaigns?key=eq.' + encodeURIComponent(campaignKey) + '&select=*')
+    .then(function(rows){
+      if (!rows || !rows.length){
+        showError('Campaign not found', 'The campaign linked to this URL is no longer available.');
+        return null;
+      }
+      state.campaign = rows[0];
+    });
+}
+
+function loadPhotos(){
+  return api('/rest/v1/trial_photos?campaign_key=eq.' + encodeURIComponent(state.tokenRow.campaign_key) + '&select=*&order=captured_at.desc&limit=2000')
+    .then(function(rows){
+      state.photos = rows || [];
+      state.vehiclesByPlate = groupByVehicle(state.photos);
+    });
+}
+
+function groupByVehicle(photos){
+  var m = {};
+  photos.forEach(function(p){
+    var key = p.vehicle_number || ('UNKNOWN_' + (p.captured_at||'').slice(0,16));
+    if (!m[key]){
+      m[key] = { key: key, vehicle_number: p.vehicle_number || null, photos: [], firstAt: p.captured_at, lastAt: p.captured_at, city: p.city };
+    }
+    m[key].photos.push(p);
+    if (new Date(p.captured_at) > new Date(m[key].lastAt)) m[key].lastAt = p.captured_at;
+    if (new Date(p.captured_at) < new Date(m[key].firstAt)) m[key].firstAt = p.captured_at;
+  });
+  return m;
+}
+
+function logAccess(){
+  var newCount = (state.tokenRow.access_count || 0) + 1;
+  api('/rest/v1/trial_client_tokens?token=eq.' + encodeURIComponent(state.token), {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ last_accessed_at: new Date().toISOString(), access_count: newCount })
+  }).catch(function(){});
+}
+
+function renderAll(){
+  renderHero();
+  renderStats();
+  renderFeed();
+  renderMap();
+  renderCities();
+  renderChart();
+  renderGallery();
+  renderFooter();
+}
+
+function renderHero(){
+  var c = state.campaign;
+  document.title = (c.name || c.key) + ' — Campaign Live · Prajapati Advertising';
+  $('crumb').textContent = 'Campaign Live · ' + (c.name || c.key);
+  $('client-line').textContent = (c.client_name || 'Campaign') + ' · Live Progress';
+  $('campaign-name').textContent = c.name || c.key;
+
+  var subParts = [];
+  if (c.hood_photo_count > 0 && c.back_panel_photo_count > 0) subParts.push('Hood + Back Panel branding');
+  else if (c.hood_photo_count > 0) subParts.push('Hood branding');
+  else if (c.back_panel_photo_count > 0) subParts.push('Back Panel branding');
+  if (c.default_city) subParts.push(c.default_city);
+  $('campaign-sub').textContent = subParts.join(' · ') || 'Auto Rickshaw Branding Campaign';
+
+  var dates = computeCampaignDates();
+  $('meta-period').textContent = dates.label;
+  $('meta-cities').textContent = uniqueCities().length || 1;
+  $('meta-workers').textContent = uniqueWorkers().length || 0;
+  $('last-update').textContent = state.photos.length ? fmtTimeAgo(state.photos[0].captured_at) : 'No activity yet';
+}
+
+function computeCampaignDates(){
+  if (!state.photos.length) return { label: 'Awaiting first capture', start: null, end: null };
+  var dates = state.photos.map(function(p){ return new Date(p.captured_at); });
+  var min = new Date(Math.min.apply(null, dates));
+  var max = new Date(Math.max.apply(null, dates));
+  var label = fmtDate(min);
+  if (min.toDateString() !== max.toDateString()) label += ' – ' + fmtDate(max);
+  return { label: label, start: min, end: max };
+}
+
+function uniqueCities(){
+  var s = {};
+  state.photos.forEach(function(p){ if (p.city) s[p.city] = true; });
+  return Object.keys(s);
+}
+function uniqueWorkers(){
+  var s = {};
+  state.photos.forEach(function(p){ if (p.member_phone) s[p.member_phone] = true; });
+  return Object.keys(s);
+}
+
+function renderStats(){
+  var c = state.campaign;
+  var hT = c.hood_photo_count || 0;
+  var bT = c.back_panel_photo_count || 0;
+  var target = c.target_count || 0;
+
+  $('stat-target').textContent = target || '∞';
+  $('stat-target-sub').textContent = uniqueCities().length + ' cities active';
+
+  var vehicles = Object.values(state.vehiclesByPlate);
+  var completed = vehicles.filter(function(v){
+    var hd = v.photos.filter(function(p){ return p.mode === 'hood'; }).length;
+    var bd = v.photos.filter(function(p){ return p.mode === 'back_panel'; }).length;
+    return hd >= hT && bd >= bT;
+  }).length;
+  var started = vehicles.length;
+
+  $('stat-captured').innerHTML = completed + (target ? '<sub>/' + target + '</sub>' : '');
+  $('stat-progress').style.width = (target ? Math.min(100, (completed / target) * 100) : 0) + '%';
+
+  var captured24h = state.photos.filter(function(p){
+    return new Date(p.captured_at).getTime() > Date.now() - 86400000;
+  });
+  var newVehicles24h = {};
+  captured24h.forEach(function(p){ if (p.vehicle_number) newVehicles24h[p.vehicle_number] = true; });
+  var n24 = Object.keys(newVehicles24h).length;
+  $('stat-captured-sub').innerHTML = n24 > 0 ? '<span class="up">↑ ' + n24 + '</span> in last 24 hours' : (started + ' total started');
+
+  $('stat-photos').textContent = state.photos.length;
+
+  var days = computeUniqueDays();
+  $('stat-days').textContent = days;
+  $('stat-days-sub').textContent = days === 1 ? 'Capture day' : 'Active capture days';
+}
+
+function computeUniqueDays(){
+  var s = {};
+  state.photos.forEach(function(p){
+    var d = new Date(p.captured_at);
+    var ist = new Date(d.getTime() + 5.5*3600*1000);
+    s[ist.toISOString().split('T')[0]] = true;
+  });
+  return Object.keys(s).length;
+}
+
+function renderFeed(){
+  var feed = $('feed');
+  var vehicles = Object.values(state.vehiclesByPlate)
+    .sort(function(a,b){ return new Date(b.lastAt) - new Date(a.lastAt); })
+    .slice(0, 15);
+
+  if (!vehicles.length){
+    feed.innerHTML = '<div class="feed-head"><h3>Recent Activity</h3><span class="now">LIVE</span></div><div class="feed-empty">No captures yet — feed will populate as field team uploads photos</div>';
+    return;
+  }
+
+  var html = '<div class="feed-head"><h3>Recent Activity</h3><span class="now">UPDATED LIVE</span></div>';
+  html += vehicles.map(function(v){
+    var firstPhoto = v.photos[0];
+    var thumb = firstPhoto && firstPhoto.public_url ? firstPhoto.public_url : '';
+    var plate = v.vehicle_number || '— Plate pending';
+    var loc = firstPhoto.city || '—';
+    var isNewVehicle = v.photos.some(function(p){ return state.newPhotoIds.has(p.id); });
+    return '<div class="feed-item ' + (isNewVehicle ? 'is-new' : '') + '" onclick="openPhoto(\'' + (firstPhoto.public_url || '') + '\')">' +
+      '<div class="thumb">' + (thumb ? '<img src="' + escapeHtml(thumb) + '" alt="" loading="lazy">' : '') + '</div>' +
+      '<div class="body">' +
+        '<div class="plate">' + escapeHtml(plate) + '</div>' +
+        '<div class="where">📍 ' + escapeHtml(loc) + '</div>' +
+        '<div class="when">' + fmtTimeAgo(v.lastAt) + '</div>' +
+      '</div></div>';
+  }).join('');
+  feed.innerHTML = html;
+}
+
+function renderMap(){
+  if (!state.map){
+    state.map = L.map('map', { zoomControl: true, attributionControl: false }).setView([20.5937, 78.9629], 5);
+    L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_nolabels/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(state.map);
+    L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_only_labels/{z}/{x}/{y}.png', { maxZoom: 18, pane: 'shadowPane' }).addTo(state.map);
+  }
+
+  Object.values(state.mapMarkers).forEach(function(m){ state.map.removeLayer(m); });
+  state.mapMarkers = {};
+
+  var coords = [];
+  state.photos.forEach(function(p, i){
+    if (!p.latitude || !p.longitude) return;
+    if (p.latitude === 0 && p.longitude === 0) return;
+    var isRecent = i < 5;
+    var icon = L.divIcon({ className: 'custom-marker' + (isRecent ? ' recent' : ''), iconSize: [12, 12] });
+    var m = L.marker([p.latitude, p.longitude], { icon: icon }).addTo(state.map);
+    var popupHtml = '<strong>' + escapeHtml(p.vehicle_number || '— Plate pending') + '</strong>' +
+      escapeHtml((p.city || '') + (p.address ? ' · ' + p.address.substring(0, 60) : '')) +
+      '<br><em>' + fmtTimeAgo(p.captured_at) + '</em>';
+    m.bindPopup(popupHtml);
+    state.mapMarkers[p.id] = m;
+    coords.push([p.latitude, p.longitude]);
+  });
+
+  if (coords.length){
+    state.map.fitBounds(coords, { padding: [40, 40], maxZoom: 13 });
+    $('map-overlay').style.display = 'block';
+    var cities = uniqueCities();
+    $('map-overlay-count').textContent = coords.length + ' locations';
+    $('map-overlay-cities').textContent = cities.slice(0, 3).join(' · ') + (cities.length > 3 ? ' + ' + (cities.length - 3) + ' more' : '');
+  }
+}
+
+function renderCities(){
+  var c = state.campaign;
+  var hT = c.hood_photo_count || 0;
+  var bT = c.back_panel_photo_count || 0;
+
+  var cityMap = {};
+  Object.values(state.vehiclesByPlate).forEach(function(v){
+    var city = (v.photos[0] && v.photos[0].city) || 'Unknown';
+    if (!cityMap[city]) cityMap[city] = { name: city, vehicles: [], firstAt: v.firstAt };
+    cityMap[city].vehicles.push(v);
+    if (new Date(v.firstAt) < new Date(cityMap[city].firstAt)) cityMap[city].firstAt = v.firstAt;
+  });
+
+  var cities = Object.values(cityMap).sort(function(a,b){ return b.vehicles.length - a.vehicles.length; });
+  if (!cities.length){
+    $('cities-section').style.display = 'none';
+    return;
+  }
+  $('cities-section').style.display = 'block';
+
+  var totalTarget = c.target_count || (cities.length * 30);
+  var perCity = Math.max(1, Math.ceil(totalTarget / cities.length));
+
+  var html = cities.map(function(city){
+    var completed = city.vehicles.filter(function(v){
+      var hd = v.photos.filter(function(p){ return p.mode === 'hood'; }).length;
+      var bd = v.photos.filter(function(p){ return p.mode === 'back_panel'; }).length;
+      return hd >= hT && bd >= bT;
+    }).length;
+    var inProgress = city.vehicles.length - completed;
+    var pct = Math.min(100, Math.round((completed / perCity) * 100));
+    return '<div class="city-card">' +
+      '<div class="city-name"><h4>' + escapeHtml(city.name) + '</h4><span class="pct">' + pct + '%</span></div>' +
+      '<div class="city-stats">' +
+        '<div><span class="num">' + completed + '</span><span class="lbl">Captured</span></div>' +
+        '<div><span class="num">' + inProgress + '</span><span class="lbl">In Progress</span></div>' +
+        '<div><span class="num">' + city.vehicles.length + '</span><span class="lbl">Total</span></div>' +
+      '</div>' +
+      '<div class="city-bar"><div style="width:' + pct + '%"></div></div>' +
+      '<div class="city-meta">Started ' + fmtDate(city.firstAt) + '</div>' +
+    '</div>';
+  }).join('');
+  $('cities-grid').innerHTML = html;
+}
+
+function renderChart(){
+  var byDay = {};
+  state.photos.forEach(function(p){
+    var d = new Date(p.captured_at);
+    var ist = new Date(d.getTime() + 5.5*3600*1000);
+    var key = ist.toISOString().split('T')[0];
+    if (!byDay[key]) byDay[key] = new Set();
+    if (p.vehicle_number) byDay[key].add(p.vehicle_number);
+  });
+
+  var todayIst = new Date(Date.now() + 5.5*3600*1000);
+  var days = [];
+  for (var i = 13; i >= 0; i--){
+    var d = new Date(todayIst.getTime() - i*86400000);
+    var key = d.toISOString().split('T')[0];
+    var label = d.getDate() + ' ' + d.toLocaleDateString('en-IN', {month:'short'});
+    days.push({ d: label, key: key, n: byDay[key] ? byDay[key].size : 0 });
+  }
+
+  var maxN = Math.max.apply(null, days.map(function(x){ return x.n; }));
+  if (maxN === 0) maxN = 1;
+
+  $('chart-bars').innerHTML = days.map(function(x){
+    var h = x.n === 0 ? 4 : Math.max(8, (x.n / maxN) * 200);
+    return '<div class="chart-bar" style="height:' + h + 'px" data-tooltip="' + x.d + ' · ' + x.n + ' vehicles"></div>';
+  }).join('');
+  $('chart-axis').innerHTML = days.map(function(x, i){
+    return '<div>' + (i % 2 === 0 ? x.d.split(' ')[0] : '') + '</div>';
+  }).join('');
+
+  var totalVehicles = Object.keys(state.vehiclesByPlate).length;
+  var activeDays = days.filter(function(x){ return x.n > 0; }).length;
+  $('chart-title').textContent = totalVehicles + ' vehicles · ' + activeDays + ' active days';
+  $('chart-meta').textContent = days[0].d + ' – ' + days[days.length-1].d;
+}
+
+function renderGallery(){
+  var gallery = $('gallery');
+  var vehicles = Object.values(state.vehiclesByPlate)
+    .sort(function(a,b){ return new Date(b.lastAt) - new Date(a.lastAt); })
+    .slice(0, 12);
+
+  if (!vehicles.length){
+    $('gallery-section').style.display = 'none';
+    return;
+  }
+  $('gallery-section').style.display = 'block';
+  $('gallery-sub').textContent = 'Most recent ' + vehicles.length + ' vehicles · click to enlarge';
+
+  var html = vehicles.map(function(v){
+    var p = v.photos[0];
+    var url = p.public_url || '';
+    var isNew = v.photos.some(function(ph){ return state.newPhotoIds.has(ph.id); });
+    return '<div class="photo-card" onclick="openPhoto(\'' + escapeHtml(url) + '\')">' +
+      (isNew ? '<div class="new-tag">NEW</div>' : '') +
+      '<img src="' + escapeHtml(url) + '" alt="" loading="lazy">' +
+      '<div class="info">' +
+        '<div class="pl">' + escapeHtml(v.vehicle_number || '— Plate pending') + '</div>' +
+        '<div class="pl-meta">' + escapeHtml(p.city || '—') + ' · ' + fmtTimeAgo(v.lastAt) + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+  gallery.innerHTML = html;
+}
+
+function renderFooter(){
+  var n = (state.tokenRow.client_name) || (state.campaign.client_name) || 'this campaign';
+  $('footer-signature').textContent = 'Confidential — for ' + n + ' · Live link expires ' + fmtDate(state.tokenRow.expires_at);
+}
+
+window.openPhoto = function(url){
+  if (!url) return;
+  $('photo-modal-img').src = url;
+  $('photo-modal').classList.add('show');
+};
+window.closePhotoModal = function(){
+  $('photo-modal').classList.remove('show');
+  setTimeout(function(){ $('photo-modal-img').src = ''; }, 300);
+};
+
+function setLivePill(mode, label){
+  $('live-pill').className = 'live-pill ' + mode;
+  $('live-label').textContent = label;
+  state.liveMode = mode;
+}
+
+function startLiveMode(){
+  setLivePill('connecting', 'Connecting…');
+  if (window.supabase && typeof window.supabase.createClient === 'function'){
+    state.sbClient = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey);
+    try {
+      state.channel = state.sbClient.channel('client-' + state.token.slice(0, 8))
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'trial_photos',
+          filter: 'campaign_key=eq.' + state.tokenRow.campaign_key
+        }, function(payload){ handleNewPhoto(payload.new); })
+        .subscribe(function(status){
+          if (status === 'SUBSCRIBED') setLivePill('', 'Live');
+          else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') startPollingFallback();
+        });
+    } catch (e){
+      console.warn('Realtime failed:', e);
+      startPollingFallback();
+    }
+  } else {
+    startPollingFallback();
+  }
+}
+
+function startPollingFallback(){
+  if (state.channel){
+    try { state.sbClient.removeChannel(state.channel); } catch(e){}
+    state.channel = null;
+  }
+  if (state.pollTimer) return;
+  setLivePill('polling', 'Auto-refresh');
+  state.pollTimer = setInterval(function(){ pollForNew(); }, 20000);
+}
+
+function pollForNew(){
+  var latestKnown = state.photos.length ? state.photos[0].captured_at : '2020-01-01T00:00:00Z';
+  api('/rest/v1/trial_photos?campaign_key=eq.' + encodeURIComponent(state.tokenRow.campaign_key) +
+      '&captured_at=gt.' + encodeURIComponent(latestKnown) +
+      '&select=*&order=captured_at.desc&limit=50')
+    .then(function(rows){
+      if (rows && rows.length){
+        rows.forEach(function(p){ handleNewPhoto(p); });
+      }
+    }).catch(function(){});
+}
+
+function handleNewPhoto(photo){
+  if (!photo || !photo.id) return;
+  if (state.photos.find(function(p){ return p.id === photo.id; })) return;
+
+  state.photos.unshift(photo);
+  state.newPhotoIds.add(photo.id);
+  setTimeout(function(){ state.newPhotoIds.delete(photo.id); }, 120000);
+
+  state.vehiclesByPlate = groupByVehicle(state.photos);
+
+  var who = photo.member_name || 'field team';
+  var what = photo.vehicle_number ? photo.vehicle_number : 'photo';
+  var where = photo.city ? ' in ' + photo.city : '';
+  showToast(who, what + where);
+
+  if (window._reRenderTimer) clearTimeout(window._reRenderTimer);
+  window._reRenderTimer = setTimeout(function(){
+    renderHero();
+    renderStats();
+    renderFeed();
+    renderCities();
+    renderChart();
+    renderGallery();
+    if (photo.latitude && photo.longitude && state.map && photo.latitude !== 0){
+      var icon = L.divIcon({ className: 'custom-marker recent', iconSize: [12, 12] });
+      var m = L.marker([photo.latitude, photo.longitude], { icon: icon }).addTo(state.map);
+      m.bindPopup('<strong>' + escapeHtml(photo.vehicle_number || '— Plate pending') + '</strong>' + escapeHtml((photo.city || '') + ' · just now'));
+      state.mapMarkers[photo.id] = m;
+    }
+  }, 600);
+}
+
+function showToast(who, what){
+  var toast = $('toast');
+  toast.querySelector('.txt').innerHTML = '<strong>' + escapeHtml(who) + '</strong><br>captured ' + escapeHtml(what);
+  toast.classList.add('show');
+  setTimeout(function(){ toast.classList.remove('show'); }, 4500);
+}
+
+setInterval(function(){
+  if (state.photos.length){
+    $('last-update').textContent = fmtTimeAgo(state.photos[0].captured_at);
+  }
+}, 30000);
+
+boot();
+</script>
+</body>
+</html>

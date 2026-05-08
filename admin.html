@@ -163,6 +163,7 @@ label { display: block; font-size: 10px; font-weight: 600; text-transform: upper
   <div class="tab" data-tab="members" onclick="switchTab('members')">Team Members</div>
   <div class="tab" data-tab="assignments" onclick="switchTab('assignments')">Daily Assignments</div>
   <div class="tab" data-tab="photos" onclick="switchTab('photos')">Photos</div>
+  <div class="tab" data-tab="clientlinks" onclick="switchTab('clientlinks')">Client Links</div>
 </div>
 
 <div id="mainContainer" class="container" style="display:none;">
@@ -345,6 +346,70 @@ label { display: block; font-size: 10px; font-weight: 600; text-transform: upper
     <div id="photosList"><div class="empty-state">Filter karo aur photos load karo</div></div>
   </div>
 
+  <div id="tab-clientlinks" class="tab-content">
+    <div class="section-header">
+      <h2>Client Links <span class="count" id="linksCount"></span></h2>
+      <button class="btn" onclick="openLinkForm()">+ Generate New Link</button>
+    </div>
+    <div class="card" style="background:#f0f9ff; border-color:#a8d8e6; padding:11px 14px; margin-bottom:12px;">
+      <div style="font-size:11px; color:#0E1942; line-height:1.5;">
+        <strong>How it works:</strong> Per campaign generate karo ek secure link. Client ko WhatsApp/Email pe bhej do. Woh URL khol ke <strong>realtime campaign progress</strong> dekh sakega — koi login nahi chahiye. Link 90 days tak valid rahega, kabhi bhi revoke kar sakte ho.
+      </div>
+    </div>
+
+    <div id="linkFormCard" class="form-card">
+      <h3>Generate Client Link</h3>
+      <div class="form-sub">Each campaign can have multiple links — one per stakeholder</div>
+      <div class="field-row cols-2">
+        <div class="field"><label>Campaign *</label><select id="lkCampaign"></select></div>
+        <div class="field"><label>Client Name / Stakeholder *</label><input type="text" id="lkClientName" placeholder="e.g., Vidyapeeth Marketing Head"></div>
+      </div>
+      <div class="field-row cols-2">
+        <div class="field"><label>Client Email (optional)</label><input type="email" id="lkClientEmail" placeholder="contact@client.com"></div>
+        <div class="field"><label>Client WhatsApp (optional)</label><input type="tel" id="lkClientWhatsapp" placeholder="9876543210"></div>
+      </div>
+      <div class="field-row cols-2">
+        <div class="field">
+          <label>Link Validity</label>
+          <select id="lkValidity">
+            <option value="30">30 days</option>
+            <option value="60">60 days</option>
+            <option value="90" selected>90 days</option>
+            <option value="180">180 days (6 months)</option>
+            <option value="365">365 days (1 year)</option>
+          </select>
+        </div>
+        <div class="field"><label>Notes (internal)</label><input type="text" id="lkNotes" placeholder="e.g., Shared via WhatsApp on May 8"></div>
+      </div>
+      <div class="action-row">
+        <button class="btn btn-secondary" onclick="closeLinkForm()">Cancel</button>
+        <button class="btn btn-success" id="saveLinkBtn" onclick="generateLink()">Generate Link</button>
+      </div>
+    </div>
+
+    <div id="linksList"><div class="spinner"></div></div>
+  </div>
+
+</div>
+
+<!-- Link generated modal -->
+<div class="photo-modal" id="linkModal" style="display:none">
+  <div style="background:#fff; max-width:560px; border-radius:14px; padding:30px; margin:auto; position:relative; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+    <button onclick="closeLinkModal()" style="position:absolute; top:14px; right:14px; background:#f0f2f7; border:none; width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:16px;">✕</button>
+    <div style="text-align:center; margin-bottom:20px;">
+      <div style="width:60px; height:60px; background:#34c759; border-radius:50%; margin:0 auto 14px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:28px; font-weight:700;">✓</div>
+      <h2 style="font-size:20px; margin-bottom:6px;">Client Link Generated</h2>
+      <p style="font-size:13px; color:#666;">Share this link with your client — they'll see realtime campaign progress.</p>
+    </div>
+    <div style="background:#f4f6f9; padding:14px; border-radius:8px; margin-bottom:14px; word-break:break-all; font-family:monospace; font-size:12px; color:#0E1942; border:1px solid #ddd;" id="linkModalUrl"></div>
+    <div class="field-row cols-2">
+      <button class="btn" onclick="copyLinkUrl()">📋 Copy Link</button>
+      <button class="btn btn-secondary" onclick="shareWhatsapp()">💬 Share on WhatsApp</button>
+    </div>
+    <div style="font-size:11px; color:#888; text-align:center; margin-top:16px; padding-top:14px; border-top:1px solid #eee;">
+      Expires <strong id="linkModalExpiry">—</strong> · Can be revoked anytime
+    </div>
+  </div>
 </div>
 
 <div class="photo-modal" id="photoModal" onclick="closePhotoModal()">
@@ -471,6 +536,7 @@ function switchTab(tabName) {
   else if (tabName === 'members') { stopLivePhotos(); loadMembers(); }
   else if (tabName === 'assignments') { stopLivePhotos(); loadAssignments(); }
   else if (tabName === 'photos') { initPhotosTab(); startLivePhotos(); }
+  else if (tabName === 'clientlinks') { stopLivePhotos(); loadClientLinks(); }
 }
 
 // ============================================================
@@ -1150,6 +1216,251 @@ function handleNewPhoto(photo) {
     var activeTab = document.querySelector('.tab.active');
     if (activeTab && activeTab.dataset.tab === 'photos') loadPhotos(true);
   }, 600);
+}
+
+// ============================================================
+// CLIENT LINKS — Token-based campaign sharing
+// ============================================================
+
+var _generatedLink = null;
+
+function loadClientLinks() {
+  var listEl = document.getElementById('linksList');
+  listEl.innerHTML = '<div class="spinner"></div>';
+
+  // Populate campaign dropdown if not done
+  populateLinkCampaignDropdown();
+
+  api('/rest/v1/trial_client_tokens?select=*&order=created_at.desc')
+    .then(function(tokens) {
+      tokens = tokens || [];
+      document.getElementById('linksCount').textContent = '(' + tokens.length + ')';
+      renderClientLinks(tokens);
+    })
+    .catch(function(err) {
+      console.error(err);
+      listEl.innerHTML = '<div class="empty-state">Load failed - retry karo</div>';
+      showToast('Links load error', 'error');
+    });
+}
+
+function populateLinkCampaignDropdown() {
+  var sel = document.getElementById('lkCampaign');
+  if (!sel) return;
+  if (state.campaigns.length === 0) {
+    api('/rest/v1/trial_campaigns?active=eq.true&select=*&order=name')
+      .then(function(rows) {
+        state.campaigns = rows || [];
+        sel.innerHTML = '<option value="">-- Select campaign --</option>' + state.campaigns.map(function(c) {
+          return '<option value="' + escapeHtml(c.key) + '">' + escapeHtml(c.name || c.key) + '</option>';
+        }).join('');
+      });
+  } else {
+    sel.innerHTML = '<option value="">-- Select campaign --</option>' + state.campaigns.map(function(c) {
+      return '<option value="' + escapeHtml(c.key) + '">' + escapeHtml(c.name || c.key) + '</option>';
+    }).join('');
+  }
+}
+
+function renderClientLinks(tokens) {
+  var list = document.getElementById('linksList');
+  if (tokens.length === 0) {
+    list.innerHTML = '<div class="empty-state">No client links yet. Click "+ Generate New Link" to create one.</div>';
+    return;
+  }
+
+  var html = '';
+  tokens.forEach(function(t) {
+    var campaign = state.campaigns.find(function(c) { return c.key === t.campaign_key; });
+    var campaignName = campaign ? (campaign.name || campaign.key) : t.campaign_key;
+    var clientUrl = window.location.origin + '/client.html?t=' + t.token;
+    var expiresIn = t.expires_at ? Math.ceil((new Date(t.expires_at) - Date.now()) / 86400000) : null;
+    var isExpired = expiresIn !== null && expiresIn <= 0;
+    var statusTag, accessTag;
+    if (t.revoked) {
+      statusTag = '<span class="tag tag-off">REVOKED</span>';
+    } else if (isExpired) {
+      statusTag = '<span class="tag tag-off">EXPIRED</span>';
+    } else {
+      statusTag = '<span class="tag tag-success">ACTIVE</span>';
+    }
+    if (t.access_count > 0) {
+      var lastAccess = t.last_accessed_at ? ' · Last viewed ' + fmtTimeAgo(t.last_accessed_at) : '';
+      accessTag = '<span class="tag tag-info">' + t.access_count + ' views' + lastAccess + '</span>';
+    } else {
+      accessTag = '<span class="tag tag-off">Not yet viewed</span>';
+    }
+
+    var actions = '';
+    if (!t.revoked && !isExpired) {
+      actions += '<button class="btn-icon" onclick="copyLinkFromToken(\'' + t.token + '\')">📋 Copy</button>';
+      actions += '<button class="btn-icon" onclick="openLinkPreview(\'' + t.token + '\')">👁 Preview</button>';
+      actions += '<button class="btn-icon" onclick="shareLinkWhatsapp(\'' + t.token + '\', \'' + escapeHtml(campaignName) + '\', \'' + escapeHtml(t.client_name||'') + '\')">💬 WhatsApp</button>';
+      actions += '<button class="btn-icon danger" onclick="revokeLink(\'' + t.id + '\', \'' + escapeHtml(t.client_name||'this link') + '\')">Revoke</button>';
+    }
+
+    html += '<div class="card">' +
+      '<div class="card-header">' +
+        '<div>' +
+          '<div class="card-title">' + escapeHtml(t.client_name || '(Unnamed)') + '</div>' +
+          '<div class="card-meta" style="margin-top:3px;">📁 ' + escapeHtml(campaignName) + '</div>' +
+        '</div>' +
+        '<div>' + statusTag + accessTag + '</div>' +
+      '</div>' +
+      '<div class="card-meta" style="font-family:monospace; font-size:10px; padding:6px 10px; background:#f4f6f9; border-radius:4px; margin-top:6px; word-break:break-all;">' + escapeHtml(clientUrl) + '</div>' +
+      '<div class="card-meta" style="margin-top:8px;">' +
+        'Created ' + fmtTimeAgo(t.created_at) +
+        (t.expires_at && !isExpired && !t.revoked ? ' · Expires in ' + expiresIn + ' days' : '') +
+        (t.client_email ? ' · ✉ ' + escapeHtml(t.client_email) : '') +
+        (t.client_whatsapp ? ' · 📱 ' + escapeHtml(t.client_whatsapp) : '') +
+        (t.notes ? ' · ' + escapeHtml(t.notes) : '') +
+      '</div>' +
+      '<div class="card-actions">' + actions + '</div>' +
+    '</div>';
+  });
+  list.innerHTML = html;
+}
+
+function fmtTimeAgo(ts) {
+  if (!ts) return '—';
+  var diffSec = Math.floor((Date.now() - new Date(ts).getTime()) / 1000);
+  if (diffSec < 60) return 'just now';
+  if (diffSec < 3600) return Math.floor(diffSec / 60) + ' min ago';
+  if (diffSec < 86400) return Math.floor(diffSec / 3600) + 'h ago';
+  return Math.floor(diffSec / 86400) + 'd ago';
+}
+
+function openLinkForm() {
+  populateLinkCampaignDropdown();
+  document.getElementById('lkCampaign').value = '';
+  document.getElementById('lkClientName').value = '';
+  document.getElementById('lkClientEmail').value = '';
+  document.getElementById('lkClientWhatsapp').value = '';
+  document.getElementById('lkValidity').value = '90';
+  document.getElementById('lkNotes').value = '';
+  document.getElementById('linkFormCard').classList.add('active');
+  document.getElementById('linkFormCard').scrollIntoView({behavior:'smooth'});
+}
+
+function closeLinkForm() {
+  document.getElementById('linkFormCard').classList.remove('active');
+}
+
+function generateRandomToken(length) {
+  var chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  var arr = new Uint8Array(length);
+  crypto.getRandomValues(arr);
+  var out = '';
+  for (var i = 0; i < length; i++) out += chars[arr[i] % chars.length];
+  return out;
+}
+
+function generateLink() {
+  var campaignKey = document.getElementById('lkCampaign').value;
+  var clientName = document.getElementById('lkClientName').value.trim();
+  var clientEmail = document.getElementById('lkClientEmail').value.trim();
+  var clientWa = document.getElementById('lkClientWhatsapp').value.trim().replace(/\D/g, '');
+  var validity = parseInt(document.getElementById('lkValidity').value) || 90;
+  var notes = document.getElementById('lkNotes').value.trim();
+
+  if (!campaignKey) { showToast('Campaign select karo', 'error'); return; }
+  if (!clientName) { showToast('Client name zaroori hai', 'error'); return; }
+
+  var token = generateRandomToken(32);
+  var expiresAt = new Date(Date.now() + validity * 86400000).toISOString();
+
+  var btn = document.getElementById('saveLinkBtn');
+  btn.disabled = true; btn.textContent = 'Generating...';
+
+  fetch(CONFIG.supabaseUrl + '/rest/v1/trial_client_tokens', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': CONFIG.supabaseKey, 'Authorization': 'Bearer ' + CONFIG.supabaseKey, 'Prefer': 'return=representation' },
+    body: JSON.stringify({
+      token: token,
+      campaign_key: campaignKey,
+      client_name: clientName,
+      client_email: clientEmail || null,
+      client_whatsapp: clientWa || null,
+      expires_at: expiresAt,
+      created_by: state.admin.phone,
+      notes: notes || null
+    })
+  })
+  .then(function(r) {
+    btn.disabled = false; btn.textContent = 'Generate Link';
+    if (!r.ok) return r.text().then(function(t) { throw new Error(t); });
+    return r.json();
+  })
+  .then(function(rows) {
+    var t = rows[0];
+    var url = window.location.origin + '/client.html?t=' + t.token;
+    _generatedLink = { url: url, clientName: clientName, campaignKey: campaignKey, expiresAt: expiresAt, whatsapp: clientWa };
+    showLinkModal(url, expiresAt);
+    closeLinkForm();
+    loadClientLinks();
+    showToast('Link generated successfully', 'success');
+  })
+  .catch(function(err) {
+    btn.disabled = false; btn.textContent = 'Generate Link';
+    showToast('Generation failed: ' + err.message, 'error');
+  });
+}
+
+function showLinkModal(url, expiresAt) {
+  document.getElementById('linkModalUrl').textContent = url;
+  var d = new Date(expiresAt);
+  document.getElementById('linkModalExpiry').textContent = d.toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'});
+  document.getElementById('linkModal').style.display = 'flex';
+}
+
+function closeLinkModal() {
+  document.getElementById('linkModal').style.display = 'none';
+}
+
+function copyLinkUrl() {
+  if (!_generatedLink) return;
+  navigator.clipboard.writeText(_generatedLink.url).then(function() {
+    showToast('Link copied!', 'success');
+  });
+}
+
+function copyLinkFromToken(token) {
+  var url = window.location.origin + '/client.html?t=' + token;
+  navigator.clipboard.writeText(url).then(function() {
+    showToast('Link copied!', 'success');
+  });
+}
+
+function openLinkPreview(token) {
+  window.open(window.location.origin + '/client.html?t=' + token, '_blank');
+}
+
+function shareWhatsapp() {
+  if (!_generatedLink) return;
+  var msg = '🎯 ' + _generatedLink.clientName + ' campaign live tracking link:\n\n' + _generatedLink.url + '\n\n— Prajapati Advertising';
+  var phone = _generatedLink.whatsapp ? '/' + _generatedLink.whatsapp : '';
+  window.open('https://wa.me' + phone + '?text=' + encodeURIComponent(msg), '_blank');
+}
+
+function shareLinkWhatsapp(token, campaignName, clientName) {
+  var url = window.location.origin + '/client.html?t=' + token;
+  var msg = '🎯 ' + (clientName || campaignName) + ' campaign live tracking:\n\n' + url + '\n\n— Prajapati Advertising';
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+}
+
+function revokeLink(id, name) {
+  if (!confirm('Revoke link for "' + name + '"?\n\nClient will no longer be able to access. This cannot be undone (you\'ll need to generate a fresh link).')) return;
+  fetch(CONFIG.supabaseUrl + '/rest/v1/trial_client_tokens?id=eq.' + id, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'apikey': CONFIG.supabaseKey, 'Authorization': 'Bearer ' + CONFIG.supabaseKey },
+    body: JSON.stringify({ revoked: true, revoked_at: new Date().toISOString() })
+  })
+  .then(function(r) {
+    if (!r.ok) throw new Error('Failed');
+    showToast('Link revoked', 'success');
+    loadClientLinks();
+  })
+  .catch(function() { showToast('Revoke failed', 'error'); });
 }
 
 document.addEventListener('DOMContentLoaded', function() {

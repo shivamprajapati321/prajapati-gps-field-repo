@@ -1,7 +1,7 @@
-// Prajapati GPS OCR — Service Worker v4
+// Prajapati GPS OCR — Service Worker v5
 // Strategy: Cache-first for app shell, network-first for API calls
 
-const CACHE_NAME = 'prajapati-gps-v4';
+const CACHE_NAME = 'prajapati-gps-v5';
 const APP_SHELL = [
   '/',
   '/field.html',
