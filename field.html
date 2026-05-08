@@ -3,10 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="theme-color" content="#1a2980">
+<title>GPS OCR Camera — Prajapati Advertising</title>
+
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json">
+<meta name="application-name" content="GPS OCR Camera">
+<meta name="apple-mobile-web-app-title" content="GPS OCR">
+<meta name="description" content="GPS-stamped photo capture with auto OCR plate reading. Fast, reliable.">
+
+<!-- iOS -->
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>GPS OCR Camera — Prajapati Advertising</title>
+<meta name="format-detection" content="telephone=no">
+
+<!-- Favicons -->
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+
+<!-- Android -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a2980">
 <link rel="preconnect" href="https://fpbktcgtspqsqpaytslv.supabase.co" crossorigin>
 <link rel="preconnect" href="https://api.platerecognizer.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -149,12 +166,33 @@ button,input{font-family:inherit}input{font-size:16px}
 .cam-shutter::after{content:"";width:56px;height:56px;border-radius:50%;background:#fff;transition:.15s}
 .cam-shutter:disabled{opacity:.4;cursor:not-allowed}
 .cam-shutter:disabled::after{background:#bbb}
+
+/* PWA Install Prompt */
+.install-banner{position:fixed;left:12px;right:12px;bottom:16px;bottom:max(16px,env(safe-area-inset-bottom));background:#fff;border:1px solid var(--ln);border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.15);padding:14px 16px;display:none;align-items:center;gap:12px;z-index:200;animation:slideUp .35s ease-out}
+.install-banner.show{display:flex}
+@keyframes slideUp{from{transform:translateY(120%);opacity:0}to{transform:translateY(0);opacity:1}}
+.install-banner img{width:44px;height:44px;border-radius:10px;flex-shrink:0}
+.install-banner .ib-text{flex:1;min-width:0}
+.install-banner .ib-title{font-size:13px;font-weight:600;color:var(--p);margin-bottom:1px}
+.install-banner .ib-sub{font-size:11px;color:var(--mu);line-height:1.3}
+.install-banner .ib-actions{display:flex;gap:6px;flex-shrink:0}
+.install-banner .ib-btn{padding:7px 14px;font-size:12px;font-weight:600;border-radius:8px;border:none;cursor:pointer;font-family:inherit}
+.install-banner .ib-btn.primary{background:var(--p);color:#fff}
+.install-banner .ib-btn.secondary{background:transparent;color:var(--mu);font-size:18px;padding:7px 10px}
+
+/* Update available banner */
+.update-banner{position:fixed;top:max(12px,env(safe-area-inset-top));left:12px;right:12px;background:var(--gd);color:var(--p);padding:10px 14px;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.18);display:none;align-items:center;gap:10px;z-index:201;font-size:12px;font-weight:600;animation:slideDown .3s ease-out}
+.update-banner.show{display:flex}
+@keyframes slideDown{from{transform:translateY(-120%)}to{transform:translateY(0)}}
+.update-banner .ub-icon{font-size:16px}
+.update-banner .ub-text{flex:1}
+.update-banner .ub-btn{background:var(--p);color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer}
 </style>
 </head>
 <body>
 
 <section class="splash" id="screen-login">
-<div class="brand-logo"><img src="https://prajapatiadvertising.com/wp-content/uploads/2024/11/PA-1536x297.png" alt="Prajapati Advertising" loading="eager"></div>
+<div class="brand-logo"><img src="/logo-prajapati.png" alt="Prajapati Advertising" loading="eager" onerror="this.onerror=null;this.src='https://prajapatiadvertising.com/wp-content/uploads/2024/11/PA-1536x297.png';"></div>
 <h1>GPS OCR Camera</h1>
 <p class="lead">Fast, Reliable</p>
 <div class="field"><label>Mobile Number</label><input id="inp-mobile" type="tel" inputmode="numeric" maxlength="10" placeholder="9876543210" autocomplete="tel"></div>
@@ -179,6 +217,26 @@ button,input{font-family:inherit}input{font-size:16px}
 <div class="toast" id="toast"></div>
 <div class="overlay" id="overlay"><div class="ring"></div><p id="overlay-text">Working…</p></div>
 <div class="flash" id="flash"><div class="bc">✓</div><h2 id="flash-title">Vehicle Saved!</h2><div class="pl" id="flash-plate">—</div><div class="meta" id="flash-meta"></div><div class="nx">Ready for next vehicle…</div></div>
+
+<!-- PWA Install Prompt -->
+<div class="install-banner" id="install-banner">
+  <img src="/icon-192.png" alt="">
+  <div class="ib-text">
+    <div class="ib-title">Install GPS OCR Camera</div>
+    <div class="ib-sub">Home screen pe app jaisa add karo — fast access, offline support</div>
+  </div>
+  <div class="ib-actions">
+    <button class="ib-btn secondary" onclick="dismissInstall()" aria-label="Dismiss">×</button>
+    <button class="ib-btn primary" onclick="triggerInstall()">Install</button>
+  </div>
+</div>
+
+<!-- Update Available Banner -->
+<div class="update-banner" id="update-banner">
+  <span class="ub-icon">⬆</span>
+  <span class="ub-text">New version available</span>
+  <button class="ub-btn" onclick="applyUpdate()">Update</button>
+</div>
 
 <!-- In-app camera with live GPS stamp preview -->
 <div class="cam-modal" id="cam-modal">
@@ -1462,9 +1520,112 @@ function finishVehicleSession(){
   });
 }
 
+// ─── PWA: Service Worker + Install Prompt + Update Detection ───
+var deferredInstallPrompt = null;
+var refreshing = false;
+
 if ('serviceWorker' in navigator){
-  window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('/sw.js').then(function(reg){
+      console.log('[PWA] SW registered, scope:', reg.scope);
+
+      // Detect when a new SW is waiting
+      reg.addEventListener('updatefound', function(){
+        var newWorker = reg.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener('statechange', function(){
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller){
+            // New version ready — show update banner
+            $('update-banner').classList.add('show');
+            window._pendingWorker = newWorker;
+          }
+        });
+      });
+
+      // Check for updates every 30 min while app is open
+      setInterval(function(){ reg.update(); }, 30 * 60 * 1000);
+    }).catch(function(err){
+      console.warn('[PWA] SW registration failed:', err);
+    });
+  });
+
+  // When new SW takes control, reload to use it
+  navigator.serviceWorker.addEventListener('controllerchange', function(){
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
 }
+
+// Capture beforeinstallprompt (Android Chrome)
+window.addEventListener('beforeinstallprompt', function(e){
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  // Show install banner only if user is logged in (avoid distraction at login)
+  setTimeout(function(){
+    if (!localStorage.getItem('pf_install_dismissed') && state.member){
+      $('install-banner').classList.add('show');
+    }
+  }, 4000);
+});
+
+// iOS Safari doesn't fire beforeinstallprompt — show iOS-specific hint
+function isIosSafari(){
+  var ua = navigator.userAgent.toLowerCase();
+  return /iphone|ipad|ipod/.test(ua) && /safari/.test(ua) && !/crios|fxios/.test(ua);
+}
+function isStandalone(){
+  return window.matchMedia('(display-mode: standalone)').matches ||
+         window.navigator.standalone === true;
+}
+
+// On iOS, show custom hint after login
+function maybeShowIosInstallHint(){
+  if (isIosSafari() && !isStandalone() && !localStorage.getItem('pf_install_dismissed')){
+    setTimeout(function(){
+      var b = $('install-banner');
+      b.querySelector('.ib-sub').textContent = 'Share button → "Add to Home Screen"';
+      b.querySelector('.primary').textContent = 'Got it';
+      b.querySelector('.primary').onclick = dismissInstall;
+      b.classList.add('show');
+    }, 4000);
+  }
+}
+
+window.triggerInstall = function(){
+  if (!deferredInstallPrompt) {
+    dismissInstall();
+    return;
+  }
+  deferredInstallPrompt.prompt();
+  deferredInstallPrompt.userChoice.then(function(choice){
+    if (choice.outcome === 'accepted'){
+      toast('Install ho raha hai…', 'success');
+    }
+    deferredInstallPrompt = null;
+    $('install-banner').classList.remove('show');
+  });
+};
+
+window.dismissInstall = function(){
+  $('install-banner').classList.remove('show');
+  localStorage.setItem('pf_install_dismissed', '1');
+};
+
+window.applyUpdate = function(){
+  if (window._pendingWorker){
+    window._pendingWorker.postMessage({ type: 'SKIP_WAITING' });
+  } else {
+    window.location.reload();
+  }
+};
+
+// Show install hint after successful login (extra trigger for iOS)
+var _origEnterApp = window.enterApp;
+// We can't override since enterApp isn't on window — we hook via a watcher
+setTimeout(function(){
+  if (state.member && isIosSafari() && !isStandalone()) maybeShowIosInstallHint();
+}, 5000);
 
 window.logout = logout;
 window.loadAssignment = loadAssignment;
