@@ -167,6 +167,28 @@ button,input{font-family:inherit}input{font-size:16px}
 .cam-shutter:disabled{opacity:.4;cursor:not-allowed}
 .cam-shutter:disabled::after{background:#bbb}
 
+/* ─── PINCH-TO-ZOOM CAMERA (ADDED) ─── */
+.cam-zoom-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  padding: 8px 16px;
+  border-radius: 99px;
+  z-index: 5;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.cam-zoom-indicator.show {
+  opacity: 1;
+}
+
 /* PWA Install Prompt */
 .install-banner{position:fixed;left:12px;right:12px;bottom:16px;bottom:max(16px,env(safe-area-inset-bottom));background:#fff;border:1px solid var(--ln);border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.15);padding:14px 16px;display:none;align-items:center;gap:12px;z-index:200;animation:slideUp .35s ease-out}
 .install-banner.show{display:flex}
@@ -259,6 +281,8 @@ button,input{font-family:inherit}input{font-size:16px}
     </div>
   </div>
   <button class="cam-shutter" id="cam-shutter" onclick="captureFromInAppCamera()" disabled aria-label="Capture"></button>
+  <!-- Zoom level indicator (ADDED for pinch-to-zoom) -->
+  <div class="cam-zoom-indicator" id="cam-zoom-indicator">1.0x</div>
 </div>
 
 <script>
@@ -985,6 +1009,20 @@ window.capturePhoto = function(key){
 var camStream = null;
 var camStampTimer = null;
 
+// ─── PINCH-TO-ZOOM STATE (ADDED) ───
+var camZoomState = {
+  videoTrack: null,         // Active video track from camStream
+  capabilities: null,       // Hardware zoom capabilities (if supported)
+  currentZoom: 1.0,         // Current zoom level (1.0 = no zoom)
+  maxZoom: 1.0,             // Maximum allowed zoom
+  minZoom: 1.0,             // Minimum allowed zoom (usually 1.0)
+  stepZoom: 0.1,            // Zoom increment per pinch movement
+  initialPinchDistance: 0,  // Distance between fingers at pinch start
+  initialZoom: 1.0,         // Zoom level at pinch start
+  isPinching: false,        // Currently pinching?
+  zoomHideTimer: null       // Timer to auto-hide zoom indicator
+};
+
 function openInAppCamera(key){
   var slot = state.slots.find(function(s){ return s.key === key; });
   $('cam-slot-label').textContent = slot ? slot.label : 'Capture';
@@ -1010,6 +1048,8 @@ function openInAppCamera(key){
     v.onloadedmetadata = function(){
       v.play();
       $('cam-shutter').disabled = false;
+      // ─── ENABLE PINCH-TO-ZOOM (ADDED) ───
+      setupPinchToZoom(stream);
     };
   }).catch(function(err){
     console.error('Camera open failed:', err);
@@ -1018,6 +1058,141 @@ function openInAppCamera(key){
     // Fallback to native file input
     $('cam-input').click();
   });
+}
+
+// ─── PINCH-TO-ZOOM IMPLEMENTATION (ADDED) ───
+function setupPinchToZoom(stream) {
+  try {
+    // Get the video track from the stream
+    var track = stream.getVideoTracks()[0];
+    if (!track) return;
+    
+    camZoomState.videoTrack = track;
+    
+    // Check if browser supports hardware zoom
+    var capabilities = track.getCapabilities ? track.getCapabilities() : null;
+    
+    if (capabilities && capabilities.zoom) {
+      // Hardware zoom available (Chrome Android, iOS Safari 16+)
+      camZoomState.capabilities = capabilities;
+      camZoomState.minZoom = capabilities.zoom.min || 1.0;
+      camZoomState.maxZoom = capabilities.zoom.max || 4.0;
+      camZoomState.stepZoom = capabilities.zoom.step || 0.1;
+      camZoomState.currentZoom = camZoomState.minZoom;
+      console.log('[Zoom] Hardware zoom: min=' + camZoomState.minZoom + ' max=' + camZoomState.maxZoom);
+    } else {
+      // No hardware zoom - use digital zoom (CSS transform fallback)
+      camZoomState.capabilities = null;
+      camZoomState.minZoom = 1.0;
+      camZoomState.maxZoom = 4.0;
+      camZoomState.stepZoom = 0.1;
+      camZoomState.currentZoom = 1.0;
+      console.log('[Zoom] Digital zoom fallback (no hardware support)');
+    }
+    
+    // Attach pinch listeners to video element
+    var video = $('cam-feed');
+    video.addEventListener('touchstart', onPinchStart, { passive: false });
+    video.addEventListener('touchmove', onPinchMove, { passive: false });
+    video.addEventListener('touchend', onPinchEnd, { passive: false });
+  } catch (e) {
+    console.warn('[Zoom] Setup failed:', e);
+  }
+}
+
+function getPinchDistance(touches) {
+  // Calculate distance between two touch points (Euclidean distance)
+  var dx = touches[0].clientX - touches[1].clientX;
+  var dy = touches[0].clientY - touches[1].clientY;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function onPinchStart(e) {
+  // Only react to 2-finger touches (pinch gesture)
+  if (e.touches.length !== 2) return;
+  e.preventDefault();
+  
+  camZoomState.isPinching = true;
+  camZoomState.initialPinchDistance = getPinchDistance(e.touches);
+  camZoomState.initialZoom = camZoomState.currentZoom;
+  
+  // Show zoom indicator
+  showZoomIndicator();
+}
+
+function onPinchMove(e) {
+  if (!camZoomState.isPinching || e.touches.length !== 2) return;
+  e.preventDefault();
+  
+  var currentDistance = getPinchDistance(e.touches);
+  var scale = currentDistance / camZoomState.initialPinchDistance;
+  
+  // Calculate new zoom level (multiplicative scaling)
+  var newZoom = camZoomState.initialZoom * scale;
+  
+  // Clamp to allowed range
+  newZoom = Math.max(camZoomState.minZoom, Math.min(camZoomState.maxZoom, newZoom));
+  
+  // Round to step
+  newZoom = Math.round(newZoom / camZoomState.stepZoom) * camZoomState.stepZoom;
+  
+  applyZoom(newZoom);
+}
+
+function onPinchEnd(e) {
+  if (e.touches.length < 2) {
+    camZoomState.isPinching = false;
+    // Hide indicator after 1.5 seconds of inactivity
+    if (camZoomState.zoomHideTimer) clearTimeout(camZoomState.zoomHideTimer);
+    camZoomState.zoomHideTimer = setTimeout(hideZoomIndicator, 1500);
+  }
+}
+
+function applyZoom(zoomLevel) {
+  camZoomState.currentZoom = zoomLevel;
+  
+  if (camZoomState.capabilities && camZoomState.videoTrack) {
+    // Hardware zoom: apply via track constraints (best quality)
+    camZoomState.videoTrack.applyConstraints({
+      advanced: [{ zoom: zoomLevel }]
+    }).catch(function(err) {
+      console.warn('[Zoom] applyConstraints failed:', err);
+      // Fallback to CSS digital zoom
+      applyCssDigitalZoom(zoomLevel);
+    });
+  } else {
+    // Software fallback: CSS transform (slight quality loss)
+    applyCssDigitalZoom(zoomLevel);
+  }
+  
+  // Update indicator text
+  updateZoomIndicator(zoomLevel);
+}
+
+function applyCssDigitalZoom(zoomLevel) {
+  // Digital zoom via CSS transform (used when hardware zoom unavailable)
+  var video = $('cam-feed');
+  video.style.transform = 'scale(' + zoomLevel + ')';
+  video.style.transformOrigin = 'center center';
+}
+
+function showZoomIndicator() {
+  var ind = $('cam-zoom-indicator');
+  if (ind) ind.classList.add('show');
+}
+
+function hideZoomIndicator() {
+  var ind = $('cam-zoom-indicator');
+  if (ind) ind.classList.remove('show');
+}
+
+function updateZoomIndicator(zoomLevel) {
+  var ind = $('cam-zoom-indicator');
+  if (ind) ind.textContent = zoomLevel.toFixed(1) + 'x';
+  
+  // Reset hide timer
+  if (camZoomState.zoomHideTimer) clearTimeout(camZoomState.zoomHideTimer);
+  camZoomState.zoomHideTimer = setTimeout(hideZoomIndicator, 1500);
 }
 
 function updateCamStampPreview(){
@@ -1092,6 +1267,21 @@ function closeInAppCamera(){
   if (camStampTimer){ clearInterval(camStampTimer); camStampTimer = null; }
   var v = $('cam-feed');
   if (v.srcObject){ v.srcObject = null; }
+  
+  // ─── RESET PINCH-TO-ZOOM (ADDED) ───
+  if (v) {
+    v.style.transform = '';
+    v.removeEventListener('touchstart', onPinchStart);
+    v.removeEventListener('touchmove', onPinchMove);
+    v.removeEventListener('touchend', onPinchEnd);
+  }
+  camZoomState.videoTrack = null;
+  camZoomState.currentZoom = 1.0;
+  hideZoomIndicator();
+  if (camZoomState.zoomHideTimer) {
+    clearTimeout(camZoomState.zoomHideTimer);
+    camZoomState.zoomHideTimer = null;
+  }
 }
 
 // Shared post-capture pipeline (called from in-app camera AND fallback file input)
