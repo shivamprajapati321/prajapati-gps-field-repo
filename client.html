@@ -16,6 +16,9 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- JSZip + FileSaver for bulk photo download (ADDED) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
 <style>
 :root {
@@ -213,6 +216,44 @@ img { max-width: 100%; display: block; }
 .leaflet-popup-content-wrapper { border-radius: 4px; }
 .leaflet-popup-content { font-family: var(--sans); font-size: 12px; margin: 10px 14px; }
 .leaflet-popup-content strong { font-family: var(--serif); display: block; margin-bottom: 2px; color: var(--navy); }
+
+/* ─── ALL PHOTOS BROWSER SECTION (ADDED) ─── */
+.ph-filter-bar { background: #fff; border: 1px solid #e8e8ee; border-radius: 12px; padding: 16px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 12px; }
+.ph-filter-group { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.ph-filter-label { font-size: 11px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-right: 4px; }
+.ph-chip { padding: 7px 13px; border-radius: 99px; border: 1px solid #ddd; background: #fff; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; font-family: inherit; color: #333; }
+.ph-chip:hover { border-color: var(--navy); color: var(--navy); }
+.ph-chip.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+.ph-range-label { font-size: 12px; color: var(--navy); font-weight: 600; margin-left: 8px; font-style: italic; }
+.ph-filter-inputs { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+.ph-input-group { display: flex; flex-direction: column; gap: 4px; }
+.ph-input-group label { font-size: 10px; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: 0.4px; }
+.ph-input-group input { padding: 8px 11px; border: 1px solid #ddd; border-radius: 7px; font-size: 13px; font-family: inherit; min-width: 140px; }
+.ph-btn { padding: 9px 18px; border: none; border-radius: 7px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+.ph-btn-primary { background: var(--navy); color: #fff; }
+.ph-btn-primary:hover { background: #0a1648; }
+.ph-btn-success { background: #10b981; color: #fff; }
+.ph-btn-success:hover { background: #059669; }
+.ph-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.ph-stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.ph-stat-box { background: #fff; border: 1px solid #e8e8ee; border-radius: 10px; padding: 14px; }
+.ph-stat-box .label { font-size: 10px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 0.4px; }
+.ph-stat-box .value { font-size: 24px; font-weight: 800; color: var(--navy); margin-top: 4px; font-family: var(--serif); }
+.ph-photos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.ph-photo-item { background: #fff; border: 1px solid #e8e8ee; border-radius: 10px; overflow: hidden; cursor: pointer; transition: all 0.15s; }
+.ph-photo-item:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); border-color: var(--navy); }
+.ph-photo-item .img { width: 100%; aspect-ratio: 4/3; object-fit: cover; background: #f5f5f5; display: block; }
+.ph-photo-item .meta { padding: 10px 12px; }
+.ph-photo-item .plate { font-weight: 700; font-family: monospace; font-size: 13px; color: var(--navy); }
+.ph-photo-item .info { font-size: 11px; color: #666; margin-top: 3px; }
+.ph-empty { padding: 40px; text-align: center; color: #999; font-style: italic; background: #fafafa; border-radius: 10px; }
+.ph-spinner { width: 32px; height: 32px; border: 3px solid #ddd; border-top: 3px solid var(--navy); border-radius: 50%; animation: ph-spin 1s linear infinite; margin: 40px auto; }
+@keyframes ph-spin { to { transform: rotate(360deg); } }
+@media (max-width: 700px) {
+  .ph-filter-inputs { flex-direction: column; align-items: stretch; }
+  .ph-input-group input { min-width: 0; width: 100%; }
+  .ph-btn { width: 100%; }
+}
 </style>
 </head>
 <body>
@@ -357,6 +398,46 @@ img { max-width: 100%; display: block; }
     </div>
   </div>
   <div class="gallery" id="gallery"></div>
+</section>
+
+<!-- ─── ALL PHOTOS BROWSER (ADDED for client view) ─── -->
+<section class="section" id="all-photos-section">
+  <div class="section-head">
+    <div>
+      <h2>All Photos</h2>
+      <div class="h-sub" id="all-photos-sub">Browse all campaign photos · filter by date · download as ZIP</div>
+    </div>
+  </div>
+  
+  <div class="ph-filter-bar">
+    <div class="ph-filter-group">
+      <span class="ph-filter-label">Quick:</span>
+      <button class="ph-chip" onclick="setClientQuickRange('today')">Today</button>
+      <button class="ph-chip" onclick="setClientQuickRange('yesterday')">Yesterday</button>
+      <button class="ph-chip" onclick="setClientQuickRange('week')">Last 7 days</button>
+      <button class="ph-chip" onclick="setClientQuickRange('month')">Last 30 days</button>
+      <button class="ph-chip" onclick="setClientQuickRange('all')">All time</button>
+      <span class="ph-range-label" id="clientRangeLabel"></span>
+    </div>
+    <div class="ph-filter-inputs">
+      <div class="ph-input-group">
+        <label>From</label>
+        <input type="date" id="clientPhotoDate">
+      </div>
+      <div class="ph-input-group">
+        <label>To</label>
+        <input type="date" id="clientPhotoDateEnd">
+      </div>
+      <button class="ph-btn ph-btn-primary" onclick="loadAllPhotos()">Filter</button>
+      <button class="ph-btn ph-btn-success" onclick="downloadClientPhotosZip()" id="clientZipBtn">📦 Download ZIP</button>
+    </div>
+  </div>
+  
+  <div class="ph-stats-row" id="clientPhotoStats"></div>
+  
+  <div id="allPhotosList" class="ph-photos-grid">
+    <div class="ph-empty">Click "Filter" or quick range to load photos</div>
+  </div>
 </section>
 
 </div>
@@ -823,6 +904,256 @@ window.openPPTGen = function(){
   var url = '/ppt.html?t=' + encodeURIComponent(state.token) + '&campaign=' + encodeURIComponent(state.tokenRow.campaign_key);
   window.open(url, '_blank');
 };
+
+// ─── ALL PHOTOS BROWSER + ZIP DOWNLOAD (ADDED) ───
+var clientPhotosCache = [];
+
+function todayIST() {
+  var now = new Date();
+  var istOffset = 5.5 * 60 * 60 * 1000;
+  return new Date(now.getTime() + istOffset).toISOString().slice(0, 10);
+}
+
+window.setClientQuickRange = function(range) {
+  var fromEl = $('clientPhotoDate');
+  var toEl = $('clientPhotoDateEnd');
+  var labelEl = $('clientRangeLabel');
+  var today = todayIST();
+  
+  document.querySelectorAll('.ph-chip').forEach(function(c) { c.classList.remove('active'); });
+  
+  if (range === 'today') {
+    fromEl.value = today;
+    toEl.value = today;
+    labelEl.textContent = '· Today';
+  } else if (range === 'yesterday') {
+    var y = new Date(today);
+    y.setDate(y.getDate() - 1);
+    var yStr = y.toISOString().slice(0, 10);
+    fromEl.value = yStr;
+    toEl.value = yStr;
+    labelEl.textContent = '· Yesterday';
+  } else if (range === 'week') {
+    var w = new Date(today);
+    w.setDate(w.getDate() - 7);
+    fromEl.value = w.toISOString().slice(0, 10);
+    toEl.value = today;
+    labelEl.textContent = '· Last 7 days';
+  } else if (range === 'month') {
+    var m = new Date(today);
+    m.setDate(m.getDate() - 30);
+    fromEl.value = m.toISOString().slice(0, 10);
+    toEl.value = today;
+    labelEl.textContent = '· Last 30 days';
+  } else if (range === 'all') {
+    fromEl.value = '';
+    toEl.value = '';
+    labelEl.textContent = '· All time';
+  }
+  
+  // Highlight clicked chip
+  event && event.target && event.target.classList.add('active');
+  
+  loadAllPhotos();
+};
+
+window.loadAllPhotos = function() {
+  var listEl = $('allPhotosList');
+  var statsEl = $('clientPhotoStats');
+  listEl.innerHTML = '<div class="ph-spinner"></div>';
+  
+  var dateFrom = $('clientPhotoDate').value;
+  var dateTo = $('clientPhotoDateEnd').value || dateFrom;
+  
+  if (!state.tokenRow || !state.tokenRow.campaign_key) {
+    listEl.innerHTML = '<div class="ph-empty">Campaign not loaded yet. Please wait.</div>';
+    return;
+  }
+  
+  var qs = '?campaign_key=eq.' + encodeURIComponent(state.tokenRow.campaign_key) + '&select=*&order=captured_at.desc&limit=2000';
+  if (dateFrom) {
+    var istStart = new Date(dateFrom + 'T00:00:00+05:30');
+    qs += '&captured_at=gte.' + istStart.toISOString();
+  }
+  if (dateTo) {
+    var istEnd = new Date(dateTo + 'T23:59:59+05:30');
+    qs += '&captured_at=lte.' + istEnd.toISOString();
+  }
+  
+  api('/rest/v1/trial_photos' + qs)
+    .then(function(photos) {
+      photos = photos || [];
+      clientPhotosCache = photos;
+      
+      // Stats
+      var uniqueVehicles = {};
+      photos.forEach(function(p) { if (p.vehicle_number) uniqueVehicles[p.vehicle_number] = true; });
+      var hoodCount = photos.filter(function(p) { return p.mode === 'hood'; }).length;
+      var backCount = photos.filter(function(p) { return p.mode === 'back_panel'; }).length;
+      
+      statsEl.innerHTML = 
+        '<div class="ph-stat-box"><div class="label">Photos</div><div class="value">' + photos.length + '</div></div>' +
+        '<div class="ph-stat-box"><div class="label">Vehicles</div><div class="value">' + Object.keys(uniqueVehicles).length + '</div></div>' +
+        '<div class="ph-stat-box"><div class="label">Hood</div><div class="value">' + hoodCount + '</div></div>' +
+        '<div class="ph-stat-box"><div class="label">Back Panel</div><div class="value">' + backCount + '</div></div>';
+      
+      if (photos.length === 0) {
+        listEl.innerHTML = '<div class="ph-empty">No photos in selected date range. Try "All time" or wider range.</div>';
+        return;
+      }
+      
+      var html = photos.map(function(p) {
+        var time = p.captured_at ? new Date(p.captured_at).toLocaleString('en-IN', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', timeZone: 'Asia/Kolkata'}) : '';
+        var imgUrl = p.public_url || '';
+        return '<div class="ph-photo-item" onclick="openPhoto(\'' + escapeHtml(imgUrl) + '\')">' +
+          '<img class="img" src="' + escapeHtml(imgUrl) + '" loading="lazy" alt="">' +
+          '<div class="meta">' +
+            '<div class="plate">' + escapeHtml(p.vehicle_number || '— Plate pending') + '</div>' +
+            '<div class="info">' + escapeHtml(p.mode || '') + ' · ' + time + '</div>' +
+            '<div class="info">📍 ' + escapeHtml((p.city || '').substring(0, 30)) + '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+      
+      listEl.innerHTML = html;
+    })
+    .catch(function(err) {
+      console.error('Load all photos error:', err);
+      listEl.innerHTML = '<div class="ph-empty">Failed to load photos. Please try again.</div>';
+    });
+};
+
+window.downloadClientPhotosZip = function() {
+  var btn = $('clientZipBtn');
+  if (!btn) return;
+  
+  if (typeof JSZip === 'undefined' || typeof saveAs === 'undefined') {
+    alert('ZIP libraries not loaded. Please refresh the page.');
+    return;
+  }
+  
+  // Use cached photos if available, else load first
+  if (clientPhotosCache.length === 0) {
+    alert('Please click "Filter" first to load photos.');
+    return;
+  }
+  
+  if (clientPhotosCache.length > 500) {
+    if (!confirm('Found ' + clientPhotosCache.length + ' photos. Download will be ~' + Math.round(clientPhotosCache.length * 0.3) + ' MB. Continue?')) {
+      return;
+    }
+  }
+  
+  buildClientZip(clientPhotosCache, btn);
+};
+
+function buildClientZip(photos, btn) {
+  var zip = new JSZip();
+  var total = photos.length;
+  var processed = 0;
+  var failed = 0;
+  
+  function sanitizeName(name) {
+    if (!name) return 'unknown';
+    return String(name).replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').replace(/\s+/g, '-').substring(0, 60);
+  }
+  
+  function formatTimeForFilename(isoDate) {
+    if (!isoDate) return 'unknown-time';
+    var d = new Date(isoDate);
+    var hh = d.getHours();
+    var mm = String(d.getMinutes()).padStart(2, '0');
+    var ampm = hh >= 12 ? 'pm' : 'am';
+    var hh12 = hh % 12 || 12;
+    return String(hh12).padStart(2, '0') + '-' + mm + ampm;
+  }
+  
+  function updateProgress() {
+    var pct = Math.round((processed / total) * 100);
+    btn.innerHTML = '⏳ ' + processed + '/' + total + ' (' + pct + '%)';
+  }
+  
+  btn.disabled = true;
+  updateProgress();
+  
+  var fetchPromises = photos.map(function(p, idx) {
+    if (!p.public_url) {
+      processed++;
+      failed++;
+      updateProgress();
+      return Promise.resolve();
+    }
+    
+    return fetch(p.public_url)
+      .then(function(res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.blob();
+      })
+      .then(function(blob) {
+        var plate = sanitizeName(p.vehicle_number || 'no-plate-' + (idx + 1));
+        var mode = sanitizeName(p.mode || 'photo');
+        var time = formatTimeForFilename(p.captured_at);
+        var date = p.captured_at ? p.captured_at.slice(0, 10) : 'no-date';
+        
+        var filename = plate + '_' + mode + '_' + time + '.jpg';
+        var folderPath = date + '/' + filename;
+        
+        zip.file(folderPath, blob);
+        processed++;
+        updateProgress();
+      })
+      .catch(function(err) {
+        console.warn('Failed photo ' + idx + ':', err);
+        processed++;
+        failed++;
+        updateProgress();
+      });
+  });
+  
+  Promise.all(fetchPromises).then(function() {
+    btn.innerHTML = '📦 Building ZIP...';
+    
+    // CSV index
+    var csvLines = ['Plate,Mode,Captured,City,Address,Latitude,Longitude,URL'];
+    photos.forEach(function(p) {
+      csvLines.push([
+        (p.vehicle_number || '').replace(/,/g, ' '),
+        (p.mode || ''),
+        (p.captured_at || ''),
+        (p.city || ''),
+        '"' + (p.address || '').replace(/"/g, '""') + '"',
+        (p.latitude || ''),
+        (p.longitude || ''),
+        (p.public_url || '')
+      ].join(','));
+    });
+    zip.file('photos-index.csv', csvLines.join('\n'));
+    
+    return zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+  }).then(function(blob) {
+    var dateRange = $('clientPhotoDate').value || 'all';
+    var endDate = $('clientPhotoDateEnd').value;
+    var dateLabel = endDate && endDate !== dateRange ? dateRange + '_to_' + endDate : dateRange;
+    var campaignName = sanitizeName(state.tokenRow.campaign_key || 'campaign');
+    var zipName = campaignName + '_Photos_' + dateLabel + '_' + Date.now() + '.zip';
+    
+    saveAs(blob, zipName);
+    
+    btn.disabled = false;
+    btn.innerHTML = '📦 Download ZIP';
+    
+    if (failed > 0) {
+      alert('Downloaded ' + (total - failed) + ' photos. ' + failed + ' failed.');
+    } else {
+      alert('Successfully downloaded ' + total + ' photos as ZIP!');
+    }
+  }).catch(function(err) {
+    console.error('Client ZIP build error:', err);
+    alert('ZIP build failed: ' + (err.message || 'Unknown error'));
+    btn.disabled = false;
+    btn.innerHTML = '📦 Download ZIP';
+  });
+}
 
 function setLivePill(mode, label){
   $('live-pill').className = 'live-pill ' + mode;

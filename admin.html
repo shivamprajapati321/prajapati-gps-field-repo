@@ -6,6 +6,9 @@
 <title>Prajapati GPS - Admin Panel</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- JSZip + FileSaver for bulk photo download (ADDED) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: 'Poppins', sans-serif; background: #f4f6f9; color: #1a2980; min-height: 100vh; }
@@ -342,6 +345,7 @@ label { display: block; font-size: 10px; font-weight: 600; text-transform: upper
         <div><label>Member</label><select id="photoMember"><option value="">All</option></select></div>
         <button class="btn" onclick="loadPhotos()">Filter</button>
         <button class="btn" style="background:#0f1c5e; color:#fff;" onclick="openPPTGenerator()">📊 Generate PPT</button>
+        <button class="btn" style="background:#10b981; color:#fff;" onclick="downloadPhotosZip()" id="zipDownloadBtn">📦 Download ZIP</button>
       </div>
     </div>
     <div id="photosList"><div class="empty-state">Filter karo aur photos load karo</div></div>
@@ -1129,6 +1133,195 @@ function loadPhotos(silent) {
 
 function openPhotoModal(url) { if (!url) return; document.getElementById('photoModalImg').src = url; document.getElementById('photoModal').classList.add('active'); }
 function closePhotoModal() { document.getElementById('photoModal').classList.remove('active'); document.getElementById('photoModalImg').src = ''; }
+
+// ─── BULK PHOTO ZIP DOWNLOAD (ADDED) ───
+// Downloads all currently filtered photos as ZIP organized by:
+// Campaign → Member → renamed by OCR plate + date
+function downloadPhotosZip() {
+  var btn = document.getElementById('zipDownloadBtn');
+  if (!btn) return;
+  
+  // Verify libraries loaded
+  if (typeof JSZip === 'undefined' || typeof saveAs === 'undefined') {
+    alert('ZIP libraries not loaded. Please refresh the page.');
+    return;
+  }
+  
+  // Read current filters (same as loadPhotos uses)
+  var dateFrom = document.getElementById('photoDate').value;
+  var dateTo = document.getElementById('photoDateEnd').value || dateFrom;
+  var campaign = document.getElementById('photoCampaign').value;
+  var member = document.getElementById('photoMember').value;
+  
+  // Build query (max 500 photos per ZIP to keep memory in check)
+  var qs = '?select=*&order=captured_at.desc&limit=500';
+  if (dateFrom) {
+    var istStartLocal = new Date(dateFrom + 'T00:00:00+05:30');
+    qs += '&captured_at=gte.' + istStartLocal.toISOString();
+  }
+  if (dateTo) {
+    var istEndLocal = new Date(dateTo + 'T23:59:59+05:30');
+    qs += '&captured_at=lte.' + istEndLocal.toISOString();
+  }
+  if (campaign) qs += '&campaign_key=eq.' + campaign;
+  if (member) qs += '&member_phone=eq.' + member;
+  
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Loading photos...';
+  
+  api('/rest/v1/trial_photos' + qs)
+    .then(function(photos) {
+      photos = photos || [];
+      if (photos.length === 0) {
+        alert('No photos found in selected filter. Try a wider date range.');
+        btn.disabled = false;
+        btn.innerHTML = '📦 Download ZIP';
+        return;
+      }
+      
+      if (photos.length > 500) {
+        if (!confirm('Found ' + photos.length + ' photos. Download will be large (~' + Math.round(photos.length * 0.3) + ' MB). Continue?')) {
+          btn.disabled = false;
+          btn.innerHTML = '📦 Download ZIP';
+          return;
+        }
+      }
+      
+      buildAndDownloadZip(photos, btn);
+    })
+    .catch(function(err) {
+      console.error('ZIP fetch error:', err);
+      alert('Failed to load photos: ' + (err.message || 'Unknown error'));
+      btn.disabled = false;
+      btn.innerHTML = '📦 Download ZIP';
+    });
+}
+
+function buildAndDownloadZip(photos, btn) {
+  var zip = new JSZip();
+  var total = photos.length;
+  var processed = 0;
+  var failed = 0;
+  
+  // Sanitize folder/file names for cross-platform safety
+  function sanitizeName(name) {
+    if (!name) return 'unknown';
+    return String(name).replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').replace(/\s+/g, '-').substring(0, 60);
+  }
+  
+  // Format date for filename (e.g., "07-10pm")
+  function formatTimeForFilename(isoDate) {
+    if (!isoDate) return 'unknown-time';
+    var d = new Date(isoDate);
+    var hh = d.getHours();
+    var mm = String(d.getMinutes()).padStart(2, '0');
+    var ampm = hh >= 12 ? 'pm' : 'am';
+    var hh12 = hh % 12 || 12;
+    return String(hh12).padStart(2, '0') + '-' + mm + ampm;
+  }
+  
+  // Build folder structure summary first
+  var byCampaign = {};
+  photos.forEach(function(p) {
+    var camp = sanitizeName(p.campaign_key || 'unknown-campaign');
+    var memb = sanitizeName(p.member_name || p.member_phone || 'unknown-member');
+    if (!byCampaign[camp]) byCampaign[camp] = {};
+    if (!byCampaign[camp][memb]) byCampaign[camp][memb] = [];
+    byCampaign[camp][memb].push(p);
+  });
+  
+  // Update button with progress
+  function updateProgress() {
+    var pct = Math.round((processed / total) * 100);
+    btn.innerHTML = '⏳ ' + processed + '/' + total + ' (' + pct + '%)';
+  }
+  
+  updateProgress();
+  
+  // Fetch all photos and add to ZIP
+  var fetchPromises = photos.map(function(p, idx) {
+    if (!p.public_url) {
+      processed++;
+      failed++;
+      updateProgress();
+      return Promise.resolve();
+    }
+    
+    return fetch(p.public_url)
+      .then(function(res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.blob();
+      })
+      .then(function(blob) {
+        var camp = sanitizeName(p.campaign_key || 'unknown-campaign');
+        var memb = sanitizeName(p.member_name || p.member_phone || 'unknown-member');
+        var plate = sanitizeName(p.vehicle_number || 'no-plate-' + (idx + 1));
+        var mode = sanitizeName(p.mode || 'photo');
+        var time = formatTimeForFilename(p.captured_at);
+        var date = p.captured_at ? p.captured_at.slice(0, 10) : 'no-date';
+        
+        // Filename: plate_mode_07-10pm.jpg
+        var filename = plate + '_' + mode + '_' + time + '.jpg';
+        // Folder: Campaign-X/Member-Y/Date-Z/
+        var folderPath = camp + '/' + memb + '/' + date + '/' + filename;
+        
+        zip.file(folderPath, blob);
+        processed++;
+        updateProgress();
+      })
+      .catch(function(err) {
+        console.warn('Failed photo ' + idx + ':', err);
+        processed++;
+        failed++;
+        updateProgress();
+      });
+  });
+  
+  // After all fetches: generate ZIP and trigger download
+  Promise.all(fetchPromises).then(function() {
+    btn.innerHTML = '📦 Building ZIP...';
+    
+    // Add CSV index inside ZIP for reference
+    var csvLines = ['Plate,Mode,Captured,Address,Latitude,Longitude,Campaign,Member,URL'];
+    photos.forEach(function(p) {
+      csvLines.push([
+        (p.vehicle_number || '').replace(/,/g, ' '),
+        (p.mode || ''),
+        (p.captured_at || ''),
+        '"' + (p.address || '').replace(/"/g, '""') + '"',
+        (p.latitude || ''),
+        (p.longitude || ''),
+        (p.campaign_key || ''),
+        (p.member_name || p.member_phone || ''),
+        (p.public_url || '')
+      ].join(','));
+    });
+    zip.file('photos-index.csv', csvLines.join('\n'));
+    
+    return zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+  }).then(function(blob) {
+    var dateRange = document.getElementById('photoDate').value || 'all';
+    var endDate = document.getElementById('photoDateEnd').value;
+    var dateLabel = endDate && endDate !== dateRange ? dateRange + '_to_' + endDate : dateRange;
+    var zipName = 'PrajapatiGPS_Photos_' + dateLabel + '_' + Date.now() + '.zip';
+    
+    saveAs(blob, zipName);
+    
+    btn.disabled = false;
+    btn.innerHTML = '📦 Download ZIP';
+    
+    if (failed > 0) {
+      alert('✅ Downloaded ' + (total - failed) + ' photos. ' + failed + ' failed (likely permission issues).');
+    } else {
+      alert('✅ Successfully downloaded ' + total + ' photos as ZIP!');
+    }
+  }).catch(function(err) {
+    console.error('ZIP build error:', err);
+    alert('ZIP build failed: ' + (err.message || 'Unknown error'));
+    btn.disabled = false;
+    btn.innerHTML = '📦 Download ZIP';
+  });
+}
 
 // ─── LIVE PHOTO UPDATES (Supabase Realtime + polling fallback) ───
 var _sbClient = null;
