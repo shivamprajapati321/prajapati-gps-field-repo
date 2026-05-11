@@ -313,6 +313,46 @@ img { max-width: 100%; display: block; }
     <div><span class="icon">⏱</span>Last update <strong id="last-update">—</strong></div>
   </div>
 </section>
+<!-- ─── ALL PHOTOS BROWSER (ADDED for client view) ─── -->
+<section class="section" id="all-photos-section">
+  <div class="section-head">
+    <div>
+      <h2>All Photos</h2>
+      <div class="h-sub" id="all-photos-sub">Browse all campaign photos · filter by date · download as ZIP</div>
+    </div>
+  </div>
+  
+  <div class="ph-filter-bar">
+    <div class="ph-filter-group">
+      <span class="ph-filter-label">Quick:</span>
+      <button class="ph-chip" onclick="setClientQuickRange('today')">Today</button>
+      <button class="ph-chip" onclick="setClientQuickRange('yesterday')">Yesterday</button>
+      <button class="ph-chip" onclick="setClientQuickRange('week')">Last 7 days</button>
+      <button class="ph-chip" onclick="setClientQuickRange('month')">Last 30 days</button>
+      <button class="ph-chip" onclick="setClientQuickRange('all')">All time</button>
+      <span class="ph-range-label" id="clientRangeLabel"></span>
+    </div>
+    <div class="ph-filter-inputs">
+      <div class="ph-input-group">
+        <label>From</label>
+        <input type="date" id="clientPhotoDate">
+      </div>
+      <div class="ph-input-group">
+        <label>To</label>
+        <input type="date" id="clientPhotoDateEnd">
+      </div>
+      <button class="ph-btn ph-btn-primary" onclick="loadAllPhotos()">Filter</button>
+      <button class="ph-btn ph-btn-success" onclick="downloadClientPhotosZip()" id="clientZipBtn">📦 Download ZIP</button>
+    </div>
+  </div>
+  
+  <div class="ph-stats-row" id="clientPhotoStats"></div>
+  
+  <div id="allPhotosList" class="ph-photos-grid">
+    <div class="ph-empty">Click "Filter" or quick range to load photos</div>
+  </div>
+</section>
+
 </div>
 
 <div class="stats">
@@ -400,45 +440,6 @@ img { max-width: 100%; display: block; }
   <div class="gallery" id="gallery"></div>
 </section>
 
-<!-- ─── ALL PHOTOS BROWSER (ADDED for client view) ─── -->
-<section class="section" id="all-photos-section">
-  <div class="section-head">
-    <div>
-      <h2>All Photos</h2>
-      <div class="h-sub" id="all-photos-sub">Browse all campaign photos · filter by date · download as ZIP</div>
-    </div>
-  </div>
-  
-  <div class="ph-filter-bar">
-    <div class="ph-filter-group">
-      <span class="ph-filter-label">Quick:</span>
-      <button class="ph-chip" onclick="setClientQuickRange('today')">Today</button>
-      <button class="ph-chip" onclick="setClientQuickRange('yesterday')">Yesterday</button>
-      <button class="ph-chip" onclick="setClientQuickRange('week')">Last 7 days</button>
-      <button class="ph-chip" onclick="setClientQuickRange('month')">Last 30 days</button>
-      <button class="ph-chip" onclick="setClientQuickRange('all')">All time</button>
-      <span class="ph-range-label" id="clientRangeLabel"></span>
-    </div>
-    <div class="ph-filter-inputs">
-      <div class="ph-input-group">
-        <label>From</label>
-        <input type="date" id="clientPhotoDate">
-      </div>
-      <div class="ph-input-group">
-        <label>To</label>
-        <input type="date" id="clientPhotoDateEnd">
-      </div>
-      <button class="ph-btn ph-btn-primary" onclick="loadAllPhotos()">Filter</button>
-      <button class="ph-btn ph-btn-success" onclick="downloadClientPhotosZip()" id="clientZipBtn">📦 Download ZIP</button>
-    </div>
-  </div>
-  
-  <div class="ph-stats-row" id="clientPhotoStats"></div>
-  
-  <div id="allPhotosList" class="ph-photos-grid">
-    <div class="ph-empty">Click "Filter" or quick range to load photos</div>
-  </div>
-</section>
 
 </div>
 
@@ -623,6 +624,25 @@ function renderAll(){
   renderChart();
   renderGallery();
   renderFooter();
+  // Auto-load All Photos with "Today" range on first render (ADDED)
+  if (!window._allPhotosAutoLoaded) {
+    window._allPhotosAutoLoaded = true;
+    setTimeout(function(){
+      var fromEl = document.getElementById('clientPhotoDate');
+      var toEl = document.getElementById('clientPhotoDateEnd');
+      var labelEl = document.getElementById('clientRangeLabel');
+      if (fromEl && toEl) {
+        var today = todayIST();
+        fromEl.value = today;
+        toEl.value = today;
+        if (labelEl) labelEl.textContent = '· Today';
+        // Mark Today chip active
+        var chips = document.querySelectorAll('.ph-chip');
+        if (chips.length > 0) chips[0].classList.add('active');
+        loadAllPhotos();
+      }
+    }, 500);
+  }
 }
 
 function renderHero(){
