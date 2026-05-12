@@ -1195,34 +1195,45 @@ async function verifyVehicle(idx) {
       }
     });
     
-    // Step 3: Call Findr API (or check cache)
+    // Step 3: Call Findr API (or check cache) - OPTIONAL, won't fail verify
     if (btn) btn.innerHTML = '🔍 Fetching owner details...';
     
-    var findrResult = await fetchVehicleFromFindr(plate);
+    var findrResult = null;
+    try {
+      findrResult = await fetchVehicleFromFindr(plate);
+    } catch (findrErr) {
+      console.warn('Findr lookup skipped:', findrErr.message);
+      // Continue without owner details - admin can manually add later
+    }
     
     // Step 4: Log to verification_log
-    await api('/rest/v1/prajapati_verification_log', {
-      method: 'POST',
-      body: {
-        verifier_id: state.user.id,
-        verifier_name: state.user.name,
-        verifier_phone: state.user.phone,
-        vehicle_group_id: groupId,
-        verified_plate: plate,
-        ocr_plates: v.ocrPlates,
-        photo_ids: photoIds,
-        photo_count: v.photos.length,
-        campaign_key: v.campaign,
-        member_name: v.member,
-        capture_date: v.date,
-        findr_called: !!findrResult,
-        findr_success: findrResult && findrResult.success,
-        owner_name: findrResult ? findrResult.ownerName : null,
-        owner_mobile: findrResult ? findrResult.mobile : null,
-        action_type: 'verify',
-        notes: 'Auto-verified via portal'
-      }
-    });
+    try {
+      await api('/rest/v1/prajapati_verification_log', {
+        method: 'POST',
+        body: {
+          verifier_id: state.user.id,
+          verifier_name: state.user.name,
+          verifier_phone: state.user.phone,
+          vehicle_group_id: groupId,
+          verified_plate: plate,
+          ocr_plates: v.ocrPlates,
+          photo_ids: photoIds,
+          photo_count: v.photos.length,
+          campaign_key: v.campaign,
+          member_name: v.member,
+          capture_date: v.date,
+          findr_called: !!findrResult,
+          findr_success: !!(findrResult && findrResult.success),
+          owner_name: findrResult ? findrResult.ownerName : null,
+          owner_mobile: findrResult ? findrResult.mobile : null,
+          action_type: 'verify',
+          notes: 'Auto-verified via portal'
+        }
+      });
+    } catch (logErr) {
+      console.warn('Log save failed:', logErr.message);
+      // Non-critical, continue
+    }
     
     // Step 5: Update local state
     v.verified = true;
@@ -1234,7 +1245,16 @@ async function verifyVehicle(idx) {
       v.mobile = findrResult.mobile;
     }
     
-    toast('✅ Verified: ' + plate + (findrResult && findrResult.ownerName ? ' (' + findrResult.ownerName + ')' : ''), 'success');
+    // Show appropriate success message based on Findr result
+    var successMsg;
+    if (findrResult && findrResult.ownerName) {
+      successMsg = '✅ Verified: ' + plate + ' (' + findrResult.ownerName + ')';
+    } else if (findrResult) {
+      successMsg = '✅ Verified: ' + plate + ' (cached, no owner details)';
+    } else {
+      successMsg = '✅ Verified: ' + plate + ' (owner details: pending Findr)';
+    }
+    toast(successMsg, 'success');
     
     // Refresh
     renderQueue();
@@ -1253,7 +1273,7 @@ async function verifyVehicle(idx) {
 // ─── FETCH FROM FINDR ───
 async function fetchVehicleFromFindr(plate) {
   try {
-    // Check cache first
+    // Check cache first (Supabase - always available)
     var cached = await api('/rest/v1/prajapati_vehicle_lookup?select=*&plate=eq.' + encodeURIComponent(plate));
     
     if (cached && cached.length > 0) {
@@ -1267,12 +1287,53 @@ async function fetchVehicleFromFindr(plate) {
         rto: c.rto
       };
     }
+  } catch (err) {
+    console.warn('Cache check failed:', err);
+  }
+  
+  // No cache - try Findr server (OPTIONAL - won't fail verify if offline)
+  if (!FINDR_SERVER_URL || FINDR_SERVER_URL.indexOf('localhost') !== -1) {
+    // Don't try localhost from production - skip silently
+    console.log('Findr server: localhost detected, skipping (will fetch later)');
+    return null;
+  }
+  
+  try {
+    // Add timeout so we don't hang forever
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function() { controller.abort(); }, 8000);
     
-    // Call Findr server
-    var resp = await fetch(FINDR_SERVER_URL + '/api/vehicle/' + encodeURIComponent(plate));
-    if (!resp.ok) return null;
+    var resp = await fetch(FINDR_SERVER_URL + '/api/vehicle/' + encodeURIComponent(plate), {
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
     
-    var data = await resp.json();
+    if (!resp.ok) {
+      console.warn('Findr server returned status:', resp.status);
+      return null;
+    }
+    
+    // Check response is JSON before parsing
+    var contentType = resp.headers.get('content-type');
+    if (!contentType || contentType.indexOf('application/json') === -1) {
+      console.warn('Findr server returned non-JSON response');
+      return null;
+    }
+    
+    // Get text first, then parse safely
+    var text = await resp.text();
+    if (!text || text.trim() === '') {
+      console.warn('Findr server returned empty response');
+      return null;
+    }
+    
+    var data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.warn('Failed to parse Findr response:', text.substring(0, 100));
+      return null;
+    }
     
     if (data.success && data.data) {
       // Save to cache
@@ -1313,7 +1374,11 @@ async function fetchVehicleFromFindr(plate) {
     
     return null;
   } catch (err) {
-    console.warn('Findr fetch failed:', err);
+    if (err.name === 'AbortError') {
+      console.warn('Findr request timed out');
+    } else {
+      console.warn('Findr fetch failed:', err.message);
+    }
     return null;
   }
 }
