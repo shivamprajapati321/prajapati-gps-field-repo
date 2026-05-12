@@ -734,23 +734,22 @@ function cleanPlate(p) {
 // ─── LOGIN ───
 function doLogin() {
   var phone = $('loginPhone').value.trim().replace(/[^0-9]/g, '');
-  if (phone.length < 10) return toast('Invalid phone number', 'error');
+  if (phone.length < 10) return toast('Enter 10 digit phone number', 'error');
   
-  // Last 10 digits for matching
-  var phoneLastTen = phone.slice(-10);
+  // Use exact 10 digits (matches admin.html pattern)
+  if (phone.length > 10) phone = phone.slice(-10);
   
-  api('/rest/v1/trial_members?select=*&active=eq.true')
+  api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*')
     .then(function(members) {
-      var found = members.find(function(m) {
-        var memberPhone = (m.phone || '').replace(/[^0-9]/g, '').slice(-10);
-        return memberPhone === phoneLastTen;
-      });
+      if (!members || members.length === 0) {
+        return toast('Number not registered or inactive', 'error');
+      }
       
-      if (!found) return toast('User not found or inactive', 'error');
-      
+      var found = members[0];
       var role = (found.role || '').toLowerCase();
+      
       if (role !== 'verifier' && role !== 'admin' && role !== 'owner') {
-        return toast('Only Verifiers and Admins can login here', 'error');
+        return toast('Only Verifiers and Admins can login here. Your role: ' + role, 'error');
       }
       
       state.user = found;
@@ -826,7 +825,7 @@ function loadFilters() {
       });
     });
   
-  api('/rest/v1/trial_members?select=phone,name&active=eq.true&role=eq.field&order=name.asc')
+  api('/rest/v1/trial_team_members?select=phone,name&active=eq.true&role=eq.field&order=name.asc')
     .then(function(members) {
       state.members = members || [];
       var sel = $('filterMember');

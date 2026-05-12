@@ -353,11 +353,11 @@ label { display: block; font-size: 10px; font-weight: 600; text-transform: upper
         <div><label>Campaign</label><select id="photoCampaign"><option value="">All</option></select></div>
         <div><label>Member</label><select id="photoMember"><option value="">All</option></select></div>
         <button class="btn" onclick="loadPhotos()">Filter</button>
-        <button class="btn" style="background:#0f1c5e; color:#fff;" onclick="openPPTGenerator()">📊 Generate PPT</button>
         <button class="btn" style="background:#10b981; color:#fff;" onclick="downloadPhotosZip()" id="zipDownloadBtn">📦 Download ZIP</button>
+        <button class="btn" style="background:#22c55e; color:#fff;" onclick="downloadExcelReport()" title="Download standalone Excel report (campaign-wise, date-wise, team-wise, location-wise)">📊 Excel Report</button>
+        <button class="btn" style="background:#ef4444; color:#fff;" onclick="openPPTGenerator()" title="Generate PowerPoint presentation with verified vehicle data">📊 Generate PPT</button>
         <button class="btn" style="background:#f59e0b; color:#fff;" onclick="configFindrServer()" title="Configure Findr server URL for auto vehicle owner lookup">⚙️ Findr</button>
         <button class="btn" style="background:#8b5cf6; color:#fff;" onclick="openBulkUpload()" title="Upload existing vehicle data (Excel/CSV) - save Findr API costs">📤 Bulk Import</button>
-        <button class="btn" style="background:#ef4444; color:#fff;" onclick="openPPTGenerator()" title="Generate PowerPoint presentation with verified vehicle data">📊 Generate PPT</button>
       </div>
     </div>
     <div id="photosList"><div class="empty-state">Filter karo aur photos load karo</div></div>
@@ -1223,8 +1223,147 @@ function buildAndDownloadZip(photos, btn) {
 var FINDR_SERVER_URL = (localStorage.getItem('findr_server_url') || 'http://localhost:3000').replace(/\/$/, '');
 
 // ═══════════════════════════════════════════════════════════════════════════
-// V9: PPT GENERATOR (PowerPoint output for client reports)
+// V9: STANDALONE EXCEL REPORT DOWNLOAD
 // ═══════════════════════════════════════════════════════════════════════════
+//
+// Download comprehensive Excel report with 6 sheets:
+//   1. All Vehicles (full list)
+//   2. Campaign-wise (stats per campaign)
+//   3. Date-wise (daily breakdown)
+//   4. Team-wise (member performance)
+//   5. Location-wise (city/area breakdown)
+//   6. Summary (overall stats)
+//
+// Uses filters: date range, campaign, member
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function downloadExcelReport() {
+  var btn = event.target;
+  var originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Loading...';
+  
+  try {
+    if (typeof XLSX === 'undefined') {
+      throw new Error('Excel library not loaded. Please refresh page.');
+    }
+    
+    // Read filters
+    var dateFrom = document.getElementById('photoDate').value;
+    var dateTo = document.getElementById('photoDateEnd').value || dateFrom;
+    var campaign = document.getElementById('photoCampaign').value;
+    var member = document.getElementById('photoMember').value;
+    
+    // Build query
+    var qs = '/rest/v1/trial_photos?select=*&order=captured_at.desc&limit=2000';
+    
+    if (dateFrom) {
+      var istStart = new Date(dateFrom + 'T00:00:00+05:30');
+      qs += '&captured_at=gte.' + istStart.toISOString();
+    }
+    if (dateTo) {
+      var istEnd = new Date(dateTo + 'T23:59:59+05:30');
+      qs += '&captured_at=lte.' + istEnd.toISOString();
+    }
+    if (campaign) qs += '&campaign_key=eq.' + encodeURIComponent(campaign);
+    if (member) qs += '&member_phone=eq.' + encodeURIComponent(member);
+    
+    btn.innerHTML = '⏳ Loading photos...';
+    
+    var photos = await api(qs);
+    photos = photos || [];
+    
+    if (photos.length === 0) {
+      alert('❌ No photos found in selected filters.\n\nTry different date range or campaign.');
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+      return;
+    }
+    
+    btn.innerHTML = '⏳ Grouping vehicles...';
+    
+    // Group photos by vehicle
+    var groups = groupPhotosByVehicle(photos);
+    
+    // Fetch cached vehicle details for enrichment
+    var allPlates = [];
+    Object.keys(groups).forEach(function(k) {
+      if (groups[k].hasPlate && groups[k].plate) allPlates.push(groups[k].plate);
+    });
+    
+    if (allPlates.length > 0) {
+      btn.innerHTML = '⏳ Fetching owner details...';
+      try {
+        var qs2 = '/rest/v1/prajapati_vehicle_lookup?select=*&plate=in.(' + 
+                 allPlates.map(function(p) { return '"' + p + '"'; }).join(',') + ')';
+        var ownerData = await api(qs2);
+        ownerData = ownerData || [];
+        
+        var ownerMap = {};
+        ownerData.forEach(function(o) { ownerMap[o.plate] = o; });
+        
+        Object.keys(groups).forEach(function(k) {
+          var g = groups[k];
+          if (g.hasPlate && g.plate && ownerMap[g.plate]) {
+            var o = ownerMap[g.plate];
+            g.ownerName = o.manual_override_name || o.owner_name || '';
+            g.mobile = o.manual_override_mobile || o.mobile || '';
+            g.maker = o.maker || '';
+            g.rto = o.rto || '';
+            g.fromCache = true;
+          }
+        });
+      } catch (e) {
+        console.warn('Owner enrichment failed:', e);
+      }
+    }
+    
+    btn.innerHTML = '⏳ Building Excel...';
+    
+    // Generate Excel
+    var excelBlob = generateExcelReport(groups, photos);
+    
+    if (!excelBlob) {
+      throw new Error('Failed to generate Excel');
+    }
+    
+    // Download
+    var campaignLabel = campaign ? campaign : 'all';
+    var dateLabel = dateFrom + (dateTo && dateTo !== dateFrom ? '_to_' + dateTo : '');
+    var filename = 'Prajapati_Report_' + sanitizeName(campaignLabel) + '_' + (dateLabel || 'all') + '.xlsx';
+    
+    saveAs(excelBlob, filename);
+    
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+    
+    var groupArr = Object.values(groups);
+    var identified = groupArr.filter(function(g) { return g.hasPlate; }).length;
+    var withOwner = groupArr.filter(function(g) { return g.ownerName; }).length;
+    var verified = groupArr.filter(function(g) { return g.isVerified; }).length;
+    
+    alert('✅ Excel Report Downloaded!\n\n' +
+          '📁 File: ' + filename + '\n' +
+          '📊 6 Sheets included:\n' +
+          '   1. All Vehicles\n' +
+          '   2. Campaign-wise\n' +
+          '   3. Date-wise\n' +
+          '   4. Team-wise\n' +
+          '   5. Location-wise (NEW!)\n' +
+          '   6. Summary\n\n' +
+          '🚗 Total Vehicles: ' + groupArr.length + '\n' +
+          '✅ Verified: ' + verified + '\n' +
+          '👤 With Owner Details: ' + withOwner);
+    
+  } catch (err) {
+    console.error('Excel report error:', err);
+    alert('❌ Failed: ' + err.message);
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  }
+}
+
+
 //
 // Generates beautiful presentations from verified vehicle data:
 //   - Back Panel only (1 photo per slide)
@@ -2900,11 +3039,66 @@ function generateExcelReport(groups, photos) {
   ];
   XLSX.utils.book_append_sheet(wb, ws4, 'Date-wise');
   
-  // ─── SHEET 5: Summary ───
+  // ─── SHEET 5: Location-wise (NEW!) ───
+  var byLocation = {};
+  groupArr.forEach(function(g) {
+    var loc = g.city || 'Unknown';
+    if (!byLocation[loc]) {
+      byLocation[loc] = { 
+        total: 0, identified: 0, photos: 0, withMobile: 0, 
+        campaigns: new Set(), members: new Set(), dates: new Set(),
+        verified: 0
+      };
+    }
+    byLocation[loc].total++;
+    if (g.hasPlate) byLocation[loc].identified++;
+    if (g.mobile) byLocation[loc].withMobile++;
+    if (g.isVerified) byLocation[loc].verified++;
+    byLocation[loc].photos += g.photos.length;
+    if (g.campaign) byLocation[loc].campaigns.add(g.campaign);
+    if (g.member) byLocation[loc].members.add(g.member);
+    if (g.date) byLocation[loc].dates.add(g.date);
+  });
+  
+  var locationData = [
+    ['Location/City', 'Total Vehicles', 'Plates Identified', 'ID Rate %', 'Mobile Captured', 'Verified', 'Total Photos', 'Campaigns', 'Team Members', 'Days Covered']
+  ];
+  
+  // Sort by total vehicles descending
+  Object.keys(byLocation).sort(function(a, b) {
+    return byLocation[b].total - byLocation[a].total;
+  }).forEach(function(loc) {
+    var data = byLocation[loc];
+    locationData.push([
+      loc,
+      data.total,
+      data.identified,
+      data.total > 0 ? Math.round((data.identified / data.total) * 100) + '%' : '0%',
+      data.withMobile,
+      data.verified,
+      data.photos,
+      Array.from(data.campaigns).join(', '),
+      Array.from(data.members).join(', '),
+      data.dates.size
+    ]);
+  });
+  
+  var wsLoc = XLSX.utils.aoa_to_sheet(locationData);
+  wsLoc['!cols'] = [
+    { wch: 22 }, { wch: 14 }, { wch: 16 }, { wch: 10 }, { wch: 14 }, 
+    { wch: 10 }, { wch: 12 }, { wch: 25 }, { wch: 25 }, { wch: 12 }
+  ];
+  XLSX.utils.book_append_sheet(wb, wsLoc, 'Location-wise');
+  
+  // ─── SHEET 6: Summary ───
   var totalIdentified = groupArr.filter(function(g) { return g.hasPlate; }).length;
   var totalWithMobile = groupArr.filter(function(g) { return g.mobile; }).length;
   var totalWithOwner = groupArr.filter(function(g) { return g.ownerName; }).length;
+  var totalVerified = groupArr.filter(function(g) { return g.isVerified; }).length;
   var dates = Object.keys(byDate);
+  var topLocations = Object.keys(byLocation).sort(function(a, b) {
+    return byLocation[b].total - byLocation[a].total;
+  }).slice(0, 5);
   
   var summaryData = [
     ['PRAJAPATI ADVERTISING - VEHICLE CAMPAIGN REPORT'],
@@ -2915,12 +3109,21 @@ function generateExcelReport(groups, photos) {
     ['── SUMMARY METRICS ──'],
     ['Total Unique Vehicles:', groupArr.length],
     ['Plates Successfully Identified:', totalIdentified + ' (' + (groupArr.length > 0 ? Math.round((totalIdentified / groupArr.length) * 100) : 0) + '%)'],
+    ['✅ VERIFIED (Quality Approved):', totalVerified + ' (' + (groupArr.length > 0 ? Math.round((totalVerified / groupArr.length) * 100) : 0) + '%)'],
     ['Owner Names Captured:', totalWithOwner + ' (' + (groupArr.length > 0 ? Math.round((totalWithOwner / groupArr.length) * 100) : 0) + '%)'],
     ['Mobile Numbers Captured:', totalWithMobile + ' (' + (groupArr.length > 0 ? Math.round((totalWithMobile / groupArr.length) * 100) : 0) + '%)'],
     ['Total Photos:', photos.length],
     ['Active Days:', dates.length],
     ['Campaigns Covered:', Object.keys(byCampaign).length],
     ['Team Members Active:', Object.keys(byTeam).length],
+    ['Locations/Cities Covered:', Object.keys(byLocation).length],
+    [''],
+    ['── TOP 5 LOCATIONS ──'],
+    [topLocations[0] || '—', topLocations[0] ? byLocation[topLocations[0]].total + ' vehicles' : ''],
+    [topLocations[1] || '—', topLocations[1] ? byLocation[topLocations[1]].total + ' vehicles' : ''],
+    [topLocations[2] || '—', topLocations[2] ? byLocation[topLocations[2]].total + ' vehicles' : ''],
+    [topLocations[3] || '—', topLocations[3] ? byLocation[topLocations[3]].total + ' vehicles' : ''],
+    [topLocations[4] || '—', topLocations[4] ? byLocation[topLocations[4]].total + ' vehicles' : ''],
     [''],
     ['── DATA SOURCES ──'],
     ['From Findr API:', groupArr.filter(function(g) { return g.fromFindr; }).length],
@@ -2934,9 +3137,9 @@ function generateExcelReport(groups, photos) {
     ['Website:', 'prajapatiadvertising.co.in']
   ];
   
-  var ws5 = XLSX.utils.aoa_to_sheet(summaryData);
-  ws5['!cols'] = [{ wch: 30 }, { wch: 50 }];
-  XLSX.utils.book_append_sheet(wb, ws5, 'Summary');
+  var ws6 = XLSX.utils.aoa_to_sheet(summaryData);
+  ws6['!cols'] = [{ wch: 30 }, { wch: 50 }];
+  XLSX.utils.book_append_sheet(wb, ws6, 'Summary');
   
   // Convert workbook to binary
   var wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
