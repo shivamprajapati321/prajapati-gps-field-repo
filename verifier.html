@@ -1168,12 +1168,22 @@ function usePlate(idx, plate) {
 // ─── VERIFY VEHICLE ───
 async function verifyVehicle(idx) {
   var v = state.vehicles[idx];
-  if (!v) return;
+  if (!v) { 
+    console.error('[Verify] No vehicle at idx:', idx);
+    return; 
+  }
+  
+  console.log('[Verify] Starting verification for vehicle:', v);
   
   var input = $('plate-input-' + idx);
-  if (!input) return;
+  if (!input) { 
+    console.error('[Verify] Input not found for idx:', idx);
+    return; 
+  }
   
   var plate = cleanPlate(input.value);
+  console.log('[Verify] Plate entered:', plate);
+  
   if (!plate || plate.length < 4) {
     return toast('Please enter a valid plate (min 4 chars)', 'error');
   }
@@ -1187,48 +1197,75 @@ async function verifyVehicle(idx) {
   try {
     // Step 1: Generate group ID (or use existing)
     var groupId = v.groupId || generateUUID();
+    console.log('[Verify] Group ID:', groupId);
     
     // Step 2: Update all photos in this group
     var photoIds = v.photos.map(function(p) { return p.id; });
+    console.log('[Verify] Photo IDs to update:', photoIds);
     
     if (btn) btn.innerHTML = '⏳ Updating photos...';
     
     var updateResult;
     try {
-      updateResult = await api('/rest/v1/trial_photos?id=in.(' + photoIds.map(function(id) { return '"' + id + '"'; }).join(',') + ')', {
+      // Build URL - UUIDs in PostgREST in() should work without quotes
+      var url = '/rest/v1/trial_photos?id=in.(' + photoIds.join(',') + ')';
+      console.log('[Verify] PATCH URL:', url);
+      
+      var updateBody = {
+        verified_plate: plate,
+        verified_by: state.user.id,
+        verified_at: new Date().toISOString(),
+        vehicle_group_id: groupId,
+        is_verified: true,
+        rejected: false,
+        rejection_reason: null
+      };
+      console.log('[Verify] PATCH body:', updateBody);
+      
+      updateResult = await api(url, {
         method: 'PATCH',
         headers: {
           'Prefer': 'return=representation'
         },
-        body: {
-          verified_plate: plate,
-          verified_by: state.user.id,
-          verified_at: new Date().toISOString(),
-          vehicle_group_id: groupId,
-          is_verified: true,
-          rejected: false,
-          rejection_reason: null
-        }
+        body: updateBody
       });
-      console.log('[Verify] Updated photos result:', updateResult);
+      console.log('[Verify] PATCH result:', updateResult);
+      console.log('[Verify] Number of rows updated:', updateResult ? updateResult.length : 0);
     } catch (updateErr) {
-      console.error('[Verify] PATCH error:', updateErr);
+      console.error('[Verify] PATCH error full:', updateErr);
+      console.error('[Verify] Error message:', updateErr.message);
       throw new Error('Failed to update photos: ' + updateErr.message);
     }
     
+    // If updateResult is empty array, no rows matched - critical error
+    if (Array.isArray(updateResult) && updateResult.length === 0) {
+      console.error('[Verify] PATCH matched 0 rows! Photo IDs may be wrong.');
+      // Try one more time with explicit id check
+      var checkUrl = '/rest/v1/trial_photos?id=eq.' + photoIds[0] + '&select=id,is_verified';
+      var checkResult = await api(checkUrl);
+      console.log('[Verify] Check first photo exists:', checkResult);
+      
+      if (!checkResult || checkResult.length === 0) {
+        throw new Error('Photo with ID ' + photoIds[0] + ' not found in DB!');
+      }
+      throw new Error('PATCH update matched 0 rows. Run DIAGNOSTIC.sql to check.');
+    }
+    
     // Don't fail if updateResult is null - PATCH might succeed but return empty
-    // We'll verify by re-fetching one photo
-    if (!updateResult || updateResult.length === 0) {
+    if (!updateResult) {
       // Re-fetch to confirm update
       try {
         var verifyCheck = await api('/rest/v1/trial_photos?id=eq.' + photoIds[0] + '&select=is_verified,verified_plate');
         console.log('[Verify] Re-fetch check:', verifyCheck);
-        if (!verifyCheck || verifyCheck.length === 0 || !verifyCheck[0].is_verified) {
-          throw new Error('Photos did not update in database. Schema cache may be stale - try NOTIFY pgrst reload schema');
+        if (!verifyCheck || verifyCheck.length === 0) {
+          throw new Error('Photo not found after update');
+        }
+        if (!verifyCheck[0].is_verified) {
+          throw new Error('is_verified did not save (got: ' + verifyCheck[0].is_verified + '). Schema cache may be stale - run NOTIFY pgrst reload schema in Supabase');
         }
       } catch (checkErr) {
         console.error('[Verify] Verify check failed:', checkErr);
-        // Continue anyway - PATCH might have worked
+        throw checkErr;
       }
     }
     
@@ -1447,7 +1484,7 @@ async function rejectVehicle(idx) {
   try {
     var photoIds = v.photos.map(function(p) { return p.id; });
     
-    await api('/rest/v1/trial_photos?id=in.(' + photoIds.map(function(id) { return '"' + id + '"'; }).join(',') + ')', {
+    await api('/rest/v1/trial_photos?id=in.(' + photoIds.join(',') + ')', {
       method: 'PATCH',
       body: {
         rejected: true,

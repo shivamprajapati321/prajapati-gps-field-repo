@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Verifier PATCH Debug Tool</title>
+<style>
+body { font-family: monospace; padding: 20px; max-width: 900px; margin: 0 auto; }
+button { padding: 10px 20px; margin: 5px; cursor: pointer; font-size: 14px; }
+.success { background: #10b981; color: #fff; border: none; border-radius: 6px; }
+.danger { background: #ef4444; color: #fff; border: none; border-radius: 6px; }
+.primary { background: #0073e6; color: #fff; border: none; border-radius: 6px; }
+input { padding: 8px; font-size: 14px; width: 100%; margin: 5px 0; font-family: monospace; }
+.log { background: #1a1a2e; color: #00ff88; padding: 15px; border-radius: 6px; margin-top: 15px; white-space: pre-wrap; font-size: 12px; max-height: 600px; overflow-y: auto; }
+h2 { color: #0073e6; }
+.section { background: #f5f7fb; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #0073e6; }
+</style>
+</head>
+<body>
+
+<h1>🔧 Verifier PATCH Debug Tool</h1>
+<p>Use this to test EXACTLY what's happening when verifying</p>
+
+<div class="section">
+<h2>Step 1: Get a Photo ID</h2>
+<button class="primary" onclick="fetchSamplePhoto()">📷 Fetch Latest Photo</button>
+<div id="photoInfo"></div>
+</div>
+
+<div class="section">
+<h2>Step 2: Test PATCH Update</h2>
+<input type="text" id="photoId" placeholder="Photo UUID (from Step 1)" />
+<input type="text" id="plateNum" placeholder="Verified plate (e.g. MH12NW7440)" value="TEST123" />
+<button class="success" onclick="testPatch()">▶️ Test PATCH</button>
+<button class="danger" onclick="testRollback()">↩️ Rollback (unverify)</button>
+</div>
+
+<div class="section">
+<h2>Step 3: Verify Update Worked</h2>
+<button class="primary" onclick="verifyData()">🔍 Read Photo Back</button>
+</div>
+
+<div class="section">
+<h2>Step 4: Test Schema Reload</h2>
+<button class="primary" onclick="forceSchemaReload()">🔄 NOTIFY pgrst</button>
+<p>This is a stored procedure check - just verifies columns visible to API</p>
+</div>
+
+<div class="log" id="log">📋 Logs will appear here...</div>
+
+<script>
+const SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
+
+function log(msg, data) {
+  const logEl = document.getElementById('log');
+  const time = new Date().toLocaleTimeString();
+  let entry = '[' + time + '] ' + msg;
+  if (data !== undefined) {
+    entry += '\n' + JSON.stringify(data, null, 2);
+  }
+  logEl.textContent = entry + '\n\n' + logEl.textContent;
+}
+
+async function call(path, options = {}) {
+  options.headers = {
+    'apikey': SUPABASE_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_KEY,
+    'Content-Type': 'application/json',
+    ...(options.headers || {})
+  };
+  if (options.body && typeof options.body !== 'string') {
+    options.body = JSON.stringify(options.body);
+  }
+  
+  log('🌐 Request: ' + (options.method || 'GET') + ' ' + path);
+  if (options.body) log('📤 Body:', JSON.parse(options.body));
+  
+  const r = await fetch(SUPABASE_URL + path, options);
+  const text = await r.text();
+  
+  log('📥 Status: ' + r.status + ' ' + r.statusText);
+  log('📥 Response body length: ' + text.length + ' chars');
+  log('📥 Raw response: ' + (text || '(empty)'));
+  
+  if (!r.ok) {
+    log('❌ ERROR! HTTP ' + r.status);
+    return null;
+  }
+  
+  if (!text || text.trim() === '') {
+    log('⚠️ Empty body (this is normal for PATCH without Prefer header)');
+    return null;
+  }
+  
+  try {
+    const json = JSON.parse(text);
+    log('✅ Parsed JSON:', json);
+    return json;
+  } catch (e) {
+    log('❌ JSON parse failed: ' + e.message);
+    return null;
+  }
+}
+
+async function fetchSamplePhoto() {
+  log('═══════════════════════════════════════');
+  log('Fetching latest photo...');
+  
+  const photos = await call('/rest/v1/trial_photos?select=id,vehicle_number,verified_plate,is_verified,captured_at&order=captured_at.desc&limit=1');
+  
+  if (photos && photos.length > 0) {
+    const p = photos[0];
+    document.getElementById('photoId').value = p.id;
+    document.getElementById('photoInfo').innerHTML = 
+      '<p><b>ID:</b> ' + p.id + '</p>' +
+      '<p><b>Vehicle:</b> ' + (p.vehicle_number || '(none)') + '</p>' +
+      '<p><b>Verified plate:</b> ' + (p.verified_plate || '(none)') + '</p>' +
+      '<p><b>Is verified:</b> ' + p.is_verified + '</p>';
+    log('✅ Photo loaded:', p);
+  } else {
+    log('❌ No photos found');
+  }
+}
+
+async function testPatch() {
+  log('═══════════════════════════════════════');
+  log('Testing PATCH update...');
+  
+  const id = document.getElementById('photoId').value.trim();
+  const plate = document.getElementById('plateNum').value.trim();
+  
+  if (!id || !plate) {
+    log('❌ Please enter ID and plate');
+    return;
+  }
+  
+  // Test 1: Single ID with eq
+  log('\n--- TEST 1: Single ID with eq filter ---');
+  const result1 = await call('/rest/v1/trial_photos?id=eq.' + id, {
+    method: 'PATCH',
+    headers: { 'Prefer': 'return=representation' },
+    body: {
+      verified_plate: plate,
+      is_verified: true,
+      verified_at: new Date().toISOString()
+    }
+  });
+  
+  log('Result count: ' + (Array.isArray(result1) ? result1.length : 'not array'));
+  if (Array.isArray(result1) && result1.length > 0) {
+    log('✅ SUCCESS! Updated photo:', result1[0]);
+  } else if (result1 === null) {
+    log('⚠️ Got null - PATCH may have worked but no body returned');
+  }
+}
+
+async function testRollback() {
+  log('═══════════════════════════════════════');
+  log('Rolling back (un-verify)...');
+  
+  const id = document.getElementById('photoId').value.trim();
+  if (!id) return log('❌ Need photo ID');
+  
+  const result = await call('/rest/v1/trial_photos?id=eq.' + id, {
+    method: 'PATCH',
+    headers: { 'Prefer': 'return=representation' },
+    body: {
+      verified_plate: null,
+      is_verified: false,
+      verified_at: null,
+      vehicle_group_id: null
+    }
+  });
+  
+  log('Rollback done', result);
+}
+
+async function verifyData() {
+  log('═══════════════════════════════════════');
+  log('Reading photo back from DB...');
+  
+  const id = document.getElementById('photoId').value.trim();
+  if (!id) return log('❌ Need photo ID');
+  
+  const result = await call('/rest/v1/trial_photos?id=eq.' + id + '&select=*');
+  
+  if (result && result.length > 0) {
+    const p = result[0];
+    log('📊 Current state in DB:', {
+      id: p.id,
+      verified_plate: p.verified_plate,
+      is_verified: p.is_verified,
+      verified_at: p.verified_at,
+      vehicle_group_id: p.vehicle_group_id,
+      rejected: p.rejected
+    });
+  }
+}
+
+async function forceSchemaReload() {
+  log('═══════════════════════════════════════');
+  log('Force schema reload via API check...');
+  
+  // Just call columns endpoint to verify
+  const cols = await call('/rest/v1/trial_photos?select=id,is_verified,verified_plate&limit=1');
+  log('Schema check - if these columns visible, API has updated:', cols);
+  log('\n💡 If columns NOT visible, run in Supabase SQL Editor:');
+  log('   NOTIFY pgrst, \'reload schema\';');
+}
+</script>
+
+</body>
+</html>
