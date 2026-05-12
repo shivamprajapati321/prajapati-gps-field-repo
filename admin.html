@@ -474,7 +474,18 @@ function api(path, options) {
     if (!r.ok) {
       return r.text().then(function(text) { throw new Error('API ' + r.status + ': ' + text); });
     }
-    return r.status === 204 ? null : r.json();
+    // 204 No Content = no body
+    if (r.status === 204) return null;
+    // Safe text-then-parse (handles empty bodies)
+    return r.text().then(function(text) {
+      if (!text || text.trim() === '') return null;
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        console.warn('Failed to parse JSON:', text.substring(0, 100));
+        return null;
+      }
+    });
   });
 }
 
@@ -1238,14 +1249,19 @@ var FINDR_SERVER_URL = (localStorage.getItem('findr_server_url') || 'http://loca
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function downloadExcelReport() {
-  var btn = event.target;
-  var originalText = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = '⏳ Loading...';
+  // Find button reliably (not via event.target which can fail)
+  var btn = document.querySelector('button[onclick="downloadExcelReport()"]');
+  var originalText = btn ? btn.innerHTML : '📊 Excel Report';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Loading...';
+  }
+  
+  console.log('[Excel Report] Starting download...');
   
   try {
     if (typeof XLSX === 'undefined') {
-      throw new Error('Excel library not loaded. Please refresh page.');
+      throw new Error('Excel library not loaded. Please refresh page (Ctrl+Shift+R).');
     }
     
     // Read filters
@@ -1268,19 +1284,23 @@ async function downloadExcelReport() {
     if (campaign) qs += '&campaign_key=eq.' + encodeURIComponent(campaign);
     if (member) qs += '&member_phone=eq.' + encodeURIComponent(member);
     
-    btn.innerHTML = '⏳ Loading photos...';
+    if (btn) btn.innerHTML = '⏳ Loading photos...';
+    console.log('[Excel] Query:', qs);
     
     var photos = await api(qs);
     photos = photos || [];
+    console.log('[Excel] Photos loaded:', photos.length);
     
     if (photos.length === 0) {
-      alert('❌ No photos found in selected filters.\n\nTry different date range or campaign.');
-      btn.disabled = false;
-      btn.innerHTML = originalText;
+      alert('❌ No photos found in selected filters.\n\nTry different date range or campaign.\n\nFrom: ' + dateFrom + '\nTo: ' + dateTo);
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
       return;
     }
     
-    btn.innerHTML = '⏳ Grouping vehicles...';
+    if (btn) btn.innerHTML = '⏳ Grouping vehicles...';
     
     // Group photos by vehicle
     var groups = groupPhotosByVehicle(photos);
@@ -1292,7 +1312,7 @@ async function downloadExcelReport() {
     });
     
     if (allPlates.length > 0) {
-      btn.innerHTML = '⏳ Fetching owner details...';
+      if (btn) btn.innerHTML = '⏳ Fetching owner details...';
       try {
         var qs2 = '/rest/v1/prajapati_vehicle_lookup?select=*&plate=in.(' + 
                  allPlates.map(function(p) { return '"' + p + '"'; }).join(',') + ')';
@@ -1318,7 +1338,7 @@ async function downloadExcelReport() {
       }
     }
     
-    btn.innerHTML = '⏳ Building Excel...';
+    if (btn) btn.innerHTML = '⏳ Building Excel...';
     
     // Generate Excel
     var excelBlob = generateExcelReport(groups, photos);
@@ -1334,8 +1354,10 @@ async function downloadExcelReport() {
     
     saveAs(excelBlob, filename);
     
-    btn.disabled = false;
-    btn.innerHTML = originalText;
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
     
     var groupArr = Object.values(groups);
     var identified = groupArr.filter(function(g) { return g.hasPlate; }).length;
@@ -1357,9 +1379,11 @@ async function downloadExcelReport() {
     
   } catch (err) {
     console.error('Excel report error:', err);
-    alert('❌ Failed: ' + err.message);
-    btn.disabled = false;
-    btn.innerHTML = originalText;
+    alert('❌ Failed: ' + err.message + '\n\nCheck browser console (F12) for details.');
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
   }
 }
 

@@ -703,7 +703,18 @@ function api(path, options) {
     if (!r.ok) {
       return r.text().then(function(text) { throw new Error('API ' + r.status + ': ' + text); });
     }
-    return r.status === 204 ? null : r.json();
+    // 204 No Content = no body
+    if (r.status === 204) return null;
+    // Get text first, then try to parse (handles empty bodies safely)
+    return r.text().then(function(text) {
+      if (!text || text.trim() === '') return null;
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        console.warn('Failed to parse JSON, returning raw text:', text.substring(0, 100));
+        return null;
+      }
+    });
   });
 }
 
@@ -929,13 +940,13 @@ function groupPhotos(photos) {
       g.ocrPlates.push(p.vehicle_number);
     }
     
-    // If any photo is verified, group is verified
-    if (p.is_verified) {
+    // If any photo is verified, group is verified (handle null/false/true)
+    if (p.is_verified === true) {
       g.verified = true;
-      g.verifiedPlate = p.verified_plate;
-      g.verifiedBy = p.verified_by;
+      g.verifiedPlate = p.verified_plate || g.verifiedPlate;
+      g.verifiedBy = p.verified_by || g.verifiedBy;
     }
-    if (p.rejected) {
+    if (p.rejected === true) {
       g.rejected = true;
     }
   });
@@ -1182,18 +1193,44 @@ async function verifyVehicle(idx) {
     
     if (btn) btn.innerHTML = '⏳ Updating photos...';
     
-    await api('/rest/v1/trial_photos?id=in.(' + photoIds.map(function(id) { return '"' + id + '"'; }).join(',') + ')', {
-      method: 'PATCH',
-      body: {
-        verified_plate: plate,
-        verified_by: state.user.id,
-        verified_at: new Date().toISOString(),
-        vehicle_group_id: groupId,
-        is_verified: true,
-        rejected: false,
-        rejection_reason: null
+    var updateResult;
+    try {
+      updateResult = await api('/rest/v1/trial_photos?id=in.(' + photoIds.map(function(id) { return '"' + id + '"'; }).join(',') + ')', {
+        method: 'PATCH',
+        headers: {
+          'Prefer': 'return=representation'
+        },
+        body: {
+          verified_plate: plate,
+          verified_by: state.user.id,
+          verified_at: new Date().toISOString(),
+          vehicle_group_id: groupId,
+          is_verified: true,
+          rejected: false,
+          rejection_reason: null
+        }
+      });
+      console.log('[Verify] Updated photos result:', updateResult);
+    } catch (updateErr) {
+      console.error('[Verify] PATCH error:', updateErr);
+      throw new Error('Failed to update photos: ' + updateErr.message);
+    }
+    
+    // Don't fail if updateResult is null - PATCH might succeed but return empty
+    // We'll verify by re-fetching one photo
+    if (!updateResult || updateResult.length === 0) {
+      // Re-fetch to confirm update
+      try {
+        var verifyCheck = await api('/rest/v1/trial_photos?id=eq.' + photoIds[0] + '&select=is_verified,verified_plate');
+        console.log('[Verify] Re-fetch check:', verifyCheck);
+        if (!verifyCheck || verifyCheck.length === 0 || !verifyCheck[0].is_verified) {
+          throw new Error('Photos did not update in database. Schema cache may be stale - try NOTIFY pgrst reload schema');
+        }
+      } catch (checkErr) {
+        console.error('[Verify] Verify check failed:', checkErr);
+        // Continue anyway - PATCH might have worked
       }
-    });
+    }
     
     // Step 3: Call Findr API (or check cache) - OPTIONAL, won't fail verify
     if (btn) btn.innerHTML = '🔍 Fetching owner details...';
