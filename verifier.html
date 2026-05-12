@@ -1298,10 +1298,26 @@ async function fetchVehicleFromFindr(plate) {
     return null;
   }
   
+  // Quick connectivity check (1 sec) - if server not reachable, skip
   try {
-    // Add timeout so we don't hang forever
+    var quickCheck = await Promise.race([
+      fetch(FINDR_SERVER_URL + '/api/health', { method: 'GET' }).then(r => r.ok),
+      new Promise(function(resolve) { setTimeout(function() { resolve(false); }, 1500); })
+    ]);
+    
+    if (!quickCheck) {
+      console.log('Findr server not reachable, skipping owner fetch');
+      return null;
+    }
+  } catch (e) {
+    console.log('Findr server check failed, skipping');
+    return null;
+  }
+  
+  try {
+    // Add timeout so we don't hang forever (reduced to 5 sec)
     var controller = new AbortController();
-    var timeoutId = setTimeout(function() { controller.abort(); }, 8000);
+    var timeoutId = setTimeout(function() { controller.abort(); }, 5000);
     
     var resp = await fetch(FINDR_SERVER_URL + '/api/vehicle/' + encodeURIComponent(plate), {
       signal: controller.signal
