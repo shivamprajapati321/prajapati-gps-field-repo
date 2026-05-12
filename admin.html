@@ -13,6 +13,10 @@
 <!-- JSZip + FileSaver for bulk photo download (ADDED) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<!-- SheetJS for Excel report generation (v9 ADDED) -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<!-- PptxGenJS for PPT generation (v9 ADDED) -->
+<script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: 'Poppins', sans-serif; background: #f4f6f9; color: #1a2980; min-height: 100vh; }
@@ -171,6 +175,7 @@ label { display: block; font-size: 10px; font-weight: 600; text-transform: upper
   <div class="tab" data-tab="assignments" onclick="switchTab('assignments')">Daily Assignments</div>
   <div class="tab" data-tab="photos" onclick="switchTab('photos')">Photos</div>
   <div class="tab" data-tab="clientlinks" onclick="switchTab('clientlinks')">Client Links</div>
+  <div class="tab" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:#fff;font-weight:700;" onclick="window.open('verifier.html','_blank')">🔍 Verifier Portal</div>
 </div>
 
 <div id="mainContainer" class="container" style="display:none;">
@@ -302,7 +307,7 @@ label { display: block; font-size: 10px; font-weight: 600; text-transform: upper
         <div class="field"><label>Phone (10 digits) *</label><input type="tel" id="mPhone" maxlength="10" placeholder="9876543210"></div>
       </div>
       <div class="field-row cols-2">
-        <div class="field"><label>Role *</label><select id="mRole"><option value="field">Field</option><option value="sales">Sales</option><option value="operations">Operations</option><option value="admin">Admin</option><option value="owner">Owner</option></select></div>
+        <div class="field"><label>Role *</label><select id="mRole"><option value="field">Field</option><option value="verifier">Verifier (Quality Control)</option><option value="sales">Sales</option><option value="operations">Operations</option><option value="admin">Admin</option><option value="owner">Owner</option></select></div>
         <div class="field"><label>City</label><input type="text" id="mCity" placeholder="Pune"></div>
       </div>
       <div class="action-row">
@@ -350,6 +355,9 @@ label { display: block; font-size: 10px; font-weight: 600; text-transform: upper
         <button class="btn" onclick="loadPhotos()">Filter</button>
         <button class="btn" style="background:#0f1c5e; color:#fff;" onclick="openPPTGenerator()">📊 Generate PPT</button>
         <button class="btn" style="background:#10b981; color:#fff;" onclick="downloadPhotosZip()" id="zipDownloadBtn">📦 Download ZIP</button>
+        <button class="btn" style="background:#f59e0b; color:#fff;" onclick="configFindrServer()" title="Configure Findr server URL for auto vehicle owner lookup">⚙️ Findr</button>
+        <button class="btn" style="background:#8b5cf6; color:#fff;" onclick="openBulkUpload()" title="Upload existing vehicle data (Excel/CSV) - save Findr API costs">📤 Bulk Import</button>
+        <button class="btn" style="background:#ef4444; color:#fff;" onclick="openPPTGenerator()" title="Generate PowerPoint presentation with verified vehicle data">📊 Generate PPT</button>
       </div>
     </div>
     <div id="photosList"><div class="empty-state">Filter karo aur photos load karo</div></div>
@@ -1202,129 +1210,1928 @@ function downloadPhotosZip() {
 }
 
 function buildAndDownloadZip(photos, btn) {
+  // ─── V9: SMART ZIP WITH FINDR + EXCEL ───
+  smartBuildAndDownloadZip(photos, btn);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// V9: SMART ZIP WITH VEHICLE GROUPING + FINDR API + EXCEL REPORT
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Findr API server URL (CONFIGURABLE)
+// Default: localhost, but admin can set custom URL in localStorage
+var FINDR_SERVER_URL = (localStorage.getItem('findr_server_url') || 'http://localhost:3000').replace(/\/$/, '');
+
+// ═══════════════════════════════════════════════════════════════════════════
+// V9: PPT GENERATOR (PowerPoint output for client reports)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Generates beautiful presentations from verified vehicle data:
+//   - Back Panel only (1 photo per slide)
+//   - All Sides (3 photos per slide)
+//   - Auto-populated: Plate, Owner, Mobile, Location
+// ═══════════════════════════════════════════════════════════════════════════
+
+function openPPTGenerator() {
+  var modal = document.getElementById('pptGenModal');
+  if (modal) {
+    modal.style.display = 'flex';
+    return;
+  }
+  
+  modal = document.createElement('div');
+  modal.id = 'pptGenModal';
+  modal.style.cssText = 'display:flex;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;align-items:center;justify-content:center;padding:20px;';
+  
+  modal.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:600px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+    '<div style="padding:18px 24px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;border-radius:14px 14px 0 0;">' +
+      '<h3 style="margin:0;font-size:17px;">📊 Generate PowerPoint Presentation</h3>' +
+      '<button onclick="closePPTGen()" style="background:rgba(255,255,255,0.2);border:none;font-size:20px;cursor:pointer;color:#fff;width:32px;height:32px;border-radius:50%;">×</button>' +
+    '</div>' +
+    
+    '<div style="padding:20px 24px;">' +
+      
+      '<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:14px;margin-bottom:18px;">' +
+        '<div style="font-weight:700;color:#92400e;margin-bottom:6px;">📋 Pre-requisites:</div>' +
+        '<div style="font-size:13px;color:#78350f;line-height:1.5;">' +
+          '✅ Only <b>VERIFIED</b> vehicles will be included<br>' +
+          '✅ Verifier must have approved the plates<br>' +
+          '✅ Owner details fetched from Findr/cache<br>' +
+          '⚠️ Use Verifier Portal first to verify vehicles' +
+        '</div>' +
+      '</div>' +
+      
+      '<div style="margin-bottom:16px;">' +
+        '<label style="font-weight:700;font-size:13px;display:block;margin-bottom:8px;">📅 Date Range:</label>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
+          '<input type="date" id="pptDateFrom" style="padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">' +
+          '<input type="date" id="pptDateTo" style="padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">' +
+        '</div>' +
+      '</div>' +
+      
+      '<div style="margin-bottom:16px;">' +
+        '<label style="font-weight:700;font-size:13px;display:block;margin-bottom:8px;">🎯 Campaign:</label>' +
+        '<select id="pptCampaign" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">' +
+          '<option value="">All Campaigns</option>' +
+        '</select>' +
+      '</div>' +
+      
+      '<div style="margin-bottom:16px;">' +
+        '<label style="font-weight:700;font-size:13px;display:block;margin-bottom:8px;">📐 PPT Layout:</label>' +
+        '<div style="display:grid;gap:8px;">' +
+          '<label style="display:flex;align-items:start;gap:10px;padding:10px;border:2px solid #d1d5db;border-radius:8px;cursor:pointer;" data-layout-card>' +
+            '<input type="radio" name="pptLayout" value="all_sides" checked style="margin-top:3px;">' +
+            '<div>' +
+              '<div style="font-weight:700;font-size:13px;">🎨 All Sides (3 photos per slide)</div>' +
+              '<div style="font-size:11px;color:#666;margin-top:2px;">Premium - shows back + left + right photos with full details</div>' +
+            '</div>' +
+          '</label>' +
+          '<label style="display:flex;align-items:start;gap:10px;padding:10px;border:2px solid #d1d5db;border-radius:8px;cursor:pointer;" data-layout-card>' +
+            '<input type="radio" name="pptLayout" value="back_only" style="margin-top:3px;">' +
+            '<div>' +
+              '<div style="font-weight:700;font-size:13px;">🚙 Back Panel Only (1 photo per slide)</div>' +
+              '<div style="font-size:11px;color:#666;margin-top:2px;">Compact - shows main back panel branding photo</div>' +
+            '</div>' +
+          '</label>' +
+          '<label style="display:flex;align-items:start;gap:10px;padding:10px;border:2px solid #d1d5db;border-radius:8px;cursor:pointer;" data-layout-card>' +
+            '<input type="radio" name="pptLayout" value="hood_only" style="margin-top:3px;">' +
+            '<div>' +
+              '<div style="font-weight:700;font-size:13px;">🏵️ Hood Branding (1 photo per slide)</div>' +
+              '<div style="font-size:11px;color:#666;margin-top:2px;">Top branding - shows hood/roof photo</div>' +
+            '</div>' +
+          '</label>' +
+          '<label style="display:flex;align-items:start;gap:10px;padding:10px;border:2px solid #d1d5db;border-radius:8px;cursor:pointer;" data-layout-card>' +
+            '<input type="radio" name="pptLayout" value="grid" style="margin-top:3px;">' +
+            '<div>' +
+              '<div style="font-weight:700;font-size:13px;">📋 Grid Summary (multiple per slide)</div>' +
+              '<div style="font-size:11px;color:#666;margin-top:2px;">Overview - 4 vehicles per slide as table</div>' +
+            '</div>' +
+          '</label>' +
+        '</div>' +
+      '</div>' +
+      
+      '<div style="margin-bottom:16px;">' +
+        '<label style="font-weight:700;font-size:13px;display:block;margin-bottom:8px;">📝 Slide Contents:</label>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">' +
+          '<label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="pptShowPlate" checked> 🚗 Vehicle Number</label>' +
+          '<label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="pptShowOwner" checked> 👤 Owner Name</label>' +
+          '<label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="pptShowMobile" checked> 📞 Mobile</label>' +
+          '<label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="pptShowCity" checked> 📍 Location</label>' +
+          '<label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="pptShowDate"> 📅 Capture Date</label>' +
+          '<label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="pptShowSerial" checked> 🔢 Serial Number</label>' +
+        '</div>' +
+      '</div>' +
+      
+      '<div style="margin-bottom:16px;">' +
+        '<label style="font-weight:700;font-size:13px;display:block;margin-bottom:6px;">📊 Presentation Title:</label>' +
+        '<input type="text" id="pptTitle" placeholder="e.g. Hero Campaign Report" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">' +
+      '</div>' +
+      
+      '<div id="pptStats" style="display:none;background:#dbeafe;border:1px solid #93c5fd;border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px;color:#1e40af;"></div>' +
+      
+      '<div style="display:flex;gap:10px;margin-top:20px;">' +
+        '<button onclick="closePPTGen()" style="flex:1;background:#f3f4f6;border:1px solid #d1d5db;padding:10px;border-radius:7px;font-weight:600;cursor:pointer;">Cancel</button>' +
+        '<button onclick="previewPPTData()" style="flex:1;background:#fff;border:1px solid #ef4444;color:#ef4444;padding:10px;border-radius:7px;font-weight:600;cursor:pointer;">🔍 Preview</button>' +
+        '<button id="pptGenerateBtn" onclick="generatePPT()" style="flex:2;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;border:none;padding:10px;border-radius:7px;font-weight:700;cursor:pointer;">📊 Generate PPT</button>' +
+      '</div>' +
+      
+    '</div>' +
+  '</div>';
+  
+  document.body.appendChild(modal);
+  
+  // Setup defaults
+  var today = new Date().toISOString().split('T')[0];
+  document.getElementById('pptDateFrom').value = today;
+  document.getElementById('pptDateTo').value = today;
+  
+  // Load campaigns
+  loadPPTCampaigns();
+  
+  // Style selected layout
+  document.querySelectorAll('[data-layout-card]').forEach(function(card) {
+    var radio = card.querySelector('input[type="radio"]');
+    card.addEventListener('click', function() {
+      document.querySelectorAll('[data-layout-card]').forEach(function(c) {
+        c.style.borderColor = '#d1d5db';
+        c.style.background = '#fff';
+      });
+      card.style.borderColor = '#ef4444';
+      card.style.background = '#fef2f2';
+    });
+    
+    // Initial selection
+    if (radio.checked) {
+      card.style.borderColor = '#ef4444';
+      card.style.background = '#fef2f2';
+    }
+  });
+}
+
+function closePPTGen() {
+  var modal = document.getElementById('pptGenModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function loadPPTCampaigns() {
+  api('/rest/v1/trial_campaigns?select=key,name&active=eq.true&order=name.asc')
+    .then(function(campaigns) {
+      var sel = document.getElementById('pptCampaign');
+      if (!sel) return;
+      campaigns = campaigns || [];
+      sel.innerHTML = '<option value="">All Campaigns</option>';
+      campaigns.forEach(function(c) {
+        sel.innerHTML += '<option value="' + escapeHtml(c.key) + '">' + escapeHtml(c.name) + '</option>';
+      });
+    });
+}
+
+async function previewPPTData() {
+  var data = await fetchPPTData();
+  
+  var statsEl = document.getElementById('pptStats');
+  statsEl.style.display = 'block';
+  
+  if (data.vehicles.length === 0) {
+    statsEl.innerHTML = '<b>⚠️ No verified vehicles found</b><br>' +
+      'Total photos: ' + data.totalPhotos + '<br>' +
+      'But none have been verified yet.<br>' +
+      'Please use Verifier Portal to verify vehicles first.';
+    statsEl.style.background = '#fee2e2';
+    statsEl.style.borderColor = '#fecaca';
+    statsEl.style.color = '#991b1b';
+    return;
+  }
+  
+  statsEl.style.background = '#dbeafe';
+  statsEl.style.borderColor = '#93c5fd';
+  statsEl.style.color = '#1e40af';
+  
+  statsEl.innerHTML = '<b>📊 Preview:</b><br>' +
+    '✅ Verified vehicles: <b>' + data.vehicles.length + '</b><br>' +
+    '👤 With owner info: <b>' + data.withOwner + '</b><br>' +
+    '📞 With mobile: <b>' + data.withMobile + '</b><br>' +
+    '📷 Total photos: <b>' + data.totalPhotos + '</b><br>' +
+    '📍 Cities: <b>' + data.cities.length + '</b>';
+}
+
+async function fetchPPTData() {
+  var dateFrom = document.getElementById('pptDateFrom').value;
+  var dateTo = document.getElementById('pptDateTo').value;
+  var campaign = document.getElementById('pptCampaign').value;
+  
+  var qs = '/rest/v1/trial_photos?select=*&is_verified=eq.true&order=verified_at.desc&limit=1000';
+  
+  if (dateFrom) {
+    var istStart = new Date(dateFrom + 'T00:00:00+05:30');
+    qs += '&captured_at=gte.' + istStart.toISOString();
+  }
+  if (dateTo) {
+    var istEnd = new Date(dateTo + 'T23:59:59+05:30');
+    qs += '&captured_at=lte.' + istEnd.toISOString();
+  }
+  if (campaign) qs += '&campaign_key=eq.' + encodeURIComponent(campaign);
+  
+  var photos = await api(qs);
+  photos = photos || [];
+  
+  // Group by verified_plate
+  var groups = {};
+  photos.forEach(function(p) {
+    if (!p.verified_plate) return;
+    var key = p.verified_plate;
+    if (!groups[key]) {
+      groups[key] = {
+        plate: p.verified_plate,
+        photos: [],
+        campaign: p.campaign_key,
+        member: p.member_name || p.member_phone,
+        captured: p.captured_at,
+        date: p.captured_at ? p.captured_at.slice(0, 10) : '',
+        address: p.address,
+        city: extractCityFromAddress(p.address),
+        latitude: p.latitude,
+        longitude: p.longitude
+      };
+    }
+    groups[key].photos.push(p);
+  });
+  
+  // Fetch owner details
+  var plates = Object.keys(groups);
+  if (plates.length > 0) {
+    try {
+      var ownerData = await api('/rest/v1/prajapati_vehicle_lookup?select=*&plate=in.(' + 
+        plates.map(function(p) { return '"' + p + '"'; }).join(',') + ')');
+      ownerData = ownerData || [];
+      ownerData.forEach(function(o) {
+        if (groups[o.plate]) {
+          groups[o.plate].ownerName = o.manual_override_name || o.owner_name;
+          groups[o.plate].mobile = o.manual_override_mobile || o.mobile;
+          groups[o.plate].maker = o.maker;
+          groups[o.plate].rto = o.rto;
+        }
+      });
+    } catch (e) {
+      console.warn('Owner fetch failed:', e);
+    }
+  }
+  
+  var vehicles = Object.values(groups);
+  
+  return {
+    vehicles: vehicles,
+    totalPhotos: photos.length,
+    withOwner: vehicles.filter(function(v) { return v.ownerName; }).length,
+    withMobile: vehicles.filter(function(v) { return v.mobile; }).length,
+    cities: Array.from(new Set(vehicles.map(function(v) { return v.city; }).filter(Boolean)))
+  };
+}
+
+async function generatePPT() {
+  var btn = document.getElementById('pptGenerateBtn');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Loading data...';
+  
+  try {
+    if (typeof PptxGenJS === 'undefined') {
+      throw new Error('PptxGenJS library not loaded. Refresh page.');
+    }
+    
+    var data = await fetchPPTData();
+    
+    if (data.vehicles.length === 0) {
+      alert('❌ No verified vehicles found in selected filter.\n\nPlease verify vehicles first using Verifier Portal.');
+      btn.disabled = false;
+      btn.innerHTML = '📊 Generate PPT';
+      return;
+    }
+    
+    btn.innerHTML = '⏳ Building presentation...';
+    
+    var layout = document.querySelector('input[name="pptLayout"]:checked').value;
+    var title = document.getElementById('pptTitle').value.trim() || 'Vehicle Campaign Report';
+    
+    var options = {
+      showPlate: document.getElementById('pptShowPlate').checked,
+      showOwner: document.getElementById('pptShowOwner').checked,
+      showMobile: document.getElementById('pptShowMobile').checked,
+      showCity: document.getElementById('pptShowCity').checked,
+      showDate: document.getElementById('pptShowDate').checked,
+      showSerial: document.getElementById('pptShowSerial').checked
+    };
+    
+    var pptx = new PptxGenJS();
+    pptx.title = title;
+    pptx.subject = 'Prajapati Advertising - Vehicle Campaign Report';
+    pptx.company = 'Prajapati Advertising';
+    pptx.layout = 'LAYOUT_WIDE';
+    pptx.defineLayout({ name: 'PRAJAPATI', width: 13.333, height: 7.5 });
+    pptx.layout = 'PRAJAPATI';
+    
+    // Color scheme
+    var COLORS = {
+      primary: '0F1C5E',
+      accent: '00D4FF',
+      gold: 'F5B800',
+      dark: '1A1A2E',
+      light: 'F5F7FB',
+      gray: '6B7280',
+      green: '10B981'
+    };
+    
+    // ─── COVER SLIDE ───
+    var cover = pptx.addSlide();
+    cover.background = { color: COLORS.primary };
+    
+    // Brand bar
+    cover.addShape(pptx.ShapeType.rect, {
+      x: 0, y: 0, w: 13.333, h: 0.5, fill: { color: COLORS.gold }
+    });
+    
+    // Title
+    cover.addText('PRAJAPATI ADVERTISING', {
+      x: 0.5, y: 1.5, w: 12.3, h: 0.6,
+      fontSize: 28, color: 'FFFFFF', bold: true, fontFace: 'Calibri', align: 'center'
+    });
+    
+    cover.addText(title, {
+      x: 0.5, y: 2.3, w: 12.3, h: 1,
+      fontSize: 44, color: COLORS.accent, bold: true, fontFace: 'Calibri', align: 'center'
+    });
+    
+    // Stats panel
+    cover.addShape(pptx.ShapeType.rect, {
+      x: 1.5, y: 4.0, w: 10.3, h: 2.0,
+      fill: { color: 'FFFFFF' }, line: { type: 'none' }
+    });
+    
+    cover.addText([
+      { text: data.vehicles.length + '\n', options: { fontSize: 48, color: COLORS.primary, bold: true, breakLine: true } },
+      { text: 'Total Vehicles Documented', options: { fontSize: 16, color: COLORS.gray } }
+    ], {
+      x: 1.5, y: 4.2, w: 3.3, h: 1.6, align: 'center'
+    });
+    
+    cover.addText([
+      { text: data.withOwner + '\n', options: { fontSize: 48, color: COLORS.green, bold: true, breakLine: true } },
+      { text: 'Owner Details Captured', options: { fontSize: 16, color: COLORS.gray } }
+    ], {
+      x: 5.0, y: 4.2, w: 3.3, h: 1.6, align: 'center'
+    });
+    
+    cover.addText([
+      { text: data.cities.length + '\n', options: { fontSize: 48, color: COLORS.gold, bold: true, breakLine: true } },
+      { text: 'Cities Covered', options: { fontSize: 16, color: COLORS.gray } }
+    ], {
+      x: 8.5, y: 4.2, w: 3.3, h: 1.6, align: 'center'
+    });
+    
+    // Footer
+    cover.addText('Report Date: ' + new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }), {
+      x: 0.5, y: 6.7, w: 12.3, h: 0.4,
+      fontSize: 14, color: 'FFFFFF', align: 'center', italic: true
+    });
+    
+    cover.addText('Contact: +91 99 22 138 138 | info@prajapatiadvertising.co.in', {
+      x: 0.5, y: 7.1, w: 12.3, h: 0.3,
+      fontSize: 11, color: COLORS.accent, align: 'center'
+    });
+    
+    btn.innerHTML = '⏳ Adding vehicle slides...';
+    
+    // ─── VEHICLE SLIDES ───
+    if (layout === 'all_sides') {
+      // 3 photos per slide
+      for (var i = 0; i < data.vehicles.length; i++) {
+        await addAllSidesSlide(pptx, data.vehicles[i], i + 1, data.vehicles.length, options, COLORS);
+        if (i % 10 === 0) btn.innerHTML = '⏳ Slide ' + (i + 1) + '/' + data.vehicles.length;
+      }
+    } else if (layout === 'back_only' || layout === 'hood_only') {
+      var sideFilter = layout === 'back_only' ? 'back' : 'hood';
+      for (var i = 0; i < data.vehicles.length; i++) {
+        await addSinglePhotoSlide(pptx, data.vehicles[i], i + 1, data.vehicles.length, sideFilter, options, COLORS);
+        if (i % 10 === 0) btn.innerHTML = '⏳ Slide ' + (i + 1) + '/' + data.vehicles.length;
+      }
+    } else if (layout === 'grid') {
+      // 4 vehicles per slide
+      var perSlide = 4;
+      for (var i = 0; i < data.vehicles.length; i += perSlide) {
+        var batch = data.vehicles.slice(i, i + perSlide);
+        await addGridSlide(pptx, batch, Math.floor(i / perSlide) + 1, Math.ceil(data.vehicles.length / perSlide), options, COLORS);
+        btn.innerHTML = '⏳ Slide ' + (Math.floor(i / perSlide) + 1) + '/' + Math.ceil(data.vehicles.length / perSlide);
+      }
+    }
+    
+    // ─── CLOSING SLIDE ───
+    var closing = pptx.addSlide();
+    closing.background = { color: COLORS.primary };
+    
+    closing.addShape(pptx.ShapeType.rect, {
+      x: 0, y: 0, w: 13.333, h: 0.5, fill: { color: COLORS.gold }
+    });
+    
+    closing.addText('Thank You!', {
+      x: 0.5, y: 2.5, w: 12.3, h: 1.5,
+      fontSize: 60, color: 'FFFFFF', bold: true, align: 'center', fontFace: 'Calibri'
+    });
+    
+    closing.addText('Prajapati Advertising', {
+      x: 0.5, y: 4.0, w: 12.3, h: 0.6,
+      fontSize: 24, color: COLORS.accent, align: 'center', bold: true
+    });
+    
+    closing.addText('Pan-India Outdoor Advertising | 250+ Cities', {
+      x: 0.5, y: 4.7, w: 12.3, h: 0.4,
+      fontSize: 14, color: 'FFFFFF', align: 'center', italic: true
+    });
+    
+    closing.addText([
+      { text: '📞 +91 99 22 138 138', options: { fontSize: 16, color: 'FFFFFF', breakLine: true } },
+      { text: '📧 info@prajapatiadvertising.co.in', options: { fontSize: 16, color: 'FFFFFF', breakLine: true } },
+      { text: '🌐 prajapatiadvertising.co.in', options: { fontSize: 16, color: 'FFFFFF' } }
+    ], {
+      x: 0.5, y: 5.5, w: 12.3, h: 1.5, align: 'center'
+    });
+    
+    btn.innerHTML = '⏳ Saving file...';
+    
+    // ─── SAVE FILE ───
+    var fileName = title.replace(/[^a-zA-Z0-9]/g, '_') + '_' + new Date().toISOString().slice(0, 10) + '.pptx';
+    await pptx.writeFile({ fileName: fileName });
+    
+    btn.disabled = false;
+    btn.innerHTML = '📊 Generate PPT';
+    
+    alert('✅ PPT Generated Successfully!\n\n' +
+          '📄 File: ' + fileName + '\n' +
+          '📊 ' + data.vehicles.length + ' vehicles\n' +
+          '📑 ' + (data.vehicles.length + 2) + ' slides total\n\n' +
+          'Check Downloads folder!');
+    
+    closePPTGen();
+    
+  } catch (err) {
+    console.error('PPT generation error:', err);
+    alert('❌ PPT generation failed: ' + err.message);
+    btn.disabled = false;
+    btn.innerHTML = '📊 Generate PPT';
+  }
+}
+
+// Helper: Convert image URL to base64 data URL
+async function fetchImageAsBase64(url) {
+  try {
+    var resp = await fetch(url);
+    if (!resp.ok) return null;
+    var blob = await resp.blob();
+    return await new Promise(function(resolve, reject) {
+      var reader = new FileReader();
+      reader.onloadend = function() { resolve(reader.result); };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    console.warn('Image fetch failed:', e);
+    return null;
+  }
+}
+
+async function addAllSidesSlide(pptx, vehicle, idx, total, options, COLORS) {
+  var slide = pptx.addSlide();
+  slide.background = { color: 'FFFFFF' };
+  
+  // Header bar
+  slide.addShape(pptx.ShapeType.rect, {
+    x: 0, y: 0, w: 13.333, h: 0.8, fill: { color: COLORS.primary }
+  });
+  
+  slide.addText('PRAJAPATI ADVERTISING', {
+    x: 0.3, y: 0.15, w: 6, h: 0.5,
+    fontSize: 16, color: 'FFFFFF', bold: true, fontFace: 'Calibri'
+  });
+  
+  if (options.showSerial) {
+    slide.addText('# ' + idx + ' of ' + total, {
+      x: 10.3, y: 0.15, w: 2.8, h: 0.5,
+      fontSize: 14, color: COLORS.gold, bold: true, align: 'right'
+    });
+  }
+  
+  // Sort photos
+  var sortedPhotos = vehicle.photos.slice().sort(function(a, b) {
+    var order = { 'back': 1, 'left': 2, 'right': 3, 'front': 4, 'hood': 0 };
+    var aSide = (a.public_url || '').match(/\/(back|left|right|front|hood)-/);
+    var bSide = (b.public_url || '').match(/\/(back|left|right|front|hood)-/);
+    var aRank = aSide ? (order[aSide[1].toLowerCase()] || 99) : 99;
+    var bRank = bSide ? (order[bSide[1].toLowerCase()] || 99) : 99;
+    return aRank - bRank;
+  });
+  
+  // 3 photos side-by-side
+  var photoWidth = 4.0;
+  var photoHeight = 3.0;
+  var startX = 0.5;
+  var startY = 1.2;
+  var gap = 0.3;
+  
+  var labels = ['BACK', 'LEFT', 'RIGHT'];
+  
+  for (var i = 0; i < Math.min(3, sortedPhotos.length); i++) {
+    var photo = sortedPhotos[i];
+    var x = startX + i * (photoWidth + gap);
+    
+    var sideMatch = (photo.public_url || '').match(/\/(back|left|right|front|hood)-/);
+    var label = sideMatch ? sideMatch[1].toUpperCase() : labels[i];
+    
+    // Photo
+    try {
+      var imgData = await fetchImageAsBase64(photo.public_url);
+      if (imgData) {
+        slide.addImage({
+          data: imgData,
+          x: x, y: startY, w: photoWidth, h: photoHeight,
+          sizing: { type: 'cover', w: photoWidth, h: photoHeight }
+        });
+      } else {
+        slide.addShape(pptx.ShapeType.rect, {
+          x: x, y: startY, w: photoWidth, h: photoHeight,
+          fill: { color: 'F0F0F0' }, line: { color: 'D0D0D0' }
+        });
+        slide.addText('Image unavailable', {
+          x: x, y: startY + photoHeight/2 - 0.2, w: photoWidth, h: 0.4,
+          fontSize: 12, color: '999999', align: 'center'
+        });
+      }
+    } catch (e) {
+      console.warn('Image embed failed:', e);
+    }
+    
+    // Label below
+    slide.addShape(pptx.ShapeType.rect, {
+      x: x, y: startY + photoHeight, w: photoWidth, h: 0.35,
+      fill: { color: COLORS.dark }, line: { type: 'none' }
+    });
+    
+    slide.addText(label, {
+      x: x, y: startY + photoHeight, w: photoWidth, h: 0.35,
+      fontSize: 12, color: 'FFFFFF', bold: true, align: 'center', valign: 'middle'
+    });
+  }
+  
+  // Info panel below photos
+  var infoY = startY + photoHeight + 0.6;
+  
+  // Background
+  slide.addShape(pptx.ShapeType.rect, {
+    x: 0.5, y: infoY, w: 12.3, h: 2.0,
+    fill: { color: COLORS.light }, line: { color: COLORS.primary, width: 1 }
+  });
+  
+  // Build info lines
+  var infoLines = [];
+  if (options.showPlate) {
+    infoLines.push({ icon: '🚗', label: 'VEHICLE NUMBER', value: vehicle.plate, color: COLORS.primary });
+  }
+  if (options.showOwner && vehicle.ownerName) {
+    infoLines.push({ icon: '👤', label: 'OWNER NAME', value: vehicle.ownerName, color: COLORS.dark });
+  }
+  if (options.showMobile && vehicle.mobile) {
+    infoLines.push({ icon: '📞', label: 'CONTACT', value: vehicle.mobile, color: COLORS.dark });
+  }
+  if (options.showCity && vehicle.city) {
+    infoLines.push({ icon: '📍', label: 'LOCATION', value: vehicle.city, color: COLORS.dark });
+  }
+  if (options.showDate && vehicle.date) {
+    infoLines.push({ icon: '📅', label: 'DATE', value: new Date(vehicle.date).toLocaleDateString('en-IN'), color: COLORS.dark });
+  }
+  
+  // 2-column layout for info
+  var col1Count = Math.ceil(infoLines.length / 2);
+  var lineHeight = 0.5;
+  
+  infoLines.forEach(function(line, lineIdx) {
+    var col = lineIdx < col1Count ? 0 : 1;
+    var row = lineIdx < col1Count ? lineIdx : lineIdx - col1Count;
+    var lineX = 0.7 + col * 6.15;
+    var lineY = infoY + 0.15 + row * lineHeight;
+    
+    slide.addText([
+      { text: line.icon + ' ', options: { fontSize: 14 } },
+      { text: line.label + ': ', options: { fontSize: 11, color: COLORS.gray, bold: true } },
+      { text: line.value, options: { fontSize: 14, color: line.color, bold: true } }
+    ], {
+      x: lineX, y: lineY, w: 5.9, h: 0.4,
+      valign: 'middle'
+    });
+  });
+  
+  // Footer
+  slide.addText('prajapatiadvertising.co.in', {
+    x: 0.5, y: 7.1, w: 12.3, h: 0.3,
+    fontSize: 10, color: COLORS.gray, align: 'center', italic: true
+  });
+}
+
+async function addSinglePhotoSlide(pptx, vehicle, idx, total, sideFilter, options, COLORS) {
+  var slide = pptx.addSlide();
+  slide.background = { color: 'FFFFFF' };
+  
+  // Header bar
+  slide.addShape(pptx.ShapeType.rect, {
+    x: 0, y: 0, w: 13.333, h: 0.8, fill: { color: COLORS.primary }
+  });
+  
+  slide.addText('PRAJAPATI ADVERTISING', {
+    x: 0.3, y: 0.15, w: 6, h: 0.5,
+    fontSize: 16, color: 'FFFFFF', bold: true, fontFace: 'Calibri'
+  });
+  
+  if (options.showSerial) {
+    slide.addText('# ' + idx + ' of ' + total, {
+      x: 10.3, y: 0.15, w: 2.8, h: 0.5,
+      fontSize: 14, color: COLORS.gold, bold: true, align: 'right'
+    });
+  }
+  
+  // Find specific photo (back or hood)
+  var targetPhoto = vehicle.photos.find(function(p) {
+    var match = (p.public_url || '').match(new RegExp('/' + sideFilter + '-', 'i'));
+    return match;
+  }) || vehicle.photos[0]; // fallback to any photo
+  
+  if (!targetPhoto) return;
+  
+  // Large photo on left
+  var photoWidth = 7.5;
+  var photoHeight = 5.6;
+  var photoX = 0.5;
+  var photoY = 1.2;
+  
+  try {
+    var imgData = await fetchImageAsBase64(targetPhoto.public_url);
+    if (imgData) {
+      slide.addImage({
+        data: imgData,
+        x: photoX, y: photoY, w: photoWidth, h: photoHeight,
+        sizing: { type: 'cover', w: photoWidth, h: photoHeight }
+      });
+    }
+  } catch (e) {
+    console.warn('Image embed failed:', e);
+  }
+  
+  // Side label
+  slide.addShape(pptx.ShapeType.rect, {
+    x: photoX, y: photoY + photoHeight, w: photoWidth, h: 0.4,
+    fill: { color: COLORS.dark }, line: { type: 'none' }
+  });
+  
+  slide.addText(sideFilter.toUpperCase() + ' PANEL BRANDING', {
+    x: photoX, y: photoY + photoHeight, w: photoWidth, h: 0.4,
+    fontSize: 14, color: 'FFFFFF', bold: true, align: 'center', valign: 'middle'
+  });
+  
+  // Info panel on right
+  var infoX = 8.3;
+  var infoY = 1.2;
+  var infoW = 4.6;
+  var infoH = 5.6;
+  
+  slide.addShape(pptx.ShapeType.rect, {
+    x: infoX, y: infoY, w: infoW, h: infoH,
+    fill: { color: COLORS.light }, line: { color: COLORS.primary, width: 1 }
+  });
+  
+  // Vehicle Number (big)
+  if (options.showPlate) {
+    slide.addText('VEHICLE NUMBER', {
+      x: infoX + 0.2, y: infoY + 0.2, w: infoW - 0.4, h: 0.3,
+      fontSize: 10, color: COLORS.gray, bold: true
+    });
+    slide.addText(vehicle.plate, {
+      x: infoX + 0.2, y: infoY + 0.5, w: infoW - 0.4, h: 0.6,
+      fontSize: 28, color: COLORS.primary, bold: true, fontFace: 'Consolas'
+    });
+  }
+  
+  var rowY = infoY + 1.3;
+  var rowH = 0.7;
+  
+  if (options.showOwner && vehicle.ownerName) {
+    slide.addText([
+      { text: '👤 OWNER NAME', options: { fontSize: 10, color: COLORS.gray, bold: true, breakLine: true } },
+      { text: vehicle.ownerName, options: { fontSize: 16, color: COLORS.dark, bold: true } }
+    ], {
+      x: infoX + 0.2, y: rowY, w: infoW - 0.4, h: rowH
+    });
+    rowY += rowH;
+  }
+  
+  if (options.showMobile && vehicle.mobile) {
+    slide.addText([
+      { text: '📞 CONTACT', options: { fontSize: 10, color: COLORS.gray, bold: true, breakLine: true } },
+      { text: vehicle.mobile, options: { fontSize: 18, color: COLORS.dark, bold: true, fontFace: 'Consolas' } }
+    ], {
+      x: infoX + 0.2, y: rowY, w: infoW - 0.4, h: rowH
+    });
+    rowY += rowH;
+  }
+  
+  if (options.showCity && vehicle.city) {
+    slide.addText([
+      { text: '📍 LOCATION', options: { fontSize: 10, color: COLORS.gray, bold: true, breakLine: true } },
+      { text: vehicle.city, options: { fontSize: 16, color: COLORS.dark, bold: true } }
+    ], {
+      x: infoX + 0.2, y: rowY, w: infoW - 0.4, h: rowH
+    });
+    rowY += rowH;
+  }
+  
+  if (options.showDate && vehicle.date) {
+    slide.addText([
+      { text: '📅 CAPTURE DATE', options: { fontSize: 10, color: COLORS.gray, bold: true, breakLine: true } },
+      { text: new Date(vehicle.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }), options: { fontSize: 14, color: COLORS.dark, bold: true } }
+    ], {
+      x: infoX + 0.2, y: rowY, w: infoW - 0.4, h: rowH
+    });
+  }
+  
+  // Footer
+  slide.addText('prajapatiadvertising.co.in | +91 99 22 138 138', {
+    x: 0.5, y: 7.1, w: 12.3, h: 0.3,
+    fontSize: 10, color: COLORS.gray, align: 'center', italic: true
+  });
+}
+
+async function addGridSlide(pptx, vehicles, slideNum, totalSlides, options, COLORS) {
+  var slide = pptx.addSlide();
+  slide.background = { color: 'FFFFFF' };
+  
+  // Header
+  slide.addShape(pptx.ShapeType.rect, {
+    x: 0, y: 0, w: 13.333, h: 0.8, fill: { color: COLORS.primary }
+  });
+  
+  slide.addText('PRAJAPATI ADVERTISING - VEHICLE SUMMARY', {
+    x: 0.3, y: 0.15, w: 9, h: 0.5,
+    fontSize: 16, color: 'FFFFFF', bold: true
+  });
+  
+  slide.addText('Page ' + slideNum + ' of ' + totalSlides, {
+    x: 10.3, y: 0.15, w: 2.8, h: 0.5,
+    fontSize: 12, color: COLORS.gold, bold: true, align: 'right'
+  });
+  
+  // 2x2 grid
+  var startX = 0.5;
+  var startY = 1.2;
+  var cellW = 6.15;
+  var cellH = 2.85;
+  var gap = 0.3;
+  
+  for (var i = 0; i < Math.min(4, vehicles.length); i++) {
+    var v = vehicles[i];
+    var col = i % 2;
+    var row = Math.floor(i / 2);
+    var x = startX + col * (cellW + gap);
+    var y = startY + row * (cellH + gap);
+    
+    // Cell background
+    slide.addShape(pptx.ShapeType.rect, {
+      x: x, y: y, w: cellW, h: cellH,
+      fill: { color: COLORS.light }, line: { color: COLORS.primary, width: 1 }
+    });
+    
+    // Find back photo
+    var backPhoto = v.photos.find(function(p) {
+      return (p.public_url || '').match(/\/back-/i);
+    }) || v.photos[0];
+    
+    // Photo on left
+    if (backPhoto) {
+      try {
+        var imgData = await fetchImageAsBase64(backPhoto.public_url);
+        if (imgData) {
+          slide.addImage({
+            data: imgData,
+            x: x + 0.1, y: y + 0.1, w: 2.8, h: cellH - 0.2,
+            sizing: { type: 'cover', w: 2.8, h: cellH - 0.2 }
+          });
+        }
+      } catch (e) {}
+    }
+    
+    // Info on right
+    var infoX = x + 3.0;
+    var infoW = cellW - 3.1;
+    
+    if (options.showSerial) {
+      slide.addText('#' + ((slideNum - 1) * 4 + i + 1), {
+        x: infoX, y: y + 0.1, w: infoW, h: 0.3,
+        fontSize: 10, color: COLORS.gold, bold: true
+      });
+    }
+    
+    if (options.showPlate) {
+      slide.addText(v.plate, {
+        x: infoX, y: y + 0.35, w: infoW, h: 0.4,
+        fontSize: 16, color: COLORS.primary, bold: true, fontFace: 'Consolas'
+      });
+    }
+    
+    var infoY2 = y + 0.85;
+    
+    if (options.showOwner && v.ownerName) {
+      slide.addText([
+        { text: '👤 ', options: { fontSize: 11 } },
+        { text: (v.ownerName || '').substring(0, 30), options: { fontSize: 11, bold: true } }
+      ], {
+        x: infoX, y: infoY2, w: infoW, h: 0.3
+      });
+      infoY2 += 0.35;
+    }
+    
+    if (options.showMobile && v.mobile) {
+      slide.addText([
+        { text: '📞 ', options: { fontSize: 11 } },
+        { text: v.mobile, options: { fontSize: 11, bold: true, fontFace: 'Consolas' } }
+      ], {
+        x: infoX, y: infoY2, w: infoW, h: 0.3
+      });
+      infoY2 += 0.35;
+    }
+    
+    if (options.showCity && v.city) {
+      slide.addText([
+        { text: '📍 ', options: { fontSize: 11 } },
+        { text: (v.city || '').substring(0, 25), options: { fontSize: 11 } }
+      ], {
+        x: infoX, y: infoY2, w: infoW, h: 0.3
+      });
+    }
+  }
+  
+  // Footer
+  slide.addText('prajapatiadvertising.co.in | +91 99 22 138 138', {
+    x: 0.5, y: 7.1, w: 12.3, h: 0.3,
+    fontSize: 10, color: COLORS.gray, align: 'center', italic: true
+  });
+}
+
+
+//
+// Allows admin to upload existing vehicle data (Excel/CSV)
+// Format: Plate | Owner Name | Mobile | Maker (optional) | RTO (optional)
+// 
+// Saves to prajapati_vehicle_lookup table
+// Next ZIP download uses these cached records (no Findr API call)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function openBulkUpload() {
+  // Build modal if not exists
+  var modal = document.getElementById('bulkUploadModal');
+  if (modal) {
+    modal.style.display = 'flex';
+    return;
+  }
+  
+  modal = document.createElement('div');
+  modal.id = 'bulkUploadModal';
+  modal.style.cssText = 'display:flex;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;align-items:center;justify-content:center;padding:20px;';
+  
+  modal.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:700px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+    '<div style="padding:18px 24px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:#fff;border-radius:14px 14px 0 0;">' +
+      '<h3 style="margin:0;font-size:17px;">📤 Bulk Vehicle Data Import</h3>' +
+      '<button onclick="closeBulkUpload()" style="background:rgba(255,255,255,0.2);border:none;font-size:20px;cursor:pointer;color:#fff;width:32px;height:32px;border-radius:50%;">×</button>' +
+    '</div>' +
+    
+    '<div style="padding:20px 24px;">' +
+      
+      '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px;margin-bottom:18px;">' +
+        '<div style="font-weight:700;color:#15803d;margin-bottom:6px;">💰 Why upload?</div>' +
+        '<div style="font-size:13px;color:#166534;line-height:1.5;">' +
+          'Apke paas already vehicle data hai? Upload kar do!<br>' +
+          '• ZIP download mein <b>Findr API call nahi hogi</b> in vehicles ke liye<br>' +
+          '• <b>Cost savings</b> - ek baar upload, hamesha use<br>' +
+          '• Owner name + mobile <b>turant available</b>' +
+        '</div>' +
+      '</div>' +
+      
+      '<div style="margin-bottom:16px;">' +
+        '<div style="font-weight:700;font-size:13px;margin-bottom:6px;color:#333;">📋 Required Format:</div>' +
+        '<div style="background:#f8f9fc;border:1px dashed #ccc;border-radius:8px;padding:12px;font-family:monospace;font-size:12px;color:#555;">' +
+          '<div style="font-weight:bold;color:#0f1c5e;">Column Headers (any order, case-insensitive):</div>' +
+          '<div style="margin-top:6px;">' +
+            '✅ <b>plate</b> or <b>vehicle_number</b> or <b>reg_no</b> (REQUIRED)<br>' +
+            '✅ <b>owner_name</b> or <b>name</b> or <b>owner</b><br>' +
+            '✅ <b>mobile</b> or <b>phone</b> or <b>contact</b><br>' +
+            '⭕ maker, model, rto, registration_date (optional)' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      
+      '<div style="margin-bottom:16px;">' +
+        '<div style="font-weight:700;font-size:13px;margin-bottom:6px;">📥 Download Template:</div>' +
+        '<button onclick="downloadBulkTemplate()" style="background:#0073e6;color:#fff;border:none;padding:8px 14px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">⬇️ Sample Excel Template</button>' +
+      '</div>' +
+      
+      '<div style="margin-bottom:16px;">' +
+        '<label style="font-weight:700;font-size:13px;display:block;margin-bottom:6px;">📂 Select File (Excel or CSV):</label>' +
+        '<input type="file" id="bulkUploadFile" accept=".xlsx,.xls,.csv" style="width:100%;padding:10px;border:2px dashed #8b5cf6;border-radius:8px;background:#faf5ff;font-size:14px;">' +
+      '</div>' +
+      
+      '<div id="bulkPreview" style="display:none;background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:14px;margin-bottom:16px;max-height:280px;overflow:auto;">' +
+        '<div style="font-weight:700;margin-bottom:8px;color:#0f1c5e;">📊 Preview (first 10 rows):</div>' +
+        '<div id="bulkPreviewContent"></div>' +
+      '</div>' +
+      
+      '<div id="bulkStats" style="display:none;background:#fef3c7;border:1px solid #fbbf24;border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px;">' +
+        '<div id="bulkStatsContent"></div>' +
+      '</div>' +
+      
+      '<div style="display:flex;gap:10px;margin-top:20px;">' +
+        '<button onclick="closeBulkUpload()" style="flex:1;background:#f3f4f6;border:1px solid #d1d5db;padding:10px;border-radius:7px;font-weight:600;cursor:pointer;">Cancel</button>' +
+        '<button id="bulkUploadBtn" onclick="processBulkUpload()" disabled style="flex:2;background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:#fff;border:none;padding:10px;border-radius:7px;font-weight:700;cursor:pointer;opacity:0.5;">💾 Upload to Database</button>' +
+      '</div>' +
+      
+    '</div>' +
+  '</div>';
+  
+  document.body.appendChild(modal);
+  
+  // Attach file change handler
+  document.getElementById('bulkUploadFile').addEventListener('change', handleBulkFileSelect);
+}
+
+function closeBulkUpload() {
+  var modal = document.getElementById('bulkUploadModal');
+  if (modal) modal.style.display = 'none';
+}
+
+window._bulkData = null;
+
+function handleBulkFileSelect(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  
+  var reader = new FileReader();
+  reader.onload = function(evt) {
+    try {
+      var data = evt.target.result;
+      var workbook;
+      
+      if (file.name.toLowerCase().endsWith('.csv')) {
+        // CSV parsing
+        workbook = XLSX.read(data, { type: 'string' });
+      } else {
+        // Excel
+        workbook = XLSX.read(data, { type: 'array' });
+      }
+      
+      var sheet = workbook.Sheets[workbook.SheetNames[0]];
+      var rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+      
+      if (rows.length === 0) {
+        alert('❌ File is empty or has no data');
+        return;
+      }
+      
+      // Normalize column names (case-insensitive)
+      var normalized = rows.map(function(row) {
+        var n = {};
+        Object.keys(row).forEach(function(key) {
+          var k = key.toLowerCase().trim().replace(/[\s_-]+/g, '_');
+          n[k] = String(row[key] || '').trim();
+        });
+        
+        return {
+          plate: (n.plate || n.vehicle_number || n.reg_no || n.regno || n.vehicle_no || '').toUpperCase().replace(/[^A-Z0-9]/g, ''),
+          owner_name: n.owner_name || n.name || n.owner || n.driver_name || '',
+          mobile: (n.mobile || n.phone || n.contact || n.mobile_no || n.phone_no || '').replace(/[^0-9+]/g, ''),
+          maker: n.maker || n.make || n.brand || '',
+          model: n.model || '',
+          rto: n.rto || n.rto_office || '',
+          registration_date: n.registration_date || n.reg_date || n.regn_date || ''
+        };
+      }).filter(function(r) {
+        return r.plate && r.plate.length >= 4;
+      });
+      
+      window._bulkData = normalized;
+      
+      // Show preview
+      var previewEl = document.getElementById('bulkPreview');
+      var contentEl = document.getElementById('bulkPreviewContent');
+      
+      var tableHtml = '<table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+        '<thead><tr style="background:#f0f4ff;font-weight:700;">' +
+          '<th style="padding:6px;text-align:left;border:1px solid #e0e0e0;">#</th>' +
+          '<th style="padding:6px;text-align:left;border:1px solid #e0e0e0;">Plate</th>' +
+          '<th style="padding:6px;text-align:left;border:1px solid #e0e0e0;">Owner</th>' +
+          '<th style="padding:6px;text-align:left;border:1px solid #e0e0e0;">Mobile</th>' +
+          '<th style="padding:6px;text-align:left;border:1px solid #e0e0e0;">Maker</th>' +
+        '</tr></thead><tbody>';
+      
+      normalized.slice(0, 10).forEach(function(r, i) {
+        tableHtml += '<tr>' +
+          '<td style="padding:5px;border:1px solid #e0e0e0;">' + (i + 1) + '</td>' +
+          '<td style="padding:5px;border:1px solid #e0e0e0;font-family:monospace;font-weight:700;">' + r.plate + '</td>' +
+          '<td style="padding:5px;border:1px solid #e0e0e0;">' + (r.owner_name || '—') + '</td>' +
+          '<td style="padding:5px;border:1px solid #e0e0e0;">' + (r.mobile || '—') + '</td>' +
+          '<td style="padding:5px;border:1px solid #e0e0e0;">' + (r.maker || '—') + '</td>' +
+        '</tr>';
+      });
+      
+      tableHtml += '</tbody></table>';
+      
+      if (normalized.length > 10) {
+        tableHtml += '<div style="margin-top:8px;color:#666;font-size:11px;text-align:center;">...and ' + (normalized.length - 10) + ' more rows</div>';
+      }
+      
+      contentEl.innerHTML = tableHtml;
+      previewEl.style.display = 'block';
+      
+      // Stats
+      var statsEl = document.getElementById('bulkStats');
+      var statsContent = document.getElementById('bulkStatsContent');
+      var withOwner = normalized.filter(function(r) { return r.owner_name; }).length;
+      var withMobile = normalized.filter(function(r) { return r.mobile; }).length;
+      var withMaker = normalized.filter(function(r) { return r.maker; }).length;
+      
+      statsContent.innerHTML = '<b>📊 Validation:</b><br>' +
+        '✅ Total valid vehicles: <b>' + normalized.length + '</b><br>' +
+        '👤 With owner name: <b>' + withOwner + '</b> (' + Math.round(withOwner / normalized.length * 100) + '%)<br>' +
+        '📞 With mobile: <b>' + withMobile + '</b> (' + Math.round(withMobile / normalized.length * 100) + '%)<br>' +
+        '🚗 With maker: <b>' + withMaker + '</b> (' + Math.round(withMaker / normalized.length * 100) + '%)<br>' +
+        '⚠️ Rows skipped (invalid plate): <b>' + (rows.length - normalized.length) + '</b>';
+      
+      statsEl.style.display = 'block';
+      
+      // Enable upload button
+      var btn = document.getElementById('bulkUploadBtn');
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.innerHTML = '💾 Upload ' + normalized.length + ' Vehicles to Database';
+      
+    } catch (err) {
+      console.error('File parse error:', err);
+      alert('❌ Failed to parse file: ' + err.message);
+    }
+  };
+  
+  if (file.name.toLowerCase().endsWith('.csv')) {
+    reader.readAsText(file);
+  } else {
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+async function processBulkUpload() {
+  if (!window._bulkData || window._bulkData.length === 0) {
+    alert('No data to upload');
+    return;
+  }
+  
+  var btn = document.getElementById('bulkUploadBtn');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Uploading...';
+  
+  var data = window._bulkData;
+  var batchSize = 100; // Upload 100 at a time
+  var uploaded = 0;
+  var failed = 0;
+  var skipped = 0;
+  
+  try {
+    for (var i = 0; i < data.length; i += batchSize) {
+      var batch = data.slice(i, i + batchSize);
+      
+      // Prepare payload for Supabase
+      var payload = batch.map(function(r) {
+        var record = {
+          plate: r.plate,
+          plate_raw: r.plate,
+          owner_name: r.owner_name || null,
+          mobile: r.mobile || null,
+          maker: r.maker || null,
+          model: r.model || null,
+          rto: r.rto || null,
+          source: 'manual_upload',
+          verified: true,
+          fetched_at: new Date().toISOString()
+        };
+        
+        // Parse date if present
+        if (r.registration_date) {
+          try {
+            var d = new Date(r.registration_date);
+            if (!isNaN(d.getTime())) {
+              record.registration_date = d.toISOString().split('T')[0];
+            }
+          } catch (e) {}
+        }
+        
+        return record;
+      });
+      
+      btn.innerHTML = '⏳ Uploading batch ' + Math.floor(i / batchSize + 1) + '/' + Math.ceil(data.length / batchSize) + ' (' + uploaded + '/' + data.length + ')...';
+      
+      try {
+        var resp = await fetch(CONFIG.supabaseUrl + '/rest/v1/prajapati_vehicle_lookup?on_conflict=plate', {
+          method: 'POST',
+          headers: {
+            'apikey': CONFIG.supabaseKey,
+            'Authorization': 'Bearer ' + CONFIG.supabaseKey,
+            'Content-Type': 'application/json',
+            'Prefer': 'resolution=merge-duplicates,return=minimal'
+          },
+          body: JSON.stringify(payload)
+        });
+        
+        if (resp.ok) {
+          uploaded += batch.length;
+        } else {
+          var errText = await resp.text();
+          console.error('Batch upload failed:', errText);
+          failed += batch.length;
+        }
+      } catch (err) {
+        console.error('Network error:', err);
+        failed += batch.length;
+      }
+      
+      // Small delay between batches
+      await new Promise(function(r) { setTimeout(r, 100); });
+    }
+    
+    btn.innerHTML = '✅ Upload Complete!';
+    
+    setTimeout(function() {
+      alert('📤 Bulk Upload Complete!\n\n' +
+            '✅ Uploaded: ' + uploaded + '\n' +
+            (failed > 0 ? '❌ Failed: ' + failed + '\n' : '') +
+            '\n💾 Next ZIP download will use this data\n' +
+            '💰 No Findr API calls for these vehicles!');
+      closeBulkUpload();
+      btn.disabled = false;
+      btn.innerHTML = '💾 Upload to Database';
+      window._bulkData = null;
+    }, 500);
+    
+  } catch (err) {
+    console.error('Upload error:', err);
+    alert('❌ Upload failed: ' + err.message);
+    btn.disabled = false;
+    btn.innerHTML = '💾 Upload to Database';
+  }
+}
+
+function downloadBulkTemplate() {
+  // Create sample Excel template
+  var wb = XLSX.utils.book_new();
+  var data = [
+    ['plate', 'owner_name', 'mobile', 'maker', 'model', 'rto', 'registration_date'],
+    ['MH4T0554', 'RAMESH KUMAR SINGH', '9876543210', 'Bajaj Auto', 'RE Compact', 'Pune RTO', '2020-05-15'],
+    ['BR23TB0311', 'SURESH PATEL', '9123456789', 'TVS', 'King Deluxe', 'Patna RTO', '2019-08-22'],
+    ['JM144926', 'MOHAN VERMA', '9988776655', 'Piaggio', 'Ape City', 'Jammu RTO', '2021-03-10']
+  ];
+  
+  var ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [
+    { wch: 15 }, { wch: 25 }, { wch: 14 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 14 }
+  ];
+  
+  XLSX.utils.book_append_sheet(wb, ws, 'Vehicles');
+  
+  // Add instructions sheet
+  var instructions = [
+    ['INSTRUCTIONS - Vehicle Data Upload Template'],
+    [''],
+    ['1. Fill the "Vehicles" sheet with your vehicle data'],
+    ['2. REQUIRED columns:'],
+    ['   - plate (vehicle number, will be cleaned/uppercased)'],
+    [''],
+    ['3. RECOMMENDED columns (to save Findr API costs):'],
+    ['   - owner_name'],
+    ['   - mobile'],
+    [''],
+    ['4. OPTIONAL columns:'],
+    ['   - maker (Bajaj Auto, TVS, Piaggio, etc.)'],
+    ['   - model'],
+    ['   - rto'],
+    ['   - registration_date (YYYY-MM-DD format)'],
+    [''],
+    ['5. Save and upload via Admin Panel → Bulk Import button'],
+    [''],
+    ['NOTES:'],
+    ['• Plate format auto-cleaned (spaces/special chars removed)'],
+    ['• Duplicates will be UPDATED (not duplicated)'],
+    ['• Manually uploaded data is marked as "verified"'],
+    ['• Next ZIP download will use this data (no Findr API call)']
+  ];
+  var ws2 = XLSX.utils.aoa_to_sheet(instructions);
+  ws2['!cols'] = [{ wch: 60 }];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Instructions');
+  
+  XLSX.writeFile(wb, 'Prajapati_Vehicle_Import_Template.xlsx');
+}
+
+
+function configFindrServer() {
+  var currentUrl = localStorage.getItem('findr_server_url') || 'http://localhost:3000';
+  var message = 'Findr Server URL Configuration\n\n' +
+    'Current: ' + currentUrl + '\n\n' +
+    'Examples:\n' +
+    '• Local Mac: http://localhost:3000\n' +
+    '• Local PC: http://192.168.1.X:3000\n' +
+    '• Railway: https://your-app.railway.app\n' +
+    '• Vercel: https://your-server.vercel.app\n\n' +
+    'Enter new URL (or click OK to keep current):';
+  
+  var newUrl = prompt(message, currentUrl);
+  
+  if (newUrl === null) return; // cancelled
+  
+  newUrl = newUrl.trim().replace(/\/$/, '');
+  
+  if (newUrl === '') {
+    if (confirm('Remove Findr server configuration?')) {
+      localStorage.removeItem('findr_server_url');
+      FINDR_SERVER_URL = 'http://localhost:3000';
+      alert('✅ Reset to default: ' + FINDR_SERVER_URL);
+    }
+    return;
+  }
+  
+  // Test the URL
+  btn = event.target;
+  var oldText = btn.innerHTML;
+  btn.innerHTML = '⏳ Testing...';
+  btn.disabled = true;
+  
+  fetch(newUrl + '/health')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.status === 'ok' || data.server) {
+        localStorage.setItem('findr_server_url', newUrl);
+        FINDR_SERVER_URL = newUrl;
+        alert('✅ Findr server configured!\n\nServer: ' + (data.server || newUrl) + '\nCached: ' + (data.cached || 0) + ' vehicles\nUptime: ' + (data.uptime || 'N/A'));
+      } else {
+        alert('⚠️ Server responded but doesn\'t look like Findr server. Save anyway?');
+        if (confirm('Save URL despite test failure?')) {
+          localStorage.setItem('findr_server_url', newUrl);
+          FINDR_SERVER_URL = newUrl;
+        }
+      }
+    })
+    .catch(function(err) {
+      alert('❌ Could not reach server: ' + err.message + '\n\nMake sure:\n1. Server is running\n2. URL is correct\n3. CORS allows this origin\n\nSave anyway?');
+      if (confirm('Save URL despite test failure?')) {
+        localStorage.setItem('findr_server_url', newUrl);
+        FINDR_SERVER_URL = newUrl;
+        alert('✅ Saved (will retry when downloading ZIP)');
+      }
+    })
+    .finally(function() {
+      btn.innerHTML = oldText;
+      btn.disabled = false;
+    });
+}
+
+function sanitizeName(name) {
+  if (!name) return 'unknown';
+  return String(name).replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').replace(/\s+/g, '-').substring(0, 60);
+}
+
+function formatTimeForFilename(isoDate) {
+  if (!isoDate) return 'unknown-time';
+  var d = new Date(isoDate);
+  var hh = d.getHours();
+  var mm = String(d.getMinutes()).padStart(2, '0');
+  var ampm = hh >= 12 ? 'pm' : 'am';
+  var hh12 = hh % 12 || 12;
+  return String(hh12).padStart(2, '0') + '-' + mm + ampm;
+}
+
+// Extract vehicle ID from URL (last folder name)
+function extractVehicleIdFromUrl(url) {
+  if (!url) return null;
+  // URL pattern: .../member-name/MH4T0554/back-MH4T0554.jpg
+  var match = url.match(/\/([a-zA-Z0-9\-]+)\/(left|right|back|front|side)-/i);
+  if (match) return match[1];
+  // Fallback: try second-to-last segment
+  var parts = url.split('/');
+  if (parts.length >= 2) return parts[parts.length - 2];
+  return null;
+}
+
+// Detect side from URL (left, right, back, front)
+function extractSideFromUrl(url) {
+  if (!url) return 'photo';
+  var match = url.match(/\/(left|right|back|front|side|hood)-/i);
+  if (match) return match[1].toLowerCase();
+  // Check filename
+  if (url.match(/left/i)) return 'left';
+  if (url.match(/right/i)) return 'right';
+  if (url.match(/back/i)) return 'back';
+  if (url.match(/front/i)) return 'front';
+  return 'photo';
+}
+
+// Group photos by vehicle (using verified_plate > vehicle_number > URL-extracted vehicle ID)
+function groupPhotosByVehicle(photos) {
+  var groups = {};
+  
+  photos.forEach(function(p) {
+    // PRIORITY 1: verified_plate (most accurate, from Verifier Portal)
+    var verifiedPlate = (p.verified_plate || '').trim().toUpperCase();
+    // PRIORITY 2: OCR-detected vehicle_number
+    var ocrPlate = (p.vehicle_number || '').trim().toUpperCase();
+    // PRIORITY 3: Vehicle ID extracted from URL
+    var vehicleId = extractVehicleIdFromUrl(p.public_url);
+    
+    var groupKey;
+    var hasPlate = false;
+    var isVerified = !!p.is_verified;
+    
+    if (verifiedPlate && verifiedPlate.length >= 4) {
+      groupKey = verifiedPlate;
+      hasPlate = true;
+    } else if (ocrPlate && ocrPlate.length >= 4) {
+      groupKey = ocrPlate;
+      hasPlate = true;
+    } else if (vehicleId && vehicleId.match(/^[a-zA-Z0-9]{4,}$/)) {
+      groupKey = vehicleId.toUpperCase();
+      hasPlate = vehicleId.match(/^(unk-|no-plate)/i) ? false : true;
+    } else {
+      groupKey = 'UNIDENTIFIED_' + p.id;
+      hasPlate = false;
+    }
+    
+    if (!groups[groupKey]) {
+      groups[groupKey] = {
+        plate: hasPlate ? groupKey : null,
+        groupKey: groupKey,
+        hasPlate: hasPlate,
+        isVerified: isVerified,
+        verifiedAt: p.verified_at,
+        photos: [],
+        campaign: p.campaign_key,
+        member: p.member_name || p.member_phone,
+        date: p.captured_at ? p.captured_at.slice(0, 10) : 'unknown',
+        capturedAt: p.captured_at,
+        address: p.address,
+        city: extractCityFromAddress(p.address),
+        latitude: p.latitude,
+        longitude: p.longitude
+      };
+    }
+    groups[groupKey].photos.push(p);
+    if (isVerified) groups[groupKey].isVerified = true;
+  });
+  
+  return groups;
+}
+
+function extractCityFromAddress(address) {
+  if (!address) return '';
+  // Address format: "SH156, Ambajogai, Ambejogai, Beed District, Maharashtra, ..."
+  var parts = address.split(',').map(function(s) { return s.trim(); });
+  // Try to find city (usually 2nd or 3rd element)
+  for (var i = 1; i < Math.min(parts.length, 4); i++) {
+    if (parts[i] && !parts[i].match(/^\d+/) && parts[i].length > 2) {
+      return parts[i];
+    }
+  }
+  return parts[0] || '';
+}
+
+// ─── FINDR API INTEGRATION ───
+// Fetch vehicle details: cache → Supabase → Findr API
+async function enrichVehiclesWithFindr(groups, btn, onProgress) {
+  var platesToFetch = [];
+  var allPlates = [];
+  
+  Object.keys(groups).forEach(function(key) {
+    if (groups[key].hasPlate && groups[key].plate) {
+      allPlates.push(groups[key].plate);
+    }
+  });
+  
+  if (allPlates.length === 0) return;
+  
+  if (onProgress) onProgress('🔍 Checking cache for ' + allPlates.length + ' vehicles...');
+  
+  // STEP 1: Check Supabase cache first
+  try {
+    var qs = '/rest/v1/prajapati_vehicle_lookup?select=*&plate=in.(' + 
+             allPlates.map(function(p) { return '"' + p + '"'; }).join(',') + ')';
+    var cached = await api(qs);
+    cached = cached || [];
+    
+    var cachedMap = {};
+    cached.forEach(function(c) { cachedMap[c.plate] = c; });
+    
+    // Apply cached data to groups
+    Object.keys(groups).forEach(function(key) {
+      var g = groups[key];
+      if (g.hasPlate && g.plate && cachedMap[g.plate]) {
+        var c = cachedMap[g.plate];
+        g.ownerName = c.manual_override_name || c.owner_name || '';
+        g.mobile = c.manual_override_mobile || c.mobile || '';
+        g.maker = c.maker || '';
+        g.rto = c.rto || '';
+        g.fromCache = true;
+        g.cacheSource = c.source;
+      } else if (g.hasPlate && g.plate) {
+        platesToFetch.push(g.plate);
+      }
+    });
+    
+    if (onProgress) onProgress('✅ ' + cached.length + ' from cache, ' + platesToFetch.length + ' to fetch...');
+  } catch (err) {
+    console.warn('Cache check failed:', err);
+    platesToFetch = allPlates.slice();
+  }
+  
+  // STEP 2: Call Findr API for un-cached plates
+  if (platesToFetch.length > 0) {
+    try {
+      if (onProgress) onProgress('🔍 Calling Findr API for ' + platesToFetch.length + ' new plates...');
+      
+      var resp = await fetch(FINDR_SERVER_URL + '/api/vehicles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plates: platesToFetch })
+      });
+      
+      if (!resp.ok) throw new Error('Findr server returned ' + resp.status);
+      
+      var data = await resp.json();
+      var results = data.results || {};
+      
+      // Save to Supabase cache + apply to groups
+      var toCache = [];
+      Object.keys(results).forEach(function(plate) {
+        var r = results[plate];
+        if (r.success && r.data) {
+          var d = r.data;
+          
+          // Apply to group
+          Object.keys(groups).forEach(function(key) {
+            if (groups[key].plate === plate) {
+              groups[key].ownerName = d.ownerName || '';
+              groups[key].mobile = d.mobile || '';
+              groups[key].maker = d.maker || '';
+              groups[key].rto = d.rto || '';
+              groups[key].fromFindr = true;
+            }
+          });
+          
+          // Prep for cache save
+          if (r.source !== 'cache') {
+            toCache.push({
+              plate: plate,
+              plate_raw: plate,
+              owner_name: d.ownerName,
+              mobile: d.mobile,
+              maker: d.maker,
+              rto: d.rto,
+              registration_date: d.regDate || null,
+              source: r.source || 'findr',
+              is_masked: d.isMasked || false,
+              raw_response: r,
+              fetched_at: new Date().toISOString()
+            });
+          }
+        }
+      });
+      
+      // Save to Supabase
+      if (toCache.length > 0) {
+        try {
+          await api('/rest/v1/prajapati_vehicle_lookup?on_conflict=plate', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Prefer': 'resolution=merge-duplicates,return=minimal'
+            },
+            body: JSON.stringify(toCache)
+          });
+          if (onProgress) onProgress('💾 Saved ' + toCache.length + ' to cache for future use');
+        } catch (e) {
+          console.warn('Cache save failed:', e);
+        }
+      }
+    } catch (err) {
+      console.warn('Findr API failed:', err);
+      if (onProgress) onProgress('⚠️ Findr offline (' + err.message + ') - continuing without enrichment');
+    }
+  }
+}
+
+// ─── EXCEL REPORT GENERATION ───
+function generateExcelReport(groups, photos) {
+  if (typeof XLSX === 'undefined') {
+    console.warn('XLSX library not loaded');
+    return null;
+  }
+  
+  var wb = XLSX.utils.book_new();
+  var groupArr = Object.values(groups);
+  
+  // Sort by serial: identified first (alphabetical), unidentified last
+  groupArr.sort(function(a, b) {
+    if (a.hasPlate && !b.hasPlate) return -1;
+    if (!a.hasPlate && b.hasPlate) return 1;
+    return (a.plate || a.groupKey || '').localeCompare(b.plate || b.groupKey || '');
+  });
+  
+  // ─── SHEET 1: All Vehicles ───
+  var allVehiclesData = [
+    ['Sr.', 'Plate', 'Owner Name', 'Mobile', 'Vehicle Maker', 'RTO', 'Campaign', 'Team Member', 'Date', 'Time', 'City', 'State/Area', 'Photos Count', 'GPS Coords', 'Source']
+  ];
+  groupArr.forEach(function(g, idx) {
+    var time = g.capturedAt ? new Date(g.capturedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : '';
+    allVehiclesData.push([
+      idx + 1,
+      g.hasPlate ? g.plate : 'Not Identified',
+      g.ownerName || '',
+      g.mobile || '',
+      g.maker || '',
+      g.rto || '',
+      g.campaign || '',
+      g.member || '',
+      g.date || '',
+      time,
+      g.city || '',
+      g.address || '',
+      g.photos.length,
+      g.latitude && g.longitude ? g.latitude + ', ' + g.longitude : '',
+      g.fromCache ? 'Cache' : (g.fromFindr ? 'Findr' : (g.hasPlate ? 'OCR Only' : 'No Plate'))
+    ]);
+  });
+  
+  var ws1 = XLSX.utils.aoa_to_sheet(allVehiclesData);
+  ws1['!cols'] = [
+    { wch: 4 }, { wch: 14 }, { wch: 25 }, { wch: 12 }, { wch: 15 }, { wch: 20 },
+    { wch: 12 }, { wch: 18 }, { wch: 12 }, { wch: 10 }, { wch: 15 }, { wch: 35 },
+    { wch: 8 }, { wch: 20 }, { wch: 10 }
+  ];
+  XLSX.utils.book_append_sheet(wb, ws1, 'All Vehicles');
+  
+  // ─── SHEET 2: Campaign-wise ───
+  var byCampaign = {};
+  groupArr.forEach(function(g) {
+    var c = g.campaign || 'unknown';
+    if (!byCampaign[c]) {
+      byCampaign[c] = { total: 0, identified: 0, photos: 0, cities: new Set(), members: new Set(), withMobile: 0 };
+    }
+    byCampaign[c].total++;
+    if (g.hasPlate) byCampaign[c].identified++;
+    if (g.mobile) byCampaign[c].withMobile++;
+    byCampaign[c].photos += g.photos.length;
+    if (g.city) byCampaign[c].cities.add(g.city);
+    if (g.member) byCampaign[c].members.add(g.member);
+  });
+  
+  var campaignData = [
+    ['Campaign', 'Total Vehicles', 'Plates Identified', 'ID Rate %', 'Mobile Captured', 'Mobile Rate %', 'Total Photos', 'Cities Count', 'Team Members', 'Cities', 'Members']
+  ];
+  Object.keys(byCampaign).forEach(function(c) {
+    var data = byCampaign[c];
+    campaignData.push([
+      c,
+      data.total,
+      data.identified,
+      data.total > 0 ? Math.round((data.identified / data.total) * 100) + '%' : '0%',
+      data.withMobile,
+      data.total > 0 ? Math.round((data.withMobile / data.total) * 100) + '%' : '0%',
+      data.photos,
+      data.cities.size,
+      data.members.size,
+      Array.from(data.cities).join(', '),
+      Array.from(data.members).join(', ')
+    ]);
+  });
+  
+  var ws2 = XLSX.utils.aoa_to_sheet(campaignData);
+  ws2['!cols'] = [
+    { wch: 18 }, { wch: 14 }, { wch: 16 }, { wch: 10 }, { wch: 14 }, { wch: 12 },
+    { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 30 }, { wch: 30 }
+  ];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Campaign-wise');
+  
+  // ─── SHEET 3: Team-wise ───
+  var byTeam = {};
+  groupArr.forEach(function(g) {
+    var m = g.member || 'unknown';
+    if (!byTeam[m]) {
+      byTeam[m] = { total: 0, identified: 0, photos: 0, days: new Set(), withMobile: 0, campaigns: new Set() };
+    }
+    byTeam[m].total++;
+    if (g.hasPlate) byTeam[m].identified++;
+    if (g.mobile) byTeam[m].withMobile++;
+    byTeam[m].photos += g.photos.length;
+    if (g.date) byTeam[m].days.add(g.date);
+    if (g.campaign) byTeam[m].campaigns.add(g.campaign);
+  });
+  
+  var teamData = [
+    ['Team Member', 'Total Vehicles', 'Plates Read', 'ID Rate %', 'Mobile Captured', 'Total Photos', 'Active Days', 'Campaigns', 'Productivity (V/day)']
+  ];
+  Object.keys(byTeam).forEach(function(m) {
+    var data = byTeam[m];
+    var avgPerDay = data.days.size > 0 ? (data.total / data.days.size).toFixed(1) : 0;
+    teamData.push([
+      m,
+      data.total,
+      data.identified,
+      data.total > 0 ? Math.round((data.identified / data.total) * 100) + '%' : '0%',
+      data.withMobile,
+      data.photos,
+      data.days.size,
+      Array.from(data.campaigns).join(', '),
+      avgPerDay
+    ]);
+  });
+  
+  var ws3 = XLSX.utils.aoa_to_sheet(teamData);
+  ws3['!cols'] = [
+    { wch: 20 }, { wch: 14 }, { wch: 12 }, { wch: 10 }, { wch: 14 }, { wch: 12 },
+    { wch: 12 }, { wch: 25 }, { wch: 16 }
+  ];
+  XLSX.utils.book_append_sheet(wb, ws3, 'Team-wise');
+  
+  // ─── SHEET 4: Date-wise ───
+  var byDate = {};
+  groupArr.forEach(function(g) {
+    var d = g.date || 'unknown';
+    if (!byDate[d]) {
+      byDate[d] = { total: 0, identified: 0, photos: 0, members: new Set(), withMobile: 0 };
+    }
+    byDate[d].total++;
+    if (g.hasPlate) byDate[d].identified++;
+    if (g.mobile) byDate[d].withMobile++;
+    byDate[d].photos += g.photos.length;
+    if (g.member) byDate[d].members.add(g.member);
+  });
+  
+  var dateData = [
+    ['Date', 'Total Vehicles', 'Plates Read', 'ID Rate %', 'Mobile Captured', 'Total Photos', 'Team Members']
+  ];
+  Object.keys(byDate).sort().forEach(function(d) {
+    var data = byDate[d];
+    dateData.push([
+      d,
+      data.total,
+      data.identified,
+      data.total > 0 ? Math.round((data.identified / data.total) * 100) + '%' : '0%',
+      data.withMobile,
+      data.photos,
+      Array.from(data.members).join(', ')
+    ]);
+  });
+  
+  var ws4 = XLSX.utils.aoa_to_sheet(dateData);
+  ws4['!cols'] = [
+    { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 30 }
+  ];
+  XLSX.utils.book_append_sheet(wb, ws4, 'Date-wise');
+  
+  // ─── SHEET 5: Summary ───
+  var totalIdentified = groupArr.filter(function(g) { return g.hasPlate; }).length;
+  var totalWithMobile = groupArr.filter(function(g) { return g.mobile; }).length;
+  var totalWithOwner = groupArr.filter(function(g) { return g.ownerName; }).length;
+  var dates = Object.keys(byDate);
+  
+  var summaryData = [
+    ['PRAJAPATI ADVERTISING - VEHICLE CAMPAIGN REPORT'],
+    [''],
+    ['Report Generated:', new Date().toLocaleString('en-IN')],
+    ['Date Range:', dates.length > 0 ? dates[0] + ' to ' + dates[dates.length - 1] : 'N/A'],
+    [''],
+    ['── SUMMARY METRICS ──'],
+    ['Total Unique Vehicles:', groupArr.length],
+    ['Plates Successfully Identified:', totalIdentified + ' (' + (groupArr.length > 0 ? Math.round((totalIdentified / groupArr.length) * 100) : 0) + '%)'],
+    ['Owner Names Captured:', totalWithOwner + ' (' + (groupArr.length > 0 ? Math.round((totalWithOwner / groupArr.length) * 100) : 0) + '%)'],
+    ['Mobile Numbers Captured:', totalWithMobile + ' (' + (groupArr.length > 0 ? Math.round((totalWithMobile / groupArr.length) * 100) : 0) + '%)'],
+    ['Total Photos:', photos.length],
+    ['Active Days:', dates.length],
+    ['Campaigns Covered:', Object.keys(byCampaign).length],
+    ['Team Members Active:', Object.keys(byTeam).length],
+    [''],
+    ['── DATA SOURCES ──'],
+    ['From Findr API:', groupArr.filter(function(g) { return g.fromFindr; }).length],
+    ['From Cache:', groupArr.filter(function(g) { return g.fromCache; }).length],
+    ['OCR Only (no enrichment):', groupArr.filter(function(g) { return g.hasPlate && !g.fromCache && !g.fromFindr; }).length],
+    ['Unidentified:', groupArr.filter(function(g) { return !g.hasPlate; }).length],
+    [''],
+    ['── Prajapati Advertising ──'],
+    ['Contact:', '+91 99 22 138 138'],
+    ['Email:', 'info@prajapatiadvertising.co.in'],
+    ['Website:', 'prajapatiadvertising.co.in']
+  ];
+  
+  var ws5 = XLSX.utils.aoa_to_sheet(summaryData);
+  ws5['!cols'] = [{ wch: 30 }, { wch: 50 }];
+  XLSX.utils.book_append_sheet(wb, ws5, 'Summary');
+  
+  // Convert workbook to binary
+  var wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  return new Blob([wbout], { type: 'application/octet-stream' });
+}
+
+// ─── MAIN: SMART BUILD & DOWNLOAD ZIP ───
+async function smartBuildAndDownloadZip(photos, btn) {
   var zip = new JSZip();
   var total = photos.length;
   var processed = 0;
   var failed = 0;
   
-  // Sanitize folder/file names for cross-platform safety
-  function sanitizeName(name) {
-    if (!name) return 'unknown';
-    return String(name).replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').replace(/\s+/g, '-').substring(0, 60);
+  function updateProgress(label) {
+    btn.innerHTML = label || ('⏳ ' + processed + '/' + total + ' photos...');
   }
   
-  // Format date for filename (e.g., "07-10pm")
-  function formatTimeForFilename(isoDate) {
-    if (!isoDate) return 'unknown-time';
-    var d = new Date(isoDate);
-    var hh = d.getHours();
-    var mm = String(d.getMinutes()).padStart(2, '0');
-    var ampm = hh >= 12 ? 'pm' : 'am';
-    var hh12 = hh % 12 || 12;
-    return String(hh12).padStart(2, '0') + '-' + mm + ampm;
+  updateProgress('🔍 Analyzing photos...');
+  
+  // STEP 1: Group photos by vehicle
+  var groups = groupPhotosByVehicle(photos);
+  var groupCount = Object.keys(groups).length;
+  console.log('📦 Grouped into ' + groupCount + ' unique vehicles from ' + total + ' photos');
+  
+  // STEP 2: Enrich with Findr API
+  try {
+    await enrichVehiclesWithFindr(groups, btn, updateProgress);
+  } catch (err) {
+    console.warn('Findr enrichment skipped:', err);
   }
   
-  // Build folder structure summary first
-  var byCampaign = {};
-  photos.forEach(function(p) {
-    var camp = sanitizeName(p.campaign_key || 'unknown-campaign');
-    var memb = sanitizeName(p.member_name || p.member_phone || 'unknown-member');
-    if (!byCampaign[camp]) byCampaign[camp] = {};
-    if (!byCampaign[camp][memb]) byCampaign[camp][memb] = [];
-    byCampaign[camp][memb].push(p);
+  // STEP 3: Build vehicle-grouped folder structure
+  updateProgress('📁 Building vehicle folders...');
+  
+  var groupArr = Object.values(groups);
+  // Sort: identified first, then unidentified
+  groupArr.sort(function(a, b) {
+    if (a.hasPlate && !b.hasPlate) return -1;
+    if (!a.hasPlate && b.hasPlate) return 1;
+    return (a.plate || a.groupKey || '').localeCompare(b.plate || b.groupKey || '');
   });
   
-  // Update button with progress
-  function updateProgress() {
-    var pct = Math.round((processed / total) * 100);
-    btn.innerHTML = '⏳ ' + processed + '/' + total + ' (' + pct + '%)';
-  }
+  // Assign serial numbers
+  groupArr.forEach(function(g, idx) {
+    g.serial = String(idx + 1).padStart(3, '0');
+  });
   
-  updateProgress();
+  // STEP 4: Fetch and add photos to ZIP (grouped by vehicle)
+  var fetchPromises = [];
   
-  // Fetch all photos and add to ZIP
-  var fetchPromises = photos.map(function(p, idx) {
-    if (!p.public_url) {
-      processed++;
-      failed++;
-      updateProgress();
-      return Promise.resolve();
+  groupArr.forEach(function(g) {
+    // Build folder name: 001_MH4T0554_RameshKumar OR 001_Unidentified
+    var folderName;
+    if (g.hasPlate) {
+      var ownerShort = g.ownerName ? sanitizeName(g.ownerName).substring(0, 25) : 'NoOwner';
+      folderName = 'Vehicles/' + g.serial + '_' + sanitizeName(g.plate) + '_' + ownerShort;
+    } else {
+      folderName = 'Vehicles/ZZ_Unidentified/' + g.serial + '_NoPlate_' + formatTimeForFilename(g.capturedAt);
     }
     
-    return fetch(p.public_url)
-      .then(function(res) {
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        return res.blob();
-      })
-      .then(function(blob) {
-        var camp = sanitizeName(p.campaign_key || 'unknown-campaign');
-        var memb = sanitizeName(p.member_name || p.member_phone || 'unknown-member');
-        var plate = sanitizeName(p.vehicle_number || 'no-plate-' + (idx + 1));
-        var mode = sanitizeName(p.mode || 'photo');
-        var time = formatTimeForFilename(p.captured_at);
-        var date = p.captured_at ? p.captured_at.slice(0, 10) : 'no-date';
-        
-        // Filename: plate_mode_07-10pm.jpg
-        var filename = plate + '_' + mode + '_' + time + '.jpg';
-        // Folder: Campaign-X/Member-Y/Date-Z/
-        var folderPath = camp + '/' + memb + '/' + date + '/' + filename;
-        
-        zip.file(folderPath, blob);
-        processed++;
-        updateProgress();
-      })
-      .catch(function(err) {
-        console.warn('Failed photo ' + idx + ':', err);
+    g.photos.forEach(function(p, photoIdx) {
+      if (!p.public_url) {
         processed++;
         failed++;
-        updateProgress();
-      });
+        return;
+      }
+      
+      var side = extractSideFromUrl(p.public_url) || ('photo' + (photoIdx + 1));
+      var filename = side + '.jpg';
+      var fullPath = folderName + '/' + filename;
+      
+      var promise = fetch(p.public_url)
+        .then(function(res) {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.blob();
+        })
+        .then(function(blob) {
+          zip.file(fullPath, blob);
+          processed++;
+          updateProgress();
+        })
+        .catch(function(err) {
+          console.warn('Failed photo:', err);
+          processed++;
+          failed++;
+          updateProgress();
+        });
+      
+      fetchPromises.push(promise);
+    });
   });
   
-  // After all fetches: generate ZIP and trigger download
-  Promise.all(fetchPromises).then(function() {
-    btn.innerHTML = '📦 Building ZIP...';
-    
-    // Add CSV index inside ZIP for reference
-    var csvLines = ['Plate,Mode,Captured,Address,Latitude,Longitude,Campaign,Member,URL'];
-    photos.forEach(function(p) {
+  // STEP 5: Wait for all photos
+  await Promise.all(fetchPromises);
+  
+  // STEP 6: Generate Excel Report
+  updateProgress('📊 Building Excel report...');
+  try {
+    var excelBlob = generateExcelReport(groups, photos);
+    if (excelBlob) {
+      zip.file('Vehicle_Report.xlsx', excelBlob);
+    }
+  } catch (err) {
+    console.error('Excel generation failed:', err);
+  }
+  
+  // STEP 7: Add CSV index (backward compat)
+  var csvLines = ['Serial,Plate,Owner,Mobile,Maker,Campaign,Member,Date,Time,City,Address,Latitude,Longitude,Source'];
+  groupArr.forEach(function(g) {
+    g.photos.forEach(function(p) {
+      var time = g.capturedAt ? new Date(g.capturedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : '';
       csvLines.push([
-        (p.vehicle_number || '').replace(/,/g, ' '),
-        (p.mode || ''),
-        (p.captured_at || ''),
-        '"' + (p.address || '').replace(/"/g, '""') + '"',
-        (p.latitude || ''),
-        (p.longitude || ''),
-        (p.campaign_key || ''),
-        (p.member_name || p.member_phone || ''),
-        (p.public_url || '')
+        g.serial,
+        (g.plate || 'unidentified'),
+        '"' + (g.ownerName || '').replace(/"/g, '""') + '"',
+        (g.mobile || ''),
+        (g.maker || ''),
+        (g.campaign || ''),
+        '"' + (g.member || '').replace(/"/g, '""') + '"',
+        (g.date || ''),
+        time,
+        (g.city || ''),
+        '"' + (g.address || '').replace(/"/g, '""') + '"',
+        (g.latitude || ''),
+        (g.longitude || ''),
+        g.fromCache ? 'Cache' : (g.fromFindr ? 'Findr' : 'OCR')
       ].join(','));
     });
-    zip.file('photos-index.csv', csvLines.join('\n'));
-    
-    return zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
-  }).then(function(blob) {
-    var dateRange = document.getElementById('photoDate').value || 'all';
-    var endDate = document.getElementById('photoDateEnd').value;
-    var dateLabel = endDate && endDate !== dateRange ? dateRange + '_to_' + endDate : dateRange;
-    var zipName = 'PrajapatiGPS_Photos_' + dateLabel + '_' + Date.now() + '.zip';
-    
-    saveAs(blob, zipName);
-    
-    btn.disabled = false;
-    btn.innerHTML = '📦 Download ZIP';
-    
-    if (failed > 0) {
-      alert('✅ Downloaded ' + (total - failed) + ' photos. ' + failed + ' failed (likely permission issues).');
-    } else {
-      alert('✅ Successfully downloaded ' + total + ' photos as ZIP!');
-    }
-  }).catch(function(err) {
-    console.error('ZIP build error:', err);
-    alert('ZIP build failed: ' + (err.message || 'Unknown error'));
-    btn.disabled = false;
-    btn.innerHTML = '📦 Download ZIP';
   });
+  zip.file('photos-index.csv', csvLines.join('\n'));
+  
+  // STEP 8: Add README
+  var readme = [
+    '═══════════════════════════════════════════════',
+    '  PRAJAPATI ADVERTISING - VEHICLE CAMPAIGN ZIP',
+    '═══════════════════════════════════════════════',
+    '',
+    'Generated: ' + new Date().toLocaleString('en-IN'),
+    '',
+    'CONTENTS:',
+    '─────────',
+    '📊 Vehicle_Report.xlsx     - Full Excel report (5 sheets)',
+    '📋 photos-index.csv        - Quick CSV reference',
+    '📂 Vehicles/               - Photos grouped by vehicle',
+    '   ├── 001_PLATE_OwnerName/   (identified vehicles)',
+    '   │   ├── back.jpg',
+    '   │   ├── left.jpg',
+    '   │   └── right.jpg',
+    '   └── ZZ_Unidentified/        (no plate detected)',
+    '',
+    'EXCEL SHEETS:',
+    '─────────────',
+    '1. All Vehicles    - Complete vehicle list',
+    '2. Campaign-wise   - Stats by campaign',
+    '3. Team-wise       - Performance by team member',
+    '4. Date-wise       - Daily breakdown',
+    '5. Summary         - Overall statistics',
+    '',
+    'For queries: info@prajapatiadvertising.co.in',
+    '             +91 99 22 138 138'
+  ].join('\n');
+  zip.file('README.txt', readme);
+  
+  // STEP 9: Generate final ZIP
+  updateProgress('📦 Compressing ZIP...');
+  
+  var blob = await zip.generateAsync({
+    type: 'blob',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 6 }
+  });
+  
+  // STEP 10: Trigger download
+  var dateRange = document.getElementById('photoDate').value || 'all';
+  var endDate = document.getElementById('photoDateEnd').value;
+  var dateLabel = endDate && endDate !== dateRange ? dateRange + '_to_' + endDate : dateRange;
+  var campaignLabel = document.getElementById('photoCampaign').value || 'all';
+  var zipName = 'PrajapatiGPS_' + sanitizeName(campaignLabel) + '_' + dateLabel + '_' + Date.now() + '.zip';
+  
+  saveAs(blob, zipName);
+  
+  btn.disabled = false;
+  btn.innerHTML = '📦 Download ZIP';
+  
+  var identified = Object.values(groups).filter(function(g) { return g.hasPlate; }).length;
+  var withOwner = Object.values(groups).filter(function(g) { return g.ownerName; }).length;
+  
+  var summary = '✅ ZIP Downloaded!\n\n' +
+    '📊 ' + groupCount + ' unique vehicles\n' +
+    '🚗 ' + identified + ' plates identified\n' +
+    '👤 ' + withOwner + ' owner details fetched\n' +
+    '📷 ' + (total - failed) + ' photos packaged\n' +
+    (failed > 0 ? '⚠️ ' + failed + ' photos failed\n' : '') +
+    '\nExcel report inside ZIP has 5 sheets!';
+  alert(summary);
 }
 
 // ─── LIVE PHOTO UPDATES (Supabase Realtime + polling fallback) ───

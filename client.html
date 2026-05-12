@@ -23,6 +23,8 @@
 <!-- JSZip + FileSaver for bulk photo download (ADDED) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<!-- SheetJS for Excel report (v9) -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <style>
 :root {
@@ -1072,111 +1074,330 @@ window.downloadClientPhotosZip = function() {
 };
 
 function buildClientZip(photos, btn) {
+  // V9: Use smart grouped ZIP with cached Findr data
+  smartBuildClientZip(photos, btn);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// V9 CLIENT: SMART ZIP WITH VEHICLE GROUPING + CACHED FINDR + EXCEL
+// (Client uses Supabase cached data only - no live Findr calls for safety)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function clientSanitizeName(name) {
+  if (!name) return 'unknown';
+  return String(name).replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').replace(/\s+/g, '-').substring(0, 60);
+}
+
+function clientFormatTime(isoDate) {
+  if (!isoDate) return 'unknown-time';
+  var d = new Date(isoDate);
+  var hh = d.getHours();
+  var mm = String(d.getMinutes()).padStart(2, '0');
+  var ampm = hh >= 12 ? 'pm' : 'am';
+  var hh12 = hh % 12 || 12;
+  return String(hh12).padStart(2, '0') + '-' + mm + ampm;
+}
+
+function clientExtractVehicleId(url) {
+  if (!url) return null;
+  var match = url.match(/\/([a-zA-Z0-9\-]+)\/(left|right|back|front|side)-/i);
+  if (match) return match[1];
+  var parts = url.split('/');
+  if (parts.length >= 2) return parts[parts.length - 2];
+  return null;
+}
+
+function clientExtractSide(url) {
+  if (!url) return 'photo';
+  var match = url.match(/\/(left|right|back|front|side|hood)-/i);
+  if (match) return match[1].toLowerCase();
+  if (url.match(/left/i)) return 'left';
+  if (url.match(/right/i)) return 'right';
+  if (url.match(/back/i)) return 'back';
+  if (url.match(/front/i)) return 'front';
+  return 'photo';
+}
+
+function clientGroupByVehicle(photos) {
+  var groups = {};
+  photos.forEach(function(p) {
+    // PRIORITY 1: verified_plate (most accurate)
+    var verifiedPlate = (p.verified_plate || '').trim().toUpperCase();
+    var ocrPlate = (p.vehicle_number || '').trim().toUpperCase();
+    var vehicleId = clientExtractVehicleId(p.public_url);
+    var groupKey, hasPlate = false, isVerified = !!p.is_verified;
+    
+    if (verifiedPlate && verifiedPlate.length >= 4) {
+      groupKey = verifiedPlate;
+      hasPlate = true;
+    } else if (ocrPlate && ocrPlate.length >= 4) {
+      groupKey = ocrPlate;
+      hasPlate = true;
+    } else if (vehicleId && vehicleId.match(/^[a-zA-Z0-9]{4,}$/)) {
+      groupKey = vehicleId.toUpperCase();
+      hasPlate = !vehicleId.match(/^(unk-|no-plate)/i);
+    } else {
+      groupKey = 'UNIDENTIFIED_' + p.id;
+      hasPlate = false;
+    }
+    
+    if (!groups[groupKey]) {
+      groups[groupKey] = {
+        plate: hasPlate ? groupKey : null,
+        groupKey: groupKey,
+        hasPlate: hasPlate,
+        isVerified: isVerified,
+        photos: [],
+        campaign: p.campaign_key,
+        member: p.member_name || p.member_phone,
+        date: p.captured_at ? p.captured_at.slice(0, 10) : 'unknown',
+        capturedAt: p.captured_at,
+        address: p.address,
+        city: p.city || '',
+        latitude: p.latitude,
+        longitude: p.longitude
+      };
+    }
+    groups[groupKey].photos.push(p);
+    if (isVerified) groups[groupKey].isVerified = true;
+  });
+  return groups;
+}
+
+// Fetch cached vehicle data (no live Findr - clients use cache only)
+async function clientFetchCachedVehicles(groups) {
+  var plates = [];
+  Object.keys(groups).forEach(function(k) {
+    if (groups[k].hasPlate && groups[k].plate) plates.push(groups[k].plate);
+  });
+  
+  if (plates.length === 0) return;
+  
+  try {
+    var SUPABASE_URL = window.SUPABASE_URL || 'https://fpbktcgtspqsqpaytslv.supabase.co';
+    var SUPABASE_KEY = window.SUPABASE_ANON_KEY || '';
+    
+    var qs = '/rest/v1/prajapati_vehicle_lookup?select=plate,owner_name,mobile,maker,rto,manual_override_name,manual_override_mobile&plate=in.(' + 
+             plates.map(function(p) { return '"' + p + '"'; }).join(',') + ')';
+    
+    var resp = await fetch(SUPABASE_URL + qs, {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY
+      }
+    });
+    
+    if (!resp.ok) return;
+    
+    var cached = await resp.json();
+    var cachedMap = {};
+    cached.forEach(function(c) { cachedMap[c.plate] = c; });
+    
+    Object.keys(groups).forEach(function(key) {
+      var g = groups[key];
+      if (g.hasPlate && g.plate && cachedMap[g.plate]) {
+        var c = cachedMap[g.plate];
+        g.ownerName = c.manual_override_name || c.owner_name || '';
+        g.mobile = c.manual_override_mobile || c.mobile || '';
+        g.maker = c.maker || '';
+        g.rto = c.rto || '';
+        g.fromCache = true;
+      }
+    });
+  } catch (err) {
+    console.warn('Cache fetch failed:', err);
+  }
+}
+
+function clientGenerateExcel(groups, photos) {
+  if (typeof XLSX === 'undefined') return null;
+  
+  var wb = XLSX.utils.book_new();
+  var groupArr = Object.values(groups);
+  
+  groupArr.sort(function(a, b) {
+    if (a.hasPlate && !b.hasPlate) return -1;
+    if (!a.hasPlate && b.hasPlate) return 1;
+    return (a.plate || a.groupKey || '').localeCompare(b.plate || b.groupKey || '');
+  });
+  
+  // Sheet 1: All Vehicles
+  var data = [['Sr.', 'Plate', 'Owner Name', 'Mobile', 'Vehicle Maker', 'Date', 'Time', 'City', 'Photos Count']];
+  groupArr.forEach(function(g, idx) {
+    var time = g.capturedAt ? new Date(g.capturedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : '';
+    data.push([
+      idx + 1,
+      g.hasPlate ? g.plate : 'Not Identified',
+      g.ownerName || '',
+      g.mobile || '',
+      g.maker || '',
+      g.date || '',
+      time,
+      g.city || '',
+      g.photos.length
+    ]);
+  });
+  var ws1 = XLSX.utils.aoa_to_sheet(data);
+  ws1['!cols'] = [{ wch: 4 }, { wch: 14 }, { wch: 25 }, { wch: 12 }, { wch: 15 }, { wch: 12 }, { wch: 10 }, { wch: 18 }, { wch: 8 }];
+  XLSX.utils.book_append_sheet(wb, ws1, 'All Vehicles');
+  
+  // Sheet 2: Summary
+  var identified = groupArr.filter(function(g) { return g.hasPlate; }).length;
+  var withMobile = groupArr.filter(function(g) { return g.mobile; }).length;
+  var summary = [
+    ['PRAJAPATI ADVERTISING - CAMPAIGN REPORT'],
+    [''],
+    ['Generated:', new Date().toLocaleString('en-IN')],
+    [''],
+    ['── METRICS ──'],
+    ['Total Vehicles:', groupArr.length],
+    ['Plates Identified:', identified + ' (' + (groupArr.length > 0 ? Math.round((identified / groupArr.length) * 100) : 0) + '%)'],
+    ['Mobile Captured:', withMobile + ' (' + (groupArr.length > 0 ? Math.round((withMobile / groupArr.length) * 100) : 0) + '%)'],
+    ['Total Photos:', photos.length],
+    [''],
+    ['Contact: +91 99 22 138 138']
+  ];
+  var ws2 = XLSX.utils.aoa_to_sheet(summary);
+  ws2['!cols'] = [{ wch: 30 }, { wch: 50 }];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Summary');
+  
+  return new Blob([XLSX.write(wb, { bookType: 'xlsx', type: 'array' })], { type: 'application/octet-stream' });
+}
+
+async function smartBuildClientZip(photos, btn) {
   var zip = new JSZip();
   var total = photos.length;
   var processed = 0;
   var failed = 0;
   
-  function sanitizeName(name) {
-    if (!name) return 'unknown';
-    return String(name).replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').replace(/\s+/g, '-').substring(0, 60);
-  }
-  
-  function formatTimeForFilename(isoDate) {
-    if (!isoDate) return 'unknown-time';
-    var d = new Date(isoDate);
-    var hh = d.getHours();
-    var mm = String(d.getMinutes()).padStart(2, '0');
-    var ampm = hh >= 12 ? 'pm' : 'am';
-    var hh12 = hh % 12 || 12;
-    return String(hh12).padStart(2, '0') + '-' + mm + ampm;
-  }
-  
-  function updateProgress() {
-    var pct = Math.round((processed / total) * 100);
-    btn.innerHTML = '⏳ ' + processed + '/' + total + ' (' + pct + '%)';
+  function updateProgress(label) {
+    btn.innerHTML = label || ('⏳ ' + processed + '/' + total + ' photos...');
   }
   
   btn.disabled = true;
-  updateProgress();
+  updateProgress('🔍 Analyzing photos...');
   
-  var fetchPromises = photos.map(function(p, idx) {
-    if (!p.public_url) {
-      processed++;
-      failed++;
-      updateProgress();
-      return Promise.resolve();
+  // STEP 1: Group by vehicle
+  var groups = clientGroupByVehicle(photos);
+  
+  // STEP 2: Fetch cached vehicle data
+  updateProgress('🔍 Loading vehicle details...');
+  try {
+    await clientFetchCachedVehicles(groups);
+  } catch (err) {
+    console.warn('Cache fetch skipped:', err);
+  }
+  
+  // STEP 3: Sort and serialize groups
+  var groupArr = Object.values(groups);
+  groupArr.sort(function(a, b) {
+    if (a.hasPlate && !b.hasPlate) return -1;
+    if (!a.hasPlate && b.hasPlate) return 1;
+    return (a.plate || a.groupKey || '').localeCompare(b.plate || b.groupKey || '');
+  });
+  groupArr.forEach(function(g, idx) {
+    g.serial = String(idx + 1).padStart(3, '0');
+  });
+  
+  // STEP 4: Fetch photos
+  var fetchPromises = [];
+  groupArr.forEach(function(g) {
+    var folderName;
+    if (g.hasPlate) {
+      var ownerShort = g.ownerName ? clientSanitizeName(g.ownerName).substring(0, 25) : 'NoOwner';
+      folderName = 'Vehicles/' + g.serial + '_' + clientSanitizeName(g.plate) + '_' + ownerShort;
+    } else {
+      folderName = 'Vehicles/ZZ_Unidentified/' + g.serial + '_NoPlate_' + clientFormatTime(g.capturedAt);
     }
     
-    return fetch(p.public_url)
-      .then(function(res) {
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        return res.blob();
-      })
-      .then(function(blob) {
-        var plate = sanitizeName(p.vehicle_number || 'no-plate-' + (idx + 1));
-        var mode = sanitizeName(p.mode || 'photo');
-        var time = formatTimeForFilename(p.captured_at);
-        var date = p.captured_at ? p.captured_at.slice(0, 10) : 'no-date';
-        
-        var filename = plate + '_' + mode + '_' + time + '.jpg';
-        var folderPath = date + '/' + filename;
-        
-        zip.file(folderPath, blob);
-        processed++;
-        updateProgress();
-      })
-      .catch(function(err) {
-        console.warn('Failed photo ' + idx + ':', err);
+    g.photos.forEach(function(p, idx) {
+      if (!p.public_url) {
         processed++;
         failed++;
-        updateProgress();
-      });
+        return;
+      }
+      
+      var side = clientExtractSide(p.public_url) || ('photo' + (idx + 1));
+      var filename = side + '.jpg';
+      
+      fetchPromises.push(
+        fetch(p.public_url)
+          .then(function(res) {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.blob();
+          })
+          .then(function(blob) {
+            zip.file(folderName + '/' + filename, blob);
+            processed++;
+            updateProgress();
+          })
+          .catch(function(err) {
+            console.warn('Photo fetch failed:', err);
+            processed++;
+            failed++;
+            updateProgress();
+          })
+      );
+    });
   });
   
-  Promise.all(fetchPromises).then(function() {
-    btn.innerHTML = '📦 Building ZIP...';
-    
-    // CSV index
-    var csvLines = ['Plate,Mode,Captured,City,Address,Latitude,Longitude,URL'];
-    photos.forEach(function(p) {
-      csvLines.push([
-        (p.vehicle_number || '').replace(/,/g, ' '),
-        (p.mode || ''),
-        (p.captured_at || ''),
-        (p.city || ''),
-        '"' + (p.address || '').replace(/"/g, '""') + '"',
-        (p.latitude || ''),
-        (p.longitude || ''),
-        (p.public_url || '')
-      ].join(','));
-    });
-    zip.file('photos-index.csv', csvLines.join('\n'));
-    
-    return zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
-  }).then(function(blob) {
-    var dateRange = $('clientPhotoDate').value || 'all';
-    var endDate = $('clientPhotoDateEnd').value;
-    var dateLabel = endDate && endDate !== dateRange ? dateRange + '_to_' + endDate : dateRange;
-    var campaignName = sanitizeName(state.tokenRow.campaign_key || 'campaign');
-    var zipName = campaignName + '_Photos_' + dateLabel + '_' + Date.now() + '.zip';
-    
-    saveAs(blob, zipName);
-    
-    btn.disabled = false;
-    btn.innerHTML = '📦 Download ZIP';
-    
-    if (failed > 0) {
-      alert('Downloaded ' + (total - failed) + ' photos. ' + failed + ' failed.');
-    } else {
-      alert('Successfully downloaded ' + total + ' photos as ZIP!');
-    }
-  }).catch(function(err) {
-    console.error('Client ZIP build error:', err);
-    alert('ZIP build failed: ' + (err.message || 'Unknown error'));
-    btn.disabled = false;
-    btn.innerHTML = '📦 Download ZIP';
+  await Promise.all(fetchPromises);
+  
+  // STEP 5: Excel report
+  updateProgress('📊 Building Excel report...');
+  try {
+    var excelBlob = clientGenerateExcel(groups, photos);
+    if (excelBlob) zip.file('Vehicle_Report.xlsx', excelBlob);
+  } catch (err) {
+    console.error('Excel failed:', err);
+  }
+  
+  // STEP 6: CSV
+  var csvLines = ['Serial,Plate,Owner,Mobile,Date,Time,City,Address'];
+  groupArr.forEach(function(g) {
+    var time = g.capturedAt ? new Date(g.capturedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : '';
+    csvLines.push([
+      g.serial,
+      (g.plate || 'unidentified'),
+      '"' + (g.ownerName || '').replace(/"/g, '""') + '"',
+      (g.mobile || ''),
+      (g.date || ''),
+      time,
+      (g.city || ''),
+      '"' + (g.address || '').replace(/"/g, '""') + '"'
+    ].join(','));
   });
+  zip.file('photos-index.csv', csvLines.join('\n'));
+  
+  // STEP 7: Generate ZIP
+  updateProgress('📦 Compressing ZIP...');
+  var blob = await zip.generateAsync({
+    type: 'blob',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 6 }
+  });
+  
+  // STEP 8: Download
+  var dateRange = $('clientPhotoDate').value || 'all';
+  var endDate = $('clientPhotoDateEnd').value;
+  var dateLabel = endDate && endDate !== dateRange ? dateRange + '_to_' + endDate : dateRange;
+  var campaignName = clientSanitizeName(state.tokenRow.campaign_key || 'campaign');
+  var zipName = campaignName + '_' + dateLabel + '_' + Date.now() + '.zip';
+  
+  saveAs(blob, zipName);
+  
+  btn.disabled = false;
+  btn.innerHTML = '📦 Download ZIP';
+  
+  var identified = groupArr.filter(function(g) { return g.hasPlate; }).length;
+  var withOwner = groupArr.filter(function(g) { return g.ownerName; }).length;
+  
+  alert('✅ ZIP Downloaded!\n\n' +
+        '📊 ' + groupArr.length + ' vehicles\n' +
+        '🚗 ' + identified + ' plates identified\n' +
+        '👤 ' + withOwner + ' owner details\n' +
+        '📷 ' + (total - failed) + ' photos packaged\n' +
+        '\nExcel report inside ZIP!');
 }
 
 function setLivePill(mode, label){
