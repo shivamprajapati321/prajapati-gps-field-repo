@@ -1,69 +1,123 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// /api/debug.js — Diagnostic endpoint
-// Tests Findr API directly, shows exact response (helpful for IP whitelist issue)
-// Usage: /api/debug?plate=MH14HM8257
+// /api/vehicle.js — Vercel Serverless Function (HARDCODED TOKEN VERSION)
+// Proxies Findr API to fetch vehicle owner details
 // ═══════════════════════════════════════════════════════════════════════════
 
 export default async function handler(req, res) {
+  // CORS — verifier.html browser se direct call kar sakega
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   
-  const plate = (req.query.plate || 'MH14HM8257').toString().toUpperCase().replace(/[^A-Z0-9]/g, '');
-  
-const FINDR_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MjIyNSwiZmlyc3ROYW1lIjoiQW5vbnltb3VzIiwibGFzdE5hbWUiOm51bGwsImVtYWlsIjpudWxsLCJwaG9uZSI6Ijk5MjIxMzgxMzgiLCJ1c2VyVHlwZSI6MSwiYXBwRGV2aWNlVHlwZSI6ImFwaSIsImNvdW50cnlJZCI6MTA0LCJjcmVhdGVkQXQiOiIyMDI1LTEwLTExVDA4OjAyOjQ1Ljc4OFoiLCJpYXQiOjE3NzM4MjQzNjAsImV4cCI6MjA4OTE4NDM2MH0.0-cB_noifVaki77sdPgGs1i9ZwzGW9EK3lyyDoChpI0";  
-  const diagnostics = {
-    timestamp: new Date().toISOString(),
-    plate_tested: plate,
-    env_check: {
-      findr_token_configured: !!FINDR_TOKEN,
-      findr_token_length: FINDR_TOKEN ? FINDR_TOKEN.length : 0,
-      findr_token_preview: FINDR_TOKEN ? FINDR_TOKEN.substring(0, 20) + '...' : 'MISSING'
-    },
-    vercel_region: process.env.VERCEL_REGION || 'unknown',
-    findr_test: null
-  };
-  
-  if (!FINDR_TOKEN) {
-    diagnostics.findr_test = { error: 'FINDR_TOKEN env var not set in Vercel dashboard' };
-    return res.status(200).json(diagnostics);
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
   }
   
+  if (req.method !== 'GET') {
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
+  }
+  
+  // Plate number extract karo
+  // Format 1: /api/vehicle?plate=MH14GC3763
+  // Format 2: /api/vehicle/MH14GC3763 (works via Vercel rewrites)
+  let plate = (req.query.plate || '').toString().toUpperCase().trim();
+  
+  // Fallback — agar path se aaye
+  if (!plate && req.url) {
+    const urlParts = req.url.split('?')[0].split('/').filter(Boolean);
+    const last = urlParts[urlParts.length - 1];
+    if (last && last !== 'vehicle') plate = decodeURIComponent(last).toUpperCase().trim();
+  }
+  
+  // Clean — sirf A-Z aur 0-9
+  plate = plate.replace(/[^A-Z0-9]/g, '');
+  
+  if (!plate || plate.length < 4) {
+    return res.status(400).json({ success: false, error: 'Invalid plate number' });
+  }
+  
+  // Token hardcoded (internal tool, single user, acceptable risk)
+  const FINDR_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MjIyNSwiZmlyc3ROYW1lIjoiQW5vbnltb3VzIiwibGFzdE5hbWUiOm51bGwsImVtYWlsIjpudWxsLCJwaG9uZSI6Ijk5MjIxMzgxMzgiLCJ1c2VyVHlwZSI6MSwiYXBwRGV2aWNlVHlwZSI6ImFwaSIsImNvdW50cnlJZCI6MTA0LCJjcmVhdGVkQXQiOiIyMDI1LTEwLTExVDA4OjAyOjQ1Ljc4OFoiLCJpYXQiOjE3NzM4MjQzNjAsImV4cCI6MjA4OTE4NDM2MH0.0-cB_noifVaki77sdPgGs1i9ZwzGW9EK3lyyDoChpI0";
+  
   try {
-    const startTime = Date.now();
     const findrResp = await fetch('https://bifrost.unifers.ai/enrich/get-vehicle-details-v4', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': FINDR_TOKEN
+        'Authorization': FINDR_TOKEN  // Raw JWT, NO "Bearer " prefix
       },
       body: JSON.stringify({
         Vehicle_Number: plate,
-        Concent_Text: 'Debug test',
+        Concent_Text: 'I agree to fetch vehicle details for verification purposes',
         Concent: 'Y'
       })
     });
     
     const text = await findrResp.text();
-    const duration = Date.now() - startTime;
     
-    diagnostics.findr_test = {
-      status: findrResp.status,
-      ok: findrResp.ok,
-      duration_ms: duration,
-      headers: Object.fromEntries(findrResp.headers.entries()),
-      response_body: text.substring(0, 1000),
-      response_size: text.length
-    };
-    
-    // Common error detection
-    if (text.includes('not in allowlist') || text.includes('whitelist')) {
-      diagnostics.diagnosis = '⚠️ IP WHITELIST ISSUE — Vercel IP needs to be added to Findr allowlist. Contact Unifers.ai support.';
-    } else if (findrResp.ok) {
-      diagnostics.diagnosis = '✅ Findr API working from this Vercel deployment';
+    // Network/auth/whitelist error
+    if (!findrResp.ok) {
+      return res.status(200).json({
+        success: false,
+        source: 'findr',
+        plate: plate,
+        status: findrResp.status,
+        error: `Findr API ${findrResp.status}: ${text.substring(0, 300)}`
+      });
     }
     
+    // Parse JSON safely
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      return res.status(200).json({ 
+        success: false, 
+        source: 'findr', 
+        plate: plate,
+        error: 'Invalid JSON from Findr',
+        raw: text.substring(0, 300) 
+      });
+    }
+    
+    // Findr response wrapper unwrap karo — alag levels me data ho sakta hai
+    const result = data?.data || data?.result || data?.response || data;
+    
+    // Multiple possible field name variations (Findr APIs vary)
+    const ownerName = result.owner_name || result.ownerName || result.Owner_Name || 
+                      result.owner || result.ownername || null;
+    const mobile = result.mobile || result.phone || result.Mobile_Number || 
+                   result.mobile_number || result.contact || null;
+    const maker = result.maker || result.manufacturer || result.Maker || 
+                  result.vehicle_maker || null;
+    const model = result.model || result.Model || result.vehicle_model || null;
+    const rto = result.rto || result.RTO || result.registered_at || 
+                result.rto_name || null;
+    const regDate = result.registration_date || result.regDate || 
+                    result.Registration_Date || result.reg_date || null;
+    const isMasked = result.is_masked || result.isMasked || false;
+    
+    return res.status(200).json({
+      success: true,
+      source: 'findr',
+      plate: plate,
+      data: {
+        ownerName: ownerName,
+        mobile: mobile,
+        maker: maker,
+        model: model,
+        rto: rto,
+        regDate: regDate,
+        isMasked: isMasked
+      },
+      raw: data  // Full response for debugging
+    });
+    
   } catch (err) {
-    diagnostics.findr_test = { error: err.message };
+    return res.status(500).json({ 
+      success: false, 
+      plate: plate,
+      error: err.message 
+    });
   }
-  
-  return res.status(200).json(diagnostics);
 }
