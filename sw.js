@@ -1,7 +1,7 @@
 // Prajapati GPS Field App - Service Worker v15
 // AGGRESSIVE AUTO-UPDATE: skipWaiting + clients.claim + network-first HTML/JS
 
-const VERSION = 'v15.2-2026-05-14';
+const VERSION = 'v15.3-2026-05-15';
 const STATIC_CACHE = 'prajapati-static-' + VERSION;
 
 const STATIC_ASSETS = [

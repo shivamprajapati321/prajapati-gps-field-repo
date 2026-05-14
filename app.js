@@ -6,8 +6,8 @@
 //        + Strong PWA install + Aggressive auto-update
 // ═════════════════════════════════════════════════════════════════
 
-var APP_VERSION = 'v15.2';
-var BUILD_DATE = '2026-05-14-15-2';
+var APP_VERSION = 'v15.3';
+var BUILD_DATE = '2026-05-15';
 
 var CONFIG = {
   supabaseUrl: 'https://fpbktcgtspqsqpaytslv.supabase.co',
@@ -647,6 +647,82 @@ var camZoomState = {
   isPinching: false, zoomHideTimer: null
 };
 
+// ⭐ v15.3: Find and open ULTRA-WIDE rear camera (proper 0.5x equivalent)
+function findUltraWideCamera() {
+  return new Promise(function(resolve) {
+    // Step 1: Get permission first to unlock device labels
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
+      .then(function(tempStream) {
+        // Immediately stop temp stream
+        tempStream.getTracks().forEach(function(t) { try { t.stop(); } catch(e){} });
+        return navigator.mediaDevices.enumerateDevices();
+      })
+      .then(function(devices) {
+        var cameras = devices.filter(function(d) { return d.kind === 'videoinput'; });
+        console.log('[CAM v15.3] Found', cameras.length, 'cameras:');
+        cameras.forEach(function(c, i) {
+          console.log('  [' + i + ']', c.label || '(no label)', '|', c.deviceId.substring(0, 10) + '...');
+        });
+        
+        // PRIORITY 1: Ultra-wide rear camera (Samsung/Pixel/OnePlus naming)
+        var ultraWide = cameras.find(function(c) {
+          var lbl = (c.label || '').toLowerCase();
+          var isRear = lbl.indexOf('back') >= 0 || lbl.indexOf('rear') >= 0;
+          var isUltra = lbl.indexOf('ultra') >= 0 || lbl.indexOf('ultrawide') >= 0 || 
+                        lbl.indexOf('ultra wide') >= 0 || lbl.indexOf('ultra-wide') >= 0 ||
+                        lbl.indexOf('0.5') >= 0 || lbl.indexOf('0.6') >= 0;
+          return isRear && isUltra;
+        });
+        
+        if (ultraWide) {
+          console.log('[CAM v15.3] ✅ ULTRA-WIDE FOUND:', ultraWide.label);
+          resolve({ deviceId: ultraWide.deviceId, isUltraWide: true });
+          return;
+        }
+        
+        // PRIORITY 2: Any rear camera with "wide" 
+        var anyWide = cameras.find(function(c) {
+          var lbl = (c.label || '').toLowerCase();
+          return (lbl.indexOf('back') >= 0 || lbl.indexOf('rear') >= 0) && lbl.indexOf('wide') >= 0;
+        });
+        
+        if (anyWide) {
+          console.log('[CAM v15.3] ✅ WIDE rear found:', anyWide.label);
+          resolve({ deviceId: anyWide.deviceId, isUltraWide: true });
+          return;
+        }
+        
+        // PRIORITY 3: Look for camera index 2+ (usually ultra-wide is camera 2 on Android)
+        // Camera 0 = front, 1 = main rear, 2 = ultra-wide, 3 = telephoto (typical)
+        if (cameras.length >= 3) {
+          // Try the 3rd camera (likely ultra-wide on multi-cam phones)
+          console.log('[CAM v15.3] Trying camera[2] as potential ultra-wide:', cameras[2].label);
+          resolve({ deviceId: cameras[2].deviceId, isUltraWide: false, tryZoomMin: true });
+          return;
+        }
+        
+        // PRIORITY 4: Default rear
+        var anyRear = cameras.find(function(c) {
+          var lbl = (c.label || '').toLowerCase();
+          return lbl.indexOf('back') >= 0 || lbl.indexOf('rear') >= 0;
+        });
+        
+        if (anyRear) {
+          console.log('[CAM v15.3] ⚠️ Using main rear:', anyRear.label);
+          resolve({ deviceId: anyRear.deviceId, isUltraWide: false, tryZoomMin: true });
+          return;
+        }
+        
+        console.log('[CAM v15.3] ⚠️ No specific camera, fallback to facingMode');
+        resolve(null);
+      })
+      .catch(function(err) {
+        console.warn('[CAM v15.3] Detection error:', err);
+        resolve(null);
+      });
+  });
+}
+
 function openInAppCamera(key){
   var slot = state.slots.find(function(s){ return s.key === key; });
   $('cam-slot-label').textContent = slot ? slot.label : 'Capture';
@@ -656,16 +732,38 @@ function openInAppCamera(key){
   updateCamStampPreview();
   camStampTimer = setInterval(updateCamStampPreview, 1500);
 
-  navigator.mediaDevices.getUserMedia({
-    video: {
-      facingMode: { ideal: 'environment' },
-      width: { ideal: 1920, max: 4096 },
-      height: { ideal: 1440, max: 3072 },
-      focusMode: { ideal: 'continuous' },
-      whiteBalanceMode: { ideal: 'continuous' }
-    },
-    audio: false
-  }).then(function(stream){
+  // v15.3: Detect & open ultra-wide
+  findUltraWideCamera().then(function(camChoice) {
+    var constraints;
+    if (camChoice && camChoice.deviceId) {
+      constraints = {
+        video: {
+          deviceId: { exact: camChoice.deviceId },
+          width: { ideal: 1920, max: 4096 },
+          height: { ideal: 1440, max: 3072 },
+          focusMode: { ideal: 'continuous' },
+          whiteBalanceMode: { ideal: 'continuous' }
+        },
+        audio: false
+      };
+      console.log('[CAM v15.3] Opening device:', camChoice.deviceId.substring(0,12), camChoice.isUltraWide ? '(ULTRA-WIDE)' : '(rear, will try zoom min)');
+    } else {
+      constraints = {
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1920, max: 4096 },
+          height: { ideal: 1440, max: 3072 }
+        },
+        audio: false
+      };
+      console.log('[CAM v15.3] Opening default rear (no deviceId)');
+    }
+    return navigator.mediaDevices.getUserMedia(constraints).then(function(stream) {
+      return { stream: stream, camChoice: camChoice };
+    });
+  }).then(function(result) {
+    var stream = result.stream;
+    var camChoice = result.camChoice;
     camStream = stream;
     var v = $('cam-feed');
     v.srcObject = stream;
@@ -673,47 +771,34 @@ function openInAppCamera(key){
       v.play();
       $('cam-shutter').disabled = false;
       
-      // ⭐ FIX: Force 0.5x ULTRA-WIDE on open (min zoom)
+      // If we're on a regular rear camera (not ultra-wide), try zoom=min to widen
       var track = stream.getVideoTracks()[0];
       if (track && track.getCapabilities) {
         try {
           var caps = track.getCapabilities();
-          if (caps.zoom) {
-            // ⭐ v15.2 FIX: Force to ABSOLUTE MINIMUM (0.0x / 0.5x / whatever hardware min is)
+          console.log('[CAM v15.3] Track capabilities:', caps.zoom ? JSON.stringify(caps.zoom) : 'no zoom');
+          if (caps.zoom && (!camChoice || !camChoice.isUltraWide)) {
+            // Set to MIN zoom only if NOT already ultra-wide
             var targetZoom = caps.zoom.min;
-            // If min is 1.0 (no ultra-wide), try setting to 0 anyway - some browsers accept
-            console.log('[CAM v15.2] Camera capabilities:', JSON.stringify(caps.zoom));
-            console.log('[CAM v15.2] Forcing zoom to MIN:', targetZoom);
-            
             track.applyConstraints({ advanced: [{ zoom: targetZoom }] })
               .then(function() {
                 camZoomState.currentZoom = targetZoom;
                 camZoomState.minZoom = caps.zoom.min;
                 camZoomState.maxZoom = caps.zoom.max || 4.0;
                 camZoomState.stepZoom = caps.zoom.step || 0.1;
-                console.log('[CAM v15.2] ✅ Zoom set to:', targetZoom + 'x');
+                console.log('[CAM v15.3] ✅ Zoom set to min:', targetZoom + 'x');
                 updateZoomIndicator(targetZoom);
               })
-              .catch(function(e) { 
-                console.warn('[CAM v15.2] Hardware zoom failed - using digital:', e); 
-                // Digital zoom fallback: CSS scale at 0 = NO ZOOM (widest possible view)
-                var video = $('cam-feed');
-                if (video) {
-                  video.style.transform = 'scale(1)';
-                  video.style.transformOrigin = 'center center';
-                }
-                camZoomState.currentZoom = 1.0;
-              });
-          } else {
-            // No zoom capability - use CSS digital zoom to widest
-            console.log('[CAM v15.2] No hardware zoom - using digital fallback');
-            var video = $('cam-feed');
-            if (video) {
-              video.style.transform = 'scale(1)';
-              video.style.transformOrigin = 'center center';
-            }
+              .catch(function(e) { console.warn('[CAM v15.3] Zoom failed:', e); });
+          } else if (caps.zoom) {
+            // Already ultra-wide - just record state
+            camZoomState.currentZoom = caps.zoom.min;
+            camZoomState.minZoom = caps.zoom.min;
+            camZoomState.maxZoom = caps.zoom.max || 4.0;
+            camZoomState.stepZoom = caps.zoom.step || 0.1;
+            console.log('[CAM v15.3] ✅ Ultra-wide camera active, zoom range:', caps.zoom.min, '-', caps.zoom.max);
           }
-        } catch (e) { console.warn('[CAM v15] Cap check failed:', e); }
+        } catch (e) { console.warn('[CAM v15.3] Cap check failed:', e); }
       }
       
       setupPinchToZoom(stream);
@@ -1015,62 +1100,108 @@ function stampGps(file){
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
     var W = canvas.width, H = canvas.height;
-    var oH = Math.round(H * 0.18);
+    
+    // v15.3: PROFESSIONAL GPS Map Camera style stamp
+    var oH = Math.round(H * 0.19);  // Slightly larger for better readability
     var oY = H - oH;
     var pad = Math.round(oH * 0.08);
     var mS = oH - 2*pad;
 
-    // Dark overlay panel at bottom
-    ctx.fillStyle = 'rgba(10,14,26,0.85)';
+    // Solid dark overlay (Google Maps style)
+    ctx.fillStyle = 'rgba(13, 17, 33, 0.95)';
     ctx.fillRect(0, oY, W, oH);
+    
+    // Subtle top border accent
+    ctx.fillStyle = 'rgba(255, 184, 0, 0.5)';
+    ctx.fillRect(0, oY, W, 2);
 
-    // ━━━ MAP GRAPHIC (LEFT SIDE) ━━━
+    // ━━━━━━━━━━━ PROFESSIONAL MAP GRAPHIC ━━━━━━━━━━━
     var mX = pad, mY = oY + pad;
     
-    // Green map background
-    ctx.fillStyle = '#7AA070';
+    // Google Maps base color (cream/off-white)
+    ctx.fillStyle = '#F5F2E8';
     ctx.fillRect(mX, mY, mS, mS);
     
-    // Cream-colored roads (horizontal + vertical)
-    ctx.fillStyle = '#D8D4C0';
-    ctx.fillRect(mX, mY + Math.round(mS*0.4), mS, Math.round(mS*0.06));
-    ctx.fillRect(mX + Math.round(mS*0.45), mY, Math.round(mS*0.04), mS);
-    
-    // Building blocks (gray)
-    ctx.fillStyle = '#5A5650';
-    ctx.fillRect(mX + Math.round(mS*0.08), mY + Math.round(mS*0.08), Math.round(mS*0.25), Math.round(mS*0.25));
-    ctx.fillStyle = '#6A6660';
-    ctx.fillRect(mX + Math.round(mS*0.55), mY + Math.round(mS*0.08), Math.round(mS*0.35), Math.round(mS*0.25));
-    ctx.fillRect(mX + Math.round(mS*0.08), mY + Math.round(mS*0.55), Math.round(mS*0.25), Math.round(mS*0.4));
-    ctx.fillStyle = '#5A5650';
-    ctx.fillRect(mX + Math.round(mS*0.55), mY + Math.round(mS*0.55), Math.round(mS*0.35), Math.round(mS*0.4));
-    
-    // Blue river strip at bottom
-    ctx.fillStyle = '#3070C0';
-    ctx.fillRect(mX, mY + Math.round(mS*0.78), mS, Math.round(mS*0.06));
-
-    // Red Google Maps pin
-    var pCX = mX + mS/2, pCY = mY + mS*0.45, pR = mS*0.13;
-    ctx.fillStyle = '#DB4437';
+    // Light green park (upper right)
+    ctx.fillStyle = '#C8E6C9';
     ctx.beginPath();
-    ctx.arc(pCX, pCY, pR, Math.PI*1.1, Math.PI*1.9);
-    ctx.lineTo(pCX, pCY + pR*2.2);
+    ctx.ellipse(mX + mS * 0.75, mY + mS * 0.20, mS * 0.22, mS * 0.18, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Building blocks (light gray, varying shades)
+    ctx.fillStyle = '#E5E2D9';
+    ctx.fillRect(mX + Math.round(mS*0.05), mY + Math.round(mS*0.05), Math.round(mS*0.32), Math.round(mS*0.30));
+    ctx.fillStyle = '#DDD9CE';
+    ctx.fillRect(mX + Math.round(mS*0.55), mY + Math.round(mS*0.55), Math.round(mS*0.40), Math.round(mS*0.32));
+    ctx.fillStyle = '#E0DDD3';
+    ctx.fillRect(mX + Math.round(mS*0.05), mY + Math.round(mS*0.55), Math.round(mS*0.30), Math.round(mS*0.32));
+    
+    // Building outlines (subtle)
+    ctx.strokeStyle = '#D0CDC2';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(mX + Math.round(mS*0.05), mY + Math.round(mS*0.05), Math.round(mS*0.32), Math.round(mS*0.30));
+    ctx.strokeRect(mX + Math.round(mS*0.55), mY + Math.round(mS*0.55), Math.round(mS*0.40), Math.round(mS*0.32));
+    
+    // White roads (main intersection)
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(mX, mY + Math.round(mS*0.40), mS, Math.round(mS*0.10));  // horizontal
+    ctx.fillRect(mX + Math.round(mS*0.42), mY, Math.round(mS*0.10), mS);  // vertical
+    
+    // Road borders
+    ctx.strokeStyle = '#E8E5D8';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(mX, mY + Math.round(mS*0.40)); ctx.lineTo(mX + mS, mY + Math.round(mS*0.40));
+    ctx.moveTo(mX, mY + Math.round(mS*0.50)); ctx.lineTo(mX + mS, mY + Math.round(mS*0.50));
+    ctx.stroke();
+    
+    // Blue water at bottom edge
+    ctx.fillStyle = '#A5D4E8';
+    ctx.beginPath();
+    ctx.moveTo(mX, mY + Math.round(mS*0.92));
+    ctx.bezierCurveTo(mX + mS*0.3, mY + mS*0.90, mX + mS*0.7, mY + mS*0.94, mX + mS, mY + Math.round(mS*0.91));
+    ctx.lineTo(mX + mS, mY + mS); ctx.lineTo(mX, mY + mS); ctx.closePath();
+    ctx.fill();
+    
+    // ━━━ Red Google Maps Pin (LARGE & PROMINENT) ━━━
+    var pCX = mX + mS/2;
+    var pCY = mY + mS*0.42;
+    var pR = mS*0.14;
+    
+    // Pin shadow (ground)
+    ctx.fillStyle = 'rgba(0,0,0,0.30)';
+    ctx.beginPath();
+    ctx.ellipse(pCX, pCY + pR*1.85, pR*0.75, pR*0.25, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Pin teardrop body
+    ctx.fillStyle = '#EA4335';
+    ctx.beginPath();
+    ctx.arc(pCX, pCY, pR, Math.PI * 1.1, Math.PI * 1.9);
+    ctx.lineTo(pCX, pCY + pR * 2.15);
     ctx.closePath();
     ctx.fill();
     
-    // White dot in center of pin
+    // Pin top circle (darker outline)
+    ctx.strokeStyle = '#C5221F';
+    ctx.lineWidth = pR * 0.08;
+    ctx.beginPath();
+    ctx.arc(pCX, pCY, pR * 0.92, Math.PI, 0);
+    ctx.stroke();
+    
+    // White center dot
     ctx.fillStyle = '#FFFFFF';
     ctx.beginPath();
-    ctx.arc(pCX, pCY, pR*0.4, 0, 2*Math.PI);
+    ctx.arc(pCX, pCY, pR * 0.42, 0, Math.PI * 2);
     ctx.fill();
+    
+    // ━━━ "Google" branding (bottom-left of map) ━━━
+    ctx.fillStyle = '#5F6368';
+    ctx.font = '700 ' + Math.round(mS*0.12) + 'px Arial, sans-serif';
+    ctx.fillText('Google', mX + Math.round(mS*0.04), mY + mS - Math.round(mS*0.05));
 
-    // "Google" label in bottom-left of map
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold ' + Math.round(mS*0.13) + 'px system-ui';
-    ctx.fillText('Google', mX + Math.round(mS*0.06), mY + mS - Math.round(mS*0.08));
-
-    // ━━━ TEXT PANEL (RIGHT SIDE) ━━━
-    var tX = mX + mS + pad;
+    // ━━━━━━━━━━━ TEXT PANEL ━━━━━━━━━━━
+    var tX = mX + mS + Math.round(pad * 1.5);
     var tW = W - tX - pad;
 
     var now = new Date();
@@ -1096,14 +1227,54 @@ function stampGps(file){
     var addrText = state.gps.address || '';
     if (a.postcode && addrText.indexOf(a.postcode) === -1) addrText += ', ' + a.postcode;
 
-    ctx.font = Math.round(oH*0.09) + 'px system-ui';
+    var cy = oY + pad + Math.round(oH*0.14);
+
+    // ━━━ 1. City name (BIG bold white) ━━━
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '700 ' + Math.round(oH*0.14) + 'px -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
+    ctx.fillText(cityLine, tX, cy);
+    
+    // India flag (drawn properly)
+    var cityW = ctx.measureText(cityLine).width;
+    var flagX = tX + cityW + Math.round(oH*0.08);
+    var flagY = cy - Math.round(oH*0.11);
+    var flagW = Math.round(oH*0.16);
+    var flagH = Math.round(flagW*0.66);
+    if (flagX + flagW < W - pad){
+      // Saffron
+      ctx.fillStyle = '#FF9933'; 
+      ctx.fillRect(flagX, flagY, flagW, Math.round(flagH/3));
+      // White
+      ctx.fillStyle = '#FFFFFF'; 
+      ctx.fillRect(flagX, flagY + Math.round(flagH/3), flagW, Math.round(flagH/3));
+      // Green
+      ctx.fillStyle = '#138808'; 
+      ctx.fillRect(flagX, flagY + Math.round(2*flagH/3), flagW, flagH - Math.round(2*flagH/3));
+      // Ashok Chakra (navy circle)
+      ctx.strokeStyle = '#000080';
+      ctx.lineWidth = Math.max(1, Math.round(flagH * 0.05));
+      ctx.beginPath();
+      ctx.arc(flagX + flagW/2, flagY + flagH/2, flagH * 0.20, 0, Math.PI * 2);
+      ctx.stroke();
+      // Flag border
+      ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(flagX, flagY, flagW, flagH);
+    }
+
+    cy += Math.round(oH*0.17);
+
+    // ━━━ 2. Address (lighter, smaller, max 2 lines) ━━━
+    ctx.fillStyle = '#E8EAED';
+    ctx.font = '400 ' + Math.round(oH*0.095) + 'px -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
+    
     var words = addrText.split(/[, ]+/).filter(Boolean);
     var lines = [], cur = '';
     for (var i = 0; i < words.length; i++){
       var w = words[i];
       var test = cur ? cur + ', ' + w : w;
       if (ctx.measureText(test).width > tW && cur){
-        lines.push(cur + ',');
+        lines.push(cur);
         cur = w;
         if (lines.length >= 2){ cur = words.slice(i).join(', '); break; }
       } else { cur = test; }
@@ -1114,45 +1285,25 @@ function stampGps(file){
       while (lines[1] && ctx.measureText(lines[1]+'…').width > tW){ lines[1] = lines[1].slice(0,-1); }
       lines[1] += '…';
     }
-
-    var cy = oY + pad + Math.round(oH*0.16);
     
-    // City name (bold)
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold ' + Math.round(oH*0.13) + 'px system-ui';
-    ctx.fillText(cityLine, tX, cy);
-    
-    // India flag next to city
-    var cityW = ctx.measureText(cityLine).width;
-    var flagX = tX + cityW + Math.round(oH*0.06);
-    var flagY = cy - Math.round(oH*0.11);
-    var flagW = Math.round(oH*0.13);
-    var flagH = Math.round(flagW*0.66);
-    if (flagX + flagW < W - pad){
-      ctx.fillStyle = '#FF9933'; ctx.fillRect(flagX, flagY, flagW, flagH/3);
-      ctx.fillStyle = '#FFFFFF'; ctx.fillRect(flagX, flagY+flagH/3, flagW, flagH/3);
-      ctx.fillStyle = '#138808'; ctx.fillRect(flagX, flagY+2*flagH/3, flagW, flagH/3);
-    }
-    
-    cy += Math.round(oH*0.17);
-    
-    // Address lines
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = Math.round(oH*0.09) + 'px system-ui';
     for (var j = 0; j < lines.length; j++){
       if (lines[j]) ctx.fillText(lines[j], tX, cy);
-      cy += Math.round(oH*0.13);
+      cy += Math.round(oH*0.12);
     }
     
-    // Lat/Long
-    ctx.fillText('Lat ' + lat + '° Long ' + lng + '°', tX, cy);
-    cy += Math.round(oH*0.13);
+    // ━━━ 3. Lat/Long (monospace, white) ━━━
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '500 ' + Math.round(oH*0.095) + 'px "JetBrains Mono", "SF Mono", Consolas, monospace';
+    ctx.fillText('Lat ' + lat + '°  Long ' + lng + '°', tX, cy);
+    cy += Math.round(oH*0.12);
     
-    // Timestamp
+    // ━━━ 4. Date/Time (subtle gray) ━━━
+    ctx.fillStyle = '#B0B6BE';
+    ctx.font = '400 ' + Math.round(oH*0.085) + 'px -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
     ctx.fillText(dateStr, tX, cy);
 
     return new Promise(function(resolve){
-      canvas.toBlob(function(blob){ resolve({ blob: blob, width: canvas.width, height: canvas.height }); }, 'image/jpeg', 0.85);
+      canvas.toBlob(function(blob){ resolve({ blob: blob, width: canvas.width, height: canvas.height }); }, 'image/jpeg', 0.88);
     });
   });
 }
