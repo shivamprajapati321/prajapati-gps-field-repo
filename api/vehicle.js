@@ -1,123 +1,191 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// /api/vehicle.js — Vercel Serverless Function (HARDCODED TOKEN VERSION)
-// Proxies Findr API to fetch vehicle owner details
+// /api/vehicle.js — FINAL FINDR (full owner + mobile + RTO + maker + address)
+// Ported from working Rickshaw Survey GAS code (Code.gs)
+// Endpoint: get-vehicle-details-v5 (SYNCHRONOUS, returns full owner_details)
 // ═══════════════════════════════════════════════════════════════════════════
 
+const FINDR_URL   = 'https://bifrost.unifers.ai/enrich/get-vehicle-details-v5';
+const FINDR_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MjIyNSwiZmlyc3ROYW1lIjoiQW5vbnltb3VzIiwibGFzdE5hbWUiOm51bGwsImVtYWlsIjpudWxsLCJwaG9uZSI6Ijk5MjIxMzgxMzgiLCJ1c2VyVHlwZSI6MSwiYXBwRGV2aWNlVHlwZSI6ImFwaSIsImNvdW50cnlJZCI6MTA0LCJjcmVhdGVkQXQiOiIyMDI1LTEwLTExVDA4OjAyOjQ1Ljc4OFoiLCJpYXQiOjE3NzM4MjQzNjAsImV4cCI6MjA4OTE4NDM2MH0.0-cB_noifVaki77sdPgGs1i9ZwzGW9EK3lyyDoChpI0';
+const CONSENT     = 'We confirm and undertake that valid end-user consent has been obtained for fetching VEHICLE DETAILS using VEHICLE NUMBER, and that such consent remains active and unrevoked at the time of this request.';
+
+const SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
+
+function formatName(s) {
+  if (!s) return '';
+  return s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()).trim();
+}
+
 export default async function handler(req, res) {
-  // CORS — verifier.html browser se direct call kar sakega
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'GET') return res.status(405).json({ success: false, error: 'Method not allowed' });
   
-  if (req.method !== 'GET') {
-    return res.status(405).json({ success: false, error: 'Method not allowed' });
-  }
-  
-  // Plate number extract karo
-  // Format 1: /api/vehicle?plate=MH14GC3763
-  // Format 2: /api/vehicle/MH14GC3763 (works via Vercel rewrites)
+  // Extract plate from query or URL path
   let plate = (req.query.plate || '').toString().toUpperCase().trim();
-  
-  // Fallback — agar path se aaye
   if (!plate && req.url) {
-    const urlParts = req.url.split('?')[0].split('/').filter(Boolean);
-    const last = urlParts[urlParts.length - 1];
+    const parts = req.url.split('?')[0].split('/').filter(Boolean);
+    const last = parts[parts.length - 1];
     if (last && last !== 'vehicle') plate = decodeURIComponent(last).toUpperCase().trim();
   }
-  
-  // Clean — sirf A-Z aur 0-9
   plate = plate.replace(/[^A-Z0-9]/g, '');
   
   if (!plate || plate.length < 4) {
     return res.status(400).json({ success: false, error: 'Invalid plate number' });
   }
   
-  // Token hardcoded (internal tool, single user, acceptable risk)
-  const FINDR_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MjIyNSwiZmlyc3ROYW1lIjoiQW5vbnltb3VzIiwibGFzdE5hbWUiOm51bGwsImVtYWlsIjpudWxsLCJwaG9uZSI6Ijk5MjIxMzgxMzgiLCJ1c2VyVHlwZSI6MSwiYXBwRGV2aWNlVHlwZSI6ImFwaSIsImNvdW50cnlJZCI6MTA0LCJjcmVhdGVkQXQiOiIyMDI1LTEwLTExVDA4OjAyOjQ1Ljc4OFoiLCJpYXQiOjE3NzM4MjQzNjAsImV4cCI6MjA4OTE4NDM2MH0.0-cB_noifVaki77sdPgGs1i9ZwzGW9EK3lyyDoChpI0";
-  
   try {
-    const findrResp = await fetch('https://bifrost.unifers.ai/enrich/get-vehicle-details-v4', {
+    // ─── Step 1: Check Supabase cache first (save Findr API credits) ───
+    try {
+      const cacheResp = await fetch(
+        `${SUPABASE_URL}/rest/v1/prajapati_vehicle_lookup?select=*&plate=eq.${encodeURIComponent(plate)}`,
+        { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+      );
+      if (cacheResp.ok) {
+        const cached = await cacheResp.json();
+        if (cached && cached.length > 0 && (cached[0].owner_name || cached[0].mobile)) {
+          const c = cached[0];
+          return res.status(200).json({
+            success: true,
+            source: 'cache',
+            plate: plate,
+            data: {
+              ownerName: c.manual_override_name || c.owner_name || '',
+              mobile:    c.manual_override_mobile || c.mobile || '',
+              maker:     c.maker || '',
+              rto:       c.rto || '',
+              city:      c.rto_city || '',
+              state:     c.rto_state || '',
+              regDate:   c.registration_date || null,
+              isMasked:  c.is_masked || false
+            }
+          });
+        }
+      }
+    } catch(cacheErr) { /* cache failure non-fatal */ }
+    
+    // ─── Step 2: Call Findr API (synchronous v5 endpoint) ───
+    const findrResp = await fetch(FINDR_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': FINDR_TOKEN  // Raw JWT, NO "Bearer " prefix
+        'Authorization': FINDR_TOKEN  // RAW token, NO Bearer prefix
       },
       body: JSON.stringify({
         Vehicle_Number: plate,
-        Concent_Text: 'I agree to fetch vehicle details for verification purposes',
+        Concent_Text: CONSENT,
         Concent: 'Y'
       })
     });
     
-    const text = await findrResp.text();
+    const findrText = await findrResp.text();
+    let findrData;
+    try { findrData = JSON.parse(findrText); } catch(e) {
+      return res.status(200).json({
+        success: false,
+        plate: plate,
+        error: 'Findr returned non-JSON',
+        raw: findrText.substring(0, 300)
+      });
+    }
     
-    // Network/auth/whitelist error
     if (!findrResp.ok) {
       return res.status(200).json({
         success: false,
-        source: 'findr',
         plate: plate,
         status: findrResp.status,
-        error: `Findr API ${findrResp.status}: ${text.substring(0, 300)}`
+        error: findrData.message || `HTTP ${findrResp.status}`,
+        raw: findrData
       });
     }
     
-    // Parse JSON safely
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch (e) {
-      return res.status(200).json({ 
-        success: false, 
-        source: 'findr', 
+    if (findrData.error === true) {
+      return res.status(200).json({
+        success: false,
         plate: plate,
-        error: 'Invalid JSON from Findr',
-        raw: text.substring(0, 300) 
+        error: findrData.message || 'Not found in Findr',
+        raw: findrData
       });
     }
     
-    // Findr response wrapper unwrap karo — alag levels me data ho sakta hai
-    const result = data?.data || data?.result || data?.response || data;
+    // ─── Step 3: Parse response (exact same as Rickshaw Survey code) ───
+    const result = findrData.data && findrData.data.result ? findrData.data.result : null;
+    const own = result ? result.owner_details : null;
+    const vhc = result ? result.vehicle_details : null;
+    const off = result ? result.office_details : null;
+    const addr = result ? result.address_details : null;
     
-    // Multiple possible field name variations (Findr APIs vary)
-    const ownerName = result.owner_name || result.ownerName || result.Owner_Name || 
-                      result.owner || result.ownername || null;
-    const mobile = result.mobile || result.phone || result.Mobile_Number || 
-                   result.mobile_number || result.contact || null;
-    const maker = result.maker || result.manufacturer || result.Maker || 
-                  result.vehicle_maker || null;
-    const model = result.model || result.Model || result.vehicle_model || null;
-    const rto = result.rto || result.RTO || result.registered_at || 
-                result.rto_name || null;
-    const regDate = result.registration_date || result.regDate || 
-                    result.Registration_Date || result.reg_date || null;
-    const isMasked = result.is_masked || result.isMasked || false;
+    const veh = {
+      ownerName:    own && own.name   ? formatName(own.name) : '',
+      ownerMobile:  own && own.mobile ? own.mobile : '',
+      maker:        vhc && vhc.maker  ? vhc.maker.trim() : '',
+      vehicleClass: vhc && vhc.class  ? vhc.class : '',
+      regDate:      vhc && vhc.registration_date ? vhc.registration_date : null,
+      rto:          off && off.rto    ? off.rto : '',
+      pinCode:      (off && off.pincode) ? String(off.pincode) :
+                    (off && off.pin)     ? String(off.pin) :
+                    (addr && addr.pincode)? String(addr.pincode) :
+                    (own && own.pincode) ? String(own.pincode) : '',
+      city:         (off && off.city)    ? off.city :
+                    (addr && addr.city)  ? addr.city : '',
+      state:        (off && off.state)   ? off.state :
+                    (addr && addr.state) ? addr.state : ''
+    };
     
+    // ─── Step 4: Save to Supabase cache (for next time) ───
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/prajapati_vehicle_lookup?on_conflict=plate`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates,return=minimal'
+        },
+        body: JSON.stringify([{
+          plate: plate,
+          plate_raw: plate,
+          owner_name: veh.ownerName || null,
+          mobile: veh.ownerMobile || null,
+          maker: veh.maker || null,
+          vehicle_type: veh.vehicleClass || null,
+          rto: veh.rto || null,
+          rto_city: veh.city || null,
+          rto_state: veh.state || null,
+          registration_date: veh.regDate || null,
+          source: 'findr',
+          verified: true,
+          raw_response: findrData
+        }])
+      });
+    } catch(saveErr) { /* cache save non-fatal */ }
+    
+    // ─── Step 5: Return data to client ───
     return res.status(200).json({
       success: true,
       source: 'findr',
       plate: plate,
       data: {
-        ownerName: ownerName,
-        mobile: mobile,
-        maker: maker,
-        model: model,
-        rto: rto,
-        regDate: regDate,
-        isMasked: isMasked
-      },
-      raw: data  // Full response for debugging
+        ownerName:    veh.ownerName,
+        mobile:       veh.ownerMobile,
+        maker:        veh.maker,
+        vehicleClass: veh.vehicleClass,
+        regDate:      veh.regDate,
+        rto:          veh.rto,
+        pinCode:      veh.pinCode,
+        city:         veh.city,
+        state:        veh.state
+      }
     });
     
   } catch (err) {
-    return res.status(500).json({ 
-      success: false, 
+    return res.status(500).json({
+      success: false,
       plate: plate,
-      error: err.message 
+      error: err.message
     });
   }
 }
