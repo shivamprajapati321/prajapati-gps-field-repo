@@ -1,7 +1,7 @@
 // Prajapati GPS Field App - Service Worker v15
 // AGGRESSIVE AUTO-UPDATE: skipWaiting + clients.claim + network-first HTML/JS
 
-const VERSION = 'v15-2026-05-14';
+const VERSION = 'v15.2-2026-05-14';
 const STATIC_CACHE = 'prajapati-static-' + VERSION;
 
 const STATIC_ASSETS = [
@@ -11,21 +11,21 @@ const STATIC_ASSETS = [
 ];
 
 self.addEventListener('install', function(event) {
-  console.log('[SW v15] Installing...');
+  console.log('[SW v15.2] Installing...');
   event.waitUntil(
     caches.open(STATIC_CACHE).then(function(cache) {
       return cache.addAll(STATIC_ASSETS).catch(function(e) {
         console.warn('[SW] Some assets failed to cache:', e);
       });
     }).then(function() {
-      console.log('[SW v15] Skip waiting - activate NOW');
+      console.log('[SW v15.2] Skip waiting - activate NOW');
       return self.skipWaiting();
     })
   );
 });
 
 self.addEventListener('activate', function(event) {
-  console.log('[SW v15] Activating...');
+  console.log('[SW v15.2] Activating...');
   event.waitUntil(
     Promise.all([
       caches.keys().then(function(names) {
@@ -39,7 +39,7 @@ self.addEventListener('activate', function(event) {
       }),
       self.clients.claim()
     ]).then(function() {
-      console.log('[SW v15] Activated, claimed all clients');
+      console.log('[SW v15.2] Activated, claimed all clients');
       return self.clients.matchAll().then(function(clients) {
         clients.forEach(function(client) {
           client.postMessage({ type: 'SW_ACTIVATED', version: VERSION });

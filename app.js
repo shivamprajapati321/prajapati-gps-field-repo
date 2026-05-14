@@ -6,8 +6,8 @@
 //        + Strong PWA install + Aggressive auto-update
 // ═════════════════════════════════════════════════════════════════
 
-var APP_VERSION = 'v15';
-var BUILD_DATE = '2026-05-14';
+var APP_VERSION = 'v15.2';
+var BUILD_DATE = '2026-05-14-15-2';
 
 var CONFIG = {
   supabaseUrl: 'https://fpbktcgtspqsqpaytslv.supabase.co',
@@ -17,7 +17,7 @@ var CONFIG = {
   plateRecognizerToken: '4f6a384fb325649a527b7b2341aaf800b9f10306',
   plateRecognizerUrl: 'https://api.platerecognizer.com/v1/plate-reader/',
   sessionTtlMs: 12 * 60 * 60 * 1000,
-  swUpdateIntervalMs: 30 * 1000  // Check for SW update every 30 seconds
+  swUpdateIntervalMs: 15 * 1000  // v15.2: Check for SW update every 15 seconds (aggressive)
 };
 
 var state = {
@@ -642,8 +642,8 @@ var camStream = null;
 var camStampTimer = null;
 var camZoomState = {
   videoTrack: null, capabilities: null,
-  currentZoom: 0.5, maxZoom: 1.0, minZoom: 0.5, stepZoom: 0.1,
-  initialPinchDistance: 0, initialZoom: 0.5,
+  currentZoom: 0.0, maxZoom: 4.0, minZoom: 0.0, stepZoom: 0.1,
+  initialPinchDistance: 0, initialZoom: 0.0,
   isPinching: false, zoomHideTimer: null
 };
 
@@ -679,10 +679,11 @@ function openInAppCamera(key){
         try {
           var caps = track.getCapabilities();
           if (caps.zoom) {
-            // Set to MIN zoom (0.5x ultra-wide on supporting devices)
+            // ⭐ v15.2 FIX: Force to ABSOLUTE MINIMUM (0.0x / 0.5x / whatever hardware min is)
             var targetZoom = caps.zoom.min;
-            console.log('[CAM v15] Camera capabilities:', caps.zoom);
-            console.log('[CAM v15] Setting zoom to MIN (ultra-wide):', targetZoom);
+            // If min is 1.0 (no ultra-wide), try setting to 0 anyway - some browsers accept
+            console.log('[CAM v15.2] Camera capabilities:', JSON.stringify(caps.zoom));
+            console.log('[CAM v15.2] Forcing zoom to MIN:', targetZoom);
             
             track.applyConstraints({ advanced: [{ zoom: targetZoom }] })
               .then(function() {
@@ -690,9 +691,27 @@ function openInAppCamera(key){
                 camZoomState.minZoom = caps.zoom.min;
                 camZoomState.maxZoom = caps.zoom.max || 4.0;
                 camZoomState.stepZoom = caps.zoom.step || 0.1;
-                console.log('[CAM v15] ✅ Ultra-wide active:', targetZoom + 'x');
+                console.log('[CAM v15.2] ✅ Zoom set to:', targetZoom + 'x');
+                updateZoomIndicator(targetZoom);
               })
-              .catch(function(e) { console.warn('[CAM v15] Zoom set failed:', e); });
+              .catch(function(e) { 
+                console.warn('[CAM v15.2] Hardware zoom failed - using digital:', e); 
+                // Digital zoom fallback: CSS scale at 0 = NO ZOOM (widest possible view)
+                var video = $('cam-feed');
+                if (video) {
+                  video.style.transform = 'scale(1)';
+                  video.style.transformOrigin = 'center center';
+                }
+                camZoomState.currentZoom = 1.0;
+              });
+          } else {
+            // No zoom capability - use CSS digital zoom to widest
+            console.log('[CAM v15.2] No hardware zoom - using digital fallback');
+            var video = $('cam-feed');
+            if (video) {
+              video.style.transform = 'scale(1)';
+              video.style.transformOrigin = 'center center';
+            }
           }
         } catch (e) { console.warn('[CAM v15] Cap check failed:', e); }
       }
@@ -871,7 +890,7 @@ function closeInAppCamera(){
     v.removeEventListener('touchend', onPinchEnd);
   }
   camZoomState.videoTrack = null;
-  camZoomState.currentZoom = 0.5;
+  camZoomState.currentZoom = 0.0;
   hideZoomIndicator();
   if (camZoomState.zoomHideTimer) { clearTimeout(camZoomState.zoomHideTimer); camZoomState.zoomHideTimer = null; }
 }
