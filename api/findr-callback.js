@@ -1,10 +1,9 @@
-```javascript
-module.exports = async function handler(req, res) {
+```javascript id="vjlwmr"
+export default function handler(req, res) {
+
   try {
 
-    console.log("METHOD:", req.method);
-
-    // Browser test
+    // GET request test
     if (req.method === "GET") {
       return res.status(200).json({
         success: true,
@@ -12,40 +11,32 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Allow only POST for API callback
-    if (req.method !== "POST") {
-      return res.status(405).json({
-        success: false,
-        message: "Method not allowed"
+    // POST callback request
+    if (req.method === "POST") {
+
+      console.log("CALLBACK BODY:");
+      console.log(req.body);
+
+      return res.status(200).json({
+        success: true,
+        received: true
       });
     }
 
-    console.log("BODY:", req.body);
-
-    // Callback data from Unifers
-    const data = req.body || {};
-
-    // Print callback data in Vercel logs
-    console.log(
-      "CALLBACK RECEIVED:",
-      JSON.stringify(data, null, 2)
-    );
-
-    // Success response
-    return res.status(200).json({
-      success: true,
-      received: true,
-      data: data
+    // Other methods
+    return res.status(405).json({
+      success: false,
+      message: "Method not allowed"
     });
 
-  } catch (err) {
+  } catch (error) {
 
-    console.error("CALLBACK ERROR:", err);
+    console.error("ERROR:", error);
 
     return res.status(500).json({
       success: false,
-      error: err.message
+      error: error.message
     });
   }
-};
+}
 ```
