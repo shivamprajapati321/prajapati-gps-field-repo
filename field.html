@@ -6,7 +6,9 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Prajapati GPS OCR Camera</title>
+<title>Prajapati GPS OCR Camera v15</title>
+
+<!-- PWA: Strong install support -->
 <link rel="manifest" href="/manifest.json">
 <meta name="application-name" content="GPS OCR Camera">
 <meta name="apple-mobile-web-app-title" content="GPS OCR">
@@ -137,8 +139,16 @@ button,input{font-family:inherit}input{font-size:16px}
 .cam-gps .live-d{width:6px;height:6px;background:#fff;border-radius:50%;animation:lp 1.5s infinite}
 .cam-stamp{position:absolute;left:0;right:0;bottom:108px;height:18%;min-height:110px;background:rgba(10,14,26,.85);padding:10px 12px;display:flex;gap:10px;color:#fff;z-index:2}
 .cam-stamp .map{aspect-ratio:1/1;height:100%;background:#7AA070;border-radius:3px;position:relative;flex-shrink:0;overflow:hidden}
+.cam-stamp .map::before,.cam-stamp .map::after{content:"";position:absolute;background:#D8D4C0}
+.cam-stamp .map::before{top:40%;left:0;right:0;height:6%}
+.cam-stamp .map::after{top:0;left:45%;bottom:0;width:4%}
+.cam-stamp .pin{width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-top:18px solid #DB4437;position:absolute;left:50%;top:35%;transform:translateX(-50%);background:none}
+.cam-stamp .pin::after{content:"";position:absolute;top:-22px;left:-7px;width:14px;height:14px;border-radius:50%;background:#DB4437;border:3px solid #DB4437}
+.cam-stamp .pin::before{content:"";position:absolute;top:-15px;left:-3px;width:6px;height:6px;border-radius:50%;background:#fff;z-index:2}
+.cam-stamp .glabel{position:absolute;left:4px;bottom:3px;font-size:9px;font-weight:700;color:#fff;letter-spacing:.5px;text-shadow:0 1px 2px rgba(0,0,0,.5)}
 .cam-stamp .info{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:2px}
-.cam-stamp .city{font-size:14px;font-weight:700;letter-spacing:.2px}
+.cam-stamp .city{font-size:14px;font-weight:700;letter-spacing:.2px;display:flex;align-items:center;gap:6px}
+.cam-stamp .flag{display:inline-block;width:14px;height:9px;background:linear-gradient(180deg,#FF9933 33%,#fff 33% 66%,#138808 66%);border-radius:1px;flex-shrink:0}
 .cam-stamp .addr{font-size:10px;line-height:1.3;opacity:.95;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .cam-stamp .latlng{font-size:10px;font-weight:500;font-family:'JetBrains Mono',monospace;opacity:.95}
 .cam-stamp .dt{font-size:9.5px;opacity:.85}
@@ -159,6 +169,12 @@ button,input{font-family:inherit}input{font-size:16px}
 .install-bar .ib-btn{padding:8px 14px;font-size:12px;font-weight:700;border-radius:8px;border:none;cursor:pointer;font-family:inherit}
 .install-bar .ib-btn.primary{background:var(--p);color:#fff}
 .install-bar .ib-btn.secondary{background:transparent;color:var(--mu);font-size:20px;padding:6px 8px}
+.update-banner{position:fixed;top:max(10px,env(safe-area-inset-top));left:12px;right:12px;background:var(--gd);color:var(--p);padding:10px 14px;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.18);display:none;align-items:center;gap:10px;z-index:201;font-size:12px;font-weight:600}
+.update-banner.show{display:flex}
+.update-banner .ub-icon{font-size:16px}
+.update-banner .ub-text{flex:1}
+.update-banner .ub-btn{background:var(--p);color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer}
+.version-badge{position:fixed;bottom:6px;right:8px;background:rgba(26,41,128,0.85);color:#fff;padding:3px 8px;border-radius:6px;font-size:9px;font-weight:700;z-index:50;font-family:'JetBrains Mono',monospace;pointer-events:none}
 </style>
 </head>
 <body>
@@ -169,7 +185,6 @@ button,input{font-family:inherit}input{font-size:16px}
 <div class="field"><label>Mobile Number</label><input id="inp-mobile" type="tel" inputmode="numeric" maxlength="10" placeholder="9876543210" autocomplete="tel"></div>
 <button class="btn" id="btn-login">Login →</button>
 <p style="text-align:center;color:rgba(255,255,255,.55);font-size:11px;margin-top:18px">Sirf admin-registered numbers login kar sakte hain.</p>
-<p id="version-tag" style="text-align:center;color:rgba(255,255,255,.4);font-size:9px;margin-top:24px"></p>
 </section>
 <div id="screen-home" class="scr"><div id="home-content"></div></div>
 <div id="screen-capture" class="scr">
@@ -185,11 +200,22 @@ button,input{font-family:inherit}input{font-size:16px}
 <div class="toast" id="toast"></div>
 <div class="overlay" id="overlay"><div class="ring"></div><p id="overlay-text">Working…</p></div>
 <div class="flash" id="flash"><div class="bc">✓</div><h2 id="flash-title">Vehicle Saved!</h2><div class="pl" id="flash-plate">—</div><div class="meta" id="flash-meta"></div><div class="nx">Ready for next vehicle…</div></div>
+
+<!-- PWA Install Bar -->
 <div class="install-bar" id="install-bar">
 <div class="ib-icon">P</div>
-<div class="ib-text"><div class="ib-title">Install GPS OCR Camera</div><div class="ib-sub" id="install-sub">Home screen pe app jaisa add karo</div></div>
+<div class="ib-text"><div class="ib-title">📲 Install GPS OCR App</div><div class="ib-sub" id="install-sub">Home screen pe app jaisa add karo</div></div>
 <div class="ib-actions"><button class="ib-btn secondary" onclick="dismissInstall()">×</button><button class="ib-btn primary" id="install-btn" onclick="triggerInstall()">Install</button></div>
 </div>
+
+<!-- Auto-update Banner -->
+<div class="update-banner" id="update-banner">
+<span class="ub-icon">⬆</span>
+<span class="ub-text">Naya version aaya — abhi update karo</span>
+<button class="ub-btn" onclick="applyUpdate()">Update</button>
+</div>
+
+<!-- Camera modal -->
 <div class="cam-modal" id="cam-modal">
 <video class="cam-feed" id="cam-feed" autoplay playsinline muted></video>
 <div class="cam-top">
@@ -198,9 +224,12 @@ button,input{font-family:inherit}input{font-size:16px}
 <span class="cam-gps warn" id="cam-gps-chip"><span class="live-d"></span><span id="cam-gps-txt">Locating…</span></span>
 </div>
 <div class="cam-stamp" id="cam-stamp">
-<div class="map"></div>
+<div class="map">
+<div class="pin"></div>
+<div class="glabel">Google</div>
+</div>
 <div class="info">
-<div class="city" id="cam-stamp-city">—</div>
+<div class="city" id="cam-stamp-city">— <span class="flag"></span></div>
 <div class="addr" id="cam-stamp-addr">Getting address…</div>
 <div class="latlng" id="cam-stamp-latlng">Lat — Long —</div>
 <div class="dt" id="cam-stamp-dt">—</div>
@@ -209,6 +238,9 @@ button,input{font-family:inherit}input{font-size:16px}
 <button class="cam-shutter" id="cam-shutter" onclick="captureFromInAppCamera()" disabled aria-label="Capture"></button>
 <div class="cam-zoom-indicator" id="cam-zoom-indicator">1.0x</div>
 </div>
-<script src="/app.js?v=12&t=20260514"></script>
+
+<div class="version-badge">v15</div>
+
+<script src="/app.js?v=15-2026-05-14"></script>
 </body>
 </html>

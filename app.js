@@ -1,12 +1,13 @@
 "use strict";
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Prajapati GPS Field App — Main JavaScript
-// VERSION: v10
-// Features: Camera zoom fix (1x default), TRUE auto-update, GPS stamping
-// ═══════════════════════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════════
+// Prajapati GPS Field App v15
+// FIXES: Camera 0.5x ultra-wide + GPS map stamp restored
+//        + Strong PWA install + Aggressive auto-update
+// ═════════════════════════════════════════════════════════════════
 
-var APP_VERSION = 'v11';
+var APP_VERSION = 'v15';
+var BUILD_DATE = '2026-05-14';
 
 var CONFIG = {
   supabaseUrl: 'https://fpbktcgtspqsqpaytslv.supabase.co',
@@ -15,7 +16,8 @@ var CONFIG = {
   locationIqToken: 'pk.fde6fab706b3370a82c78ba286a896be',
   plateRecognizerToken: '4f6a384fb325649a527b7b2341aaf800b9f10306',
   plateRecognizerUrl: 'https://api.platerecognizer.com/v1/plate-reader/',
-  sessionTtlMs: 12 * 60 * 60 * 1000
+  sessionTtlMs: 12 * 60 * 60 * 1000,
+  swUpdateIntervalMs: 30 * 1000  // Check for SW update every 30 seconds
 };
 
 var state = {
@@ -49,9 +51,8 @@ function todayStr(){
   var ist = new Date(new Date().getTime() + 5.5*60*60*1000);
   return ist.toISOString().split('T')[0];
 }
-function touchActivity(){
-  if (state.member) localStorage.setItem('pf_last_activity', String(Date.now()));
-}
+
+function touchActivity(){ if (state.member) localStorage.setItem('pf_last_activity', String(Date.now())); }
 function isSessionExpired(){
   var last = parseInt(localStorage.getItem('pf_last_activity') || '0');
   return last > 0 && (Date.now() - last) > CONFIG.sessionTtlMs;
@@ -98,6 +99,7 @@ function getAngleName(slot){
   }
   return 'photo-' + slot.n;
 }
+
 function api(path, options){
   options = options || {};
   options.headers = Object.assign({ 'apikey': CONFIG.supabaseKey, 'Authorization': 'Bearer ' + CONFIG.supabaseKey }, options.headers || {});
@@ -115,6 +117,7 @@ function api(path, options){
   });
 }
 
+// ═══ IndexedDB queue ═══
 var idb = {
   db: null,
   open: function(){
@@ -140,14 +143,34 @@ var idb = {
   remove: function(id){ return idb.open().then(function(d){ return new Promise(function(res, rej){ var tx = d.transaction('queue', 'readwrite'); var r = tx.objectStore('queue').delete(id); r.onsuccess = function(){ res(); }; r.onerror = function(){ rej(r.error); }; }); }); },
   getAll: function(){ return idb.open().then(function(d){ return new Promise(function(res, rej){ var tx = d.transaction('queue', 'readonly'); var r = tx.objectStore('queue').getAll(); r.onsuccess = function(){ res(r.result || []); }; r.onerror = function(){ rej(r.error); }; }); }); },
   getPending: function(){ return idb.getAll().then(function(rows){ return rows.filter(function(r){ return r.status === 'pending' || r.status === 'failed'; }); }); },
-  setConfig: function(key, value){ return idb.open().then(function(d){ return new Promise(function(res, rej){ var tx = d.transaction('config', 'readwrite'); var r = tx.objectStore('config').put({ key: key, value: value }); r.onsuccess = function(){ res(); }; r.onerror = function(){ rej(r.error); }; }); }); },
-  getConfig: function(key){ return idb.open().then(function(d){ return new Promise(function(res, rej){ var tx = d.transaction('config', 'readonly'); var r = tx.objectStore('config').get(key); r.onsuccess = function(){ res(r.result ? r.result.value : null); }; r.onerror = function(){ rej(r.error); }; }); }); }
+  setConfig: function(key, value){
+    return idb.open().then(function(d){
+      return new Promise(function(res, rej){
+        var tx = d.transaction('config', 'readwrite');
+        var r = tx.objectStore('config').put({ key: key, value: value });
+        r.onsuccess = function(){ res(); };
+        r.onerror = function(){ rej(r.error); };
+      });
+    });
+  },
+  getConfig: function(key){
+    return idb.open().then(function(d){
+      return new Promise(function(res, rej){
+        var tx = d.transaction('config', 'readonly');
+        var r = tx.objectStore('config').get(key);
+        r.onsuccess = function(){ res(r.result ? r.result.value : null); };
+        r.onerror = function(){ rej(r.error); };
+      });
+    });
+  }
 };
 
 var queueRunning = false;
+
 function updateSessionStatus(){
   var st = $('session-status'); if (!st) return;
-  var dot = st.querySelector('.dot'); var span = st.querySelector('span');
+  var dot = st.querySelector('.dot');
+  var span = st.querySelector('span');
   if (!dot || !span) return;
   idb.getAll().then(function(rows){
     var pending = rows.filter(function(r){ return r.status === 'pending' || r.status === 'failed'; }).length;
@@ -157,9 +180,11 @@ function updateSessionStatus(){
     else { dot.className = 'dot idle'; span.textContent = 'All synced'; }
   });
 }
+
 function processQueue(){
   if (queueRunning || !navigator.onLine) return Promise.resolve();
-  queueRunning = true; updateSessionStatus();
+  queueRunning = true;
+  updateSessionStatus();
   return idb.getPending().then(function(items){
     var chain = Promise.resolve();
     items.forEach(function(item){
@@ -176,6 +201,7 @@ function processQueue(){
     return chain;
   }).then(function(){ queueRunning = false; updateSessionStatus(); }).catch(function(){ queueRunning = false; updateSessionStatus(); });
 }
+
 function uploadQueueItem(item){
   var path = item.metadata.storage_path;
   var pathSegs = path.split('/').map(encodeURIComponent).join('/');
@@ -191,15 +217,18 @@ function uploadQueueItem(item){
     return api('/rest/v1/trial_photos', { method:'POST', headers:{ 'Prefer':'return=minimal' }, body: dbRow });
   });
 }
+
 window.addEventListener('online', function(){ toast('Back online — uploading queued','success'); processQueue(); });
 window.addEventListener('offline', function(){ toast('Offline — captures will queue','warn'); updateSessionStatus(); });
 setInterval(function(){ if (navigator.onLine) processQueue(); }, 25000);
 
+// ═══ AUTH ═══
 function bootAuth(){
   var saved = localStorage.getItem('pf_member_phone');
   if (!saved){ showScreen('screen-login'); return; }
   if (isSessionExpired()){
-    clearSessionStorage(); showScreen('screen-login');
+    clearSessionStorage();
+    showScreen('screen-login');
     setTimeout(function(){ toast('Session expired (12hr inactive) — login again','warn'); }, 400);
     return;
   }
@@ -226,11 +255,13 @@ $('btn-login').addEventListener('click', function(){
     .then(function(rows){
       loader(false);
       if (!rows || !rows.length) return toast('Number registered nahi hai','error');
-      state.member = rows[0]; state.sessionCaptures = [];
+      state.member = rows[0];
+      state.sessionCaptures = [];
       localStorage.setItem('pf_member_phone', phone);
       touchActivity(); persistSessionCaptures(); enterApp();
     }).catch(function(){ loader(false); toast('Login error','error'); });
 });
+
 $('inp-mobile').addEventListener('keypress', function(e){ if (e.key === 'Enter') $('btn-login').click(); });
 
 function logout(skipConfirm){
@@ -241,12 +272,14 @@ function logout(skipConfirm){
   showScreen('screen-login');
   $('inp-mobile').value = '';
 }
+
 setInterval(function(){
   if (state.member && isSessionExpired()){
     toast('Session expired — auto logging out','warn');
     setTimeout(function(){ logout(true); }, 1500);
   }
 }, 5 * 60 * 1000);
+
 document.addEventListener('visibilitychange', function(){
   if (!document.hidden && state.member){
     if (isSessionExpired()){
@@ -267,8 +300,12 @@ function enterApp(){
     var subEl = $('app-header').querySelector('.sub');
     if (subEl) subEl.textContent = state.member.name;
   }
-  touchActivity(); loadAssignment(); processQueue(); startHomeAutoRefresh();
+  touchActivity();
+  loadAssignment();
+  processQueue();
+  startHomeAutoRefresh();
 }
+
 function loadAssignment(){
   loader(true, 'Loading…');
   var date = todayStr();
@@ -282,11 +319,13 @@ function loadAssignment(){
     .then(function(){ renderHome(); loader(false); })
     .catch(function(err){ console.error(err); loader(false); toast('Load error','error'); });
 }
+
 function loadTodayPhotos(){
   var date = todayStr();
   var startUTC = new Date(date + 'T00:00:00+05:30').toISOString();
   var endUTC = new Date(date + 'T23:59:59+05:30').toISOString();
-  return api('/rest/v1/trial_photos?member_phone=eq.'+state.member.phone+'&campaign_key=eq.'+state.campaign.key+'&captured_at=gte.'+startUTC+'&captured_at=lte.'+endUTC+'&select=*&order=captured_at.desc')
+  // Filter rejected/deleted out at query level
+  return api('/rest/v1/trial_photos?member_phone=eq.'+state.member.phone+'&campaign_key=eq.'+state.campaign.key+'&captured_at=gte.'+startUTC+'&captured_at=lte.'+endUTC+'&rejected=eq.false&deleted_at=is.null&select=*&order=captured_at.desc')
     .then(function(rows){
       state.todayPhotos = rows || [];
       var byVeh = {};
@@ -334,10 +373,12 @@ function renderHome(){
   var html = '';
   if (!state.assignment || !state.campaign){
     html += '<div class="card" style="border-color:var(--wn);background:#fef9e7"><h3 style="color:#a06000">⚠ No campaign assigned</h3><div class="sub">Aaj admin ne tumhe koi campaign assign nahi kiya.</div><button class="btn btn-g" onclick="loadAssignment()">↻ Refresh</button></div>';
-    $('home-content').innerHTML = html; return;
+    $('home-content').innerHTML = html;
+    return;
   }
   var c = state.campaign;
-  var hT = c.hood_photo_count || 0; var bT = c.back_panel_photo_count || 0;
+  var hT = c.hood_photo_count || 0;
+  var bT = c.back_panel_photo_count || 0;
   var serverKeys = {};
   state.todayVehicles.forEach(function(v){ serverKeys[v.key] = true; });
   var mergedVehicles = state.todayVehicles.slice();
@@ -381,10 +422,11 @@ function renderHome(){
     }).join('');
   }
   html += '</div>';
-  html += '<div style="text-align:center;font-size:9px;color:#bbb;margin-top:20px;padding:10px;opacity:.6">'+APP_VERSION+'</div>';
+  html += '<div style="text-align:center;font-size:9px;color:#bbb;margin-top:20px;padding:10px;opacity:.6">'+APP_VERSION+' · '+BUILD_DATE+'</div>';
   $('home-content').innerHTML = html;
 }
 
+// ═══ GPS ═══
 var gpsWatchId = null;
 function watchGps(){
   if (isManualMode()){
@@ -398,6 +440,7 @@ function watchGps(){
   navigator.geolocation.getCurrentPosition(function(pos){ setGpsFromPosition(pos); }, function(){}, { enableHighAccuracy:true, maximumAge:0, timeout:8000 });
   gpsWatchId = navigator.geolocation.watchPosition(function(pos){ setGpsFromPosition(pos); }, function(err){ $('gps-strip').className = 'gps warn'; $('gps-strip').innerHTML = '<div class="live"></div><span>GPS error: '+err.message+'</span>'; }, { enableHighAccuracy:true, maximumAge:3000, timeout:20000 });
 }
+
 function setGpsFromPosition(pos){
   state.gps.lat = pos.coords.latitude;
   state.gps.lng = pos.coords.longitude;
@@ -405,8 +448,11 @@ function setGpsFromPosition(pos){
   state.gps._timestamp = Date.now();
   $('gps-strip').className = 'gps';
   $('gps-strip').innerHTML = '<div class="live"></div><span>GPS locked · '+pos.coords.latitude.toFixed(5)+', '+pos.coords.longitude.toFixed(5)+' · ±'+Math.round(pos.coords.accuracy)+'m</span>';
-  if (!state.gps.address || hasMovedSignificantly(pos.coords)){ fetchReverseGeocode(pos.coords.latitude, pos.coords.longitude); }
+  if (!state.gps.address || hasMovedSignificantly(pos.coords)){
+    fetchReverseGeocode(pos.coords.latitude, pos.coords.longitude);
+  }
 }
+
 function ensureFreshGps(){
   return new Promise(function(resolve){
     if (isManualMode()){ resolve(true); return; }
@@ -415,13 +461,15 @@ function ensureFreshGps(){
     var timer = setTimeout(function(){ if (!done){ done = true; resolve(state.gps.lat != null); } }, 6000);
     navigator.geolocation.getCurrentPosition(function(pos){
       if (done) return; done = true; clearTimeout(timer);
-      setGpsFromPosition(pos); resolve(true);
+      setGpsFromPosition(pos);
+      resolve(true);
     }, function(){
       if (done) return; done = true; clearTimeout(timer);
       resolve(state.gps.lat != null);
     }, { enableHighAccuracy:true, maximumAge:0, timeout:5500 });
   });
 }
+
 function hasMovedSignificantly(coords){
   var last = state.gps._lastGeocodeAt;
   if (!last) return true;
@@ -429,6 +477,7 @@ function hasMovedSignificantly(coords){
   var dLng = (coords.longitude - last.lng) * 111000 * Math.cos(last.lat * Math.PI / 180);
   return Math.sqrt(dLat*dLat + dLng*dLng) > 80;
 }
+
 function fetchReverseGeocode(lat, lng){
   state.gps._lastGeocodeAt = { lat: lat, lng: lng };
   var url = 'https://us1.locationiq.com/v1/reverse?key='+CONFIG.locationIqToken+'&lat='+lat+'&lon='+lng+'&format=json&addressdetails=1';
@@ -445,6 +494,7 @@ function fetchReverseGeocode(lat, lng){
       }).catch(function(){});
   });
 }
+
 function stopGps(){ if (gpsWatchId !== null){ navigator.geolocation.clearWatch(gpsWatchId); gpsWatchId = null; } }
 function isManualMode(){ return !!(state.campaign && state.campaign.manual_gps_enabled && state.campaign.anchor_lat != null && state.campaign.anchor_lng != null); }
 function applyManualGps(){
@@ -468,6 +518,7 @@ function applyManualGps(){
   return true;
 }
 
+// ═══ CAPTURE FLOW ═══
 function buildSlotList(){
   var slots = [];
   var hT = state.campaign.hood_photo_count || 0;
@@ -507,19 +558,27 @@ window.continueVehicle = function(key){
 
 function resetSession(isResume){
   state.slots = buildSlotList();
-  state.photos = {}; state.vehicleNumber = ''; state.plateOcrScore = null;
-  state.ocrInFlight = false; state.ocrAttempted = false;
-  state.sessionId = genSessionId(); state._fallbackVehicleId = null;
+  state.photos = {};
+  state.vehicleNumber = '';
+  state.plateOcrScore = null;
+  state.ocrInFlight = false;
+  state.ocrAttempted = false;
+  state.sessionId = genSessionId();
+  state._fallbackVehicleId = null;
   state.resumeMode = !!isResume;
   if (!isResume) state.serverPhotoUrls = {};
 }
+
 function enterCaptureScreen(){
   $('ocr-banner').style.display = 'none';
   $('session-count').textContent = state.todayCount;
-  renderPhotoGrid(); showScreen('screen-capture');
+  renderPhotoGrid();
+  showScreen('screen-capture');
   $('capture-actions').style.display = 'flex';
-  watchGps(); updateSessionStatus();
+  watchGps();
+  updateSessionStatus();
 }
+
 function getNextSlotKey(){
   for (var i = 0; i < state.slots.length; i++){
     var s = state.slots[i];
@@ -527,12 +586,15 @@ function getNextSlotKey(){
   }
   return null;
 }
+
 function renderPhotoGrid(){
   if (!state.slots.length){ $('photo-grid-wrap').innerHTML = ''; return; }
   var nextKey = getNextSlotKey();
   var html = state.slots.map(function(s){
-    var photo = state.photos[s.key]; var serverUrl = state.serverPhotoUrls[s.key];
-    var cls = 'slot'; var content;
+    var photo = state.photos[s.key];
+    var serverUrl = state.serverPhotoUrls[s.key];
+    var cls = 'slot';
+    var content;
     if (photo){
       cls += ' done';
       content = '<div class="badge">'+escapeHtml(s.label)+'</div><div class="check">✓</div><img src="'+photo.previewUrl+'" alt="">';
@@ -553,7 +615,9 @@ function renderPhotoGrid(){
 window.capturePhoto = function(key){
   if (isManualMode()){
     applyManualGps(); touchActivity();
-    state._capturingKey = key; openInAppCamera(key); return;
+    state._capturingKey = key;
+    openInAppCamera(key);
+    return;
   }
   if (state.gps.lat == null || state.gps.lng == null){
     toast('GPS lock ho raha hai — 3 sec wait karo', 'warn');
@@ -568,14 +632,18 @@ window.capturePhoto = function(key){
     }
     return;
   }
-  touchActivity(); state._capturingKey = key; openInAppCamera(key);
+  touchActivity();
+  state._capturingKey = key;
+  openInAppCamera(key);
 };
 
-var camStream = null; var camStampTimer = null;
+// ═══ IN-APP CAMERA ═══
+var camStream = null;
+var camStampTimer = null;
 var camZoomState = {
-  videoTrack: null, capabilities: null, currentZoom: 1.0,
-  maxZoom: 1.0, minZoom: 1.0, stepZoom: 0.1,
-  initialPinchDistance: 0, initialZoom: 1.0,
+  videoTrack: null, capabilities: null,
+  currentZoom: 0.5, maxZoom: 1.0, minZoom: 0.5, stepZoom: 0.1,
+  initialPinchDistance: 0, initialZoom: 0.5,
   isPinching: false, zoomHideTimer: null
 };
 
@@ -584,9 +652,10 @@ function openInAppCamera(key){
   $('cam-slot-label').textContent = slot ? slot.label : 'Capture';
   $('cam-modal').classList.add('show');
   $('cam-shutter').disabled = true;
+
   updateCamStampPreview();
   camStampTimer = setInterval(updateCamStampPreview, 1500);
-  // PATCH 2: Native sensor resolution, NO forced aspectRatio (removes crop/zoom feel)
+
   navigator.mediaDevices.getUserMedia({
     video: {
       facingMode: { ideal: 'environment' },
@@ -598,42 +667,53 @@ function openInAppCamera(key){
     audio: false
   }).then(function(stream){
     camStream = stream;
-    var v = $('cam-feed'); v.srcObject = stream;
+    var v = $('cam-feed');
+    v.srcObject = stream;
     v.onloadedmetadata = function(){
-      v.play(); $('cam-shutter').disabled = false;
-      // PATCH 3: ULTRA-WIDE 0.5x default (widest possible view - full vehicle no need to step back)
+      v.play();
+      $('cam-shutter').disabled = false;
+      
+      // ⭐ FIX: Force 0.5x ULTRA-WIDE on open (min zoom)
       var track = stream.getVideoTracks()[0];
       if (track && track.getCapabilities) {
         try {
           var caps = track.getCapabilities();
           if (caps.zoom) {
-            // Use MINIMUM zoom = widest view (0.5x on most phones, ultra-wide lens)
-            // If phone supports it, this activates ultra-wide camera automatically
+            // Set to MIN zoom (0.5x ultra-wide on supporting devices)
             var targetZoom = caps.zoom.min;
-            track.applyConstraints({ advanced: [{ zoom: targetZoom }] }).then(function() {
-              camZoomState.currentZoom = targetZoom;
-              console.log('[CAM] Ultra-wide zoom set:', targetZoom + 'x (min='+caps.zoom.min+', max='+caps.zoom.max+')');
-            }).catch(function(e) { console.warn('[CAM] Zoom reset failed:', e); });
+            console.log('[CAM v15] Camera capabilities:', caps.zoom);
+            console.log('[CAM v15] Setting zoom to MIN (ultra-wide):', targetZoom);
+            
+            track.applyConstraints({ advanced: [{ zoom: targetZoom }] })
+              .then(function() {
+                camZoomState.currentZoom = targetZoom;
+                camZoomState.minZoom = caps.zoom.min;
+                camZoomState.maxZoom = caps.zoom.max || 4.0;
+                camZoomState.stepZoom = caps.zoom.step || 0.1;
+                console.log('[CAM v15] ✅ Ultra-wide active:', targetZoom + 'x');
+              })
+              .catch(function(e) { console.warn('[CAM v15] Zoom set failed:', e); });
           }
-        } catch (e) { console.warn('[CAM] Capability check failed:', e); }
+        } catch (e) { console.warn('[CAM v15] Cap check failed:', e); }
       }
+      
       setupPinchToZoom(stream);
     };
   }).catch(function(err){
     console.error('Camera open failed:', err);
     if (err.name === 'OverconstrainedError' || err.name === 'NotReadableError') {
-      navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } }, audio: false
-      }).then(function(stream){
-        camStream = stream;
-        var v = $('cam-feed'); v.srcObject = stream;
-        v.onloadedmetadata = function(){
-          v.play(); $('cam-shutter').disabled = false; setupPinchToZoom(stream);
-        };
-      }).catch(function(){
-        toast('Camera permission denied — falling back', 'error');
-        closeInAppCamera(); $('cam-input').click();
-      });
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
+        .then(function(stream){
+          camStream = stream;
+          var v = $('cam-feed'); v.srcObject = stream;
+          v.onloadedmetadata = function(){
+            v.play(); $('cam-shutter').disabled = false;
+            setupPinchToZoom(stream);
+          };
+        }).catch(function(){
+          toast('Camera permission denied — falling back', 'error');
+          closeInAppCamera(); $('cam-input').click();
+        });
     } else {
       toast('Camera permission denied — falling back', 'error');
       closeInAppCamera(); $('cam-input').click();
@@ -643,18 +723,16 @@ function openInAppCamera(key){
 
 function setupPinchToZoom(stream) {
   try {
-    var track = stream.getVideoTracks()[0]; if (!track) return;
+    var track = stream.getVideoTracks()[0];
+    if (!track) return;
     camZoomState.videoTrack = track;
     var capabilities = track.getCapabilities ? track.getCapabilities() : null;
     if (capabilities && capabilities.zoom) {
       camZoomState.capabilities = capabilities;
-      camZoomState.minZoom = capabilities.zoom.min || 1.0;
-      camZoomState.maxZoom = capabilities.zoom.max || 4.0;
-      camZoomState.stepZoom = capabilities.zoom.step || 0.1;
     } else {
       camZoomState.capabilities = null;
       camZoomState.minZoom = 1.0; camZoomState.maxZoom = 4.0;
-      camZoomState.stepZoom = 0.1; camZoomState.currentZoom = 1.0;
+      camZoomState.currentZoom = 1.0;
     }
     var video = $('cam-feed');
     video.addEventListener('touchstart', onPinchStart, { passive: false });
@@ -662,11 +740,13 @@ function setupPinchToZoom(stream) {
     video.addEventListener('touchend', onPinchEnd, { passive: false });
   } catch (e) {}
 }
+
 function getPinchDistance(touches) {
   var dx = touches[0].clientX - touches[1].clientX;
   var dy = touches[0].clientY - touches[1].clientY;
   return Math.sqrt(dx * dx + dy * dy);
 }
+
 function onPinchStart(e) {
   if (e.touches.length !== 2) return;
   e.preventDefault();
@@ -675,6 +755,7 @@ function onPinchStart(e) {
   camZoomState.initialZoom = camZoomState.currentZoom;
   showZoomIndicator();
 }
+
 function onPinchMove(e) {
   if (!camZoomState.isPinching || e.touches.length !== 2) return;
   e.preventDefault();
@@ -685,6 +766,7 @@ function onPinchMove(e) {
   newZoom = Math.round(newZoom / camZoomState.stepZoom) * camZoomState.stepZoom;
   applyZoom(newZoom);
 }
+
 function onPinchEnd(e) {
   if (e.touches.length < 2) {
     camZoomState.isPinching = false;
@@ -692,34 +774,50 @@ function onPinchEnd(e) {
     camZoomState.zoomHideTimer = setTimeout(hideZoomIndicator, 1500);
   }
 }
+
 function applyZoom(zoomLevel) {
   camZoomState.currentZoom = zoomLevel;
   if (camZoomState.capabilities && camZoomState.videoTrack) {
-    camZoomState.videoTrack.applyConstraints({ advanced: [{ zoom: zoomLevel }] }).catch(function() { applyCssDigitalZoom(zoomLevel); });
-  } else { applyCssDigitalZoom(zoomLevel); }
+    camZoomState.videoTrack.applyConstraints({ advanced: [{ zoom: zoomLevel }] })
+      .catch(function() { applyCssDigitalZoom(zoomLevel); });
+  } else {
+    applyCssDigitalZoom(zoomLevel);
+  }
   updateZoomIndicator(zoomLevel);
 }
+
 function applyCssDigitalZoom(zoomLevel) {
   var video = $('cam-feed');
   video.style.transform = 'scale(' + zoomLevel + ')';
   video.style.transformOrigin = 'center center';
 }
+
 function showZoomIndicator() { var ind = $('cam-zoom-indicator'); if (ind) ind.classList.add('show'); }
 function hideZoomIndicator() { var ind = $('cam-zoom-indicator'); if (ind) ind.classList.remove('show'); }
 function updateZoomIndicator(zoomLevel) {
-  var ind = $('cam-zoom-indicator'); if (ind) ind.textContent = zoomLevel.toFixed(1) + 'x';
+  var ind = $('cam-zoom-indicator');
+  if (ind) ind.textContent = zoomLevel.toFixed(1) + 'x';
   if (camZoomState.zoomHideTimer) clearTimeout(camZoomState.zoomHideTimer);
   camZoomState.zoomHideTimer = setTimeout(hideZoomIndicator, 1500);
 }
 
 function updateCamStampPreview(){
-  var chip = $('cam-gps-chip'); var chipTxt = $('cam-gps-txt');
-  if (isManualMode()){ chip.className = 'cam-gps'; chipTxt.textContent = 'Manual ±'+(state.campaign.gps_radius_m||50)+'m'; }
-  else if (state.gps.lat != null && state.gps.lng != null){ chip.className = 'cam-gps'; chipTxt.textContent = '±' + Math.round(state.gps.accuracy || 0) + 'm'; }
-  else { chip.className = 'cam-gps warn'; chipTxt.textContent = 'Locating…'; }
+  var chip = $('cam-gps-chip');
+  var chipTxt = $('cam-gps-txt');
+  if (isManualMode()){
+    chip.className = 'cam-gps';
+    chipTxt.textContent = 'Manual ±'+(state.campaign.gps_radius_m||50)+'m';
+  } else if (state.gps.lat != null && state.gps.lng != null){
+    chip.className = 'cam-gps';
+    chipTxt.textContent = '±' + Math.round(state.gps.accuracy || 0) + 'm';
+  } else {
+    chip.className = 'cam-gps warn';
+    chipTxt.textContent = 'Locating…';
+  }
   var a = state.gps.addressObj || {};
   var city = a.city || a.town || a.village || a.suburb || a.county || '—';
-  var stateName = a.state || ''; var country = a.country || 'India';
+  var stateName = a.state || '';
+  var country = a.country || 'India';
   var cityLine = [city, stateName, country].filter(Boolean).join(', ');
   $('cam-stamp-city').innerHTML = escapeHtml(cityLine) + ' <span class="flag"></span>';
   var addr = state.gps.address || 'Getting address…';
@@ -736,7 +834,8 @@ function updateCamStampPreview(){
   var yyyy = now.getFullYear();
   var hh = now.getHours();
   var min = String(now.getMinutes()).padStart(2,'0');
-  var ampm = hh >= 12 ? 'PM' : 'AM'; hh = ((hh + 11) % 12) + 1;
+  var ampm = hh >= 12 ? 'PM' : 'AM';
+  hh = ((hh + 11) % 12) + 1;
   $('cam-stamp-dt').textContent = dayName + ', ' + dd + '/' + mm + '/' + yyyy + ' ' + String(hh).padStart(2,'0') + ':' + min + ' ' + ampm;
 }
 
@@ -745,17 +844,23 @@ function captureFromInAppCamera(){
   if (!v.videoWidth || !v.videoHeight){ toast('Camera not ready','warn'); return; }
   $('cam-shutter').disabled = true;
   var canvas = document.createElement('canvas');
-  canvas.width = v.videoWidth; canvas.height = v.videoHeight;
+  canvas.width = v.videoWidth;
+  canvas.height = v.videoHeight;
   canvas.getContext('2d').drawImage(v, 0, 0, canvas.width, canvas.height);
   canvas.toBlob(function(blob){
     if (!blob){ toast('Capture failed','error'); $('cam-shutter').disabled = false; return; }
     var capturedFile = new File([blob], 'capture-'+Date.now()+'.jpg', { type: 'image/jpeg' });
-    closeInAppCamera(); processCapturedFile(capturedFile);
+    closeInAppCamera();
+    processCapturedFile(capturedFile);
   }, 'image/jpeg', 0.92);
 }
+
 function closeInAppCamera(){
   $('cam-modal').classList.remove('show');
-  if (camStream){ camStream.getTracks().forEach(function(t){ try{ t.stop(); } catch(e){} }); camStream = null; }
+  if (camStream){
+    camStream.getTracks().forEach(function(t){ try{ t.stop(); } catch(e){} });
+    camStream = null;
+  }
   if (camStampTimer){ clearInterval(camStampTimer); camStampTimer = null; }
   var v = $('cam-feed');
   if (v.srcObject){ v.srcObject = null; }
@@ -765,7 +870,8 @@ function closeInAppCamera(){
     v.removeEventListener('touchmove', onPinchMove);
     v.removeEventListener('touchend', onPinchEnd);
   }
-  camZoomState.videoTrack = null; camZoomState.currentZoom = 1.0;
+  camZoomState.videoTrack = null;
+  camZoomState.currentZoom = 0.5;
   hideZoomIndicator();
   if (camZoomState.zoomHideTimer) { clearTimeout(camZoomState.zoomHideTimer); camZoomState.zoomHideTimer = null; }
 }
@@ -784,7 +890,8 @@ function processCapturedFile(file){
     var firstKey = state.slots.find(function(s){ return s.mode === 'hood'; });
     var primaryKey = firstKey ? firstKey.key : (state.slots[0] && state.slots[0].key);
     if (key === primaryKey && !state.ocrAttempted && !state.vehicleNumber){
-      state.ocrAttempted = true; runPlateOcr(file);
+      state.ocrAttempted = true;
+      runPlateOcr(file);
     }
     queuePhotoWhenReady(key);
     var allFilled = state.slots.every(function(s){ return state.photos[s.key] || state.serverPhotoUrls[s.key]; });
@@ -799,28 +906,38 @@ window.endSession = function(){
     if (waitMs) loader(true, 'Saving last vehicle…');
     waitForOcr(waitMs).then(function(){
       Object.keys(state.photos).forEach(function(k){ if (!state.photos[k]._queued) queuePhoto(k); });
-      loader(false); stopGps();
+      loader(false);
+      stopGps();
       $('capture-actions').style.display = 'none';
-      showScreen('screen-home'); loadAssignment(); startHomeAutoRefresh();
+      showScreen('screen-home');
+      loadAssignment();
+      startHomeAutoRefresh();
     });
     return;
   }
   stopGps();
   $('capture-actions').style.display = 'none';
-  showScreen('screen-home'); loadAssignment(); startHomeAutoRefresh();
+  showScreen('screen-home');
+  loadAssignment();
+  startHomeAutoRefresh();
 };
 
 $('cam-input').addEventListener('change', function(e){
-  var file = e.target.files[0]; if (!file) return;
-  processCapturedFile(file); e.target.value = '';
+  var file = e.target.files[0];
+  if (!file) return;
+  processCapturedFile(file);
+  e.target.value = '';
 });
 
 function runPlateOcr(originalBlob){
-  var b = $('ocr-banner'); state.ocrInFlight = true;
-  b.className = 'ocr detect'; b.style.display = 'flex';
+  var b = $('ocr-banner');
+  state.ocrInFlight = true;
+  b.className = 'ocr detect';
+  b.style.display = 'flex';
   b.innerHTML = '<div class="sm"></div><span>Reading vehicle plate from photo…</span>';
   var fd = new FormData();
-  fd.append('upload', originalBlob); fd.append('regions', 'in');
+  fd.append('upload', originalBlob);
+  fd.append('regions', 'in');
   fetch(CONFIG.plateRecognizerUrl, {
     method: 'POST',
     headers: { 'Authorization': 'Token ' + CONFIG.plateRecognizerToken },
@@ -832,11 +949,18 @@ function runPlateOcr(originalBlob){
       var plate = (best.plate || '').toUpperCase().replace(/\s+/g,'');
       var score = Math.round((best.score || 0) * 100);
       if (plate){
-        state.vehicleNumber = plate; state.plateOcrScore = best.score;
+        state.vehicleNumber = plate;
+        state.plateOcrScore = best.score;
         b.className = 'ocr success';
         b.innerHTML = '<span>✓ Plate: <span class="pl">'+escapeHtml(plate)+'</span> ('+score+'%)</span>';
-      } else { b.className = 'ocr fail'; b.innerHTML = '<span>Plate not clear — admin will review</span>'; }
-    } else { b.className = 'ocr fail'; b.innerHTML = '<span>Plate not detected — admin will review</span>'; }
+      } else {
+        b.className = 'ocr fail';
+        b.innerHTML = '<span>Plate not clear — admin will review</span>';
+      }
+    } else {
+      b.className = 'ocr fail';
+      b.innerHTML = '<span>Plate not detected — admin will review</span>';
+    }
   }).catch(function(err){
     state.ocrInFlight = false;
     console.error('OCR error:', err);
@@ -844,6 +968,7 @@ function runPlateOcr(originalBlob){
     b.innerHTML = '<span>OCR unavailable — admin will review</span>';
   });
 }
+
 function waitForOcr(maxMs){
   return new Promise(function(resolve){
     var start = Date.now();
@@ -855,23 +980,44 @@ function waitForOcr(maxMs){
   });
 }
 
+// ═════════════════════════════════════════════════════════════════
+// GPS STAMP - WITH GOOGLE MAPS GRAPHIC (RESTORED v15)
+// Draws: Green map background + red pin + roads + Google label
+//        on LEFT side, then address+coords+timestamp on RIGHT
+// ═════════════════════════════════════════════════════════════════
 function stampGps(file){
   return fileToImage(file).then(function(img){
     var canvas = document.createElement('canvas');
     var maxW = 1600;
     var scale = img.width > maxW ? maxW/img.width : 1;
-    canvas.width = img.width * scale; canvas.height = img.height * scale;
+    canvas.width = img.width * scale;
+    canvas.height = img.height * scale;
     var ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
     var W = canvas.width, H = canvas.height;
-    var oH = Math.round(H * 0.18); var oY = H - oH;
-    var pad = Math.round(oH * 0.08); var mS = oH - 2*pad;
-    ctx.fillStyle = 'rgba(10,14,26,0.85)'; ctx.fillRect(0, oY, W, oH);
+    var oH = Math.round(H * 0.18);
+    var oY = H - oH;
+    var pad = Math.round(oH * 0.08);
+    var mS = oH - 2*pad;
+
+    // Dark overlay panel at bottom
+    ctx.fillStyle = 'rgba(10,14,26,0.85)';
+    ctx.fillRect(0, oY, W, oH);
+
+    // ━━━ MAP GRAPHIC (LEFT SIDE) ━━━
     var mX = pad, mY = oY + pad;
-    ctx.fillStyle = '#7AA070'; ctx.fillRect(mX, mY, mS, mS);
+    
+    // Green map background
+    ctx.fillStyle = '#7AA070';
+    ctx.fillRect(mX, mY, mS, mS);
+    
+    // Cream-colored roads (horizontal + vertical)
     ctx.fillStyle = '#D8D4C0';
     ctx.fillRect(mX, mY + Math.round(mS*0.4), mS, Math.round(mS*0.06));
     ctx.fillRect(mX + Math.round(mS*0.45), mY, Math.round(mS*0.04), mS);
+    
+    // Building blocks (gray)
     ctx.fillStyle = '#5A5650';
     ctx.fillRect(mX + Math.round(mS*0.08), mY + Math.round(mS*0.08), Math.round(mS*0.25), Math.round(mS*0.25));
     ctx.fillStyle = '#6A6660';
@@ -879,20 +1025,35 @@ function stampGps(file){
     ctx.fillRect(mX + Math.round(mS*0.08), mY + Math.round(mS*0.55), Math.round(mS*0.25), Math.round(mS*0.4));
     ctx.fillStyle = '#5A5650';
     ctx.fillRect(mX + Math.round(mS*0.55), mY + Math.round(mS*0.55), Math.round(mS*0.35), Math.round(mS*0.4));
+    
+    // Blue river strip at bottom
     ctx.fillStyle = '#3070C0';
     ctx.fillRect(mX, mY + Math.round(mS*0.78), mS, Math.round(mS*0.06));
+
+    // Red Google Maps pin
     var pCX = mX + mS/2, pCY = mY + mS*0.45, pR = mS*0.13;
     ctx.fillStyle = '#DB4437';
     ctx.beginPath();
     ctx.arc(pCX, pCY, pR, Math.PI*1.1, Math.PI*1.9);
     ctx.lineTo(pCX, pCY + pR*2.2);
-    ctx.closePath(); ctx.fill();
+    ctx.closePath();
+    ctx.fill();
+    
+    // White dot in center of pin
     ctx.fillStyle = '#FFFFFF';
-    ctx.beginPath(); ctx.arc(pCX, pCY, pR*0.4, 0, 2*Math.PI); ctx.fill();
+    ctx.beginPath();
+    ctx.arc(pCX, pCY, pR*0.4, 0, 2*Math.PI);
+    ctx.fill();
+
+    // "Google" label in bottom-left of map
     ctx.fillStyle = '#FFFFFF';
     ctx.font = 'bold ' + Math.round(mS*0.13) + 'px system-ui';
     ctx.fillText('Google', mX + Math.round(mS*0.06), mY + mS - Math.round(mS*0.08));
-    var tX = mX + mS + pad; var tW = W - tX - pad;
+
+    // ━━━ TEXT PANEL (RIGHT SIDE) ━━━
+    var tX = mX + mS + pad;
+    var tW = W - tX - pad;
+
     var now = new Date();
     var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
     var dayName = days[now.getDay()];
@@ -901,16 +1062,21 @@ function stampGps(file){
     var yyyy = now.getFullYear();
     var hh = now.getHours();
     var min = String(now.getMinutes()).padStart(2,'0');
-    var ampm = hh >= 12 ? 'PM' : 'AM'; hh = ((hh + 11) % 12) + 1;
+    var ampm = hh >= 12 ? 'PM' : 'AM';
+    hh = ((hh + 11) % 12) + 1;
     var dateStr = dayName + ', ' + dd + '/' + mm + '/' + yyyy + ' ' + String(hh).padStart(2,'0') + ':' + min + ' ' + ampm + ' GMT +05:30';
+
     var lat = state.gps.lat ? state.gps.lat.toFixed(6) : '—';
     var lng = state.gps.lng ? state.gps.lng.toFixed(6) : '—';
+
     var a = state.gps.addressObj || {};
     var city = a.city || a.town || a.village || a.suburb || a.county || '';
-    var stateName = a.state || ''; var country = a.country || 'India';
+    var stateName = a.state || '';
+    var country = a.country || 'India';
     var cityLine = [city, stateName, country].filter(Boolean).join(', ') || '—';
     var addrText = state.gps.address || '';
     if (a.postcode && addrText.indexOf(a.postcode) === -1) addrText += ', ' + a.postcode;
+
     ctx.font = Math.round(oH*0.09) + 'px system-ui';
     var words = addrText.split(/[, ]+/).filter(Boolean);
     var lines = [], cur = '';
@@ -918,7 +1084,8 @@ function stampGps(file){
       var w = words[i];
       var test = cur ? cur + ', ' + w : w;
       if (ctx.measureText(test).width > tW && cur){
-        lines.push(cur + ','); cur = w;
+        lines.push(cur + ',');
+        cur = w;
         if (lines.length >= 2){ cur = words.slice(i).join(', '); break; }
       } else { cur = test; }
     }
@@ -928,10 +1095,15 @@ function stampGps(file){
       while (lines[1] && ctx.measureText(lines[1]+'…').width > tW){ lines[1] = lines[1].slice(0,-1); }
       lines[1] += '…';
     }
+
     var cy = oY + pad + Math.round(oH*0.16);
+    
+    // City name (bold)
     ctx.fillStyle = '#FFFFFF';
     ctx.font = 'bold ' + Math.round(oH*0.13) + 'px system-ui';
     ctx.fillText(cityLine, tX, cy);
+    
+    // India flag next to city
     var cityW = ctx.measureText(cityLine).width;
     var flagX = tX + cityW + Math.round(oH*0.06);
     var flagY = cy - Math.round(oH*0.11);
@@ -942,21 +1114,30 @@ function stampGps(file){
       ctx.fillStyle = '#FFFFFF'; ctx.fillRect(flagX, flagY+flagH/3, flagW, flagH/3);
       ctx.fillStyle = '#138808'; ctx.fillRect(flagX, flagY+2*flagH/3, flagW, flagH/3);
     }
+    
     cy += Math.round(oH*0.17);
+    
+    // Address lines
     ctx.fillStyle = '#FFFFFF';
     ctx.font = Math.round(oH*0.09) + 'px system-ui';
     for (var j = 0; j < lines.length; j++){
       if (lines[j]) ctx.fillText(lines[j], tX, cy);
       cy += Math.round(oH*0.13);
     }
+    
+    // Lat/Long
     ctx.fillText('Lat ' + lat + '° Long ' + lng + '°', tX, cy);
     cy += Math.round(oH*0.13);
+    
+    // Timestamp
     ctx.fillText(dateStr, tX, cy);
+
     return new Promise(function(resolve){
       canvas.toBlob(function(blob){ resolve({ blob: blob, width: canvas.width, height: canvas.height }); }, 'image/jpeg', 0.85);
     });
   });
 }
+
 function fileToImage(file){
   return new Promise(function(res, rej){
     var img = new Image();
@@ -965,6 +1146,7 @@ function fileToImage(file){
     img.src = URL.createObjectURL(file);
   });
 }
+
 function buildPhotoMetadata(key){
   var slot = state.slots.find(function(s){ return s.key === key; });
   if (!slot) return null;
@@ -990,16 +1172,21 @@ function buildPhotoMetadata(key){
     latitude: state.gps.lat,
     longitude: state.gps.lng,
     address: state.gps.address,
-    city: state.gps.city
+    city: state.gps.city,
+    app_version: APP_VERSION,
+    rejected: false
   };
   if (state.plateOcrScore && slot.mode === 'hood' && slot.n === 1){
     dbRow.plate_ocr_score = state.plateOcrScore;
   }
   return { storage_path: path, dbRow: dbRow };
 }
+
 function queuePhoto(key){
-  var photo = state.photos[key]; if (!photo || photo._queued) return;
-  var meta = buildPhotoMetadata(key); if (!meta) return;
+  var photo = state.photos[key];
+  if (!photo || photo._queued) return;
+  var meta = buildPhotoMetadata(key);
+  if (!meta) return;
   photo._queued = true;
   idb.add({ blob: photo.blob, metadata: meta, status: 'pending', attempts: 0, queued_at: Date.now(), session_id: state.sessionId, slot_key: key })
     .then(function(){ updateSessionStatus(); processQueue(); })
@@ -1018,12 +1205,20 @@ function ensurePhotoFolder(){
   }).catch(function(){ return null; });
 }
 function pickPhotoFolder(){
-  if (!fsApiSupported()){ toast('Browser puraana hai — Downloads folder use hoga','warn'); return Promise.resolve(null); }
-  return window.showDirectoryPicker({ mode: 'readwrite', id: 'prajapati-gps-photos', startIn: 'pictures' }).then(function(handle){
-    return idb.setConfig('photo_dir_handle', handle).then(function(){
-      toast('✓ Photo folder set! Ab silent save hoga','success'); return handle;
+  if (!fsApiSupported()){
+    toast('Browser puraana hai — Downloads folder use hoga','warn');
+    return Promise.resolve(null);
+  }
+  return window.showDirectoryPicker({ mode: 'readwrite', id: 'prajapati-gps-photos', startIn: 'pictures' })
+    .then(function(handle){
+      return idb.setConfig('photo_dir_handle', handle).then(function(){
+        toast('✓ Photo folder set! Ab silent save hoga','success');
+        return handle;
+      });
+    }).catch(function(){
+      toast('Folder pick cancel — Downloads use hoga','warn');
+      return null;
     });
-  }).catch(function(){ toast('Folder pick cancel — Downloads use hoga','warn'); return null; });
 }
 function savePhotoToGallery(blob, filename){
   return ensurePhotoFolder().then(function(handle){
@@ -1032,7 +1227,10 @@ function savePhotoToGallery(blob, filename){
         return fh.createWritable().then(function(w){
           return w.write(blob).then(function(){ return w.close(); });
         });
-      }).catch(function(err){ console.warn('FS save failed, falling back:', err); triggerDownload(blob, filename); });
+      }).catch(function(err){
+        console.warn('FS save failed, falling back:', err);
+        triggerDownload(blob, filename);
+      });
     }
     triggerDownload(blob, filename);
   });
@@ -1055,14 +1253,21 @@ function saveToGallery(blob, key){
     return savePhotoToGallery(blob, fname);
   } catch (e){ console.warn('Gallery save failed:', e); }
 }
+
 function queuePhotoWhenReady(key){
-  if (state.ocrInFlight){ waitForOcr(4000).then(function(){ queuePhoto(key); }); }
-  else { queuePhoto(key); }
+  if (state.ocrInFlight){
+    waitForOcr(4000).then(function(){ queuePhoto(key); });
+  } else {
+    queuePhoto(key);
+  }
 }
+
 function finishVehicleSession(){
   loader(true, state.ocrInFlight ? 'Reading plate…' : 'Saving vehicle…');
   waitForOcr(4000).then(function(){
-    Object.keys(state.photos).forEach(function(k){ if (!state.photos[k]._queued) queuePhoto(k); });
+    Object.keys(state.photos).forEach(function(k){
+      if (!state.photos[k]._queued) queuePhoto(k);
+    });
     var plate = state.vehicleNumber || ('— (' + (state._fallbackVehicleId || 'review') + ')');
     var vehicleKey = state.vehicleNumber || state._fallbackVehicleId;
     state.sessionCaptures.push({
@@ -1073,98 +1278,113 @@ function finishVehicleSession(){
       captured_at: new Date().toISOString()
     });
     state.todayCount += 1;
-    persistSessionCaptures(); touchActivity();
+    persistSessionCaptures();
+    touchActivity();
     loader(false);
     $('flash-plate').textContent = plate;
     $('flash-meta').textContent = state.slots.length + ' photos saved · ' + (state.gps.city || 'GPS');
     $('flash').classList.add('show');
     setTimeout(function(){
       $('flash').classList.remove('show');
-      resetSession(false); enterCaptureScreen(); processQueue();
+      resetSession(false);
+      enterCaptureScreen();
+      processQueue();
     }, 1800);
   });
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// TRUE AUTO-UPDATE — Background silent, zero user action
-// Checks every 5 min, applies immediately, only blocks during active capture
-// ═══════════════════════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════════
+// PWA: SERVICE WORKER + INSTALL + AGGRESSIVE AUTO-UPDATE
+// ═════════════════════════════════════════════════════════════════
+
 var deferredInstallPrompt = null;
-var swRefreshing = false;
+var refreshing = false;
 var pendingWorker = null;
 
-function isUserBusy(){
-  // Don't reload if user is actively capturing
-  if ($('cam-modal').classList.contains('show')) return true;
-  // Don't reload if photos are unsaved in current session
-  if (Object.keys(state.photos).length > 0) return true;
-  // Don't reload during upload
-  if (queueRunning) return true;
-  return false;
-}
-
-function applyUpdateNow(){
-  if (!pendingWorker) return;
-  // Tell SW to skip waiting and take control
-  pendingWorker.postMessage({ type: 'SKIP_WAITING' });
-  // SW will trigger controllerchange event which reloads page (handled below)
-}
-
-function scheduleSilentUpdate(){
-  // Try to apply update every 10 seconds when user is idle
-  var attemptInterval = setInterval(function(){
-    if (!pendingWorker) { clearInterval(attemptInterval); return; }
-    if (!isUserBusy()){
-      console.log('[PWA] User idle — applying silent update');
-      clearInterval(attemptInterval);
-      applyUpdateNow();
-    }
-  }, 10000);
-}
-
-if ('serviceWorker' in navigator){
+if ('serviceWorker' in navigator) {
   window.addEventListener('load', function(){
-    navigator.serviceWorker.register('/sw.js').then(function(reg){
-      console.log('[PWA] SW registered, version target:', APP_VERSION);
-      // Check for updates frequently (every 5 min)
-      setInterval(function(){ reg.update(); }, 5 * 60 * 1000);
-      // Detect new worker
+    navigator.serviceWorker.register('/sw.js?v=' + APP_VERSION).then(function(reg){
+      console.log('[PWA v15] SW registered:', reg.scope);
+      
+      // Check for updates every 30 seconds
+      setInterval(function(){
+        reg.update().catch(function(e){ console.warn('[PWA] Update check failed:', e); });
+      }, CONFIG.swUpdateIntervalMs);
+      
+      // First-time update check after 5 sec
+      setTimeout(function(){ reg.update(); }, 5000);
+      
       reg.addEventListener('updatefound', function(){
         var newWorker = reg.installing;
         if (!newWorker) return;
+        console.log('[PWA v15] New SW found, installing...');
         newWorker.addEventListener('statechange', function(){
+          console.log('[PWA v15] SW state:', newWorker.state);
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller){
-            console.log('[PWA] New version available — will silently apply when user idle');
+            console.log('[PWA v15] New version ready — showing banner');
             pendingWorker = newWorker;
-            scheduleSilentUpdate();
+            $('update-banner').classList.add('show');
           }
         });
       });
-    }).catch(function(err){ console.warn('[PWA] SW registration failed:', err); });
+    }).catch(function(err){
+      console.warn('[PWA v15] SW register failed:', err);
+    });
   });
-  // When new SW takes control, reload silently
+
   navigator.serviceWorker.addEventListener('controllerchange', function(){
-    if (swRefreshing) return;
-    swRefreshing = true;
-    console.log('[PWA] SW controller changed — silent reload');
+    if (refreshing) return;
+    refreshing = true;
+    console.log('[PWA v15] Controller changed — reloading');
     window.location.reload();
+  });
+  
+  // Listen for SW_ACTIVATED message
+  navigator.serviceWorker.addEventListener('message', function(event){
+    if (event.data && event.data.type === 'SW_ACTIVATED'){
+      console.log('[PWA v15] SW activated:', event.data.version);
+      if (!refreshing){
+        refreshing = true;
+        toast('🔄 Updating to new version…', 'success');
+        setTimeout(function(){ window.location.reload(); }, 800);
+      }
+    }
   });
 }
 
+// ━━━ Install Prompt Handler ━━━
 window.addEventListener('beforeinstallprompt', function(e){
-  e.preventDefault(); deferredInstallPrompt = e;
+  console.log('[PWA v15] Install prompt captured');
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  // Show install bar after 3 seconds if user is logged in
   setTimeout(function(){
     if (!localStorage.getItem('pf_install_dismissed') && state.member){
-      $('install-banner').classList.add('show');
+      console.log('[PWA v15] Showing install bar');
+      $('install-bar').classList.add('show');
     }
-  }, 4000);
+  }, 3000);
 });
-function isIosSafari(){ var ua = navigator.userAgent.toLowerCase(); return /iphone|ipad|ipod/.test(ua) && /safari/.test(ua) && !/crios|fxios/.test(ua); }
-function isStandalone(){ return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; }
+
+window.addEventListener('appinstalled', function(){
+  console.log('[PWA v15] App installed!');
+  toast('✅ App installed successfully!', 'success');
+  $('install-bar').classList.remove('show');
+  deferredInstallPrompt = null;
+});
+
+function isIosSafari(){
+  var ua = navigator.userAgent.toLowerCase();
+  return /iphone|ipad|ipod/.test(ua) && /safari/.test(ua) && !/crios|fxios/.test(ua);
+}
+function isStandalone(){
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
 function maybeShowIosInstallHint(){
   if (isIosSafari() && !isStandalone() && !localStorage.getItem('pf_install_dismissed')){
     setTimeout(function(){
-      var b = $('install-banner');
+      var b = $('install-bar');
       b.querySelector('.ib-sub').textContent = 'Share button → "Add to Home Screen"';
       b.querySelector('.primary').textContent = 'Got it';
       b.querySelector('.primary').onclick = dismissInstall;
@@ -1172,24 +1392,67 @@ function maybeShowIosInstallHint(){
     }, 4000);
   }
 }
+
 window.triggerInstall = function(){
-  if (!deferredInstallPrompt) { dismissInstall(); return; }
+  console.log('[PWA v15] Install button clicked');
+  if (!deferredInstallPrompt) {
+    // Fallback for unsupported browsers — show instructions
+    if (isIosSafari()){
+      alert('Install karne ke liye:\n\n1. Safari ke neeche Share button (square + arrow) tap karo\n2. Scroll down → "Add to Home Screen"\n3. Add tap karo\n\nApp home screen pe install ho jayega');
+    } else {
+      alert('Install karne ke liye:\n\n1. Chrome ke top-right me 3 dots tap karo\n2. "Install app" ya "Add to Home Screen" select karo\n3. Install confirm karo\n\nApp install ho jayega');
+    }
+    dismissInstall();
+    return;
+  }
   deferredInstallPrompt.prompt();
   deferredInstallPrompt.userChoice.then(function(choice){
-    if (choice.outcome === 'accepted'){ toast('Install ho raha hai…', 'success'); }
+    console.log('[PWA v15] Install choice:', choice.outcome);
+    if (choice.outcome === 'accepted'){
+      toast('Install ho raha hai…', 'success');
+    }
     deferredInstallPrompt = null;
-    $('install-banner').classList.remove('show');
+    $('install-bar').classList.remove('show');
   });
 };
+
 window.dismissInstall = function(){
-  $('install-banner').classList.remove('show');
+  $('install-bar').classList.remove('show');
   localStorage.setItem('pf_install_dismissed', '1');
 };
 
+window.applyUpdate = function(){
+  console.log('[PWA v15] Apply update clicked');
+  $('update-banner').classList.remove('show');
+  if (pendingWorker){
+    pendingWorker.postMessage({ type: 'SKIP_WAITING' });
+  } else {
+    // Force reload with cache bypass
+    window.location.reload();
+  }
+};
+
+// Show iOS hint after 5 sec if logged in
 setTimeout(function(){
   if (state.member && isIosSafari() && !isStandalone()) maybeShowIosInstallHint();
 }, 5000);
 
+// Force install bar visibility if Chrome and PWA criteria met (fallback)
+setTimeout(function(){
+  if (state.member && !isStandalone() && !localStorage.getItem('pf_install_dismissed')){
+    // If no beforeinstallprompt fired yet, show hint anyway after 10 sec
+    if (!deferredInstallPrompt && !isIosSafari()){
+      var b = $('install-bar');
+      if (b && !b.classList.contains('show')){
+        console.log('[PWA v15] No native prompt - showing manual install hint');
+        b.querySelector('.ib-sub').textContent = 'Browser menu → "Install app" select karo';
+        b.classList.add('show');
+      }
+    }
+  }
+}, 10000);
+
 window.logout = logout;
 window.loadAssignment = loadAssignment;
+
 bootAuth();
