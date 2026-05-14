@@ -6,10 +6,10 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Prajapati GPS - Verifier Portal v12</title>
+<title>Prajapati GPS - Verifier Portal v13</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--p:#0f1c5e;--p2:#0073e6;--acc:#00d4ff;--ok:#10b981;--warn:#f59e0b;--err:#ef4444;--bg:#f5f7fb;--card:#fff;--txt:#1a1a2e;--muted:#6b7280;--border:#e5e7eb}
+:root{--p:#0f1c5e;--p2:#0073e6;--ok:#10b981;--warn:#f59e0b;--err:#ef4444;--bg:#f5f7fb;--card:#fff;--txt:#1a1a2e;--muted:#6b7280;--border:#e5e7eb}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;font-size:14px}
 .hdr{background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,0.1);position:sticky;top:0;z-index:100}
@@ -28,8 +28,8 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--txt);min-
 .stat-card::before{content:"";position:absolute;top:0;left:0;width:4px;height:100%}
 .stat-card.pending::before{background:var(--err)}
 .stat-card.verified::before{background:var(--ok)}
-.stat-card.rejected::before{background:#6b7280}
 .stat-card.total::before{background:var(--p2)}
+.stat-card.rejected::before{background:#6b7280}
 .stat-label{font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:4px;font-weight:600}
 .stat-value{font-size:24px;font-weight:700;color:var(--p)}
 .stat-trend{font-size:11px;color:var(--muted);margin-top:4px}
@@ -61,6 +61,7 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--txt);min-
 .vc-photo img{width:100%;height:100%;object-fit:cover}
 .vc-photo-label{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.7);color:#fff;padding:4px 8px;font-size:11px;font-weight:600;text-transform:uppercase}
 .vc-photo-ocr{position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.7);color:#fff;padding:2px 6px;font-size:10px;font-family:monospace;border-radius:4px}
+.vc-photo-mode{position:absolute;top:4px;left:4px;background:rgba(15,28,94,0.9);color:#fff;padding:2px 6px;font-size:9px;border-radius:4px;font-weight:700;text-transform:uppercase}
 .vc-ocr-row{background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px}
 .suggestion-chip{background:#fff;border:1px solid #fcd34d;padding:3px 9px;border-radius:99px;font-family:monospace;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;display:inline-block}
 .vc-form{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end}
@@ -77,6 +78,9 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--txt);min-
 .vc-verified-info .field-label{font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:600}
 .vc-verified-info .field-value{font-weight:700}
 .vc-verified-info .plate{font-family:monospace;font-size:16px;color:var(--p)}
+.photo-count-badge{display:inline-block;padding:3px 8px;border-radius:99px;font-size:10px;font-weight:700;margin-left:6px}
+.photo-count-badge.complete{background:#dcfce7;color:#0d9968}
+.photo-count-badge.partial{background:#fef3c7;color:#a06000}
 .loading{text-align:center;padding:40px;color:var(--muted)}
 .spinner{display:inline-block;width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--p2);border-radius:50%;animation:spin 0.8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -97,16 +101,16 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--txt);min-
 <div id="loginScreen" class="login-screen">
   <div class="login-card">
     <h2>🔍 Verifier Portal</h2>
-    <div class="subtitle">Prajapati GPS - Vehicle Verification (v12)</div>
+    <div class="subtitle">Prajapati GPS v13 — Hood + Back Panel grouping fixed</div>
     <input type="text" id="loginPhone" placeholder="Phone number (e.g. 9876543210)" maxlength="15" />
     <button class="login-btn" onclick="doLogin()">Login</button>
-    <div style="margin-top:14px;font-size:11px;color:#999;text-align:center;">Only Verifier or Admin role can login</div>
+    <div style="margin-top:14px;font-size:11px;color:#999;text-align:center;">Only Verifier/Admin role can login</div>
   </div>
 </div>
 
 <div id="mainApp" style="display:none;">
   <div class="hdr">
-    <h1>🔍 Verifier Portal</h1>
+    <h1>🔍 Verifier Portal v13</h1>
     <div>
       <span class="user-badge" id="userBadge">—</span>
       <button class="btn-logout" onclick="doLogout()">Logout</button>
@@ -142,10 +146,12 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--txt);min-
   <img id="zoomImg" alt="zoomed" />
 </div>
 <div class="toast" id="toast"></div>
-<div class="version-tag">v12</div>
+<div class="version-tag">v13 - groups fixed</div>
 
 <script>
 "use strict";
+console.log('[Verifier v13] Loading - hood+back-panel grouping fixed');
+
 var CONFIG = {
   supabaseUrl: 'https://fpbktcgtspqsqpaytslv.supabase.co',
   supabaseKey: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j'
@@ -154,8 +160,9 @@ var state = { user: null, currentTab: 'pending', vehicles: [] };
 
 function $(id) { return document.getElementById(id); }
 function toast(msg, type) {
-  var t = $('toast'); t.textContent = msg; t.className = 'toast show ' + (type || '');
-  setTimeout(function() { t.classList.remove('show'); }, 3000);
+  var t = $('toast'); if (!t) { console.log('[TOAST]', msg); return; }
+  t.textContent = msg; t.className = 'toast show ' + (type || '');
+  setTimeout(function() { t.classList.remove('show'); }, 3500);
 }
 function escHtml(s) {
   if (s === null || s === undefined) return '';
@@ -247,6 +254,7 @@ function loadFilters() {
     (m || []).forEach(function(x) { sel.innerHTML += '<option value="' + escHtml(x.phone) + '">' + escHtml(x.name) + '</option>'; });
   });
 }
+
 function loadQueue() {
   var date = $('filterDate').value, campaign = $('filterCampaign').value, member = $('filterMember').value;
   $('vehicleList').innerHTML = '<div class="loading"><div class="spinner"></div><div style="margin-top:12px;">Loading...</div></div>';
@@ -257,43 +265,92 @@ function loadQueue() {
   }
   if (campaign) qs += '&campaign_key=eq.' + encodeURIComponent(campaign);
   if (member) qs += '&member_phone=eq.' + encodeURIComponent(member);
+  
   api(qs).then(function(photos) {
     photos = photos || [];
+    console.log('[Verifier] Loaded', photos.length, 'photos');
     if (photos.length === 0) {
       $('vehicleList').innerHTML = '<div class="empty-state"><div class="emoji">📭</div><div style="font-weight:700;">No photos found</div></div>';
       updateTabCounts(0, 0, 0); return;
     }
     state.vehicles = Object.values(groupPhotos(photos));
+    console.log('[Verifier] Grouped into', state.vehicles.length, 'vehicles');
+    state.vehicles.forEach(function(v) {
+      var hoods = v.photos.filter(function(p){return p.mode === 'hood' || (p.public_url||'').match(/\/(back|left|right|front)-(?!panel)/i);}).length;
+      var backs = v.photos.filter(function(p){return p.mode === 'back_panel' || (p.public_url||'').match(/back[-_]panel/i);}).length;
+      console.log('[GROUP]', v.vehicleSlug || v.groupKey, ':', v.photos.length, 'photos (' + hoods + ' hood + ' + backs + ' back-panel)');
+    });
     renderQueue();
   }).catch(function(err) {
     $('vehicleList').innerHTML = '<div class="empty-state"><div class="emoji">⚠️</div><div style="color:var(--err);">Error: ' + escHtml(err.message) + '</div></div>';
   });
 }
+
+// ⭐ CRITICAL FIX: Group by VEHICLE FOLDER + capture time (not photo type)
+// This ensures hood + back-panel of SAME vehicle group together
 function groupPhotos(photos) {
   var groups = {};
+  
   photos.forEach(function(p) {
-    var urlMatch = (p.public_url || '').match(/\/([a-zA-Z0-9\-]+)\/(left|right|back|front|side|hood)-/i);
     var groupKey;
-    if (urlMatch) groupKey = p.member_phone + '_' + urlMatch[1];
-    else if (p.vehicle_number) groupKey = p.member_phone + '_' + cleanPlate(p.vehicle_number);
-    else { var bucket = Math.floor(new Date(p.captured_at).getTime() / (2 * 60 * 1000)); groupKey = p.member_phone + '_t' + bucket; }
+    var vehicleSlug = '';
+    
+    // Extract vehicle slug from URL: campaign/date/member/VEHICLE-SLUG/anything.jpg
+    var url = p.public_url || '';
+    var pathParts = url.split('/');
+    if (pathParts.length >= 2) {
+      // Second to last part is the vehicle folder
+      vehicleSlug = pathParts[pathParts.length - 2];
+    }
+    
+    if (vehicleSlug && vehicleSlug.length > 1) {
+      // Primary group: vehicle folder slug
+      groupKey = p.member_phone + '_' + vehicleSlug;
+    } else if (p.vehicle_number) {
+      // Fallback: vehicle_number
+      groupKey = p.member_phone + '_' + cleanPlate(p.vehicle_number);
+    } else {
+      // Last resort: 3-min time bucket
+      var bucket = Math.floor(new Date(p.captured_at).getTime() / (3 * 60 * 1000));
+      groupKey = p.member_phone + '_t' + bucket;
+    }
+    
     if (!groups[groupKey]) {
       groups[groupKey] = {
-        groupKey: groupKey, groupId: p.vehicle_group_id || null, photos: [],
-        campaign: p.campaign_key, member: p.member_name || p.member_phone, memberPhone: p.member_phone,
-        captured: p.captured_at, date: p.captured_at ? p.captured_at.slice(0, 10) : '',
-        address: p.address, city: extractCity(p.address),
-        ocrPlates: [], verified: false, verifiedPlate: null, rejected: false
+        groupKey: groupKey,
+        vehicleSlug: vehicleSlug,
+        groupId: p.vehicle_group_id || null,
+        photos: [],
+        campaign: p.campaign_key,
+        member: p.member_name || p.member_phone,
+        memberPhone: p.member_phone,
+        captured: p.captured_at,
+        date: p.captured_at ? p.captured_at.slice(0, 10) : '',
+        address: p.address,
+        city: extractCity(p.address),
+        ocrPlates: [],
+        verified: false,
+        verifiedPlate: null,
+        rejected: false
       };
     }
+    
     var g = groups[groupKey];
     g.photos.push(p);
-    if (p.vehicle_number && p.vehicle_number.length >= 4 && !p.is_verified) g.ocrPlates.push(p.vehicle_number);
-    if (p.is_verified === true) { g.verified = true; g.verifiedPlate = p.verified_plate || p.vehicle_number || g.verifiedPlate; }
+    
+    if (p.vehicle_number && p.vehicle_number.length >= 4 && !p.is_verified) {
+      if (g.ocrPlates.indexOf(p.vehicle_number) === -1) g.ocrPlates.push(p.vehicle_number);
+    }
+    if (p.is_verified === true) { 
+      g.verified = true; 
+      g.verifiedPlate = p.verified_plate || p.vehicle_number || g.verifiedPlate; 
+    }
     if (p.rejected === true) g.rejected = true;
   });
+  
   return groups;
 }
+
 function renderQueue() {
   var filtered = state.vehicles.filter(function(v) {
     if (state.currentTab === 'pending') return !v.verified && !v.rejected;
@@ -314,6 +371,7 @@ function renderQueue() {
   }
   renderCards(filtered);
 }
+
 function renderCards(vehicles) {
   $('vehicleList').innerHTML = vehicles.map(function(v, idx) { return renderVehicleCard(v, idx); }).join('');
   document.querySelectorAll('.vc-input').forEach(function(input) {
@@ -327,6 +385,26 @@ function renderCards(vehicles) {
     });
   });
 }
+
+function getPhotoMode(p) {
+  // Returns 'hood' or 'back_panel'
+  if (p.mode === 'back_panel') return 'back_panel';
+  if (p.mode === 'hood') return 'hood';
+  var url = (p.public_url || '').toLowerCase();
+  if (url.match(/back[-_]panel/)) return 'back_panel';
+  if (url.match(/\/(back|left|right|front)-/)) return 'hood';
+  return p.mode || 'photo';
+}
+
+function getPhotoSide(p) {
+  // Returns 'BACK', 'LEFT', 'RIGHT', 'BACK PANEL', etc.
+  var url = (p.public_url || '').toLowerCase();
+  if (url.match(/back[-_]panel/)) return 'BACK PANEL';
+  var sideMatch = url.match(/\/(back|left|right|front)-/);
+  if (sideMatch) return sideMatch[1].toUpperCase();
+  return (p.mode || 'PHOTO').toUpperCase();
+}
+
 function renderVehicleCard(v, idx) {
   var statusClass = v.verified ? 'verified' : (v.rejected ? 'rejected' : 'pending');
   var statusLabel = v.verified ? '✅ Verified' : (v.rejected ? '❌ Rejected' : '⏳ Pending');
@@ -336,30 +414,50 @@ function renderVehicleCard(v, idx) {
     if (cp && cp.length >= 4 && uniqueOcr.indexOf(cp) === -1) uniqueOcr.push(cp);
   });
   var suggested = v.verifiedPlate || uniqueOcr.sort(function(a, b) { return b.length - a.length; })[0] || '';
+  
+  // Sort photos: hood photos first (back, left, right), then back-panel
   var sortedPhotos = v.photos.slice().sort(function(a, b) {
-    var order = { 'back': 1, 'left': 2, 'right': 3, 'front': 4, 'back-panel': 5 };
-    var aSide = (a.public_url || '').match(/\/(back|left|right|front|back-panel)-/);
-    var bSide = (b.public_url || '').match(/\/(back|left|right|front|back-panel)-/);
-    return (aSide ? (order[aSide[1].toLowerCase()] || 99) : 99) - (bSide ? (order[bSide[1].toLowerCase()] || 99) : 99);
+    var aMode = getPhotoMode(a), bMode = getPhotoMode(b);
+    if (aMode === 'hood' && bMode === 'back_panel') return -1;
+    if (aMode === 'back_panel' && bMode === 'hood') return 1;
+    var order = { 'back': 1, 'left': 2, 'right': 3, 'front': 4 };
+    var aSide = ((a.public_url || '').match(/\/(back|left|right|front)-/) || [])[1];
+    var bSide = ((b.public_url || '').match(/\/(back|left|right|front)-/) || [])[1];
+    return (order[aSide] || 99) - (order[bSide] || 99);
   });
+  
+  var hoodCount = sortedPhotos.filter(function(p){return getPhotoMode(p) === 'hood';}).length;
+  var backCount = sortedPhotos.filter(function(p){return getPhotoMode(p) === 'back_panel';}).length;
+  var isComplete = hoodCount >= 3 && backCount >= 1;
+  var countBadge = '<span class="photo-count-badge ' + (isComplete ? 'complete' : 'partial') + '">Hood ' + hoodCount + '/3 + Back ' + backCount + '/1</span>';
+  
   var photosHtml = sortedPhotos.map(function(p) {
     var url = p.public_url || '';
-    var sideMatch = url.match(/\/(back|left|right|front|back-panel|hood)-/);
-    var side = sideMatch ? sideMatch[1].toUpperCase() : (p.mode || 'PHOTO').toUpperCase();
-    return '<div class="vc-photo" onclick="openZoom(\'' + escHtml(url) + '\')"><img src="' + escHtml(url) + '" loading="lazy" /><div class="vc-photo-label">' + side + '</div>' + (p.vehicle_number ? '<div class="vc-photo-ocr">' + escHtml(p.vehicle_number) + '</div>' : '') + '</div>';
+    var side = getPhotoSide(p);
+    var mode = getPhotoMode(p);
+    return '<div class="vc-photo" onclick="openZoom(\'' + escHtml(url) + '\')">' +
+      '<img src="' + escHtml(url) + '" loading="lazy" />' +
+      '<div class="vc-photo-mode">' + (mode === 'back_panel' ? 'BACK PANEL' : 'HOOD') + '</div>' +
+      '<div class="vc-photo-label">' + side + '</div>' +
+      (p.vehicle_number ? '<div class="vc-photo-ocr">' + escHtml(p.vehicle_number) + '</div>' : '') +
+    '</div>';
   }).join('');
+  
   var verifiedInfoHtml = '';
   if (v.verified) {
-    verifiedInfoHtml = '<div class="vc-verified-info"><div class="field"><div class="field-label">Plate</div><div class="field-value plate">' + escHtml(v.verifiedPlate || '') + '</div></div><div class="field"><div class="field-label">Photos</div><div class="field-value">' + v.photos.length + ' photos</div></div><div class="field"><div class="field-label">Location</div><div class="field-value">' + escHtml(v.city || '—') + '</div></div><button onclick="reEditPlate(' + idx + ')" style="margin-left:auto;background:#fff;border:1px solid var(--border);padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;">✏️ Re-edit</button></div>';
+    verifiedInfoHtml = '<div class="vc-verified-info"><div class="field"><div class="field-label">Plate</div><div class="field-value plate">' + escHtml(v.verifiedPlate || '') + '</div></div><div class="field"><div class="field-label">Photos</div><div class="field-value">' + v.photos.length + ' total (' + hoodCount + ' hood + ' + backCount + ' back-panel)</div></div><div class="field"><div class="field-label">Location</div><div class="field-value">' + escHtml(v.city || '—') + '</div></div><button onclick="reEditPlate(' + idx + ')" style="margin-left:auto;background:#fff;border:1px solid var(--border);padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;">✏️ Re-edit</button></div>';
   }
+  
   var formHtml = '';
   if (!v.verified) {
     var ocrChips = uniqueOcr.map(function(p) { return '<span class="suggestion-chip" onclick="usePlate(' + idx + ', \'' + escHtml(p) + '\')">' + escHtml(p) + '</span>'; }).join('');
-    var ocrRow = uniqueOcr.length > 0 ? '<div class="vc-ocr-row"><b>OCR Detected:</b> ' + ocrChips + '</div>' : '<div class="vc-ocr-row" style="background:#fee2e2;border-color:#fecaca;color:#991b1b;"><b>⚠️ No plate detected</b> — read manually from photos</div>';
-    formHtml = ocrRow + '<div class="vc-form"><div class="vc-input-row"><label>Verified Plate (applies to all ' + v.photos.length + ' photos)</label><input type="text" class="vc-input" data-idx="' + idx + '" id="plate-input-' + idx + '" value="' + escHtml(suggested) + '" placeholder="MH12AB1234" maxlength="20" /></div><div class="vc-actions"><button class="btn-verify" data-idx="' + idx + '" onclick="verifyVehicle(' + idx + ')" ' + (!suggested ? 'disabled' : '') + '>✓ Verify & Save</button><button class="btn-reject" onclick="rejectVehicle(' + idx + ')">❌</button></div></div>';
+    var ocrRow = uniqueOcr.length > 0 ? '<div class="vc-ocr-row"><b>OCR Detected:</b> ' + ocrChips + '</div>' : '<div class="vc-ocr-row" style="background:#fee2e2;border-color:#fecaca;color:#991b1b;"><b>⚠️ No plate detected by OCR</b> — read manually from photos</div>';
+    formHtml = ocrRow + '<div class="vc-form"><div class="vc-input-row"><label>Verified Plate (applies to ALL ' + v.photos.length + ' photos — hood + back panel)</label><input type="text" class="vc-input" data-idx="' + idx + '" id="plate-input-' + idx + '" value="' + escHtml(suggested) + '" placeholder="MH12AB1234" maxlength="20" /></div><div class="vc-actions"><button class="btn-verify" data-idx="' + idx + '" onclick="verifyVehicle(' + idx + ')" ' + (!suggested ? 'disabled' : '') + '>✓ Verify & Save</button><button class="btn-reject" onclick="rejectVehicle(' + idx + ')">❌</button></div></div>';
   }
-  return '<div class="vehicle-card ' + statusClass + '"><div class="vc-header"><div><span class="vc-status ' + statusClass + '">' + statusLabel + '</span><div class="vc-meta" style="margin-top:6px;"><span>📅 <b>' + formatDate(v.captured) + '</b></span><span>🕒 <b>' + formatTime(v.captured) + '</b></span><span>📍 <b>' + escHtml(v.city || '—') + '</b></span><span>👤 <b>' + escHtml(v.member) + '</b></span><span>📷 <b>' + v.photos.length + ' photos</b></span></div></div></div><div class="vc-photos">' + photosHtml + '</div>' + verifiedInfoHtml + formHtml + '</div>';
+  
+  return '<div class="vehicle-card ' + statusClass + '"><div class="vc-header"><div><span class="vc-status ' + statusClass + '">' + statusLabel + '</span>' + countBadge + '<div class="vc-meta" style="margin-top:6px;"><span>📅 <b>' + formatDate(v.captured) + '</b></span><span>🕒 <b>' + formatTime(v.captured) + '</b></span><span>📍 <b>' + escHtml(v.city || '—') + '</b></span><span>👤 <b>' + escHtml(v.member) + '</b></span><span>📷 <b>' + v.photos.length + ' photos</b></span>' + (v.vehicleSlug ? '<span>📁 <b>' + escHtml(v.vehicleSlug) + '</b></span>' : '') + '</div></div></div><div class="vc-photos">' + photosHtml + '</div>' + verifiedInfoHtml + formHtml + '</div>';
 }
+
 function switchTab(tab) {
   state.currentTab = tab;
   document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.toggle('active', b.getAttribute('data-status') === tab); });
@@ -373,16 +471,42 @@ function usePlate(idx, plate) {
   if (input) { input.value = plate; input.focus(); var btn = document.querySelector('.btn-verify[data-idx="' + idx + '"]'); if (btn) btn.disabled = false; }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// VERIFY VEHICLE — Updates ALL photos in group (hood + back panel)
+// Comprehensive error handling + console logs for debugging
+// ═══════════════════════════════════════════════════════════════════════════
 async function verifyVehicle(idx) {
-  var v = state.vehicles[idx]; if (!v) return;
-  var input = $('plate-input-' + idx); if (!input) return;
+  console.log('[VERIFY] Click registered for index', idx);
+  
+  var v = state.vehicles[idx];
+  if (!v) {
+    console.error('[VERIFY] Vehicle not found at index', idx);
+    return toast('Vehicle not found', 'error');
+  }
+  
+  var input = $('plate-input-' + idx);
+  if (!input) {
+    console.error('[VERIFY] Input field not found');
+    return toast('Input not found', 'error');
+  }
+  
   var plate = cleanPlate(input.value);
-  if (!plate || plate.length < 4) return toast('Enter valid plate (min 4 chars)', 'error');
+  console.log('[VERIFY] Plate entered:', plate);
+  console.log('[VERIFY] Group has', v.photos.length, 'photos');
+  
+  if (!plate || plate.length < 4) {
+    return toast('Enter valid plate (min 4 chars)', 'error');
+  }
+  
   var btn = document.querySelector('.btn-verify[data-idx="' + idx + '"]');
   if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Saving...'; }
+  
   try {
     var groupId = v.groupId || generateUUID();
     var photoIds = v.photos.map(function(p) { return p.id; });
+    
+    console.log('[VERIFY] Updating photo IDs:', photoIds);
+    
     var updateBody = {
       vehicle_number: plate,
       verified_plate: plate,
@@ -393,32 +517,66 @@ async function verifyVehicle(idx) {
       rejected: false,
       rejection_reason: null
     };
+    
+    console.log('[VERIFY] PATCH body:', updateBody);
+    
     var url = '/rest/v1/trial_photos?id=in.(' + photoIds.join(',') + ')';
+    console.log('[VERIFY] PATCH URL:', url);
+    
     var updateResult = await api(url, {
       method: 'PATCH',
       headers: { 'Prefer': 'return=representation' },
       body: updateBody
     });
+    
+    console.log('[VERIFY] PATCH response:', updateResult);
+    
     if (Array.isArray(updateResult) && updateResult.length === 0) {
-      throw new Error('PATCH matched 0 rows - run SUPABASE-SQL in Supabase');
+      console.error('[VERIFY] 0 rows updated - RLS issue?');
+      throw new Error('PATCH matched 0 rows - check RLS policies');
     }
+    
+    var updatedCount = Array.isArray(updateResult) ? updateResult.length : 'unknown';
+    console.log('[VERIFY] Successfully updated', updatedCount, 'rows');
+    
+    // Log (optional, non-critical)
     try {
       await api('/rest/v1/prajapati_verification_log', {
         method: 'POST',
         body: {
-          verifier_id: state.user.id, verifier_name: state.user.name, verifier_phone: state.user.phone,
-          vehicle_group_id: groupId, verified_plate: plate, ocr_plates: v.ocrPlates,
-          photo_ids: photoIds, photo_count: v.photos.length,
-          campaign_key: v.campaign, member_name: v.member, capture_date: v.date,
-          action_type: 'verify', notes: 'Manual verify v12'
+          verifier_id: state.user.id,
+          verifier_name: state.user.name,
+          verifier_phone: state.user.phone,
+          vehicle_group_id: groupId,
+          verified_plate: plate,
+          ocr_plates: v.ocrPlates,
+          photo_ids: photoIds,
+          photo_count: v.photos.length,
+          campaign_key: v.campaign,
+          member_name: v.member,
+          capture_date: v.date,
+          action_type: 'verify',
+          notes: 'v13 manual verify - hood+back grouped'
         }
       });
-    } catch (e) {}
-    v.verified = true; v.verifiedPlate = plate; v.groupId = groupId;
-    toast('✅ Verified: ' + plate + ' (' + v.photos.length + ' photos)', 'success');
-    renderQueue(); refreshStats();
+      console.log('[VERIFY] Log saved');
+    } catch (e) {
+      console.warn('[VERIFY] Log save failed (non-critical):', e.message);
+    }
+    
+    v.verified = true;
+    v.verifiedPlate = plate;
+    v.groupId = groupId;
+    
+    toast('✅ Verified: ' + plate + ' (' + v.photos.length + ' photos updated)', 'success');
+    
+    // Refresh
+    renderQueue();
+    refreshStats();
+    
   } catch (err) {
-    console.error('Verify error:', err);
+    console.error('[VERIFY] FATAL ERROR:', err);
+    console.error('[VERIFY] Error stack:', err.stack);
     toast('Failed: ' + err.message, 'error');
     if (btn) { btn.disabled = false; btn.innerHTML = '✓ Verify & Save'; }
   }
@@ -454,10 +612,10 @@ function refreshStats() {
       var verified = photos.filter(function(p) { return p.is_verified === true; }).length;
       var rejected = photos.filter(function(p) { return p.rejected === true; }).length;
       var pending = photos.filter(function(p) { return p.is_verified !== true && p.rejected !== true; }).length;
-      $('statVerified').textContent = Math.ceil(verified / 3);
-      $('statRejected').textContent = Math.ceil(rejected / 3);
-      $('statPending').textContent = Math.ceil(pending / 3);
-      $('statTotal').textContent = Math.ceil(photos.length / 3);
+      $('statVerified').textContent = Math.ceil(verified / 4);
+      $('statRejected').textContent = Math.ceil(rejected / 4);
+      $('statPending').textContent = Math.ceil(pending / 4);
+      $('statTotal').textContent = Math.ceil(photos.length / 4);
     });
 }
 
@@ -471,6 +629,7 @@ function generateUUID() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+  console.log('[Verifier v13] DOM ready');
   checkSession();
   $('loginPhone').addEventListener('keypress', function(e) { if (e.key === 'Enter') doLogin(); });
   document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeZoom(); });
