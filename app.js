@@ -1294,34 +1294,40 @@ function finishVehicleSession(){
 }
 
 // ═════════════════════════════════════════════════════════════════
-// PWA: SERVICE WORKER + INSTALL + AGGRESSIVE AUTO-UPDATE
+// PWA: SERVICE WORKER + STRONG INSTALL + AGGRESSIVE AUTO-UPDATE (v15.1)
 // ═════════════════════════════════════════════════════════════════
 
 var deferredInstallPrompt = null;
 var refreshing = false;
 var pendingWorker = null;
 
+// Detect environment
+function isIosSafari(){
+  var ua = navigator.userAgent.toLowerCase();
+  return /iphone|ipad|ipod/.test(ua) && /safari/.test(ua) && !/crios|fxios/.test(ua);
+}
+function isStandalone(){
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+function isAndroid(){ return /android/i.test(navigator.userAgent); }
+function isChrome(){ return /chrome|crios/i.test(navigator.userAgent) && !/edg|opr/i.test(navigator.userAgent); }
+
+// Register service worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function(){
     navigator.serviceWorker.register('/sw.js?v=' + APP_VERSION).then(function(reg){
       console.log('[PWA v15] SW registered:', reg.scope);
-      
       // Check for updates every 30 seconds
       setInterval(function(){
         reg.update().catch(function(e){ console.warn('[PWA] Update check failed:', e); });
       }, CONFIG.swUpdateIntervalMs);
-      
-      // First-time update check after 5 sec
       setTimeout(function(){ reg.update(); }, 5000);
       
       reg.addEventListener('updatefound', function(){
         var newWorker = reg.installing;
         if (!newWorker) return;
-        console.log('[PWA v15] New SW found, installing...');
         newWorker.addEventListener('statechange', function(){
-          console.log('[PWA v15] SW state:', newWorker.state);
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller){
-            console.log('[PWA v15] New version ready — showing banner');
             pendingWorker = newWorker;
             $('update-banner').classList.add('show');
           }
@@ -1331,18 +1337,13 @@ if ('serviceWorker' in navigator) {
       console.warn('[PWA v15] SW register failed:', err);
     });
   });
-
   navigator.serviceWorker.addEventListener('controllerchange', function(){
     if (refreshing) return;
     refreshing = true;
-    console.log('[PWA v15] Controller changed — reloading');
     window.location.reload();
   });
-  
-  // Listen for SW_ACTIVATED message
   navigator.serviceWorker.addEventListener('message', function(event){
     if (event.data && event.data.type === 'SW_ACTIVATED'){
-      console.log('[PWA v15] SW activated:', event.data.version);
       if (!refreshing){
         refreshing = true;
         toast('🔄 Updating to new version…', 'success');
@@ -1352,105 +1353,98 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// ━━━ Install Prompt Handler ━━━
+// ━━━ STRONG INSTALL PROMPT (v15.1: shows ALWAYS) ━━━
 window.addEventListener('beforeinstallprompt', function(e){
-  console.log('[PWA v15] Install prompt captured');
+  console.log('[PWA v15] beforeinstallprompt captured!');
   e.preventDefault();
   deferredInstallPrompt = e;
-  // Show install bar after 3 seconds if user is logged in
-  setTimeout(function(){
-    if (!localStorage.getItem('pf_install_dismissed') && state.member){
-      console.log('[PWA v15] Showing install bar');
-      $('install-bar').classList.add('show');
-    }
-  }, 3000);
+  showInstallBar();
 });
 
 window.addEventListener('appinstalled', function(){
   console.log('[PWA v15] App installed!');
-  toast('✅ App installed successfully!', 'success');
+  toast('✅ App installed!', 'success');
   $('install-bar').classList.remove('show');
   deferredInstallPrompt = null;
 });
 
-function isIosSafari(){
-  var ua = navigator.userAgent.toLowerCase();
-  return /iphone|ipad|ipod/.test(ua) && /safari/.test(ua) && !/crios|fxios/.test(ua);
-}
-function isStandalone(){
-  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-}
-
-function maybeShowIosInstallHint(){
-  if (isIosSafari() && !isStandalone() && !localStorage.getItem('pf_install_dismissed')){
-    setTimeout(function(){
-      var b = $('install-bar');
-      b.querySelector('.ib-sub').textContent = 'Share button → "Add to Home Screen"';
-      b.querySelector('.primary').textContent = 'Got it';
-      b.querySelector('.primary').onclick = dismissInstall;
-      b.classList.add('show');
-    }, 4000);
+function showInstallBar(){
+  // Already installed? Skip.
+  if (isStandalone()) {
+    console.log('[PWA v15] Already standalone - no install bar');
+    return;
   }
+  // Dismissed permanently? Skip.
+  if (localStorage.getItem('pf_install_dismissed_v15') === '1') {
+    console.log('[PWA v15] User dismissed - skipping');
+    return;
+  }
+  
+  var bar = $('install-bar');
+  if (!bar) return;
+  
+  // Customize message based on browser/platform
+  if (isIosSafari()){
+    bar.querySelector('.ib-sub').textContent = 'Share button → "Add to Home Screen"';
+    bar.querySelector('.ib-btn.primary').textContent = 'How to install';
+  } else if (deferredInstallPrompt) {
+    bar.querySelector('.ib-sub').textContent = 'Home screen pe app jaisa add karo';
+    bar.querySelector('.ib-btn.primary').textContent = 'Install';
+  } else {
+    bar.querySelector('.ib-sub').textContent = 'Chrome menu → "Install app" tap karo';
+    bar.querySelector('.ib-btn.primary').textContent = 'Show me how';
+  }
+  
+  bar.classList.add('show');
+  console.log('[PWA v15] Install bar shown');
 }
 
 window.triggerInstall = function(){
   console.log('[PWA v15] Install button clicked');
-  if (!deferredInstallPrompt) {
-    // Fallback for unsupported browsers — show instructions
-    if (isIosSafari()){
-      alert('Install karne ke liye:\n\n1. Safari ke neeche Share button (square + arrow) tap karo\n2. Scroll down → "Add to Home Screen"\n3. Add tap karo\n\nApp home screen pe install ho jayega');
-    } else {
-      alert('Install karne ke liye:\n\n1. Chrome ke top-right me 3 dots tap karo\n2. "Install app" ya "Add to Home Screen" select karo\n3. Install confirm karo\n\nApp install ho jayega');
-    }
-    dismissInstall();
-    return;
+  
+  if (deferredInstallPrompt) {
+    // Native install (Chrome Android/Desktop)
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.then(function(choice){
+      console.log('[PWA v15] Install choice:', choice.outcome);
+      if (choice.outcome === 'accepted'){
+        toast('Install ho raha hai…', 'success');
+      }
+      deferredInstallPrompt = null;
+      $('install-bar').classList.remove('show');
+    });
+  } else if (isIosSafari()) {
+    // iOS Safari manual instructions
+    alert('iPhone/iPad par install karne ke liye:\n\n1️⃣ Safari ke neeche Share button tap karo (square with arrow)\n2️⃣ Scroll down → "Add to Home Screen"\n3️⃣ "Add" tap karo\n\nApp home screen pe install ho jayega!');
+  } else if (isAndroid() && isChrome()) {
+    // Android Chrome manual instructions
+    alert('Chrome par install karne ke liye:\n\n1️⃣ Top-right me 3-dots menu tap karo\n2️⃣ "Install app" ya "Add to Home Screen" tap karo\n3️⃣ "Install" confirm karo\n\nApp install ho jayega!');
+  } else {
+    // Desktop or other
+    alert('Install karne ke liye:\n\n1️⃣ Browser ke address bar me icon dhundo (computer + arrow)\n2️⃣ Ya 3-dots menu → "Install app"\n3️⃣ Install confirm karo\n\nApp install ho jayega!');
   }
-  deferredInstallPrompt.prompt();
-  deferredInstallPrompt.userChoice.then(function(choice){
-    console.log('[PWA v15] Install choice:', choice.outcome);
-    if (choice.outcome === 'accepted'){
-      toast('Install ho raha hai…', 'success');
-    }
-    deferredInstallPrompt = null;
-    $('install-bar').classList.remove('show');
-  });
 };
 
 window.dismissInstall = function(){
   $('install-bar').classList.remove('show');
-  localStorage.setItem('pf_install_dismissed', '1');
+  localStorage.setItem('pf_install_dismissed_v15', '1');
 };
 
 window.applyUpdate = function(){
-  console.log('[PWA v15] Apply update clicked');
   $('update-banner').classList.remove('show');
   if (pendingWorker){
     pendingWorker.postMessage({ type: 'SKIP_WAITING' });
   } else {
-    // Force reload with cache bypass
     window.location.reload();
   }
 };
 
-// Show iOS hint after 5 sec if logged in
+// SHOW INSTALL BAR after 3 sec — ALWAYS if not standalone & not dismissed
 setTimeout(function(){
-  if (state.member && isIosSafari() && !isStandalone()) maybeShowIosInstallHint();
-}, 5000);
-
-// Force install bar visibility if Chrome and PWA criteria met (fallback)
-setTimeout(function(){
-  if (state.member && !isStandalone() && !localStorage.getItem('pf_install_dismissed')){
-    // If no beforeinstallprompt fired yet, show hint anyway after 10 sec
-    if (!deferredInstallPrompt && !isIosSafari()){
-      var b = $('install-bar');
-      if (b && !b.classList.contains('show')){
-        console.log('[PWA v15] No native prompt - showing manual install hint');
-        b.querySelector('.ib-sub').textContent = 'Browser menu → "Install app" select karo';
-        b.classList.add('show');
-      }
-    }
+  if (state.member && !isStandalone() && localStorage.getItem('pf_install_dismissed_v15') !== '1'){
+    showInstallBar();
   }
-}, 10000);
+}, 3000);
 
 window.logout = logout;
 window.loadAssignment = loadAssignment;
