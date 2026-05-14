@@ -8,561 +8,109 @@
 <meta http-equiv="Expires" content="0">
 <title>Prajapati GPS - Verifier Portal</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-
 <style>
-:root {
-  --p: #0f1c5e;
-  --p2: #0073e6;
-  --acc: #00d4ff;
-  --ok: #10b981;
-  --warn: #f59e0b;
-  --err: #ef4444;
-  --bg: #f5f7fb;
-  --card: #fff;
-  --txt: #1a1a2e;
-  --muted: #6b7280;
-  --border: #e5e7eb;
-}
-
-* { box-sizing: border-box; margin: 0; padding: 0; }
-
-body {
-  font-family: 'Poppins', sans-serif;
-  background: var(--bg);
-  color: var(--txt);
-  min-height: 100vh;
-  font-size: 14px;
-}
-
-/* ─── Header ─── */
-.hdr {
-  background: linear-gradient(135deg, var(--p), var(--p2));
-  color: #fff;
-  padding: 14px 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-.hdr h1 { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
-.hdr-actions { display: flex; gap: 10px; align-items: center; }
-.user-badge {
-  background: rgba(255,255,255,0.15);
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-}
-.btn-logout {
-  background: rgba(255,255,255,0.15);
-  color: #fff;
-  border: 1px solid rgba(255,255,255,0.3);
-  padding: 6px 14px;
-  border-radius: 6px;
-  font-size: 12px;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-/* ─── Login Screen ─── */
-.login-screen {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  background: linear-gradient(135deg, var(--p), var(--p2));
-}
-.login-card {
-  background: #fff;
-  border-radius: 16px;
-  padding: 32px;
-  max-width: 400px;
-  width: 100%;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-}
-.login-card h2 {
-  color: var(--p);
-  margin-bottom: 8px;
-  font-size: 24px;
-}
-.login-card .subtitle {
-  color: var(--muted);
-  margin-bottom: 24px;
-  font-size: 13px;
-}
-.login-card input {
-  width: 100%;
-  padding: 12px;
-  border: 2px solid var(--border);
-  border-radius: 8px;
-  font-size: 15px;
-  margin-bottom: 16px;
-  font-family: inherit;
-}
-.login-card input:focus {
-  outline: none;
-  border-color: var(--p2);
-}
-.login-btn {
-  width: 100%;
-  padding: 13px;
-  background: linear-gradient(135deg, var(--p), var(--p2));
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-}
-.login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-/* ─── Main Layout ─── */
-.container { padding: 16px 20px; max-width: 1400px; margin: 0 auto; }
-
-/* ─── Stats Bar ─── */
-.stats-bar {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
-  margin-bottom: 18px;
-}
-.stat-card {
-  background: var(--card);
-  border-radius: 10px;
-  padding: 14px;
-  border: 1px solid var(--border);
-  position: relative;
-  overflow: hidden;
-}
-.stat-card::before {
-  content: "";
-  position: absolute;
-  top: 0; left: 0;
-  width: 4px;
-  height: 100%;
-}
-.stat-card.pending::before { background: var(--err); }
-.stat-card.verified::before { background: var(--ok); }
-.stat-card.rejected::before { background: #6b7280; }
-.stat-card.findr::before { background: var(--warn); }
-.stat-card.saved::before { background: #8b5cf6; }
-.stat-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--muted);
-  margin-bottom: 4px;
-  font-weight: 600;
-}
-.stat-value {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--p);
-}
-.stat-trend {
-  font-size: 11px;
-  color: var(--ok);
-  margin-top: 4px;
-}
-
-/* ─── Filters ─── */
-.filters {
-  background: var(--card);
-  border-radius: 10px;
-  padding: 14px;
-  margin-bottom: 16px;
-  border: 1px solid var(--border);
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: end;
-}
-.filter-group { display: flex; flex-direction: column; gap: 4px; }
-.filter-group label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
-.filter-group select, .filter-group input {
-  padding: 7px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 13px;
-  font-family: inherit;
-  background: #fff;
-  min-width: 130px;
-}
-.filter-btn {
-  padding: 7px 14px;
-  background: var(--p2);
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.filter-btn.reset { background: #f3f4f6; color: var(--txt); border: 1px solid var(--border); }
-
-/* ─── Status Tabs ─── */
-.status-tabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 14px;
-  background: var(--card);
-  padding: 4px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-}
-.tab-btn {
-  flex: 1;
-  padding: 10px;
-  border: none;
-  background: transparent;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  border-radius: 7px;
-  color: var(--muted);
-  transition: 0.15s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-.tab-btn.active { background: var(--p); color: #fff; }
-.tab-count {
-  background: rgba(255,255,255,0.2);
-  padding: 1px 7px;
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 700;
-}
-.tab-btn:not(.active) .tab-count { background: var(--border); }
-
-/* ─── Vehicle Cards ─── */
-.vehicle-list { display: flex; flex-direction: column; gap: 14px; }
-
-.vehicle-card {
-  background: var(--card);
-  border-radius: 12px;
-  padding: 16px;
-  border: 2px solid var(--border);
-  transition: 0.15s;
-  position: relative;
-}
-.vehicle-card.pending { border-color: #fecaca; background: #fef9f9; }
-.vehicle-card.verified { border-color: #bbf7d0; background: #f0fdf4; }
-.vehicle-card.rejected { border-color: #e5e7eb; opacity: 0.7; background: #fafafa; }
-
-.vc-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: start;
-  margin-bottom: 12px;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.vc-status {
-  padding: 4px 10px;
-  border-radius: 99px;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-.vc-status.pending { background: var(--err); color: #fff; }
-.vc-status.verified { background: var(--ok); color: #fff; }
-.vc-status.rejected { background: #6b7280; color: #fff; }
-.vc-meta {
-  font-size: 11px;
-  color: var(--muted);
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.vc-meta b { color: var(--txt); }
-
-/* Photos */
-.vc-photos {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 10px;
-  margin-bottom: 14px;
-}
-.vc-photo {
-  position: relative;
-  aspect-ratio: 4/3;
-  background: #f0f0f0;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  cursor: pointer;
-}
-.vc-photo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.vc-photo-label {
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  background: rgba(0,0,0,0.7);
-  color: #fff;
-  padding: 4px 8px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-.vc-photo-ocr {
-  position: absolute;
-  top: 4px; right: 4px;
-  background: rgba(0,0,0,0.7);
-  color: #fff;
-  padding: 2px 6px;
-  font-size: 10px;
-  font-family: monospace;
-  border-radius: 4px;
-}
-
-/* OCR Suggestions */
-.vc-ocr-row {
-  background: #fef3c7;
-  border: 1px solid #fcd34d;
-  border-radius: 8px;
-  padding: 8px 12px;
-  margin-bottom: 12px;
-  font-size: 12px;
-}
-.vc-ocr-row b { color: #92400e; }
-.vc-ocr-suggestions { display: inline-flex; gap: 6px; flex-wrap: wrap; }
-.suggestion-chip {
-  background: #fff;
-  border: 1px solid #fcd34d;
-  padding: 3px 9px;
-  border-radius: 99px;
-  font-family: monospace;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: 0.1s;
-}
-.suggestion-chip:hover { background: var(--warn); color: #fff; }
-
-/* Verify Form */
-.vc-form {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 10px;
-  align-items: end;
-}
-@media (max-width: 600px) {
-  .vc-form { grid-template-columns: 1fr; }
-}
-.vc-input-row { display: flex; flex-direction: column; gap: 4px; }
-.vc-input-row label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
-.vc-input {
-  padding: 10px 14px;
-  border: 2px solid var(--border);
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 700;
-  font-family: monospace;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-.vc-input:focus { outline: none; border-color: var(--p2); }
-.vc-actions { display: flex; gap: 8px; }
-.btn-verify {
-  background: var(--ok);
-  color: #fff;
-  border: none;
-  padding: 11px 18px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.btn-verify:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-reject {
-  background: #fff;
-  color: var(--err);
-  border: 1px solid var(--err);
-  padding: 11px 14px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-/* Verified Display */
-.vc-verified-info {
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 13px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  align-items: center;
-}
-.vc-verified-info .field {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.vc-verified-info .field-label {
-  font-size: 10px;
-  color: var(--muted);
-  text-transform: uppercase;
-  font-weight: 600;
-}
-.vc-verified-info .field-value {
-  font-weight: 700;
-  color: var(--txt);
-}
-.vc-verified-info .field-value.plate {
-  font-family: monospace;
-  font-size: 16px;
-  color: var(--p);
-}
-
-/* Loading */
-.loading {
-  text-align: center;
-  padding: 40px;
-  color: var(--muted);
-}
-.spinner {
-  display: inline-block;
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--border);
-  border-top-color: var(--p2);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* Empty state */
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
-  color: var(--muted);
-  background: var(--card);
-  border-radius: 12px;
-  border: 1px solid var(--border);
-}
-.empty-state .emoji { font-size: 48px; margin-bottom: 12px; }
-
-/* Toast */
-.toast {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #1a1a2e;
-  color: #fff;
-  padding: 12px 20px;
-  border-radius: 8px;
-  font-size: 13px;
-  z-index: 1000;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-  opacity: 0;
-  transition: 0.2s;
-  pointer-events: none;
-}
-.toast.show { opacity: 1; }
-.toast.success { background: var(--ok); }
-.toast.error { background: var(--err); }
-
-/* Photo zoom modal */
-.zoom-modal {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.95);
-  z-index: 1000;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  cursor: pointer;
-}
-.zoom-modal.show { display: flex; }
-.zoom-modal img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-}
-.zoom-close {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background: rgba(255,255,255,0.2);
-  color: #fff;
-  border: none;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  font-size: 24px;
-  cursor: pointer;
-}
-
-/* Group Highlight */
-.group-divider {
-  display: flex;
-  align-items: center;
-  margin: 8px 0;
-  gap: 10px;
-}
-.group-divider::before, .group-divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
-.group-divider span {
-  font-size: 11px;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-weight: 600;
-}
-
-/* Findr Status */
-.findr-status {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-weight: 600;
-}
-.findr-status.success { background: #d1fae5; color: #065f46; }
-.findr-status.fail { background: #fee2e2; color: #991b1b; }
-.findr-status.cache { background: #ddd6fe; color: #5b21b6; }
+:root{--p:#0f1c5e;--p2:#0073e6;--acc:#00d4ff;--ok:#10b981;--warn:#f59e0b;--err:#ef4444;--bg:#f5f7fb;--card:#fff;--txt:#1a1a2e;--muted:#6b7280;--border:#e5e7eb}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;font-size:14px}
+.hdr{background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,0.1);position:sticky;top:0;z-index:100}
+.hdr h1{font-size:18px;font-weight:700;display:flex;align-items:center;gap:10px}
+.hdr-actions{display:flex;gap:10px;align-items:center}
+.user-badge{background:rgba(255,255,255,0.15);padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600}
+.btn-logout{background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600}
+.login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg,var(--p),var(--p2))}
+.login-card{background:#fff;border-radius:16px;padding:32px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3)}
+.login-card h2{color:var(--p);margin-bottom:8px;font-size:24px}
+.login-card .subtitle{color:var(--muted);margin-bottom:24px;font-size:13px}
+.login-card input{width:100%;padding:12px;border:2px solid var(--border);border-radius:8px;font-size:15px;margin-bottom:16px;font-family:inherit}
+.login-card input:focus{outline:none;border-color:var(--p2)}
+.login-btn{width:100%;padding:13px;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer}
+.login-btn:disabled{opacity:0.5;cursor:not-allowed}
+.container{padding:16px 20px;max-width:1400px;margin:0 auto}
+.stats-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:18px}
+.stat-card{background:var(--card);border-radius:10px;padding:14px;border:1px solid var(--border);position:relative;overflow:hidden}
+.stat-card::before{content:"";position:absolute;top:0;left:0;width:4px;height:100%}
+.stat-card.pending::before{background:var(--err)}
+.stat-card.verified::before{background:var(--ok)}
+.stat-card.rejected::before{background:#6b7280}
+.stat-card.total::before{background:var(--p2)}
+.stat-label{font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:4px;font-weight:600}
+.stat-value{font-size:24px;font-weight:700;color:var(--p)}
+.stat-trend{font-size:11px;color:var(--ok);margin-top:4px}
+.filters{background:var(--card);border-radius:10px;padding:14px;margin-bottom:16px;border:1px solid var(--border);display:flex;gap:12px;flex-wrap:wrap;align-items:end}
+.filter-group{display:flex;flex-direction:column;gap:4px}
+.filter-group label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.3px}
+.filter-group select,.filter-group input{padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;background:#fff;min-width:130px}
+.filter-btn{padding:7px 14px;background:var(--p2);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer}
+.filter-btn.reset{background:#f3f4f6;color:var(--txt);border:1px solid var(--border)}
+.status-tabs{display:flex;gap:4px;margin-bottom:14px;background:var(--card);padding:4px;border-radius:10px;border:1px solid var(--border)}
+.tab-btn{flex:1;padding:10px;border:none;background:transparent;font-size:13px;font-weight:600;cursor:pointer;border-radius:7px;color:var(--muted);transition:0.15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.tab-btn.active{background:var(--p);color:#fff}
+.tab-count{background:rgba(255,255,255,0.2);padding:1px 7px;border-radius:10px;font-size:11px;font-weight:700}
+.tab-btn:not(.active) .tab-count{background:var(--border)}
+.vehicle-list{display:flex;flex-direction:column;gap:14px}
+.vehicle-card{background:var(--card);border-radius:12px;padding:16px;border:2px solid var(--border);transition:0.15s;position:relative}
+.vehicle-card.pending{border-color:#fecaca;background:#fef9f9}
+.vehicle-card.verified{border-color:#bbf7d0;background:#f0fdf4}
+.vehicle-card.rejected{border-color:#e5e7eb;opacity:0.7;background:#fafafa}
+.vc-header{display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;gap:10px;flex-wrap:wrap}
+.vc-status{padding:4px 10px;border-radius:99px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px}
+.vc-status.pending{background:var(--err);color:#fff}
+.vc-status.verified{background:var(--ok);color:#fff}
+.vc-status.rejected{background:#6b7280;color:#fff}
+.vc-meta{font-size:11px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap}
+.vc-meta b{color:var(--txt)}
+.vc-photos{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.vc-photo{position:relative;aspect-ratio:4/3;background:#f0f0f0;border-radius:8px;overflow:hidden;border:1px solid var(--border);cursor:pointer}
+.vc-photo img{width:100%;height:100%;object-fit:cover}
+.vc-photo-label{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.7);color:#fff;padding:4px 8px;font-size:11px;font-weight:600;text-transform:uppercase}
+.vc-photo-ocr{position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.7);color:#fff;padding:2px 6px;font-size:10px;font-family:monospace;border-radius:4px}
+.vc-ocr-row{background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px}
+.vc-ocr-row b{color:#92400e}
+.vc-ocr-suggestions{display:inline-flex;gap:6px;flex-wrap:wrap}
+.suggestion-chip{background:#fff;border:1px solid #fcd34d;padding:3px 9px;border-radius:99px;font-family:monospace;font-size:11px;font-weight:700;cursor:pointer;transition:0.1s}
+.suggestion-chip:hover{background:var(--warn);color:#fff}
+.vc-form{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end}
+@media(max-width:600px){.vc-form{grid-template-columns:1fr}}
+.vc-input-row{display:flex;flex-direction:column;gap:4px}
+.vc-input-row label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase}
+.vc-input{padding:10px 14px;border:2px solid var(--border);border-radius:8px;font-size:16px;font-weight:700;font-family:monospace;text-transform:uppercase;letter-spacing:1px}
+.vc-input:focus{outline:none;border-color:var(--p2)}
+.vc-actions{display:flex;gap:8px}
+.btn-verify{background:var(--ok);color:#fff;border:none;padding:11px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px}
+.btn-verify:disabled{opacity:0.5;cursor:not-allowed}
+.btn-reject{background:#fff;color:var(--err);border:1px solid var(--err);padding:11px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
+.vc-verified-info{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;font-size:13px;display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+.vc-verified-info .field{display:flex;flex-direction:column;gap:2px}
+.vc-verified-info .field-label{font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:600}
+.vc-verified-info .field-value{font-weight:700;color:var(--txt)}
+.vc-verified-info .field-value.plate{font-family:monospace;font-size:16px;color:var(--p)}
+.loading{text-align:center;padding:40px;color:var(--muted)}
+.spinner{display:inline-block;width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--p2);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty-state{text-align:center;padding:60px 20px;color:var(--muted);background:var(--card);border-radius:12px;border:1px solid var(--border)}
+.empty-state .emoji{font-size:48px;margin-bottom:12px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;padding:12px 20px;border-radius:8px;font-size:13px;z-index:1000;box-shadow:0 8px 20px rgba(0,0,0,0.2);opacity:0;transition:0.2s;pointer-events:none}
+.toast.show{opacity:1}
+.toast.success{background:var(--ok)}
+.toast.error{background:var(--err)}
+.zoom-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:1000;align-items:center;justify-content:center;padding:20px;cursor:pointer}
+.zoom-modal.show{display:flex}
+.zoom-modal img{max-width:100%;max-height:100%;object-fit:contain}
+.zoom-close{position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.2);color:#fff;border:none;width:40px;height:40px;border-radius:50%;font-size:24px;cursor:pointer}
 </style>
 </head>
 <body>
-
-<!-- ═══ LOGIN SCREEN ═══ -->
 <div id="loginScreen" class="login-screen">
   <div class="login-card">
     <h2>🔍 Verifier Portal</h2>
     <div class="subtitle">Prajapati GPS - Vehicle Verification System</div>
     <input type="text" id="loginPhone" placeholder="Phone number (e.g. 9876543210)" maxlength="15" />
     <button class="login-btn" onclick="doLogin()">Login</button>
-    <div style="margin-top:14px; font-size:11px; color:#999; text-align:center;">
-      Only users with Verifier or Admin role can login
-    </div>
+    <div style="margin-top:14px;font-size:11px;color:#999;text-align:center;">Only Verifier or Admin role can login</div>
   </div>
 </div>
 
-<!-- ═══ MAIN APP ═══ -->
 <div id="mainApp" style="display:none;">
-
   <div class="hdr">
     <h1>🔍 Verifier Portal</h1>
     <div class="hdr-actions">
@@ -570,11 +118,8 @@ body {
       <button class="btn-logout" onclick="doLogout()">Logout</button>
     </div>
   </div>
-
   <div class="container">
-    
-    <!-- Stats Bar -->
-    <div class="stats-bar" id="statsBar">
+    <div class="stats-bar">
       <div class="stat-card pending">
         <div class="stat-label">⏳ Pending</div>
         <div class="stat-value" id="statPending">—</div>
@@ -585,15 +130,10 @@ body {
         <div class="stat-value" id="statVerified">—</div>
         <div class="stat-trend" id="statVerifiedTrend">—</div>
       </div>
-      <div class="stat-card findr">
-        <div class="stat-label">🔍 Findr Calls</div>
-        <div class="stat-value" id="statFindr">—</div>
-        <div class="stat-trend">Used today</div>
-      </div>
-      <div class="stat-card saved">
-        <div class="stat-label">💰 Cache Saved</div>
-        <div class="stat-value" id="statSaved">—</div>
-        <div class="stat-trend">Cost savings</div>
+      <div class="stat-card total">
+        <div class="stat-label">📊 Total Today</div>
+        <div class="stat-value" id="statTotal">—</div>
+        <div class="stat-trend">All captures</div>
       </div>
       <div class="stat-card rejected">
         <div class="stat-label">❌ Rejected</div>
@@ -601,8 +141,6 @@ body {
         <div class="stat-trend">Cannot verify</div>
       </div>
     </div>
-
-    <!-- Filters -->
     <div class="filters">
       <div class="filter-group">
         <label>Date</label>
@@ -619,8 +157,6 @@ body {
       <button class="filter-btn" onclick="loadQueue()">🔍 Apply</button>
       <button class="filter-btn reset" onclick="resetFilters()">Reset</button>
     </div>
-
-    <!-- Status Tabs -->
     <div class="status-tabs">
       <button class="tab-btn active" data-status="pending" onclick="switchTab('pending')">
         ⏳ Pending <span class="tab-count" id="tabPending">0</span>
@@ -632,26 +168,16 @@ body {
         📋 All <span class="tab-count" id="tabAll">0</span>
       </button>
     </div>
-
-    <!-- Vehicle List -->
     <div id="vehicleList" class="vehicle-list">
-      <div class="loading">
-        <div class="spinner"></div>
-        <div style="margin-top:12px;">Loading queue...</div>
-      </div>
+      <div class="loading"><div class="spinner"></div><div style="margin-top:12px;">Loading queue...</div></div>
     </div>
-
   </div>
-
 </div>
 
-<!-- Zoom Modal -->
 <div class="zoom-modal" id="zoomModal" onclick="closeZoom()">
   <button class="zoom-close" onclick="closeZoom()">×</button>
   <img id="zoomImg" alt="zoomed" />
 </div>
-
-<!-- Toast -->
 <div class="toast" id="toast"></div>
 
 <script>
@@ -662,34 +188,23 @@ var CONFIG = {
   supabaseKey: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j'
 };
 
-var FINDR_SERVER_URL = (localStorage.getItem('findr_server_url') || 'http://localhost:3000').replace(/\/$/, '');
-
 var state = {
   user: null,
   currentTab: 'pending',
-  vehicles: [],
-  campaigns: [],
-  members: [],
-  stats: {}
+  vehicles: []
 };
 
-// ─── HELPERS ───
 function $(id) { return document.getElementById(id); }
-
 function toast(msg, type) {
   var t = $('toast');
   t.textContent = msg;
   t.className = 'toast show ' + (type || '');
   setTimeout(function() { t.classList.remove('show'); }, 3000);
 }
-
 function escHtml(s) {
   if (s === null || s === undefined) return '';
-  return String(s).replace(/[&<>"']/g, function(c) {
-    return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
-  });
+  return String(s).replace(/[&<>"']/g, function(c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; });
 }
-
 function api(path, options) {
   options = options || {};
   options.headers = options.headers || {};
@@ -700,35 +215,16 @@ function api(path, options) {
     options.body = JSON.stringify(options.body);
   }
   return fetch(CONFIG.supabaseUrl + path, options).then(function(r) {
-    if (!r.ok) {
-      return r.text().then(function(text) { throw new Error('API ' + r.status + ': ' + text); });
-    }
-    // 204 No Content = no body
+    if (!r.ok) return r.text().then(function(text) { throw new Error('API ' + r.status + ': ' + text); });
     if (r.status === 204) return null;
-    // Get text first, then try to parse (handles empty bodies safely)
     return r.text().then(function(text) {
       if (!text || text.trim() === '') return null;
-      try {
-        return JSON.parse(text);
-      } catch (e) {
-        console.warn('Failed to parse JSON, returning raw text:', text.substring(0, 100));
-        return null;
-      }
+      try { return JSON.parse(text); } catch (e) { return null; }
     });
   });
 }
-
-function formatTime(iso) {
-  if (!iso) return '';
-  var d = new Date(iso);
-  return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-}
-
-function formatDate(iso) {
-  if (!iso) return '';
-  return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
-}
-
+function formatTime(iso) { if (!iso) return ''; return new Date(iso).toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit',hour12:true}); }
+function formatDate(iso) { if (!iso) return ''; return new Date(iso).toLocaleDateString('en-IN', {day:'2-digit',month:'short'}); }
 function extractCity(addr) {
   if (!addr) return '';
   var parts = addr.split(',').map(function(s) { return s.trim(); });
@@ -737,44 +233,28 @@ function extractCity(addr) {
   }
   return parts[0] || '';
 }
+function cleanPlate(p) { return String(p || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
 
-function cleanPlate(p) {
-  return String(p || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-}
-
-// ─── LOGIN ───
 function doLogin() {
   var phone = $('loginPhone').value.trim().replace(/[^0-9]/g, '');
   if (phone.length < 10) return toast('Enter 10 digit phone number', 'error');
-  
-  // Use exact 10 digits (matches admin.html pattern)
   if (phone.length > 10) phone = phone.slice(-10);
-  
   api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*')
     .then(function(members) {
-      if (!members || members.length === 0) {
-        return toast('Number not registered or inactive', 'error');
-      }
-      
+      if (!members || members.length === 0) return toast('Number not registered or inactive', 'error');
       var found = members[0];
       var role = (found.role || '').toLowerCase();
-      
       if (role !== 'verifier' && role !== 'admin' && role !== 'owner') {
-        return toast('Only Verifiers and Admins can login here. Your role: ' + role, 'error');
+        return toast('Only Verifiers and Admins can login. Your role: ' + role, 'error');
       }
-      
       state.user = found;
       localStorage.setItem('verifier_user', JSON.stringify(found));
-      
       $('loginScreen').style.display = 'none';
       $('mainApp').style.display = 'block';
       $('userBadge').textContent = found.name + ' (' + (found.role || '').toUpperCase() + ')';
-      
       init();
     })
-    .catch(function(err) {
-      toast('Login failed: ' + err.message, 'error');
-    });
+    .catch(function(err) { toast('Login failed: ' + err.message, 'error'); });
 }
 
 function doLogout() {
@@ -785,7 +265,6 @@ function doLogout() {
   $('loginPhone').value = '';
 }
 
-// Auto-login if saved
 function checkSession() {
   var saved = localStorage.getItem('verifier_user');
   if (!saved) return;
@@ -798,22 +277,15 @@ function checkSession() {
       $('userBadge').textContent = user.name + ' (' + (user.role || '').toUpperCase() + ')';
       init();
     }
-  } catch (e) {
-    localStorage.removeItem('verifier_user');
-  }
+  } catch (e) { localStorage.removeItem('verifier_user'); }
 }
 
-// ─── INIT ───
 function init() {
-  // Set today's date
   var today = new Date().toISOString().split('T')[0];
   $('filterDate').value = today;
-  
   loadFilters();
   loadQueue();
   refreshStats();
-  
-  // Refresh stats every 30 seconds
   setInterval(refreshStats, 30000);
 }
 
@@ -824,65 +296,48 @@ function resetFilters() {
   loadQueue();
 }
 
-// ─── LOAD CAMPAIGNS & MEMBERS ───
 function loadFilters() {
   api('/rest/v1/trial_campaigns?select=key,name&active=eq.true&order=name.asc')
     .then(function(campaigns) {
-      state.campaigns = campaigns || [];
       var sel = $('filterCampaign');
       sel.innerHTML = '<option value="">All Campaigns</option>';
-      state.campaigns.forEach(function(c) {
+      (campaigns || []).forEach(function(c) {
         sel.innerHTML += '<option value="' + escHtml(c.key) + '">' + escHtml(c.name) + '</option>';
       });
     });
-  
   api('/rest/v1/trial_team_members?select=phone,name&active=eq.true&role=eq.field&order=name.asc')
     .then(function(members) {
-      state.members = members || [];
       var sel = $('filterMember');
       sel.innerHTML = '<option value="">All Members</option>';
-      state.members.forEach(function(m) {
+      (members || []).forEach(function(m) {
         sel.innerHTML += '<option value="' + escHtml(m.phone) + '">' + escHtml(m.name) + '</option>';
       });
     });
 }
 
-// ─── LOAD QUEUE ───
 function loadQueue() {
   var date = $('filterDate').value;
   var campaign = $('filterCampaign').value;
   var member = $('filterMember').value;
-  
   var listEl = $('vehicleList');
   listEl.innerHTML = '<div class="loading"><div class="spinner"></div><div style="margin-top:12px;">Loading...</div></div>';
-  
-  // Build query for trial_photos
   var qs = '/rest/v1/trial_photos?select=*&order=captured_at.desc&limit=500';
-  
   if (date) {
-    var istStart = new Date(date + 'T00:00:00+05:30');
-    var istEnd = new Date(date + 'T23:59:59+05:30');
-    qs += '&captured_at=gte.' + istStart.toISOString();
-    qs += '&captured_at=lte.' + istEnd.toISOString();
+    qs += '&captured_at=gte.' + new Date(date + 'T00:00:00+05:30').toISOString();
+    qs += '&captured_at=lte.' + new Date(date + 'T23:59:59+05:30').toISOString();
   }
-  
   if (campaign) qs += '&campaign_key=eq.' + encodeURIComponent(campaign);
   if (member) qs += '&member_phone=eq.' + encodeURIComponent(member);
-  
   api(qs)
     .then(function(photos) {
       photos = photos || [];
-      
       if (photos.length === 0) {
         listEl.innerHTML = '<div class="empty-state"><div class="emoji">📭</div><div style="font-weight:700;margin-bottom:6px;">No photos found</div><div style="font-size:13px;">Try different filters or date range</div></div>';
         updateTabCounts(0, 0, 0);
         return;
       }
-      
-      // Group photos by vehicle (URL pattern or time bucket)
       var groups = groupPhotos(photos);
       state.vehicles = Object.values(groups);
-      
       renderQueue();
     })
     .catch(function(err) {
@@ -890,26 +345,17 @@ function loadQueue() {
     });
 }
 
-// ─── GROUP PHOTOS BY VEHICLE ───
 function groupPhotos(photos) {
   var groups = {};
-  
   photos.forEach(function(p) {
-    // Try URL pattern first
     var urlMatch = (p.public_url || '').match(/\/([a-zA-Z0-9\-]+)\/(left|right|back|front|side|hood)-/i);
     var groupKey;
-    
-    if (urlMatch) {
-      groupKey = p.member_phone + '_' + urlMatch[1];
-    } else if (p.vehicle_number) {
-      groupKey = p.member_phone + '_' + cleanPlate(p.vehicle_number);
-    } else {
-      // Fallback: time bucket (within 2 min)
-      var t = new Date(p.captured_at).getTime();
-      var bucket = Math.floor(t / (2 * 60 * 1000));
+    if (urlMatch) groupKey = p.member_phone + '_' + urlMatch[1];
+    else if (p.vehicle_number) groupKey = p.member_phone + '_' + cleanPlate(p.vehicle_number);
+    else {
+      var bucket = Math.floor(new Date(p.captured_at).getTime() / (2 * 60 * 1000));
       groupKey = p.member_phone + '_t' + bucket;
     }
-    
     if (!groups[groupKey]) {
       groups[groupKey] = {
         groupKey: groupKey,
@@ -922,63 +368,43 @@ function groupPhotos(photos) {
         date: p.captured_at ? p.captured_at.slice(0, 10) : '',
         address: p.address,
         city: extractCity(p.address),
-        latitude: p.latitude,
-        longitude: p.longitude,
         ocrPlates: [],
         verified: false,
         verifiedPlate: null,
-        verifiedBy: null,
-        rejected: false,
-        ownerName: null,
-        mobile: null
+        rejected: false
       };
     }
-    
     var g = groups[groupKey];
     g.photos.push(p);
-    if (p.vehicle_number && p.vehicle_number.length >= 4) {
+    if (p.vehicle_number && p.vehicle_number.length >= 4 && !p.is_verified) {
       g.ocrPlates.push(p.vehicle_number);
     }
-    
-    // If any photo is verified, group is verified (handle null/false/true)
     if (p.is_verified === true) {
       g.verified = true;
-      g.verifiedPlate = p.verified_plate || g.verifiedPlate;
-      g.verifiedBy = p.verified_by || g.verifiedBy;
+      g.verifiedPlate = p.verified_plate || p.vehicle_number || g.verifiedPlate;
     }
-    if (p.rejected === true) {
-      g.rejected = true;
-    }
+    if (p.rejected === true) g.rejected = true;
   });
-  
   return groups;
 }
 
-// ─── RENDER QUEUE ───
 function renderQueue() {
   var listEl = $('vehicleList');
-  
-  // Filter by tab
   var filtered = state.vehicles.filter(function(v) {
     if (state.currentTab === 'pending') return !v.verified && !v.rejected;
     if (state.currentTab === 'verified') return v.verified;
     if (state.currentTab === 'rejected') return v.rejected;
-    return true; // 'all'
+    return true;
   });
-  
-  // Sort: pending first, then by capture time desc
   filtered.sort(function(a, b) {
     if (!a.verified && b.verified) return -1;
     if (a.verified && !b.verified) return 1;
     return new Date(b.captured) - new Date(a.captured);
   });
-  
-  // Update tab counts
   var pending = state.vehicles.filter(function(v) { return !v.verified && !v.rejected; }).length;
   var verified = state.vehicles.filter(function(v) { return v.verified; }).length;
   var all = state.vehicles.length;
   updateTabCounts(pending, verified, all);
-  
   if (filtered.length === 0) {
     listEl.innerHTML = '<div class="empty-state"><div class="emoji">' + 
       (state.currentTab === 'pending' ? '🎉' : '📭') + 
@@ -987,63 +413,20 @@ function renderQueue() {
       '</div></div>';
     return;
   }
-  
-  // Fetch owner details for verified groups
-  var verifiedPlates = filtered.filter(function(v) { return v.verifiedPlate; })
-                                .map(function(v) { return v.verifiedPlate; });
-  if (verifiedPlates.length > 0) {
-    fetchVehicleDetails(verifiedPlates).then(function() {
-      renderCards(filtered);
-    });
-  } else {
-    renderCards(filtered);
-  }
-}
-
-// ─── FETCH VEHICLE DETAILS ───
-function fetchVehicleDetails(plates) {
-  if (plates.length === 0) return Promise.resolve();
-  
-  var qs = '/rest/v1/prajapati_vehicle_lookup?select=plate,owner_name,mobile,manual_override_name,manual_override_mobile&plate=in.(' + 
-           plates.map(function(p) { return '"' + p + '"'; }).join(',') + ')';
-  
-  return api(qs).then(function(rows) {
-    rows = rows || [];
-    var map = {};
-    rows.forEach(function(r) { map[r.plate] = r; });
-    
-    state.vehicles.forEach(function(v) {
-      if (v.verifiedPlate && map[v.verifiedPlate]) {
-        var d = map[v.verifiedPlate];
-        v.ownerName = d.manual_override_name || d.owner_name;
-        v.mobile = d.manual_override_mobile || d.mobile;
-      }
-    });
-  }).catch(function() {});
+  renderCards(filtered);
 }
 
 function renderCards(vehicles) {
-  var listEl = $('vehicleList');
-  
-  var html = vehicles.map(function(v, idx) {
-    return renderVehicleCard(v, idx);
-  }).join('');
-  
-  listEl.innerHTML = html;
-  
-  // Attach event handlers
+  var html = vehicles.map(function(v, idx) { return renderVehicleCard(v, idx); }).join('');
+  $('vehicleList').innerHTML = html;
   document.querySelectorAll('.vc-input').forEach(function(input) {
     input.addEventListener('input', function() {
       var idx = parseInt(this.getAttribute('data-idx'));
       var btn = document.querySelector('.btn-verify[data-idx="' + idx + '"]');
       if (btn) btn.disabled = !this.value.trim() || this.value.trim().length < 4;
     });
-    
     input.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        var idx = parseInt(this.getAttribute('data-idx'));
-        verifyVehicle(idx);
-      }
+      if (e.key === 'Enter') { verifyVehicle(parseInt(this.getAttribute('data-idx'))); }
     });
   });
 }
@@ -1051,95 +434,77 @@ function renderCards(vehicles) {
 function renderVehicleCard(v, idx) {
   var statusClass = v.verified ? 'verified' : (v.rejected ? 'rejected' : 'pending');
   var statusLabel = v.verified ? '✅ Verified' : (v.rejected ? '❌ Rejected' : '⏳ Pending');
-  
-  // OCR suggestions (unique plates)
   var uniqueOcr = [];
   v.ocrPlates.forEach(function(p) {
     var cp = cleanPlate(p);
     if (cp && cp.length >= 4 && uniqueOcr.indexOf(cp) === -1) uniqueOcr.push(cp);
   });
-  
-  // Suggested plate (longest OCR result OR existing verified)
   var suggested = v.verifiedPlate || uniqueOcr.sort(function(a, b) { return b.length - a.length; })[0] || '';
-  
-  // Sort photos: back, left, right, others
   var sortedPhotos = v.photos.slice().sort(function(a, b) {
-    var order = { 'back': 1, 'left': 2, 'right': 3, 'front': 4, 'hood': 0 };
-    var aSide = (a.public_url || '').match(/\/(back|left|right|front|hood)-/);
-    var bSide = (b.public_url || '').match(/\/(back|left|right|front|hood)-/);
+    var order = { 'back': 1, 'left': 2, 'right': 3, 'front': 4, 'back-panel': 5 };
+    var aSide = (a.public_url || '').match(/\/(back|left|right|front|back-panel)-/);
+    var bSide = (b.public_url || '').match(/\/(back|left|right|front|back-panel)-/);
     var aRank = aSide ? (order[aSide[1].toLowerCase()] || 99) : 99;
     var bRank = bSide ? (order[bSide[1].toLowerCase()] || 99) : 99;
     return aRank - bRank;
   });
-  
-  var photosHtml = sortedPhotos.map(function(p, pIdx) {
+  var photosHtml = sortedPhotos.map(function(p) {
     var url = p.public_url || '';
-    var sideMatch = url.match(/\/(back|left|right|front|hood)-/);
+    var sideMatch = url.match(/\/(back|left|right|front|back-panel|hood)-/);
     var side = sideMatch ? sideMatch[1].toUpperCase() : (p.mode || 'PHOTO').toUpperCase();
     var ocrText = p.vehicle_number ? p.vehicle_number : '';
-    
     return '<div class="vc-photo" onclick="openZoom(\'' + escHtml(url) + '\')">' +
       '<img src="' + escHtml(url) + '" alt="' + side + '" loading="lazy" />' +
       '<div class="vc-photo-label">' + side + '</div>' +
       (ocrText ? '<div class="vc-photo-ocr">' + escHtml(ocrText) + '</div>' : '') +
     '</div>';
   }).join('');
-  
   var verifiedInfoHtml = '';
   if (v.verified) {
     verifiedInfoHtml = '<div class="vc-verified-info">' +
       '<div class="field"><div class="field-label">Plate</div><div class="field-value plate">' + escHtml(v.verifiedPlate || '') + '</div></div>' +
-      '<div class="field"><div class="field-label">Owner</div><div class="field-value">' + escHtml(v.ownerName || '—') + '</div></div>' +
-      '<div class="field"><div class="field-label">Mobile</div><div class="field-value">' + escHtml(v.mobile || '—') + '</div></div>' +
+      '<div class="field"><div class="field-label">Photos</div><div class="field-value">' + v.photos.length + ' photos</div></div>' +
       '<div class="field"><div class="field-label">Location</div><div class="field-value">' + escHtml(v.city || '—') + '</div></div>' +
+      '<div class="field"><div class="field-label">Captured</div><div class="field-value">' + formatTime(v.captured) + '</div></div>' +
       '<button onclick="reEditPlate(' + idx + ')" style="margin-left:auto;background:#fff;border:1px solid var(--border);padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;">✏️ Re-edit</button>' +
     '</div>';
   }
-  
   var formHtml = '';
   if (!v.verified) {
     var ocrChips = uniqueOcr.map(function(p) {
       return '<span class="suggestion-chip" onclick="usePlate(' + idx + ', \'' + escHtml(p) + '\')">' + escHtml(p) + '</span>';
     }).join('');
-    
     var ocrRow = uniqueOcr.length > 0 ? 
       '<div class="vc-ocr-row"><b>OCR Detected:</b> <span class="vc-ocr-suggestions">' + ocrChips + '</span></div>' :
       '<div class="vc-ocr-row" style="background:#fee2e2;border-color:#fecaca;color:#991b1b;"><b>⚠️ No plate detected by OCR</b> — please read manually from photos</div>';
-    
     formHtml = ocrRow +
       '<div class="vc-form">' +
         '<div class="vc-input-row">' +
-          '<label>Verified Plate Number (will apply to all ' + v.photos.length + ' photos)</label>' +
+          '<label>Verified Plate Number (applies to all ' + v.photos.length + ' photos)</label>' +
           '<input type="text" class="vc-input" data-idx="' + idx + '" id="plate-input-' + idx + '" value="' + escHtml(suggested) + '" placeholder="Enter plate (e.g. MH12AB1234)" maxlength="20" />' +
         '</div>' +
         '<div class="vc-actions">' +
-          '<button class="btn-verify" data-idx="' + idx + '" onclick="verifyVehicle(' + idx + ')" ' + (!suggested ? 'disabled' : '') + '>✓ Verify & Fetch</button>' +
+          '<button class="btn-verify" data-idx="' + idx + '" onclick="verifyVehicle(' + idx + ')" ' + (!suggested ? 'disabled' : '') + '>✓ Verify & Save</button>' +
           '<button class="btn-reject" onclick="rejectVehicle(' + idx + ')" title="Cannot read plate">❌</button>' +
         '</div>' +
       '</div>';
   }
-  
   return '<div class="vehicle-card ' + statusClass + '" id="card-' + idx + '">' +
-    '<div class="vc-header">' +
-      '<div>' +
-        '<span class="vc-status ' + statusClass + '">' + statusLabel + '</span>' +
-        '<div class="vc-meta" style="margin-top:6px;">' +
-          '<span>📅 <b>' + formatDate(v.captured) + '</b></span>' +
-          '<span>🕒 <b>' + formatTime(v.captured) + '</b></span>' +
-          '<span>📍 <b>' + escHtml(v.city || '—') + '</b></span>' +
-          '<span>👤 <b>' + escHtml(v.member) + '</b></span>' +
-          '<span>🎯 <b>' + escHtml(v.campaign || '—') + '</b></span>' +
-          '<span>📷 <b>' + v.photos.length + ' photos</b></span>' +
-        '</div>' +
-      '</div>' +
-    '</div>' +
+    '<div class="vc-header"><div>' +
+      '<span class="vc-status ' + statusClass + '">' + statusLabel + '</span>' +
+      '<div class="vc-meta" style="margin-top:6px;">' +
+        '<span>📅 <b>' + formatDate(v.captured) + '</b></span>' +
+        '<span>🕒 <b>' + formatTime(v.captured) + '</b></span>' +
+        '<span>📍 <b>' + escHtml(v.city || '—') + '</b></span>' +
+        '<span>👤 <b>' + escHtml(v.member) + '</b></span>' +
+        '<span>🎯 <b>' + escHtml(v.campaign || '—') + '</b></span>' +
+        '<span>📷 <b>' + v.photos.length + ' photos</b></span>' +
+      '</div></div></div>' +
     '<div class="vc-photos">' + photosHtml + '</div>' +
-    verifiedInfoHtml +
-    formHtml +
+    verifiedInfoHtml + formHtml +
   '</div>';
 }
 
-// ─── TAB SWITCHING ───
 function switchTab(tab) {
   state.currentTab = tab;
   document.querySelectorAll('.tab-btn').forEach(function(b) {
@@ -1154,133 +519,59 @@ function updateTabCounts(pending, verified, all) {
   $('tabAll').textContent = all;
 }
 
-// ─── USE OCR SUGGESTION ───
 function usePlate(idx, plate) {
   var input = $('plate-input-' + idx);
   if (input) {
-    input.value = plate;
-    input.focus();
+    input.value = plate; input.focus();
     var btn = document.querySelector('.btn-verify[data-idx="' + idx + '"]');
     if (btn) btn.disabled = false;
   }
 }
 
-// ─── VERIFY VEHICLE ───
+// ═══════════════════════════════════════════════════════════════════════════
+// VERIFY VEHICLE — Findr SKIPPED, direct DB save
+// CRITICAL: Updates vehicle_number field so PPT generator can group by it
+// ═══════════════════════════════════════════════════════════════════════════
 async function verifyVehicle(idx) {
   var v = state.vehicles[idx];
-  if (!v) { 
-    console.error('[Verify] No vehicle at idx:', idx);
-    return; 
-  }
-  
-  console.log('[Verify] Starting verification for vehicle:', v);
-  
+  if (!v) return;
   var input = $('plate-input-' + idx);
-  if (!input) { 
-    console.error('[Verify] Input not found for idx:', idx);
-    return; 
-  }
-  
+  if (!input) return;
   var plate = cleanPlate(input.value);
-  console.log('[Verify] Plate entered:', plate);
-  
-  if (!plate || plate.length < 4) {
-    return toast('Please enter a valid plate (min 4 chars)', 'error');
-  }
+  if (!plate || plate.length < 4) return toast('Please enter a valid plate (min 4 chars)', 'error');
   
   var btn = document.querySelector('.btn-verify[data-idx="' + idx + '"]');
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '⏳ Verifying...';
-  }
+  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Saving...'; }
   
   try {
-    // Step 1: Generate group ID (or use existing)
     var groupId = v.groupId || generateUUID();
-    console.log('[Verify] Group ID:', groupId);
-    
-    // Step 2: Update all photos in this group
     var photoIds = v.photos.map(function(p) { return p.id; });
-    console.log('[Verify] Photo IDs to update:', photoIds);
     
-    if (btn) btn.innerHTML = '⏳ Updating photos...';
+    // ⭐ CRITICAL PATCH: Updates BOTH vehicle_number AND verified_plate
+    // vehicle_number is what PPT generator queries
+    var updateBody = {
+      vehicle_number: plate,           // ⭐ KEY FIX - PPT uses this field
+      verified_plate: plate,
+      verified_by: state.user.id,
+      verified_at: new Date().toISOString(),
+      vehicle_group_id: groupId,
+      is_verified: true,
+      rejected: false,
+      rejection_reason: null
+    };
     
-    var updateResult;
-    try {
-      // Build URL - UUIDs in PostgREST in() should work without quotes
-      var url = '/rest/v1/trial_photos?id=in.(' + photoIds.join(',') + ')';
-      console.log('[Verify] PATCH URL:', url);
-      
-      var updateBody = {
-        verified_plate: plate,
-        verified_by: state.user.id,
-        verified_at: new Date().toISOString(),
-        vehicle_group_id: groupId,
-        is_verified: true,
-        rejected: false,
-        rejection_reason: null
-      };
-      console.log('[Verify] PATCH body:', updateBody);
-      
-      updateResult = await api(url, {
-        method: 'PATCH',
-        headers: {
-          'Prefer': 'return=representation'
-        },
-        body: updateBody
-      });
-      console.log('[Verify] PATCH result:', updateResult);
-      console.log('[Verify] Number of rows updated:', updateResult ? updateResult.length : 0);
-    } catch (updateErr) {
-      console.error('[Verify] PATCH error full:', updateErr);
-      console.error('[Verify] Error message:', updateErr.message);
-      throw new Error('Failed to update photos: ' + updateErr.message);
-    }
+    var url = '/rest/v1/trial_photos?id=in.(' + photoIds.join(',') + ')';
+    var updateResult = await api(url, {
+      method: 'PATCH',
+      headers: { 'Prefer': 'return=representation' },
+      body: updateBody
+    });
     
-    // If updateResult is empty array, no rows matched - critical error
     if (Array.isArray(updateResult) && updateResult.length === 0) {
-      console.error('[Verify] PATCH matched 0 rows! Photo IDs may be wrong.');
-      // Try one more time with explicit id check
-      var checkUrl = '/rest/v1/trial_photos?id=eq.' + photoIds[0] + '&select=id,is_verified';
-      var checkResult = await api(checkUrl);
-      console.log('[Verify] Check first photo exists:', checkResult);
-      
-      if (!checkResult || checkResult.length === 0) {
-        throw new Error('Photo with ID ' + photoIds[0] + ' not found in DB!');
-      }
-      throw new Error('PATCH update matched 0 rows. Run DIAGNOSTIC.sql to check.');
+      throw new Error('PATCH matched 0 rows - check RLS policies');
     }
     
-    // Don't fail if updateResult is null - PATCH might succeed but return empty
-    if (!updateResult) {
-      // Re-fetch to confirm update
-      try {
-        var verifyCheck = await api('/rest/v1/trial_photos?id=eq.' + photoIds[0] + '&select=is_verified,verified_plate');
-        console.log('[Verify] Re-fetch check:', verifyCheck);
-        if (!verifyCheck || verifyCheck.length === 0) {
-          throw new Error('Photo not found after update');
-        }
-        if (!verifyCheck[0].is_verified) {
-          throw new Error('is_verified did not save (got: ' + verifyCheck[0].is_verified + '). Schema cache may be stale - run NOTIFY pgrst reload schema in Supabase');
-        }
-      } catch (checkErr) {
-        console.error('[Verify] Verify check failed:', checkErr);
-        throw checkErr;
-      }
-    }
-    
-    // Step 3: Call Findr API (or check cache) - OPTIONAL, won't fail verify
-    if (btn) btn.innerHTML = '🔍 Fetching owner details...';
-    
-    var findrResult = null;
-    try {
-      findrResult = await fetchVehicleFromFindr(plate);
-    } catch (findrErr) {
-      console.warn('Findr lookup skipped:', findrErr.message);
-      // Continue without owner details - admin can manually add later
-    }
-    
-    // Step 4: Log to verification_log
+    // Log to verification_log (non-critical)
     try {
       await api('/rest/v1/prajapati_verification_log', {
         method: 'POST',
@@ -1296,194 +587,33 @@ async function verifyVehicle(idx) {
           campaign_key: v.campaign,
           member_name: v.member,
           capture_date: v.date,
-          findr_called: !!findrResult,
-          findr_success: !!(findrResult && findrResult.success),
-          owner_name: findrResult ? findrResult.ownerName : null,
-          owner_mobile: findrResult ? findrResult.mobile : null,
           action_type: 'verify',
-          notes: 'Auto-verified via portal'
+          notes: 'Manual verify (Findr skipped)'
         }
       });
-    } catch (logErr) {
-      console.warn('Log save failed:', logErr.message);
-      // Non-critical, continue
-    }
+    } catch (e) { console.warn('Log save failed:', e.message); }
     
-    // Step 5: Update local state
     v.verified = true;
     v.verifiedPlate = plate;
-    v.verifiedBy = state.user.id;
     v.groupId = groupId;
-    if (findrResult) {
-      v.ownerName = findrResult.ownerName;
-      v.mobile = findrResult.mobile;
-    }
     
-    // Show appropriate success message based on Findr result
-    var successMsg;
-    if (findrResult && findrResult.ownerName) {
-      successMsg = '✅ Verified: ' + plate + ' (' + findrResult.ownerName + ')';
-    } else if (findrResult) {
-      successMsg = '✅ Verified: ' + plate + ' (cached, no owner details)';
-    } else {
-      successMsg = '✅ Verified: ' + plate + ' (owner details: pending Findr)';
-    }
-    toast(successMsg, 'success');
-    
-    // Refresh
+    toast('✅ Verified: ' + plate + ' (' + v.photos.length + ' photos)', 'success');
     renderQueue();
     refreshStats();
-    
   } catch (err) {
     console.error('Verify error:', err);
     toast('Verification failed: ' + err.message, 'error');
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = '✓ Verify & Fetch';
-    }
+    if (btn) { btn.disabled = false; btn.innerHTML = '✓ Verify & Save'; }
   }
 }
 
-// ─── FETCH FROM FINDR ───
-async function fetchVehicleFromFindr(plate) {
-  try {
-    // Check cache first (Supabase - always available)
-    var cached = await api('/rest/v1/prajapati_vehicle_lookup?select=*&plate=eq.' + encodeURIComponent(plate));
-    
-    if (cached && cached.length > 0) {
-      var c = cached[0];
-      return {
-        success: true,
-        source: 'cache',
-        ownerName: c.manual_override_name || c.owner_name,
-        mobile: c.manual_override_mobile || c.mobile,
-        maker: c.maker,
-        rto: c.rto
-      };
-    }
-  } catch (err) {
-    console.warn('Cache check failed:', err);
-  }
-  
-  // No cache - try Findr server (OPTIONAL - won't fail verify if offline)
-  if (!FINDR_SERVER_URL || FINDR_SERVER_URL.indexOf('localhost') !== -1) {
-    // Don't try localhost from production - skip silently
-    console.log('Findr server: localhost detected, skipping (will fetch later)');
-    return null;
-  }
-  
-  // Quick connectivity check (1 sec) - if server not reachable, skip
-  try {
-    var quickCheck = await Promise.race([
-      fetch(FINDR_SERVER_URL + '/api/health', { method: 'GET' }).then(r => r.ok),
-      new Promise(function(resolve) { setTimeout(function() { resolve(false); }, 1500); })
-    ]);
-    
-    if (!quickCheck) {
-      console.log('Findr server not reachable, skipping owner fetch');
-      return null;
-    }
-  } catch (e) {
-    console.log('Findr server check failed, skipping');
-    return null;
-  }
-  
-  try {
-    // Add timeout so we don't hang forever (reduced to 5 sec)
-    var controller = new AbortController();
-    var timeoutId = setTimeout(function() { controller.abort(); }, 5000);
-    
-    var resp = await fetch(FINDR_SERVER_URL + '/api/vehicle/' + encodeURIComponent(plate), {
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-    
-    if (!resp.ok) {
-      console.warn('Findr server returned status:', resp.status);
-      return null;
-    }
-    
-    // Check response is JSON before parsing
-    var contentType = resp.headers.get('content-type');
-    if (!contentType || contentType.indexOf('application/json') === -1) {
-      console.warn('Findr server returned non-JSON response');
-      return null;
-    }
-    
-    // Get text first, then parse safely
-    var text = await resp.text();
-    if (!text || text.trim() === '') {
-      console.warn('Findr server returned empty response');
-      return null;
-    }
-    
-    var data;
-    try {
-      data = JSON.parse(text);
-    } catch (e) {
-      console.warn('Failed to parse Findr response:', text.substring(0, 100));
-      return null;
-    }
-    
-    if (data.success && data.data) {
-      // Save to cache
-      try {
-        await api('/rest/v1/prajapati_vehicle_lookup?on_conflict=plate', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Prefer': 'resolution=merge-duplicates,return=minimal'
-          },
-          body: [{
-            plate: plate,
-            plate_raw: plate,
-            owner_name: data.data.ownerName,
-            mobile: data.data.mobile,
-            maker: data.data.maker,
-            rto: data.data.rto,
-            registration_date: data.data.regDate || null,
-            source: data.source || 'findr',
-            is_masked: data.data.isMasked || false,
-            verified: true,
-            raw_response: data
-          }]
-        });
-      } catch (e) {
-        console.warn('Cache save failed:', e);
-      }
-      
-      return {
-        success: true,
-        source: data.source,
-        ownerName: data.data.ownerName,
-        mobile: data.data.mobile,
-        maker: data.data.maker,
-        rto: data.data.rto
-      };
-    }
-    
-    return null;
-  } catch (err) {
-    if (err.name === 'AbortError') {
-      console.warn('Findr request timed out');
-    } else {
-      console.warn('Findr fetch failed:', err.message);
-    }
-    return null;
-  }
-}
-
-// ─── REJECT VEHICLE ───
 async function rejectVehicle(idx) {
   var v = state.vehicles[idx];
   if (!v) return;
-  
   var reason = prompt('Why reject this vehicle?\n\n(e.g., "blurry photos", "plate damaged", "not a vehicle")');
   if (!reason) return;
-  
   try {
     var photoIds = v.photos.map(function(p) { return p.id; });
-    
     await api('/rest/v1/trial_photos?id=in.(' + photoIds.join(',') + ')', {
       method: 'PATCH',
       body: {
@@ -1494,102 +624,62 @@ async function rejectVehicle(idx) {
         is_verified: false
       }
     });
-    
-    // Log
-    await api('/rest/v1/prajapati_verification_log', {
-      method: 'POST',
-      body: {
-        verifier_id: state.user.id,
-        verifier_name: state.user.name,
-        photo_ids: photoIds,
-        photo_count: v.photos.length,
-        campaign_key: v.campaign,
-        member_name: v.member,
-        capture_date: v.date,
-        action_type: 'reject',
-        reason: reason
-      }
-    });
-    
+    try {
+      await api('/rest/v1/prajapati_verification_log', {
+        method: 'POST',
+        body: {
+          verifier_id: state.user.id, verifier_name: state.user.name,
+          photo_ids: photoIds, photo_count: v.photos.length,
+          campaign_key: v.campaign, member_name: v.member, capture_date: v.date,
+          action_type: 'reject', reason: reason
+        }
+      });
+    } catch (e) {}
     v.rejected = true;
     toast('Vehicle rejected', 'success');
     renderQueue();
     refreshStats();
-    
-  } catch (err) {
-    toast('Reject failed: ' + err.message, 'error');
-  }
+  } catch (err) { toast('Reject failed: ' + err.message, 'error'); }
 }
 
-// ─── RE-EDIT ───
 function reEditPlate(idx) {
   var v = state.vehicles[idx];
   if (!v) return;
-  
   if (!confirm('Re-edit this verified vehicle?\n\nCurrent plate: ' + v.verifiedPlate + '\n\nThis will mark it as pending again.')) return;
-  
-  // Reset to pending
   v.verified = false;
   v.verifiedPlate = null;
   renderQueue();
-  
   setTimeout(function() {
     var input = $('plate-input-' + idx);
-    if (input) {
-      input.focus();
-      input.select();
-    }
+    if (input) { input.focus(); input.select(); }
   }, 100);
 }
 
-// ─── STATS ───
 function refreshStats() {
   var today = new Date().toISOString().split('T')[0];
   var istStart = new Date(today + 'T00:00:00+05:30').toISOString();
   var istEnd = new Date(today + 'T23:59:59+05:30').toISOString();
   
-  // Pending count (today + last 30 days for total view)
-  api('/rest/v1/trial_photos?select=id&is_verified=eq.false&rejected=neq.true&captured_at=gte.' + istStart.slice(0, 10) + 'T00:00:00.000Z', { 
-    headers: { 'Prefer': 'count=exact', 'Range': '0-0' } 
-  }).then(function() {}).catch(function() {});
-  
-  // Today's verifications
-  api('/rest/v1/prajapati_verification_log?select=findr_success,findr_called,action_type&created_at=gte.' + istStart + '&created_at=lte.' + istEnd)
-    .then(function(logs) {
-      logs = logs || [];
-      var verified = logs.filter(function(l) { return l.action_type === 'verify'; }).length;
-      var rejected = logs.filter(function(l) { return l.action_type === 'reject'; }).length;
-      var findrCalls = logs.filter(function(l) { return l.findr_called && l.findr_success; }).length;
-      var cacheHits = verified - findrCalls;
-      
-      $('statVerified').textContent = verified;
-      $('statRejected').textContent = rejected;
-      $('statFindr').textContent = findrCalls;
-      $('statSaved').textContent = cacheHits;
-      $('statVerifiedTrend').textContent = 'by ' + (state.user ? state.user.name : 'you');
-    })
-    .catch(function() {});
-  
-  // Pending count
-  api('/rest/v1/trial_photos?select=id&or=(is_verified.is.null,is_verified.eq.false)&rejected=neq.true&limit=1000')
+  // Today's photos
+  api('/rest/v1/trial_photos?select=id,is_verified,rejected&captured_at=gte.' + istStart + '&captured_at=lte.' + istEnd + '&limit=2000')
     .then(function(photos) {
       photos = photos || [];
-      // Approximate vehicle count = photos / 3
-      $('statPending').textContent = Math.ceil(photos.length / 3);
+      var verified = photos.filter(function(p) { return p.is_verified === true; }).length;
+      var rejected = photos.filter(function(p) { return p.rejected === true; }).length;
+      var pending = photos.filter(function(p) { return p.is_verified !== true && p.rejected !== true; }).length;
+      // Approximate vehicles = photos / 3 (avg)
+      $('statVerified').textContent = Math.ceil(verified / 3);
+      $('statRejected').textContent = Math.ceil(rejected / 3);
+      $('statPending').textContent = Math.ceil(pending / 3);
+      $('statTotal').textContent = Math.ceil(photos.length / 3);
+      $('statVerifiedTrend').textContent = 'by ' + (state.user ? state.user.name.split(' ')[0] : 'you');
     })
     .catch(function() {});
 }
 
-// ─── ZOOM ───
-function openZoom(url) {
-  $('zoomImg').src = url;
-  $('zoomModal').classList.add('show');
-}
-function closeZoom() {
-  $('zoomModal').classList.remove('show');
-}
+function openZoom(url) { $('zoomImg').src = url; $('zoomModal').classList.add('show'); }
+function closeZoom() { $('zoomModal').classList.remove('show'); }
 
-// ─── UUID ───
 function generateUUID() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -1599,21 +689,11 @@ function generateUUID() {
   });
 }
 
-// ─── START ───
 document.addEventListener('DOMContentLoaded', function() {
   checkSession();
-  
-  // Enter key on login
-  $('loginPhone').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') doLogin();
-  });
-  
-  // ESC to close zoom
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeZoom();
-  });
+  $('loginPhone').addEventListener('keypress', function(e) { if (e.key === 'Enter') doLogin(); });
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeZoom(); });
 });
 </script>
-
 </body>
 </html>
