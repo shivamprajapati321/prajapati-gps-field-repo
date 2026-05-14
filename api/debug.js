@@ -1,84 +1,116 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// /api/debug.js — FINDR v5 SYNCHRONOUS TEST
-// Tests /enrich/get-vehicle-details-v5 with VEHICLE DETAILS consent
-// Mirror of working Rickshaw Survey GAS code
+// /api/debug.js — COMPREHENSIVE FINAL FINDER
+// Tests ALL possible vehicle details endpoints with VEHICLE DETAILS consent
 // Usage: /api/debug?plate=MH14HM8257
 // ═══════════════════════════════════════════════════════════════════════════
 
-const FINDR_URL = 'https://bifrost.unifers.ai/enrich/get-vehicle-details-v5';
-const FINDR_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MjIyNSwiZmlyc3ROYW1lIjoiQW5vbnltb3VzIiwibGFzdE5hbWUiOm51bGwsImVtYWlsIjpudWxsLCJwaG9uZSI6Ijk5MjIxMzgxMzgiLCJ1c2VyVHlwZSI6MSwiYXBwRGV2aWNlVHlwZSI6ImFwaSIsImNvdW50cnlJZCI6MTA0LCJjcmVhdGVkQXQiOiIyMDI1LTEwLTExVDA4OjAyOjQ1Ljc4OFoiLCJpYXQiOjE3NzM4MjQzNjAsImV4cCI6MjA4OTE4NDM2MH0.0-cB_noifVaki77sdPgGs1i9ZwzGW9EK3lyyDoChpI0";
+const TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MjIyNSwiZmlyc3ROYW1lIjoiQW5vbnltb3VzIiwibGFzdE5hbWUiOm51bGwsImVtYWlsIjpudWxsLCJwaG9uZSI6Ijk5MjIxMzgxMzgiLCJ1c2VyVHlwZSI6MSwiYXBwRGV2aWNlVHlwZSI6ImFwaSIsImNvdW50cnlJZCI6MTA0LCJjcmVhdGVkQXQiOiIyMDI1LTEwLTExVDA4OjAyOjQ1Ljc4OFoiLCJpYXQiOjE3NzM4MjQzNjAsImV4cCI6MjA4OTE4NDM2MH0.0-cB_noifVaki77sdPgGs1i9ZwzGW9EK3lyyDoChpI0";
 
-const CONSENT_TEXT = 'We confirm and undertake that valid end-user consent has been obtained for fetching VEHICLE DETAILS using VEHICLE NUMBER, and that such consent remains active and unrevoked at the time of this request.';
+const CONSENT_VEHICLE = 'We confirm and undertake that valid end-user consent has been obtained for fetching VEHICLE DETAILS using VEHICLE NUMBER, and that such consent remains active and unrevoked at the time of this request.';
+
+const BASE = 'https://bifrost.unifers.ai';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   
   const plate = (req.query.plate || 'MH14HM8257').toString().toUpperCase().replace(/[^A-Z0-9]/g, '');
   
-  try {
-    const startTime = Date.now();
-    
-    const findrResp = await fetch(FINDR_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': FINDR_TOKEN
-      },
-      body: JSON.stringify({
-        Vehicle_Number: plate,
-        Concent_Text: CONSENT_TEXT,
-        Concent: 'Y'
-      })
-    });
-    
-    const text = await findrResp.text();
-    const duration = Date.now() - startTime;
-    
-    let parsed = null;
-    try { parsed = JSON.parse(text); } catch(e) {}
-    
-    // Try to extract structured details if successful
-    let extracted = null;
-    if (parsed && parsed.data && parsed.data.result) {
-      const r = parsed.data.result;
-      extracted = {
-        owner_name: r.owner_details?.name || null,
-        mobile: r.owner_details?.mobile || null,
-        maker: r.vehicle_details?.maker || null,
-        vehicleClass: r.vehicle_details?.class || null,
-        rto: r.office_details?.rto || null,
-        city: r.office_details?.city || r.address_details?.city || null,
-        state: r.office_details?.state || r.address_details?.state || null,
-        pincode: r.office_details?.pincode || r.address_details?.pincode || null,
-        regDate: r.vehicle_details?.registration_date || null
-      };
+  // Try ALL possible paths
+  const paths = [
+    '/enrich/get-vehicle-details-v5',     // From working Rickshaw code
+    '/enrich/get-vehicle-details-v6',
+    '/enrich/get-vehicle-details-v7',
+    '/enrich/get-vehicle-details',
+    '/enrich/vehicle/get-vehicle-details',
+    '/enrich/vehicle/details',
+    '/enrich/vehicle/full-details',
+    '/enrich/vehicle/info',
+    '/enrich/vehicle/rc-details',
+    '/enrich/vehicle/owner-details',
+    '/enrich/vehicle/rc',
+    '/v1/enrich/vehicle/details',
+    '/api/enrich/vehicle/details'
+  ];
+  
+  const body = JSON.stringify({
+    Vehicle_Number: plate,
+    Concent_Text: CONSENT_VEHICLE,
+    Concent: 'Y'
+  });
+  
+  const results = [];
+  let winner = null;
+  
+  for (const path of paths) {
+    if (winner) {
+      results.push({ path: path, skipped: 'winner found' });
+      continue;
     }
     
-    return res.status(200).json({
-      timestamp: new Date().toISOString(),
-      plate_tested: plate,
-      endpoint: FINDR_URL,
-      auth_method: 'Raw JWT (no Bearer prefix)',
-      consent_type: 'VEHICLE DETAILS',
-      status: findrResp.status,
-      ok: findrResp.ok,
-      duration_ms: duration,
-      api_error: parsed?.error || false,
-      api_message: parsed?.message || null,
-      verdict: parsed && !parsed.error && extracted?.owner_name 
-        ? '🎉 SUCCESS — FULL DETAILS FETCHED!'
-        : parsed?.error 
-        ? `⚠️ API error: ${parsed.message}`
-        : '❌ Unknown response',
-      extracted_data: extracted,
-      raw_response: parsed || text.substring(0, 600)
-    });
-    
-  } catch (err) {
-    return res.status(500).json({
-      timestamp: new Date().toISOString(),
-      plate_tested: plate,
-      error: err.message
-    });
+    try {
+      const startTime = Date.now();
+      const resp = await fetch(BASE + path, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': TOKEN
+        },
+        body: body
+      });
+      const text = await resp.text();
+      const duration = Date.now() - startTime;
+      
+      let parsed = null;
+      try { parsed = JSON.parse(text); } catch(e) {}
+      
+      const isExpress404 = text.includes('Cannot POST') || text.includes('<!DOCTYPE');
+      const isAuthErr = resp.status === 401;
+      const isApiErr = parsed && parsed.error === true;
+      const isFullSuccess = parsed && !parsed.error && parsed.data && parsed.data.result;
+      
+      let verdict;
+      if (isFullSuccess) {
+        verdict = '🎉 FULL DETAILS FOUND!';
+        winner = { path, body_preview: text.substring(0, 800), parsed };
+      } else if (isExpress404) {
+        verdict = '❌ 404 path not found';
+      } else if (isAuthErr) {
+        verdict = '🔑 401 unauthorized';
+      } else if (isApiErr) {
+        verdict = `⚠️ API error: ${parsed.message || 'unknown'}`;
+      } else if (resp.ok) {
+        verdict = `✅ 200 OK (but unusual response structure)`;
+        // Even unusual successes could be wins
+        if (!winner) winner = { path, body_preview: text.substring(0, 800), parsed };
+      } else {
+        verdict = `⚠️ Status ${resp.status}`;
+      }
+      
+      results.push({
+        path: path,
+        status: resp.status,
+        duration_ms: duration,
+        verdict: verdict,
+        body_preview: text.substring(0, 300)
+      });
+      
+    } catch (err) {
+      results.push({ path: path, error: err.message });
+    }
   }
+  
+  let diagnosis;
+  if (winner) {
+    diagnosis = `🎉 FOUND WORKING PATH: ${winner.path}`;
+  } else {
+    diagnosis = '❌ NO PATHS WORKED. Either token revoked OR API completely changed. Best next step: check Rickshaw Survey GAS web app with FRESH plate (not from cache) to see if it still works.';
+  }
+  
+  return res.status(200).json({
+    timestamp: new Date().toISOString(),
+    plate_tested: plate,
+    diagnosis: diagnosis,
+    winner: winner,
+    all_results: results
+  });
 }
