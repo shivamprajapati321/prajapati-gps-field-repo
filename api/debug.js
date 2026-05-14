@@ -1,10 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// /api/debug.js — RC-MOBILE ENDPOINT TESTER v4
-// Tests confirmed endpoint /enrich/vehicle/rc-mobile in 4 ways:
-//   1. Sync, no Bearer prefix
-//   2. Sync, with Bearer prefix
-//   3. Async with Callback_Url, no Bearer
-//   4. Async with Callback_Url, with Bearer
+// /api/debug.js — V5 ENDPOINT FINAL TESTER
+// Tests /enrich/get-vehicle-details-v5 with 6 different combinations
+// to find exact working config
 // Usage: /api/debug?plate=MH14HM8257
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -16,38 +13,65 @@ export default async function handler(req, res) {
   // Token (hardcoded)
   const TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MjIyNSwiZmlyc3ROYW1lIjoiQW5vbnltb3VzIiwibGFzdE5hbWUiOm51bGwsImVtYWlsIjpudWxsLCJwaG9uZSI6Ijk5MjIxMzgxMzgiLCJ1c2VyVHlwZSI6MSwiYXBwRGV2aWNlVHlwZSI6ImFwaSIsImNvdW50cnlJZCI6MTA0LCJjcmVhdGVkQXQiOiIyMDI1LTEwLTExVDA4OjAyOjQ1Ljc4OFoiLCJpYXQiOjE3NzM4MjQzNjAsImV4cCI6MjA4OTE4NDM2MH0.0-cB_noifVaki77sdPgGs1i9ZwzGW9EK3lyyDoChpI0";
   
-  const URL = 'https://bifrost.unifers.ai/enrich/vehicle/rc-mobile';
-  const CONSENT_TEXT = 'We confirm and undertake that valid end-user consent has been obtained for fetching MOBILE NUMBER using VEHICLE NUMBER, and that such consent remains active and unrevoked at the time of this request.';
+  const URL_V5 = 'https://bifrost.unifers.ai/enrich/get-vehicle-details-v5';
+  const URL_RCMOBILE = 'https://bifrost.unifers.ai/enrich/vehicle/rc-mobile';
+  
+  const consentText = 'We confirm and undertake that valid end-user consent has been obtained for fetching VEHICLE DETAILS using VEHICLE NUMBER, and that such consent remains active and unrevoked at the time of this request.';
   
   const tests = [
     {
-      name: '1. Sync (no Callback_Url) — raw token',
+      name: 'A. v5 — raw token, basic body',
+      url: URL_V5,
       authHeader: TOKEN,
-      body: { Vehicle_Number: plate, Concent: 'Y', Concent_Text: CONSENT_TEXT }
+      body: { Vehicle_Number: plate, Concent: 'Y', Concent_Text: consentText }
     },
     {
-      name: '2. Sync (no Callback_Url) — Bearer prefix',
+      name: 'B. v5 — Bearer prefix, basic body',
+      url: URL_V5,
       authHeader: 'Bearer ' + TOKEN,
-      body: { Vehicle_Number: plate, Concent: 'Y', Concent_Text: CONSENT_TEXT }
+      body: { Vehicle_Number: plate, Concent: 'Y', Concent_Text: consentText }
     },
     {
-      name: '3. Async (with Callback_Url) — raw token',
+      name: 'C. v5 — raw token, with extras',
+      url: URL_V5,
       authHeader: TOKEN,
       body: { 
         Vehicle_Number: plate, 
-        Callback_Url: 'https://prajapati-gps-field-repo.vercel.app/api/findr-callback',
         Concent: 'Y', 
-        Concent_Text: CONSENT_TEXT 
+        Concent_Text: consentText,
+        consent: 'Y',
+        consent_text: consentText
       }
     },
     {
-      name: '4. Async (with Callback_Url) — Bearer prefix',
+      name: 'D. v5 — lowercase fields',
+      url: URL_V5,
+      authHeader: TOKEN,
+      body: { 
+        vehicle_number: plate, 
+        consent: 'Y', 
+        consent_text: consentText
+      }
+    },
+    {
+      name: 'E. v5 — Bearer + lowercase',
+      url: URL_V5,
       authHeader: 'Bearer ' + TOKEN,
+      body: { 
+        vehicle_number: plate, 
+        consent: 'Y', 
+        consent_text: consentText
+      }
+    },
+    {
+      name: 'F. CONTROL: rc-mobile — raw token',
+      url: URL_RCMOBILE,
+      authHeader: TOKEN,
       body: { 
         Vehicle_Number: plate, 
         Callback_Url: 'https://prajapati-gps-field-repo.vercel.app/api/findr-callback',
         Concent: 'Y', 
-        Concent_Text: CONSENT_TEXT 
+        Concent_Text: consentText.replace('VEHICLE DETAILS', 'MOBILE NUMBER')
       }
     }
   ];
@@ -57,7 +81,7 @@ export default async function handler(req, res) {
   for (const t of tests) {
     try {
       const startTime = Date.now();
-      const resp = await fetch(URL, {
+      const resp = await fetch(t.url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -72,35 +96,32 @@ export default async function handler(req, res) {
       try { parsed = JSON.parse(text); } catch(e) {}
       
       const isExpressErr = text.includes('Cannot POST') || text.includes('<!DOCTYPE');
-      const isAuthErr = resp.status === 401 || text.includes('Invalid access token');
+      const isAuthErr = resp.status === 401 || (parsed && parsed.message === 'Invalid access token');
       const isSuccess = resp.ok && parsed && !parsed.error;
       
       let verdict;
       if (isSuccess) {
-        // Check if mobile is in response or requestId only (async)
-        const hasMobile = parsed?.data?.result?.Mobile_Number || parsed?.data?.result?.mobile;
-        const hasRequestId = parsed?.requestId || parsed?.data?.requestId;
-        verdict = hasMobile ? '✅ SUCCESS — Sync (mobile in response)' :
-                  hasRequestId ? '✅ SUCCESS — Async (requestId returned, callback pending)' :
-                  '✅ SUCCESS (check body)';
+        verdict = '🎉 SUCCESS — Got valid data!';
       } else if (isExpressErr) {
-        verdict = '❌ Path not found';
+        verdict = '❌ Path not found (Express 404)';
       } else if (isAuthErr) {
-        verdict = '🔑 Token invalid (401)';
+        verdict = '🔑 401 Invalid access token';
       } else if (parsed?.error) {
         verdict = '⚠️ API error: ' + (parsed.message || 'unknown');
       } else {
-        verdict = `⚠️ Other (status ${resp.status})`;
+        verdict = `⚠️ Status ${resp.status}`;
       }
       
       results.push({
         test: t.name,
+        url: t.url,
+        auth_format: t.authHeader.startsWith('Bearer') ? 'Bearer + JWT' : 'Raw JWT',
         status: resp.status,
         duration_ms: duration,
         verdict: verdict,
-        request_body: t.body,
+        request_body_sent: t.body,
         response_body: text.substring(0, 600),
-        parsed: parsed
+        parsed_response: parsed
       });
       
     } catch (err) {
@@ -109,27 +130,25 @@ export default async function handler(req, res) {
   }
   
   // Diagnosis
-  const winners = results.filter(r => r.verdict && r.verdict.includes('✅'));
+  const winners = results.filter(r => r.verdict && r.verdict.includes('🎉'));
   let diagnosis;
-  let mode = null;
   
   if (winners.length > 0) {
-    const first = winners[0];
-    mode = first.verdict.includes('Sync') ? 'SYNC' : 
-           first.verdict.includes('Async') ? 'ASYNC' : 'UNKNOWN';
-    diagnosis = `🎉 SUCCESS! Endpoint works in ${mode} mode. Winning test: "${first.test}"`;
-  } else if (results.every(r => r.verdict && r.verdict.includes('🔑'))) {
-    diagnosis = '🔑 TOKEN REVOKED — All 4 tests return 401. Get fresh token from Unifers dashboard.';
+    diagnosis = `🎉 SUCCESS! Working config: "${winners[0].test}". Use: URL=${winners[0].url}, Auth=${winners[0].auth_format}`;
   } else {
-    diagnosis = '⚠️ Mixed results — check individual test outcomes below.';
+    const allAuthFail = results.filter(r => !r.error).every(r => r.verdict && r.verdict.includes('🔑'));
+    if (allAuthFail) {
+      diagnosis = '🔑 ALL TESTS RETURN 401 — Token is definitely DEAD across all endpoints. The "v5" tip was incorrect. Fresh token needed from Unifers dashboard.';
+    } else {
+      diagnosis = '⚠️ Mixed results — check individual tests below for clues.';
+    }
   }
   
   return res.status(200).json({
     timestamp: new Date().toISOString(),
     plate_tested: plate,
-    endpoint: URL,
     diagnosis: diagnosis,
-    mode_detected: mode,
+    winners: winners.length > 0 ? winners.map(w => ({ test: w.test, url: w.url, auth: w.auth_format })) : null,
     all_results: results
   });
 }
