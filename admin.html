@@ -1178,6 +1178,15 @@ function downloadPhotosZip() {
   
   // Build query (max 500 photos per ZIP to keep memory in check)
   var qs = '?select=*&order=captured_at.desc&limit=500';
+  // ─── CRITICAL FIX (15-May): Exclude soft-deleted + rejected photos ───
+  // Previously deleted photos were appearing in ZIP downloads because admin
+  // download did not filter on deleted_at / rejected columns. Verifier portal
+  // marks photos as deleted_at=now() (soft delete) but storage URLs remain
+  // accessible since bucket 'trial-photos' is public. This filter ensures
+  // download respects the soft-delete state.
+  qs += '&deleted_at=is.null';
+  qs += '&or=(rejected.is.null,rejected.eq.false)';
+  // ─── END CRITICAL FIX ───
   if (dateFrom) {
     var istStartLocal = new Date(dateFrom + 'T00:00:00+05:30');
     qs += '&captured_at=gte.' + istStartLocal.toISOString();
@@ -1221,8 +1230,60 @@ function downloadPhotosZip() {
 }
 
 function buildAndDownloadZip(photos, btn) {
-  // ─── V9: SMART ZIP WITH FINDR + EXCEL ───
-  smartBuildAndDownloadZip(photos, btn);
+  // ─── V10 FIX (15-May): Split into Verified + Unverified ZIPs ───
+  // User requirement: alag-alag ZIPs for verified (renamed properly) vs
+  // unverified (raw, for manual review). Verifier portal sets is_verified=true
+  // after manual plate confirmation. Verified ZIP uses NEW naming format:
+  //   Hood:       MH34BH0722/MH34BH0722_BACK.JPG, _LEFT.JPG, _RIGHT.JPG
+  //   Back panel: MH34BH0722-BACK/MH34BH0722.JPG
+  // Unverified ZIP keeps existing serial-based naming for safety.
+  
+  var verified = photos.filter(function(p) { return p.is_verified === true; });
+  var unverified = photos.filter(function(p) { return p.is_verified !== true; });
+  
+  console.log('[V10] Split: ' + verified.length + ' verified, ' + unverified.length + ' unverified');
+  
+  // Decide which ZIPs to generate
+  var willGenerate = [];
+  if (verified.length > 0)   willGenerate.push({ mode: 'verified',   photos: verified });
+  if (unverified.length > 0) willGenerate.push({ mode: 'unverified', photos: unverified });
+  
+  if (willGenerate.length === 0) {
+    alert('No photos to download.');
+    btn.disabled = false;
+    btn.innerHTML = '📦 Download ZIP';
+    return;
+  }
+  
+  // Confirm split with user
+  var msg = '📦 Download ' + willGenerate.length + ' ZIP file(s):\n\n' +
+            (verified.length > 0   ? '✅ verified.zip   — ' + verified.length + ' photos (renamed: PLATE/PLATE_SIDE.JPG)\n' : '') +
+            (unverified.length > 0 ? '⏳ unverified.zip — ' + unverified.length + ' photos (raw, for review)\n' : '') +
+            '\nContinue?';
+  if (!confirm(msg)) {
+    btn.disabled = false;
+    btn.innerHTML = '📦 Download ZIP';
+    return;
+  }
+  
+  // Generate sequentially (browser may block parallel saveAs)
+  (async function() {
+    for (var i = 0; i < willGenerate.length; i++) {
+      var item = willGenerate[i];
+      try {
+        await smartBuildAndDownloadZip(item.photos, btn, item.mode);
+        // Small gap between downloads so browser doesn't block 2nd file
+        if (i < willGenerate.length - 1) {
+          await new Promise(function(r) { setTimeout(r, 1500); });
+        }
+      } catch (err) {
+        console.error('[V10] ZIP build failed for mode=' + item.mode, err);
+        alert('Failed to build ' + item.mode + '.zip: ' + (err.message || err));
+      }
+    }
+    btn.disabled = false;
+    btn.innerHTML = '📦 Download ZIP';
+  })();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3171,17 +3232,27 @@ function generateExcelReport(groups, photos) {
 }
 
 // ─── MAIN: SMART BUILD & DOWNLOAD ZIP ───
-async function smartBuildAndDownloadZip(photos, btn) {
+// V10 (15-May): Now accepts `mode` param ('verified' | 'unverified').
+// - verified  → new naming: PLATE/PLATE_SIDE.JPG  or  PLATE-BACK/PLATE.JPG
+// - unverified → legacy naming preserved for manual review
+async function smartBuildAndDownloadZip(photos, btn, mode) {
+  mode = mode || 'verified';  // default safety
+  var isVerifiedZip = (mode === 'verified');
+  
+  // Indian RTO plate format (e.g. MH34BH0722, MH20EF4148, DL01AB1234)
+  var PLATE_REGEX = /^[A-Z]{2}\d{1,2}[A-Z]{1,3}\d{1,4}$/;
+  
   var zip = new JSZip();
   var total = photos.length;
   var processed = 0;
   var failed = 0;
   
   function updateProgress(label) {
-    btn.innerHTML = label || ('⏳ ' + processed + '/' + total + ' photos...');
+    var prefix = isVerifiedZip ? '✅ ' : '⏳ ';
+    btn.innerHTML = label || (prefix + processed + '/' + total + ' ' + mode + '...');
   }
   
-  updateProgress('🔍 Analyzing photos...');
+  updateProgress('🔍 Analyzing ' + mode + ' photos...');
   
   // STEP 1: Group photos by vehicle
   var groups = groupPhotosByVehicle(photos);
@@ -3213,15 +3284,48 @@ async function smartBuildAndDownloadZip(photos, btn) {
   
   // STEP 4: Fetch and add photos to ZIP (grouped by vehicle)
   var fetchPromises = [];
+  var incompleteCount = 0;
+  var backPanelCount = 0;
+  var hoodCompleteCount = 0;
   
   groupArr.forEach(function(g) {
-    // Build folder name: 001_MH4T0554_RameshKumar OR 001_Unidentified
+    // ─── V10 NEW NAMING LOGIC ───
     var folderName;
-    if (g.hasPlate) {
-      var ownerShort = g.ownerName ? sanitizeName(g.ownerName).substring(0, 25) : 'NoOwner';
-      folderName = 'Vehicles/' + g.serial + '_' + sanitizeName(g.plate) + '_' + ownerShort;
+    var plateForFile = (g.plate || '').toUpperCase();
+    var isValidPlate = g.hasPlate && PLATE_REGEX.test(plateForFile);
+    
+    // Determine vehicle's mode (use first photo's mode as representative)
+    var vehicleMode = (g.photos[0] && g.photos[0].mode) || 'hood';
+    var isBackPanel = vehicleMode === 'back_panel';
+    
+    if (isVerifiedZip) {
+      // ━━━ VERIFIED ZIP: new clean naming ━━━
+      if (isValidPlate) {
+        if (isBackPanel) {
+          folderName = 'Vehicles/' + plateForFile + '-BACK';
+          backPanelCount++;
+        } else {
+          // Hood — flag incomplete if <3 photos
+          if (g.photos.length < 3) {
+            folderName = 'Vehicles/_INCOMPLETE/' + plateForFile;
+            incompleteCount++;
+          } else {
+            folderName = 'Vehicles/' + plateForFile;
+            hoodCompleteCount++;
+          }
+        }
+      } else {
+        // Verified but plate format invalid (rare — verifier marked verified
+        // with odd plate). Put in review folder.
+        folderName = 'Vehicles/_INVALID_PLATE/' + sanitizeName(plateForFile || g.groupKey);
+      }
     } else {
-      folderName = 'Vehicles/ZZ_Unidentified/' + g.serial + '_NoPlate_' + formatTimeForFilename(g.capturedAt);
+      // ━━━ UNVERIFIED ZIP: legacy serial-based naming ━━━
+      if (g.hasPlate) {
+        folderName = 'Pending_Review/' + g.serial + '_' + sanitizeName(g.plate);
+      } else {
+        folderName = 'Pending_Review/ZZ_Unidentified/' + g.serial + '_NoPlate_' + formatTimeForFilename(g.capturedAt);
+      }
     }
     
     g.photos.forEach(function(p, photoIdx) {
@@ -3232,7 +3336,23 @@ async function smartBuildAndDownloadZip(photos, btn) {
       }
       
       var side = extractSideFromUrl(p.public_url) || ('photo' + (photoIdx + 1));
-      var filename = side + '.jpg';
+      
+      // ─── V10 NEW FILENAME LOGIC ───
+      var filename;
+      if (isVerifiedZip && isValidPlate) {
+        var photoMode = p.mode || vehicleMode;
+        if (photoMode === 'back_panel') {
+          // Single back panel photo → PLATE.JPG
+          filename = plateForFile + '.JPG';
+        } else {
+          // Hood photo → PLATE_SIDE.JPG (BACK/LEFT/RIGHT)
+          filename = plateForFile + '_' + side.toUpperCase() + '.JPG';
+        }
+      } else {
+        // Unverified or invalid plate → keep raw side name
+        filename = side + '.jpg';
+      }
+      
       var fullPath = folderName + '/' + filename;
       
       var promise = fetch(p.public_url)
@@ -3296,39 +3416,70 @@ async function smartBuildAndDownloadZip(photos, btn) {
   zip.file('photos-index.csv', csvLines.join('\n'));
   
   // STEP 8: Add README
-  var readme = [
-    '═══════════════════════════════════════════════',
-    '  PRAJAPATI ADVERTISING - VEHICLE CAMPAIGN ZIP',
-    '═══════════════════════════════════════════════',
-    '',
-    'Generated: ' + new Date().toLocaleString('en-IN'),
-    '',
-    'CONTENTS:',
-    '─────────',
-    '📊 Vehicle_Report.xlsx     - Full Excel report (5 sheets)',
-    '📋 photos-index.csv        - Quick CSV reference',
-    '📂 Vehicles/               - Photos grouped by vehicle',
-    '   ├── 001_PLATE_OwnerName/   (identified vehicles)',
-    '   │   ├── back.jpg',
-    '   │   ├── left.jpg',
-    '   │   └── right.jpg',
-    '   └── ZZ_Unidentified/        (no plate detected)',
-    '',
-    'EXCEL SHEETS:',
-    '─────────────',
-    '1. All Vehicles    - Complete vehicle list',
-    '2. Campaign-wise   - Stats by campaign',
-    '3. Team-wise       - Performance by team member',
-    '4. Date-wise       - Daily breakdown',
-    '5. Summary         - Overall statistics',
-    '',
-    'For queries: info@prajapatiadvertising.co.in',
-    '             +91 99 22 138 138'
-  ].join('\n');
+  var readme;
+  if (isVerifiedZip) {
+    readme = [
+      '═══════════════════════════════════════════════',
+      '  PRAJAPATI ADVERTISING - VERIFIED VEHICLES',
+      '═══════════════════════════════════════════════',
+      '',
+      'Generated: ' + new Date().toLocaleString('en-IN'),
+      'Mode: VERIFIED (renamed for client delivery)',
+      '',
+      'NAMING CONVENTION:',
+      '──────────────────',
+      'Hood vehicles  → MH34BH0722/',
+      '                  ├── MH34BH0722_BACK.JPG',
+      '                  ├── MH34BH0722_LEFT.JPG',
+      '                  └── MH34BH0722_RIGHT.JPG',
+      '',
+      'Back panel     → MH34BH0722-BACK/',
+      '                  └── MH34BH0722.JPG',
+      '',
+      'Incomplete (Hood <3 photos) → _INCOMPLETE/PLATE/',
+      'Invalid plate format       → _INVALID_PLATE/PLATE/',
+      '',
+      'STATS:',
+      '──────',
+      '✅ Hood complete  : ' + hoodCompleteCount + ' vehicles (3 photos each)',
+      '⚠️  Hood incomplete: ' + incompleteCount + ' vehicles (<3 photos)',
+      '✅ Back panel     : ' + backPanelCount + ' vehicles (1 photo each)',
+      '',
+      'EXCEL SHEETS:',
+      '─────────────',
+      '1. All Vehicles    - Complete vehicle list',
+      '2. Campaign-wise   - Stats by campaign',
+      '3. Team-wise       - Performance by team member',
+      '4. Date-wise       - Daily breakdown',
+      '5. Summary         - Overall statistics',
+      '',
+      'For queries: info@prajapatiadvertising.co.in',
+      '             +91 99 22 138 138'
+    ].join('\n');
+  } else {
+    readme = [
+      '═══════════════════════════════════════════════',
+      '  PRAJAPATI ADVERTISING - PENDING REVIEW',
+      '═══════════════════════════════════════════════',
+      '',
+      'Generated: ' + new Date().toLocaleString('en-IN'),
+      'Mode: UNVERIFIED (manual review required)',
+      '',
+      'These photos have NOT been verified yet via the',
+      'Verifier Portal. Once verified there, they will',
+      'appear in verified.zip with proper plate naming.',
+      '',
+      'Action required: open Verifier Portal and confirm',
+      'each vehicle plate to move them to verified set.',
+      '',
+      'For queries: info@prajapatiadvertising.co.in',
+      '             +91 99 22 138 138'
+    ].join('\n');
+  }
   zip.file('README.txt', readme);
   
   // STEP 9: Generate final ZIP
-  updateProgress('📦 Compressing ZIP...');
+  updateProgress('📦 Compressing ' + mode + ' ZIP...');
   
   var blob = await zip.generateAsync({
     type: 'blob',
@@ -3341,23 +3492,34 @@ async function smartBuildAndDownloadZip(photos, btn) {
   var endDate = document.getElementById('photoDateEnd').value;
   var dateLabel = endDate && endDate !== dateRange ? dateRange + '_to_' + endDate : dateRange;
   var campaignLabel = document.getElementById('photoCampaign').value || 'all';
-  var zipName = 'PrajapatiGPS_' + sanitizeName(campaignLabel) + '_' + dateLabel + '_' + Date.now() + '.zip';
+  // V10: filename now includes mode prefix
+  var zipName = mode + '_PrajapatiGPS_' + sanitizeName(campaignLabel) + '_' + dateLabel + '_' + Date.now() + '.zip';
   
   saveAs(blob, zipName);
   
-  btn.disabled = false;
-  btn.innerHTML = '📦 Download ZIP';
+  // Note: btn re-enable is now handled by buildAndDownloadZip wrapper
+  // since this may be called twice in sequence.
   
   var identified = Object.values(groups).filter(function(g) { return g.hasPlate; }).length;
   var withOwner = Object.values(groups).filter(function(g) { return g.ownerName; }).length;
   
-  var summary = '✅ ZIP Downloaded!\n\n' +
-    '📊 ' + groupCount + ' unique vehicles\n' +
-    '🚗 ' + identified + ' plates identified\n' +
-    '👤 ' + withOwner + ' owner details fetched\n' +
-    '📷 ' + (total - failed) + ' photos packaged\n' +
-    (failed > 0 ? '⚠️ ' + failed + ' photos failed\n' : '') +
-    '\nExcel report inside ZIP has 5 sheets!';
+  var summary;
+  if (isVerifiedZip) {
+    summary = '✅ verified.zip Downloaded!\n\n' +
+      '📊 ' + groupCount + ' unique vehicles\n' +
+      '🚗 ' + hoodCompleteCount + ' Hood complete (3 photos)\n' +
+      '⚠️ ' + incompleteCount + ' Hood incomplete (<3 photos)\n' +
+      '🎯 ' + backPanelCount + ' Back panel (1 photo)\n' +
+      '👤 ' + withOwner + ' owner details fetched\n' +
+      '📷 ' + (total - failed) + ' photos packaged\n' +
+      (failed > 0 ? '⚠️ ' + failed + ' photos failed\n' : '');
+  } else {
+    summary = '⏳ unverified.zip Downloaded!\n\n' +
+      '📊 ' + groupCount + ' vehicles pending review\n' +
+      '📷 ' + (total - failed) + ' photos packaged\n' +
+      (failed > 0 ? '⚠️ ' + failed + ' photos failed\n' : '') +
+      '\nVerify these in Verifier Portal to move to verified.zip';
+  }
   alert(summary);
 }
 
