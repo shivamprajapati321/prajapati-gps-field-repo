@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0B1957">
+  <title>Prajapati Admin</title>
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="manifest" href="manifest.json">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.40.0/tabler-icons.min.css">
+
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body { height:100%; width:100%; overflow:hidden; font-family:'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif; }
+
+    :root {
+      --primary: #0B1957;
+      --primary-light: #1a2b6e;
+      --accent: #26d0ce;
+      --accent-deep: #0fa6a4;
+      --gold: #F5B800;
+      --border: #E6E9F2;
+      --text-1: #0E1942;
+      --text-2: #5B6480;
+      --surface: #FAFBFE;
+      --header-h: 58px;
+    }
+
+    body {
+      display:flex;
+      flex-direction:column;
+      background: var(--surface);
+    }
+
+    .hub-header {
+      height: var(--header-h);
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+      color: white;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 12px rgba(11,25,87,0.18);
+      z-index: 100;
+      position: relative;
+    }
+    .hub-header::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.6;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-right: 16px;
+      border-right: 1px solid rgba(255,255,255,0.12);
+      margin-right: 14px;
+    }
+    .brand img {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .brand-text { display: flex; flex-direction: column; line-height: 1.15; }
+    .brand-name {
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 0.2px;
+    }
+    .brand-sub {
+      font-size: 9px;
+      color: var(--accent);
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 6px;
+      flex: 1;
+    }
+
+    .tab {
+      background: rgba(255,255,255,0.07);
+      color: rgba(255,255,255,0.75);
+      border: 1px solid transparent;
+      padding: 8px 16px;
+      border-radius: 9px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.18s;
+      position: relative;
+    }
+    .tab:hover {
+      background: rgba(255,255,255,0.14);
+      color: white;
+      transform: translateY(-1px);
+    }
+    .tab.active {
+      background: var(--accent);
+      color: var(--primary);
+      box-shadow: 0 3px 10px rgba(38,208,206,0.45);
+    }
+    .tab.active:hover { transform: none; background: var(--accent); }
+    .tab i { font-size: 16px; }
+    .tab .badge {
+      font-size: 9px;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 5px;
+      letter-spacing: 0.4px;
+    }
+    .tab.active .badge {
+      background: rgba(11,25,87,0.15);
+      color: var(--primary);
+    }
+    .tab:not(.active) .badge {
+      background: var(--gold);
+      color: var(--primary);
+    }
+
+    .actions {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+    }
+    .info-pill {
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.7);
+      padding: 5px 11px;
+      border-radius: 14px;
+      font-size: 11px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-right: 4px;
+    }
+    .info-pill .dot {
+      width: 6px;
+      height: 6px;
+      background: #4ADE80;
+      border-radius: 50%;
+      box-shadow: 0 0 6px #4ADE80;
+      animation: dotPulse 2s ease-in-out infinite;
+    }
+    @keyframes dotPulse { 50% { opacity: 0.4; } }
+
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      background: rgba(255,255,255,0.07);
+      color: rgba(255,255,255,0.85);
+      border: none;
+      border-radius: 9px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      transition: all 0.18s;
+    }
+    .icon-btn:hover {
+      background: rgba(255,255,255,0.16);
+      color: white;
+      transform: translateY(-1px);
+    }
+    .icon-btn.spinning i { animation: spin 0.6s linear; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .frame-wrap {
+      flex: 1;
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+      background: white;
+    }
+
+    iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: white;
+    }
+
+    .frame-hidden {
+      visibility: hidden;
+      pointer-events: none;
+      opacity: 0;
+    }
+
+    .loading {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface);
+      gap: 14px;
+      pointer-events: none;
+      transition: opacity 0.3s;
+      z-index: 50;
+    }
+    .loading.hide { opacity: 0; }
+    .spinner {
+      width: 42px;
+      height: 42px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: rot 0.8s linear infinite;
+    }
+    @keyframes rot { to { transform: rotate(360deg); } }
+    .loading-text {
+      font-size: 13px;
+      color: var(--text-2);
+      font-weight: 500;
+    }
+
+    .kbd-hint {
+      position: fixed;
+      bottom: 10px;
+      right: 14px;
+      font-size: 10px;
+      color: rgba(11,25,87,0.4);
+      background: rgba(255,255,255,0.9);
+      padding: 4px 8px;
+      border-radius: 5px;
+      border: 1px solid var(--border);
+      pointer-events: none;
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.3px;
+      z-index: 10;
+      backdrop-filter: blur(4px);
+    }
+    .kbd-hint kbd {
+      background: var(--surface);
+      padding: 0 4px;
+      border-radius: 3px;
+      font-weight: 600;
+    }
+
+    /* Mobile */
+    @media (max-width: 700px) {
+      :root { --header-h: 54px; }
+      .hub-header { padding: 0 10px; }
+      .brand { padding-right: 10px; margin-right: 8px; gap: 7px; }
+      .brand img { width: 30px; height: 30px; }
+      .brand-text { display: none; }
+      .info-pill { display: none; }
+      .tab { padding: 7px 11px; font-size: 12px; gap: 5px; }
+      .tab i { font-size: 15px; }
+      .tab span:not(.badge) { display: none; }
+      .tab .badge { font-size: 8px; padding: 2px 5px; }
+      .icon-btn { width: 32px; height: 32px; font-size: 15px; }
+      .kbd-hint { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hub-header">
+    <div class="brand">
+      <img src="icon-192.png" alt="Prajapati" onerror="this.style.display='none'">
+      <div class="brand-text">
+        <div class="brand-name">Prajapati</div>
+        <div class="brand-sub">Admin Hub</div>
+      </div>
+    </div>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-target="v2" role="tab" aria-selected="true">
+        <i class="ti ti-sparkles"></i>
+        <span>V2 Admin</span>
+        <span class="badge">NEW</span>
+      </button>
+      <button class="tab" data-target="v1" role="tab" aria-selected="false">
+        <i class="ti ti-tool"></i>
+        <span>V1 Classic</span>
+        <span class="badge">v16.2</span>
+      </button>
+    </nav>
+
+    <div class="actions">
+      <div class="info-pill" id="statusPill">
+        <span class="dot"></span>
+        <span id="statusText">Connected</span>
+      </div>
+      <button class="icon-btn" id="btnReload" title="Reload current view (R)">
+        <i class="ti ti-refresh"></i>
+      </button>
+      <button class="icon-btn" id="btnNewTab" title="Open current view in new tab">
+        <i class="ti ti-external-link"></i>
+      </button>
+    </div>
+  </header>
+
+  <div class="frame-wrap">
+    <iframe id="frame-v2" src="about:blank" data-src="admin-v2.html" title="V2 Admin"
+            allow="geolocation; clipboard-write; clipboard-read"
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-downloads allow-popups-to-escape-sandbox"></iframe>
+    <iframe id="frame-v1" src="about:blank" data-src="admin.html" class="frame-hidden" title="V1 Classic"
+            allow="geolocation; clipboard-write; clipboard-read"
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-downloads allow-popups-to-escape-sandbox"></iframe>
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <div class="loading-text" id="loadingText">Loading admin panel...</div>
+    </div>
+  </div>
+
+  <div class="kbd-hint">
+    <kbd>Alt</kbd>+<kbd>1</kbd> V2 · <kbd>Alt</kbd>+<kbd>2</kbd> V1
+  </div>
+
+  <script>
+    const STORE = 'prajapati_admin_hub_tab';
+    const frames = {
+      v2: document.getElementById('frame-v2'),
+      v1: document.getElementById('frame-v1')
+    };
+    const tabs = document.querySelectorAll('.tab');
+    const loading = document.getElementById('loading');
+    const loadingText = document.getElementById('loadingText');
+    const statusText = document.getElementById('statusText');
+
+    let loaded = { v2: false, v1: false };
+    let currentTab = 'v2';
+
+    // Initial tab from hash > localStorage > default v2
+    const hashTab = (location.hash || '').replace('#','');
+    const savedTab = localStorage.getItem(STORE);
+    if (hashTab === 'v1' || hashTab === 'v2') currentTab = hashTab;
+    else if (savedTab === 'v1' || savedTab === 'v2') currentTab = savedTab;
+
+    function showFrame(target, fromUser) {
+      if (target !== 'v1' && target !== 'v2') target = 'v2';
+      currentTab = target;
+      localStorage.setItem(STORE, target);
+
+      // Update URL hash (without scroll, without history pollution for clicks)
+      const newHash = `#${target}`;
+      if (location.hash !== newHash) {
+        if (fromUser) history.pushState(null, '', newHash);
+        else history.replaceState(null, '', newHash);
+      }
+
+      // Update tab states
+      tabs.forEach(t => {
+        const isActive = t.dataset.target === target;
+        t.classList.toggle('active', isActive);
+        t.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+
+      // Update title
+      const tabEl = document.querySelector(`.tab[data-target="${target}"]`);
+      const labelEl = tabEl.querySelector('span:not(.badge)');
+      const label = labelEl ? labelEl.textContent : (target === 'v2' ? 'V2 Admin' : 'V1 Classic');
+      document.title = `${label} · Prajapati Admin`;
+
+      // Lazy-load iframe on first activation
+      if (!loaded[target]) {
+        loadingText.textContent = `Loading ${label}...`;
+        loading.classList.remove('hide');
+        const iframe = frames[target];
+        const src = iframe.dataset.src;
+        iframe.addEventListener('load', () => {
+          loading.classList.add('hide');
+          loaded[target] = true;
+        }, { once: true });
+        iframe.addEventListener('error', () => {
+          loadingText.textContent = `Failed to load ${label}. Check URL.`;
+          statusText.textContent = 'Error';
+        }, { once: true });
+        iframe.src = src;
+      } else {
+        loading.classList.add('hide');
+      }
+
+      // Show / hide frames
+      Object.entries(frames).forEach(([key, frame]) => {
+        frame.classList.toggle('frame-hidden', key !== target);
+      });
+    }
+
+    // Tab click handlers
+    tabs.forEach(t => {
+      t.addEventListener('click', () => showFrame(t.dataset.target, true));
+    });
+
+    // Reload button
+    document.getElementById('btnReload').addEventListener('click', (e) => {
+      const btn = e.currentTarget;
+      btn.classList.remove('spinning');
+      void btn.offsetWidth;
+      btn.classList.add('spinning');
+
+      const iframe = frames[currentTab];
+      loading.classList.remove('hide');
+      loadingText.textContent = 'Reloading...';
+      iframe.addEventListener('load', () => loading.classList.add('hide'), { once: true });
+      try {
+        iframe.contentWindow.location.reload();
+      } catch (err) {
+        iframe.src = iframe.src;
+      }
+    });
+
+    // Open in new tab
+    document.getElementById('btnNewTab').addEventListener('click', () => {
+      const iframe = frames[currentTab];
+      window.open(iframe.dataset.src, '_blank');
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.altKey && !e.ctrlKey && !e.metaKey) {
+        if (e.key === '1') { e.preventDefault(); showFrame('v2', true); }
+        else if (e.key === '2') { e.preventDefault(); showFrame('v1', true); }
+      }
+    });
+
+    // Hash change support (browser back/forward)
+    window.addEventListener('hashchange', () => {
+      const tab = (location.hash || '').replace('#','');
+      if (tab === 'v1' || tab === 'v2') showFrame(tab, false);
+    });
+
+    // Online/offline indicator
+    function updateStatus() {
+      if (navigator.onLine) {
+        statusText.textContent = 'Connected';
+        document.querySelector('.dot').style.background = '#4ADE80';
+        document.querySelector('.dot').style.boxShadow = '0 0 6px #4ADE80';
+      } else {
+        statusText.textContent = 'Offline';
+        document.querySelector('.dot').style.background = '#EF4444';
+        document.querySelector('.dot').style.boxShadow = '0 0 6px #EF4444';
+      }
+    }
+    window.addEventListener('online', updateStatus);
+    window.addEventListener('offline', updateStatus);
+    updateStatus();
+
+    // Init
+    showFrame(currentTab, false);
+  </script>
+</body>
+</html>
