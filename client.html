@@ -1408,7 +1408,7 @@ body::before {
 
 const CONFIG = {
   supabaseUrl: 'https://fpbktcgtspqsqpaytslv.supabase.co',
-  supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwYmt0Y2d0c3Bxc3FwYXl0c2x2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM5MTQ2OTUsImV4cCI6MjA1OTQ5MDY5NX0.lYJovHxAQfeFiYNmnHmIB3SVXfWUjg-VVMQRm6_3M40'
+  supabaseKey: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j'
 };
 
 const state = {
@@ -1493,12 +1493,22 @@ function toast(msg, type) {
 }
 
 // ─── Gate screen ───
-function showGate(title, msg, iconChar) {
+function showGate(title, msg, iconChar, detail) {
   $('loadingScreen').style.display = 'none';
   $('gateScreen').style.display = 'flex';
   $('gateTitle').textContent = title;
   $('gateMsg').textContent = msg;
   $('gateIcon').textContent = iconChar || '!';
+  // Add debug detail if provided
+  var existing = document.getElementById('gateDetail');
+  if (existing) existing.remove();
+  if (detail) {
+    var d = document.createElement('p');
+    d.id = 'gateDetail';
+    d.style.cssText = 'font-family:JetBrains Mono,monospace; font-size:11px; color:#A88A3F; background:rgba(201,166,84,0.08); padding:10px 14px; margin:20px auto 0; max-width:480px; text-align:left; border-left:2px solid #C9A654; line-height:1.5; word-break:break-word;';
+    d.textContent = 'Technical: ' + detail;
+    $('gateScreen').querySelector('.screen-content').appendChild(d);
+  }
 }
 
 // ─── INIT ───
@@ -1568,7 +1578,7 @@ async function init() {
     
   } catch (err) {
     console.error('Init failed:', err);
-    showGate('Connection Issue', 'Unable to load report data. Please check your internet and refresh the page.', 'X');
+    showGate('Connection Issue', 'Unable to load report data. Please check your internet and refresh the page.', 'X', err.message || String(err));
   }
 }
 
