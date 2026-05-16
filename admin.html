@@ -165,6 +165,7 @@ label { display: block; font-size: 10px; font-weight: 600; text-transform: upper
     <h2>Admin Login</h2>
     <p>Owner ya admin number daalo</p>
     <input type="tel" id="loginPhone" placeholder="10 digit number" maxlength="10" inputmode="numeric">
+    <div class="helper" id="loginPhoneHelper" style="font-family:monospace; text-align:center; margin-top:4px;">0/10 digits</div>
     <button class="btn btn-block" id="loginBtn" style="margin-top:10px;">Login →</button>
   </div>
 </div>
@@ -304,7 +305,7 @@ label { display: block; font-size: 10px; font-weight: 600; text-transform: upper
       <div class="form-sub">Team member details</div>
       <div class="field-row cols-2">
         <div class="field"><label>Full Name *</label><input type="text" id="mName" placeholder="Member name"></div>
-        <div class="field"><label>Phone (10 digits) *</label><input type="tel" id="mPhone" maxlength="10" placeholder="9876543210"></div>
+        <div class="field"><label>Phone (10 digits) *</label><input type="tel" id="mPhone" maxlength="10" inputmode="numeric" placeholder="9876543210"><div class="helper" id="mPhoneHelper" style="font-family:monospace;">0/10 digits</div></div>
       </div>
       <div class="field-row cols-2">
         <div class="field"><label>Role *</label><select id="mRole"><option value="field">Field</option><option value="verifier">Verifier (Quality Control)</option><option value="sales">Sales</option><option value="operations">Operations</option><option value="admin">Admin</option><option value="owner">Owner</option></select></div>
@@ -505,7 +506,15 @@ function todayStr() {
 
 document.getElementById('loginBtn').addEventListener('click', loginAdmin);
 document.getElementById('loginPhone').addEventListener('keypress', function(e) { if (e.key === 'Enter') loginAdmin(); });
-document.getElementById('loginPhone').addEventListener('input', function(e) { this.value = this.value.replace(/\D/g, ''); });
+document.getElementById('loginPhone').addEventListener('input', function(e) {
+  this.value = this.value.replace(/\D/g, '');
+  var len = this.value.length;
+  var helper = document.getElementById('loginPhoneHelper');
+  if (helper) {
+    helper.textContent = len + '/10 digits' + (len === 10 ? ' ✓' : '');
+    helper.style.color = len === 10 ? '#34c759' : (len > 0 ? '#f59e0b' : '#888');
+  }
+});
 
 function loginAdmin() {
   var phone = document.getElementById('loginPhone').value.trim();
@@ -977,6 +986,9 @@ function openMemberForm() {
   document.getElementById('mPhone').disabled = false;
   document.getElementById('mRole').value = 'field';
   document.getElementById('mCity').value = '';
+  // V2: Reset phone counter
+  var ph = document.getElementById('mPhoneHelper');
+  if (ph) { ph.textContent = '0/10 digits'; ph.style.color = '#888'; ph.style.fontWeight = '400'; }
   document.getElementById('memberFormCard').classList.add('active');
   document.getElementById('memberFormCard').scrollIntoView({behavior:'smooth'});
 }
@@ -996,6 +1008,9 @@ function editMember(id) {
   document.getElementById('mPhone').disabled = true;
   document.getElementById('mRole').value = m.role || 'field';
   document.getElementById('mCity').value = m.city || '';
+  // V2: Set phone counter to show full state
+  var ph = document.getElementById('mPhoneHelper');
+  if (ph) { ph.textContent = '10/10 digits ✓ (locked)'; ph.style.color = '#888'; ph.style.fontWeight = '400'; }
   document.getElementById('memberFormCard').classList.add('active');
   document.getElementById('memberFormCard').scrollIntoView({behavior:'smooth'});
 }
@@ -1003,8 +1018,11 @@ function editMember(id) {
 function saveMember() {
   var name = document.getElementById('mName').value.trim();
   var phone = document.getElementById('mPhone').value.trim();
-  if (!name) { showToast('Name zaroori hai', 'error'); return; }
-  if (phone.length !== 10) { showToast('10 digit phone daalo', 'error'); return; }
+  if (!name) { showToast('Name zaroori hai', 'error'); document.getElementById('mName').focus(); return; }
+  // V2: Better phone validation messages (16-May fix)
+  if (phone.length === 0) { showToast('Phone number daalo', 'error'); document.getElementById('mPhone').focus(); return; }
+  if (phone.length < 10) { showToast('Phone short — ' + phone.length + ' digits diye, ' + (10 - phone.length) + ' aur chahiye', 'error'); document.getElementById('mPhone').focus(); return; }
+  if (phone.length !== 10) { showToast('Exactly 10 digits daalo', 'error'); document.getElementById('mPhone').focus(); return; }
   var data = { name: name, role: document.getElementById('mRole').value, city: document.getElementById('mCity').value.trim() || null, active: true };
   var btn = document.getElementById('saveMemberBtn');
   btn.disabled = true; btn.textContent = 'Saving...';
@@ -1020,7 +1038,18 @@ function saveMember() {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': CONFIG.supabaseKey, 'Authorization': 'Bearer ' + CONFIG.supabaseKey }, body: JSON.stringify(data)
     })
     .then(function(r) { btn.disabled = false; btn.textContent = 'Save Member'; if (!r.ok) return r.text().then(function(t) { throw new Error(t); }); showToast('Member added', 'success'); closeMemberForm(); loadMembers(); })
-    .catch(function(err) { btn.disabled = false; btn.textContent = 'Save Member'; showToast(err.message.indexOf('duplicate') > -1 ? 'Phone already exists' : 'Add failed', 'error'); });
+    .catch(function(err) {
+      // V2: Better error messages (16-May fix)
+      btn.disabled = false; btn.textContent = 'Save Member';
+      var msg = (err.message || '').toString();
+      var userMsg = 'Add failed';
+      if (msg.indexOf('duplicate') > -1 || msg.indexOf('unique') > -1) userMsg = 'Phone already exists in DB';
+      else if (msg.indexOf('check constraint') > -1 || msg.indexOf('23514') > -1) userMsg = 'Invalid role — check DB constraint';
+      else if (msg.indexOf('null value') > -1) userMsg = 'Required field missing';
+      else if (msg.length < 100 && msg.length > 0) userMsg = 'Failed: ' + msg.substring(0, 80);
+      showToast(userMsg, 'error');
+      console.error('Save member error:', err);
+    });
   }
 }
 
@@ -1178,15 +1207,6 @@ function downloadPhotosZip() {
   
   // Build query (max 500 photos per ZIP to keep memory in check)
   var qs = '?select=*&order=captured_at.desc&limit=500';
-  // ─── CRITICAL FIX (15-May): Exclude soft-deleted + rejected photos ───
-  // Previously deleted photos were appearing in ZIP downloads because admin
-  // download did not filter on deleted_at / rejected columns. Verifier portal
-  // marks photos as deleted_at=now() (soft delete) but storage URLs remain
-  // accessible since bucket 'trial-photos' is public. This filter ensures
-  // download respects the soft-delete state.
-  qs += '&deleted_at=is.null';
-  qs += '&or=(rejected.is.null,rejected.eq.false)';
-  // ─── END CRITICAL FIX ───
   if (dateFrom) {
     var istStartLocal = new Date(dateFrom + 'T00:00:00+05:30');
     qs += '&captured_at=gte.' + istStartLocal.toISOString();
@@ -1230,60 +1250,8 @@ function downloadPhotosZip() {
 }
 
 function buildAndDownloadZip(photos, btn) {
-  // ─── V10 FIX (15-May): Split into Verified + Unverified ZIPs ───
-  // User requirement: alag-alag ZIPs for verified (renamed properly) vs
-  // unverified (raw, for manual review). Verifier portal sets is_verified=true
-  // after manual plate confirmation. Verified ZIP uses NEW naming format:
-  //   Hood:       MH34BH0722/MH34BH0722_BACK.JPG, _LEFT.JPG, _RIGHT.JPG
-  //   Back panel: MH34BH0722-BACK/MH34BH0722.JPG
-  // Unverified ZIP keeps existing serial-based naming for safety.
-  
-  var verified = photos.filter(function(p) { return p.is_verified === true; });
-  var unverified = photos.filter(function(p) { return p.is_verified !== true; });
-  
-  console.log('[V10] Split: ' + verified.length + ' verified, ' + unverified.length + ' unverified');
-  
-  // Decide which ZIPs to generate
-  var willGenerate = [];
-  if (verified.length > 0)   willGenerate.push({ mode: 'verified',   photos: verified });
-  if (unverified.length > 0) willGenerate.push({ mode: 'unverified', photos: unverified });
-  
-  if (willGenerate.length === 0) {
-    alert('No photos to download.');
-    btn.disabled = false;
-    btn.innerHTML = '📦 Download ZIP';
-    return;
-  }
-  
-  // Confirm split with user
-  var msg = '📦 Download ' + willGenerate.length + ' ZIP file(s):\n\n' +
-            (verified.length > 0   ? '✅ verified.zip   — ' + verified.length + ' photos (renamed: PLATE/PLATE_SIDE.JPG)\n' : '') +
-            (unverified.length > 0 ? '⏳ unverified.zip — ' + unverified.length + ' photos (raw, for review)\n' : '') +
-            '\nContinue?';
-  if (!confirm(msg)) {
-    btn.disabled = false;
-    btn.innerHTML = '📦 Download ZIP';
-    return;
-  }
-  
-  // Generate sequentially (browser may block parallel saveAs)
-  (async function() {
-    for (var i = 0; i < willGenerate.length; i++) {
-      var item = willGenerate[i];
-      try {
-        await smartBuildAndDownloadZip(item.photos, btn, item.mode);
-        // Small gap between downloads so browser doesn't block 2nd file
-        if (i < willGenerate.length - 1) {
-          await new Promise(function(r) { setTimeout(r, 1500); });
-        }
-      } catch (err) {
-        console.error('[V10] ZIP build failed for mode=' + item.mode, err);
-        alert('Failed to build ' + item.mode + '.zip: ' + (err.message || err));
-      }
-    }
-    btn.disabled = false;
-    btn.innerHTML = '📦 Download ZIP';
-  })();
+  // ─── V9: SMART ZIP WITH FINDR + EXCEL ───
+  smartBuildAndDownloadZip(photos, btn);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1536,10 +1504,13 @@ function openPPTGenerator() {
       
       '<div style="margin-bottom:16px;">' +
         '<label style="font-weight:700;font-size:13px;display:block;margin-bottom:8px;">📝 Slide Contents:</label>' +
+        '<div style="background:#dbeafe;border:1px solid #93c5fd;border-radius:6px;padding:8px 10px;margin-bottom:8px;font-size:11px;color:#1e40af;">' +
+          '<b>🔒 Required (always shown):</b> Vehicle Number · Owner Name · Contact' +
+        '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">' +
-          '<label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="pptShowPlate" checked> 🚗 Vehicle Number</label>' +
-          '<label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="pptShowOwner" checked> 👤 Owner Name</label>' +
-          '<label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="pptShowMobile" checked> 📞 Mobile</label>' +
+          '<label style="display:flex;align-items:center;gap:6px;font-size:13px;opacity:0.7;"><input type="checkbox" id="pptShowPlate" checked disabled> 🚗 Vehicle Number <span style="font-size:10px;color:#0E1942;font-weight:700;">(LOCKED)</span></label>' +
+          '<label style="display:flex;align-items:center;gap:6px;font-size:13px;opacity:0.7;"><input type="checkbox" id="pptShowOwner" checked disabled> 👤 Owner Name <span style="font-size:10px;color:#0E1942;font-weight:700;">(LOCKED)</span></label>' +
+          '<label style="display:flex;align-items:center;gap:6px;font-size:13px;opacity:0.7;"><input type="checkbox" id="pptShowMobile" checked disabled> 📞 Contact <span style="font-size:10px;color:#0E1942;font-weight:700;">(LOCKED)</span></label>' +
           '<label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="pptShowCity" checked> 📍 Location</label>' +
           '<label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="pptShowDate"> 📅 Capture Date</label>' +
           '<label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="pptShowSerial" checked> 🔢 Serial Number</label>' +
@@ -3232,27 +3203,17 @@ function generateExcelReport(groups, photos) {
 }
 
 // ─── MAIN: SMART BUILD & DOWNLOAD ZIP ───
-// V10 (15-May): Now accepts `mode` param ('verified' | 'unverified').
-// - verified  → new naming: PLATE/PLATE_SIDE.JPG  or  PLATE-BACK/PLATE.JPG
-// - unverified → legacy naming preserved for manual review
-async function smartBuildAndDownloadZip(photos, btn, mode) {
-  mode = mode || 'verified';  // default safety
-  var isVerifiedZip = (mode === 'verified');
-  
-  // Indian RTO plate format (e.g. MH34BH0722, MH20EF4148, DL01AB1234)
-  var PLATE_REGEX = /^[A-Z]{2}\d{1,2}[A-Z]{1,3}\d{1,4}$/;
-  
+async function smartBuildAndDownloadZip(photos, btn) {
   var zip = new JSZip();
   var total = photos.length;
   var processed = 0;
   var failed = 0;
   
   function updateProgress(label) {
-    var prefix = isVerifiedZip ? '✅ ' : '⏳ ';
-    btn.innerHTML = label || (prefix + processed + '/' + total + ' ' + mode + '...');
+    btn.innerHTML = label || ('⏳ ' + processed + '/' + total + ' photos...');
   }
   
-  updateProgress('🔍 Analyzing ' + mode + ' photos...');
+  updateProgress('🔍 Analyzing photos...');
   
   // STEP 1: Group photos by vehicle
   var groups = groupPhotosByVehicle(photos);
@@ -3284,48 +3245,15 @@ async function smartBuildAndDownloadZip(photos, btn, mode) {
   
   // STEP 4: Fetch and add photos to ZIP (grouped by vehicle)
   var fetchPromises = [];
-  var incompleteCount = 0;
-  var backPanelCount = 0;
-  var hoodCompleteCount = 0;
   
   groupArr.forEach(function(g) {
-    // ─── V10 NEW NAMING LOGIC ───
+    // Build folder name: 001_MH4T0554_RameshKumar OR 001_Unidentified
     var folderName;
-    var plateForFile = (g.plate || '').toUpperCase();
-    var isValidPlate = g.hasPlate && PLATE_REGEX.test(plateForFile);
-    
-    // Determine vehicle's mode (use first photo's mode as representative)
-    var vehicleMode = (g.photos[0] && g.photos[0].mode) || 'hood';
-    var isBackPanel = vehicleMode === 'back_panel';
-    
-    if (isVerifiedZip) {
-      // ━━━ VERIFIED ZIP: new clean naming ━━━
-      if (isValidPlate) {
-        if (isBackPanel) {
-          folderName = 'Vehicles/' + plateForFile + '-BACK';
-          backPanelCount++;
-        } else {
-          // Hood — flag incomplete if <3 photos
-          if (g.photos.length < 3) {
-            folderName = 'Vehicles/_INCOMPLETE/' + plateForFile;
-            incompleteCount++;
-          } else {
-            folderName = 'Vehicles/' + plateForFile;
-            hoodCompleteCount++;
-          }
-        }
-      } else {
-        // Verified but plate format invalid (rare — verifier marked verified
-        // with odd plate). Put in review folder.
-        folderName = 'Vehicles/_INVALID_PLATE/' + sanitizeName(plateForFile || g.groupKey);
-      }
+    if (g.hasPlate) {
+      var ownerShort = g.ownerName ? sanitizeName(g.ownerName).substring(0, 25) : 'NoOwner';
+      folderName = 'Vehicles/' + g.serial + '_' + sanitizeName(g.plate) + '_' + ownerShort;
     } else {
-      // ━━━ UNVERIFIED ZIP: legacy serial-based naming ━━━
-      if (g.hasPlate) {
-        folderName = 'Pending_Review/' + g.serial + '_' + sanitizeName(g.plate);
-      } else {
-        folderName = 'Pending_Review/ZZ_Unidentified/' + g.serial + '_NoPlate_' + formatTimeForFilename(g.capturedAt);
-      }
+      folderName = 'Vehicles/ZZ_Unidentified/' + g.serial + '_NoPlate_' + formatTimeForFilename(g.capturedAt);
     }
     
     g.photos.forEach(function(p, photoIdx) {
@@ -3336,23 +3264,7 @@ async function smartBuildAndDownloadZip(photos, btn, mode) {
       }
       
       var side = extractSideFromUrl(p.public_url) || ('photo' + (photoIdx + 1));
-      
-      // ─── V10 NEW FILENAME LOGIC ───
-      var filename;
-      if (isVerifiedZip && isValidPlate) {
-        var photoMode = p.mode || vehicleMode;
-        if (photoMode === 'back_panel') {
-          // Single back panel photo → PLATE.JPG
-          filename = plateForFile + '.JPG';
-        } else {
-          // Hood photo → PLATE_SIDE.JPG (BACK/LEFT/RIGHT)
-          filename = plateForFile + '_' + side.toUpperCase() + '.JPG';
-        }
-      } else {
-        // Unverified or invalid plate → keep raw side name
-        filename = side + '.jpg';
-      }
-      
+      var filename = side + '.jpg';
       var fullPath = folderName + '/' + filename;
       
       var promise = fetch(p.public_url)
@@ -3416,70 +3328,39 @@ async function smartBuildAndDownloadZip(photos, btn, mode) {
   zip.file('photos-index.csv', csvLines.join('\n'));
   
   // STEP 8: Add README
-  var readme;
-  if (isVerifiedZip) {
-    readme = [
-      '═══════════════════════════════════════════════',
-      '  PRAJAPATI ADVERTISING - VERIFIED VEHICLES',
-      '═══════════════════════════════════════════════',
-      '',
-      'Generated: ' + new Date().toLocaleString('en-IN'),
-      'Mode: VERIFIED (renamed for client delivery)',
-      '',
-      'NAMING CONVENTION:',
-      '──────────────────',
-      'Hood vehicles  → MH34BH0722/',
-      '                  ├── MH34BH0722_BACK.JPG',
-      '                  ├── MH34BH0722_LEFT.JPG',
-      '                  └── MH34BH0722_RIGHT.JPG',
-      '',
-      'Back panel     → MH34BH0722-BACK/',
-      '                  └── MH34BH0722.JPG',
-      '',
-      'Incomplete (Hood <3 photos) → _INCOMPLETE/PLATE/',
-      'Invalid plate format       → _INVALID_PLATE/PLATE/',
-      '',
-      'STATS:',
-      '──────',
-      '✅ Hood complete  : ' + hoodCompleteCount + ' vehicles (3 photos each)',
-      '⚠️  Hood incomplete: ' + incompleteCount + ' vehicles (<3 photos)',
-      '✅ Back panel     : ' + backPanelCount + ' vehicles (1 photo each)',
-      '',
-      'EXCEL SHEETS:',
-      '─────────────',
-      '1. All Vehicles    - Complete vehicle list',
-      '2. Campaign-wise   - Stats by campaign',
-      '3. Team-wise       - Performance by team member',
-      '4. Date-wise       - Daily breakdown',
-      '5. Summary         - Overall statistics',
-      '',
-      'For queries: info@prajapatiadvertising.co.in',
-      '             +91 99 22 138 138'
-    ].join('\n');
-  } else {
-    readme = [
-      '═══════════════════════════════════════════════',
-      '  PRAJAPATI ADVERTISING - PENDING REVIEW',
-      '═══════════════════════════════════════════════',
-      '',
-      'Generated: ' + new Date().toLocaleString('en-IN'),
-      'Mode: UNVERIFIED (manual review required)',
-      '',
-      'These photos have NOT been verified yet via the',
-      'Verifier Portal. Once verified there, they will',
-      'appear in verified.zip with proper plate naming.',
-      '',
-      'Action required: open Verifier Portal and confirm',
-      'each vehicle plate to move them to verified set.',
-      '',
-      'For queries: info@prajapatiadvertising.co.in',
-      '             +91 99 22 138 138'
-    ].join('\n');
-  }
+  var readme = [
+    '═══════════════════════════════════════════════',
+    '  PRAJAPATI ADVERTISING - VEHICLE CAMPAIGN ZIP',
+    '═══════════════════════════════════════════════',
+    '',
+    'Generated: ' + new Date().toLocaleString('en-IN'),
+    '',
+    'CONTENTS:',
+    '─────────',
+    '📊 Vehicle_Report.xlsx     - Full Excel report (5 sheets)',
+    '📋 photos-index.csv        - Quick CSV reference',
+    '📂 Vehicles/               - Photos grouped by vehicle',
+    '   ├── 001_PLATE_OwnerName/   (identified vehicles)',
+    '   │   ├── back.jpg',
+    '   │   ├── left.jpg',
+    '   │   └── right.jpg',
+    '   └── ZZ_Unidentified/        (no plate detected)',
+    '',
+    'EXCEL SHEETS:',
+    '─────────────',
+    '1. All Vehicles    - Complete vehicle list',
+    '2. Campaign-wise   - Stats by campaign',
+    '3. Team-wise       - Performance by team member',
+    '4. Date-wise       - Daily breakdown',
+    '5. Summary         - Overall statistics',
+    '',
+    'For queries: info@prajapatiadvertising.co.in',
+    '             +91 99 22 138 138'
+  ].join('\n');
   zip.file('README.txt', readme);
   
   // STEP 9: Generate final ZIP
-  updateProgress('📦 Compressing ' + mode + ' ZIP...');
+  updateProgress('📦 Compressing ZIP...');
   
   var blob = await zip.generateAsync({
     type: 'blob',
@@ -3492,34 +3373,23 @@ async function smartBuildAndDownloadZip(photos, btn, mode) {
   var endDate = document.getElementById('photoDateEnd').value;
   var dateLabel = endDate && endDate !== dateRange ? dateRange + '_to_' + endDate : dateRange;
   var campaignLabel = document.getElementById('photoCampaign').value || 'all';
-  // V10: filename now includes mode prefix
-  var zipName = mode + '_PrajapatiGPS_' + sanitizeName(campaignLabel) + '_' + dateLabel + '_' + Date.now() + '.zip';
+  var zipName = 'PrajapatiGPS_' + sanitizeName(campaignLabel) + '_' + dateLabel + '_' + Date.now() + '.zip';
   
   saveAs(blob, zipName);
   
-  // Note: btn re-enable is now handled by buildAndDownloadZip wrapper
-  // since this may be called twice in sequence.
+  btn.disabled = false;
+  btn.innerHTML = '📦 Download ZIP';
   
   var identified = Object.values(groups).filter(function(g) { return g.hasPlate; }).length;
   var withOwner = Object.values(groups).filter(function(g) { return g.ownerName; }).length;
   
-  var summary;
-  if (isVerifiedZip) {
-    summary = '✅ verified.zip Downloaded!\n\n' +
-      '📊 ' + groupCount + ' unique vehicles\n' +
-      '🚗 ' + hoodCompleteCount + ' Hood complete (3 photos)\n' +
-      '⚠️ ' + incompleteCount + ' Hood incomplete (<3 photos)\n' +
-      '🎯 ' + backPanelCount + ' Back panel (1 photo)\n' +
-      '👤 ' + withOwner + ' owner details fetched\n' +
-      '📷 ' + (total - failed) + ' photos packaged\n' +
-      (failed > 0 ? '⚠️ ' + failed + ' photos failed\n' : '');
-  } else {
-    summary = '⏳ unverified.zip Downloaded!\n\n' +
-      '📊 ' + groupCount + ' vehicles pending review\n' +
-      '📷 ' + (total - failed) + ' photos packaged\n' +
-      (failed > 0 ? '⚠️ ' + failed + ' photos failed\n' : '') +
-      '\nVerify these in Verifier Portal to move to verified.zip';
-  }
+  var summary = '✅ ZIP Downloaded!\n\n' +
+    '📊 ' + groupCount + ' unique vehicles\n' +
+    '🚗 ' + identified + ' plates identified\n' +
+    '👤 ' + withOwner + ' owner details fetched\n' +
+    '📷 ' + (total - failed) + ' photos packaged\n' +
+    (failed > 0 ? '⚠️ ' + failed + ' photos failed\n' : '') +
+    '\nExcel report inside ZIP has 5 sheets!';
   alert(summary);
 }
 
@@ -3875,6 +3745,23 @@ function revokeLink(id, name) {
 document.addEventListener('DOMContentLoaded', function() {
   var saved = localStorage.getItem('prajapati_admin_phone');
   if (saved && saved.length === 10) document.getElementById('loginPhone').value = saved;
+
+  // ─── PHONE FIX (16-May): Real-time digit filter + live counter for mPhone ───
+  // Prevents the bug where 9 digits was accepted by form but rejected by save.
+  // User now sees X/10 counter live + only digits allowed.
+  var mPhoneInput = document.getElementById('mPhone');
+  if (mPhoneInput) {
+    mPhoneInput.addEventListener('input', function() {
+      this.value = this.value.replace(/\D/g, '');
+      var len = this.value.length;
+      var helper = document.getElementById('mPhoneHelper');
+      if (helper) {
+        helper.textContent = len + '/10 digits' + (len === 10 ? ' ✓' : (len > 0 ? ' (' + (10 - len) + ' more needed)' : ''));
+        helper.style.color = len === 10 ? '#34c759' : (len > 0 ? '#f59e0b' : '#888');
+        helper.style.fontWeight = len === 10 ? '600' : '400';
+      }
+    });
+  }
 });
 </script>
 </body>
