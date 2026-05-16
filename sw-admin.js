@@ -4,7 +4,7 @@
 // Version bump triggers cache invalidation
 // ════════════════════════════════════════════════════════════════════
 
-const VERSION = 'admin-v2.0-phase3-20260516';
+const VERSION = 'admin-v2.1-phase4-photofix-20260516';
 const CACHE_NAME = 'prajapati-admin-' + VERSION;
 
 // Files to cache on install

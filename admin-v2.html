@@ -5202,26 +5202,30 @@ function loadPhotos() {
   
   p4state.lastQuery = qs;  // save for Load More
   
-  // Direct fetch (not via api helper) so we can read Content-Range header for true total
-  fetch(CONFIG.supabaseUrl + qs + '&limit=' + p4state.photosLimit + '&offset=0', {
+  // Direct fetch with Prefer: count=exact to read Content-Range header for true total
+  var dataUrl = CONFIG.supabaseUrl + qs + '&limit=' + p4state.photosLimit + '&offset=0';
+  console.log('[Photos] Fetching:', dataUrl);
+  
+  fetch(dataUrl, {
     headers: {
       apikey: CONFIG.supabaseKey,
       Authorization: 'Bearer ' + CONFIG.supabaseKey,
-      'Prefer': 'count=exact',
-      'Range-Unit': 'items',
-      'Range': '0-' + (p4state.photosLimit - 1)
+      'Prefer': 'count=exact'
     }
   }).then(function(r) {
     if (!r.ok) return r.text().then(function(t){ throw new Error('API ' + r.status + ': ' + t); });
-    var cr = r.headers.get('Content-Range') || '';
+    var cr = r.headers.get('Content-Range') || r.headers.get('content-range') || '';
     var total = parseInt(cr.split('/').pop()) || 0;
+    console.log('[Photos] Content-Range:', cr, '| Parsed total:', total);
     return r.json().then(function(photos) {
+      console.log('[Photos] Loaded:', (photos || []).length, 'photos from server, total available:', total);
       return { photos: photos, total: total };
     });
   }).then(function(result) {
     p4state.photos = result.photos || [];
     p4state.filteredPhotos = p4state.photos.slice();
-    p4state.totalPhotos = result.total;
+    // Fallback: if Content-Range parsing failed (total=0 but photos exist), use loaded count
+    p4state.totalPhotos = result.total > 0 ? result.total : p4state.photos.length;
     p4state.photosOffset = p4state.photos.length;
     
     // Populate city filter from data (one-time per load)
