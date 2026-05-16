@@ -5115,9 +5115,10 @@ var p4state = {
   photoView: 'grid',
   photos: [],
   filteredPhotos: [],
-  photosLimit: 60,
+  photosLimit: 500,          // default page size (was 60 - too small)
   photosOffset: 0,
-  totalPhotos: 0,
+  totalPhotos: 0,            // TRUE total on server (across all pages)
+  lastQuery: '',             // saved query for Load More pagination
   realtimeChannel: null,
   currentPhoto: null,
   clientLinks: [],
@@ -5163,6 +5164,7 @@ function loadPhotos() {
   
   p4state.photosOffset = 0;
   $('photosGridContainer').innerHTML = '<div class="spinner"></div>';
+  $('photosLoadMore').style.display = 'none';
   
   // Populate filter dropdowns once
   if ($('photosCampaign').options.length <= 1 && state.campaigns.length > 0) {
@@ -5197,12 +5199,30 @@ function loadPhotos() {
   if (status === 'verified') qs += '&is_verified=eq.true';
   else if (status === 'pending') qs += '&is_verified=is.null&or=(rejected.is.null,rejected.eq.false)';
   else if (status === 'rejected') qs += '&rejected=eq.true';
-  qs += '&limit=' + p4state.photosLimit;
   
-  api(qs).then(function(photos) {
-    p4state.photos = photos || [];
+  p4state.lastQuery = qs;  // save for Load More
+  
+  // Direct fetch (not via api helper) so we can read Content-Range header for true total
+  fetch(CONFIG.supabaseUrl + qs + '&limit=' + p4state.photosLimit + '&offset=0', {
+    headers: {
+      apikey: CONFIG.supabaseKey,
+      Authorization: 'Bearer ' + CONFIG.supabaseKey,
+      'Prefer': 'count=exact',
+      'Range-Unit': 'items',
+      'Range': '0-' + (p4state.photosLimit - 1)
+    }
+  }).then(function(r) {
+    if (!r.ok) return r.text().then(function(t){ throw new Error('API ' + r.status + ': ' + t); });
+    var cr = r.headers.get('Content-Range') || '';
+    var total = parseInt(cr.split('/').pop()) || 0;
+    return r.json().then(function(photos) {
+      return { photos: photos, total: total };
+    });
+  }).then(function(result) {
+    p4state.photos = result.photos || [];
     p4state.filteredPhotos = p4state.photos.slice();
-    p4state.totalPhotos = p4state.photos.length;
+    p4state.totalPhotos = result.total;
+    p4state.photosOffset = p4state.photos.length;
     
     // Populate city filter from data (one-time per load)
     var cities = new Set();
@@ -5218,25 +5238,79 @@ function loadPhotos() {
     updatePhotoStats();
     renderPhotos();
     setupRealtimeSubscription();
+    
+    // Show Load More button if there are more photos on server
+    if (p4state.totalPhotos > p4state.photos.length) {
+      $('photosLoadMore').style.display = 'block';
+      $('photosShown').textContent = p4state.photos.length;
+      $('photosTotal').textContent = p4state.totalPhotos;
+    } else {
+      $('photosLoadMore').style.display = 'none';
+    }
   }).catch(function(err) {
     console.error(err);
     $('photosGridContainer').innerHTML = '<div class="empty-state"><i class="ti ti-alert-circle"></i>Load failed: ' + escapeHtml(err.message || '?') + '</div>';
   });
 }
 
+function loadMorePhotos() {
+  if (!p4state.lastQuery) return;
+  var btn = document.querySelector('#photosLoadMore button');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2 ti-spin"></i> Loading...'; }
+  
+  fetch(CONFIG.supabaseUrl + p4state.lastQuery + '&limit=' + p4state.photosLimit + '&offset=' + p4state.photosOffset, {
+    headers: {
+      apikey: CONFIG.supabaseKey,
+      Authorization: 'Bearer ' + CONFIG.supabaseKey
+    }
+  }).then(function(r) {
+    if (!r.ok) return r.text().then(function(t){ throw new Error('API ' + r.status + ': ' + t); });
+    return r.json();
+  }).then(function(more) {
+    more = more || [];
+    p4state.photos = p4state.photos.concat(more);
+    p4state.photosOffset = p4state.photos.length;
+    
+    // Re-apply local search filter if any
+    filterPhotosLocal();
+    
+    if (p4state.totalPhotos > p4state.photos.length) {
+      $('photosShown').textContent = p4state.photos.length;
+      $('photosTotal').textContent = p4state.totalPhotos;
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-arrow-down"></i> Load more (showing <span id="photosShown">' + p4state.photos.length + '</span> of <span id="photosTotal">' + p4state.totalPhotos + '</span>)'; }
+    } else {
+      $('photosLoadMore').style.display = 'none';
+      showToast('All ' + p4state.totalPhotos + ' photos loaded', 'success');
+    }
+  }).catch(function(err) {
+    console.error(err);
+    showToast('Failed to load more: ' + err.message, 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-arrow-down"></i> Load more (retry)'; }
+  });
+}
+
 function updatePhotoStats() {
   var photos = p4state.filteredPhotos;
+  var loaded = p4state.photos.length;
+  var serverTotal = p4state.totalPhotos || loaded;
   var verified = photos.filter(function(p){ return p.is_verified; }).length;
   var pending = photos.filter(function(p){ return !p.is_verified && !p.rejected; }).length;
   var vehicles = new Set();
   photos.forEach(function(p){ if (p.vehicle_number) vehicles.add(p.vehicle_number.toUpperCase()); });
   
-  $('pTotal').textContent = photos.length;
+  // Show SERVER total in pTotal (not just loaded)
+  $('pTotal').textContent = serverTotal;
   $('pVerified').textContent = verified;
   $('pPending').textContent = pending;
   $('pVehicles').textContent = vehicles.size;
-  $('navPhotosCount').textContent = photos.length;
-  $('photosSubtitle').textContent = photos.length + ' photos · ' + vehicles.size + ' vehicles · live updates ON';
+  $('navPhotosCount').textContent = serverTotal;
+  
+  // Subtitle: clear distinction between loaded vs total
+  if (loaded < serverTotal) {
+    $('photosSubtitle').textContent = 'Showing ' + loaded + ' of ' + serverTotal + ' photos · ' + vehicles.size + ' vehicles loaded · live ON';
+  } else {
+    $('photosSubtitle').textContent = serverTotal + ' photos · ' + vehicles.size + ' vehicles · live updates ON';
+  }
 }
 
 function filterPhotosLocal() {
