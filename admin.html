@@ -9,6 +9,13 @@
 <meta name="theme-color" content="#0B1957">
 <title>Prajapati GPS · Admin v2</title>
 
+<!-- PWA Manifest + Icons (Phase 3) -->
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Prajapati Admin">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -1043,6 +1050,384 @@ label {
   .mode-grid { grid-template-columns: 1fr; }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   PHASE 3 STYLES — Reports + Settings + PWA Install
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Report dimension tabs */
+.report-tabs {
+  display: inline-flex;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  padding: 4px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 18px;
+  gap: 2px;
+  flex-wrap: wrap;
+}
+.report-tab {
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text-2);
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+}
+.report-tab i { font-size: 16px; }
+.report-tab:hover { color: var(--text-1); }
+.report-tab.active {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(11,25,87,0.18);
+}
+.report-tab .count-pill {
+  background: rgba(255,255,255,0.18);
+  color: rgba(255,255,255,0.9);
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+}
+.report-tab:not(.active) .count-pill {
+  background: var(--bg);
+  color: var(--text-2);
+}
+
+/* Date filter bar */
+.report-filter-bar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
+}
+.report-filter-bar input, .report-filter-bar select {
+  width: auto;
+  padding: 7px 10px;
+  font-size: 12px;
+}
+.report-filter-bar label {
+  margin-bottom: 0;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.quick-range {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.quick-range button {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 5px 11px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text-2);
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.quick-range button:hover { border-color: var(--border-strong); color: var(--text-1); }
+.quick-range button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+.report-view { display: none; }
+.report-view.active { display: block; }
+
+/* Location/Campaign card (reports) */
+.location-card {
+  background: var(--card);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+  padding: 18px 22px;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.15s;
+}
+.location-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+.location-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 14px;
+  gap: 12px;
+}
+.location-name-block { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.location-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  background: var(--info-bg);
+  color: var(--info);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.location-icon i { font-size: 22px; }
+.location-name { font-size: 16px; font-weight: 700; letter-spacing: -0.2px; }
+.location-meta {
+  font-size: 12px; color: var(--text-2); margin-top: 2px;
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.location-progress-block { text-align: right; min-width: 120px; }
+.location-progress-num {
+  font-size: 20px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: -0.3px;
+}
+.location-progress-num small { color: var(--text-2); font-weight: 400; font-size: 13px; }
+.location-progress-pct { font-size: 11px; font-weight: 700; color: var(--success); margin-top: 2px; }
+
+.progress-track {
+  background: var(--bg);
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-deep), var(--accent));
+  border-radius: 5px;
+  position: relative;
+  transition: width 0.4s ease;
+}
+.progress-fill.warn { background: linear-gradient(90deg, var(--warn), #b25e00); }
+.progress-fill.danger { background: linear-gradient(90deg, var(--danger), #991b1b); }
+
+.mini-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  font-size: 12px;
+}
+.mini-stat-box {
+  background: var(--surface);
+  padding: 9px 12px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+}
+.mini-stat-box .label {
+  font-size: 10px; color: var(--text-2);
+  text-transform: uppercase; letter-spacing: 0.4px; font-weight: 600;
+}
+.mini-stat-box .val {
+  font-size: 16px; font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: -0.3px; margin-top: 2px;
+}
+
+/* Team report table */
+.team-report-table {
+  background: var(--card);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 18px;
+  overflow-x: auto;
+}
+.team-report-table table { width: 100%; border-collapse: collapse; min-width: 700px; }
+.team-report-table thead {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.team-report-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.team-report-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  vertical-align: middle;
+}
+.team-report-table tr:last-child td { border-bottom: none; }
+.team-report-table tr:hover { background: var(--surface); }
+.team-report-table .num-cell {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  text-align: right;
+}
+.team-report-table .name-cell { display: flex; align-items: center; gap: 10px; }
+.team-report-table .name-cell .member-avatar {
+  width: 32px; height: 32px; font-size: 11px;
+}
+.team-report-table .name-cell .info > div { font-weight: 600; font-size: 13px; }
+.team-report-table .name-cell .info small { font-size: 11px; color: var(--text-2); font-family: 'JetBrains Mono', monospace; }
+.team-report-table .mini-bar {
+  width: 80px;
+  background: var(--bg);
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  display: inline-block;
+  vertical-align: middle;
+}
+.team-report-table .mini-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-deep), var(--accent));
+  border-radius: 3px;
+}
+
+/* Daily trend bar chart */
+.bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  height: 140px;
+  padding: 12px 0;
+  margin-bottom: 8px;
+}
+.bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+.bar-value { font-size: 11px; color: var(--text-2); font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+.bar {
+  width: 100%;
+  background: linear-gradient(180deg, var(--accent), var(--accent-deep));
+  border-radius: 4px 4px 0 0;
+  min-height: 6px;
+  transition: height 0.4s ease;
+}
+.bar.today { background: linear-gradient(180deg, var(--gold), #c89004); }
+.bar-labels {
+  display: flex;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+}
+.bar-labels div { flex: 1; text-align: center; color: var(--text-2); font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar-labels div.today { color: var(--text-1); font-weight: 700; }
+
+.chart-card {
+  background: var(--card);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 16px;
+}
+
+/* Settings sections */
+.settings-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+.settings-card {
+  background: var(--card);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+  padding: 20px 22px;
+  box-shadow: var(--shadow-sm);
+}
+.settings-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 6px;
+}
+.settings-card-title i { font-size: 18px; color: var(--accent-deep); }
+.settings-card-desc {
+  font-size: 12px;
+  color: var(--text-2);
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+.settings-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  gap: 14px;
+  font-size: 13px;
+}
+.settings-row:first-child { border-top: none; padding-top: 0; }
+.settings-row .label { font-weight: 600; color: var(--text-1); }
+.settings-row .value { color: var(--text-2); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+/* PWA Install prompt (when installable) */
+.pwa-install-banner {
+  display: none;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-700) 100%);
+  color: #fff;
+  border-radius: var(--r-lg);
+  padding: 16px 20px;
+  margin-bottom: 18px;
+  align-items: center;
+  gap: 14px;
+  box-shadow: var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+}
+.pwa-install-banner.show { display: flex; }
+.pwa-install-banner::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -10%;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(38,208,206,0.2) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.pwa-install-banner i.lead {
+  font-size: 28px;
+  color: var(--accent);
+  flex-shrink: 0;
+  z-index: 1;
+}
+.pwa-install-banner .pwa-text { flex: 1; z-index: 1; }
+.pwa-install-banner h3 { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
+.pwa-install-banner p { font-size: 12px; opacity: 0.85; line-height: 1.5; margin: 0; }
+.pwa-install-banner .pwa-actions { display: flex; gap: 8px; flex-shrink: 0; z-index: 1; }
+.pwa-install-banner .pwa-dismiss {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.pwa-install-banner .pwa-dismiss:hover { background: rgba(255,255,255,0.25); }
+
+@media (max-width: 768px) {
+  .mini-stats-grid { grid-template-columns: 1fr 1fr; }
+  .report-filter-bar { padding: 10px; gap: 8px; }
+  .quick-range { width: 100%; margin-left: 0; justify-content: flex-start; flex-wrap: wrap; }
+  .pwa-install-banner { flex-direction: column; align-items: flex-start; }
+  .location-progress-block { text-align: left; }
+}
+
 /* ─── COMING SOON PANEL ─── */
 .coming-soon {
   background: var(--card);
@@ -1172,10 +1557,9 @@ label {
         <span>Verifier portal</span>
         <i class="ti ti-external-link" style="font-size:13px; margin-left:auto; opacity:0.5;"></i>
       </div>
-      <div class="nav-item disabled" title="Coming in Phase 3">
+      <div class="nav-item" data-tab="reports" onclick="switchTab('reports')">
         <i class="ti ti-chart-bar"></i>
         <span>Reports</span>
-        <span class="soon-tag">SOON</span>
       </div>
       <div class="nav-item disabled" title="Coming in Phase 2">
         <i class="ti ti-link"></i>
@@ -1196,10 +1580,9 @@ label {
         <span>Bulk import</span>
         <span class="soon-tag">SOON</span>
       </div>
-      <div class="nav-item disabled" title="Coming in Phase 3">
+      <div class="nav-item" data-tab="settings" onclick="switchTab('settings')">
         <i class="ti ti-settings"></i>
         <span>Settings</span>
-        <span class="soon-tag">SOON</span>
       </div>
     </div>
 
@@ -1219,6 +1602,21 @@ label {
 
   <!-- ──── MAIN ──── -->
   <main class="main">
+
+    <!-- PWA Install Banner (auto-shows when installable) -->
+    <div class="pwa-install-banner" id="pwaBanner">
+      <i class="ti ti-device-mobile-down lead"></i>
+      <div class="pwa-text">
+        <h3>Install Prajapati Admin as an app</h3>
+        <p>Phone/desktop pe full-screen app jaise chalega. Notifications + faster load. Browser address bar gayab.</p>
+      </div>
+      <div class="pwa-actions">
+        <button class="btn btn-accent btn-sm" onclick="installPwa()">
+          <i class="ti ti-download"></i> Install
+        </button>
+        <button class="pwa-dismiss" onclick="dismissPwaBanner()">Later</button>
+      </div>
+    </div>
 
     <!-- ─── DASHBOARD ─── -->
     <div id="tab-dashboard" class="tab-content active">
@@ -1375,6 +1773,250 @@ label {
 
       <div class="notes-box">
         <i class="ti ti-calendar-event"></i><strong>How it works:</strong> Har member ke liye us date par campaign select karo. Field app mein members ko same campaign milega — campaign ke media type (Hood 3 / Back panel 1 / Both 4) ke hisaab se photos lene honge. Empty select karne se assignment delete ho jata hai.
+      </div>
+    </div>
+
+    <!-- ─── PHASE 3: REPORTS ─── -->
+    <div id="tab-reports" class="tab-content">
+      <div class="topbar">
+        <div>
+          <h1 class="page-title">Reports</h1>
+          <p class="page-sub" id="reportsSubtitle">Location-wise, campaign-wise, team-wise insights</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn-ghost" onclick="exportReportExcel()">
+            <i class="ti ti-file-spreadsheet"></i> Excel
+          </button>
+          <button class="btn btn-ghost" onclick="loadReports()">
+            <i class="ti ti-refresh"></i> Refresh
+          </button>
+        </div>
+      </div>
+
+      <!-- Date filter -->
+      <div class="report-filter-bar">
+        <div>
+          <label>From</label>
+          <input type="date" id="reportDateFrom" onchange="loadReports()">
+        </div>
+        <div>
+          <label>To</label>
+          <input type="date" id="reportDateTo" onchange="loadReports()">
+        </div>
+        <div>
+          <label>Campaign</label>
+          <select id="reportCampaign" onchange="loadReports()" style="min-width:140px;">
+            <option value="">All campaigns</option>
+          </select>
+        </div>
+        <div class="quick-range">
+          <button onclick="setReportRange('today')">Today</button>
+          <button onclick="setReportRange('week')" class="active">Last 7 days</button>
+          <button onclick="setReportRange('month')">30 days</button>
+          <button onclick="setReportRange('all')">All time</button>
+        </div>
+      </div>
+
+      <!-- Stats overview -->
+      <div class="stat-grid" id="reportStatGrid">
+        <div class="stat">
+          <div class="stat-label">Total photos</div>
+          <div class="stat-value" id="rTotalPhotos">—</div>
+          <div class="stat-meta" id="rTotalMeta">Loading...</div>
+        </div>
+        <div class="stat stat-success">
+          <div class="stat-icon" style="background:var(--success-bg); color:var(--success);"><i class="ti ti-shield-check"></i></div>
+          <div class="stat-label">Verified</div>
+          <div class="stat-value" id="rVerified" style="color:var(--success);">—</div>
+          <div class="stat-meta" id="rVerifiedMeta">—</div>
+        </div>
+        <div class="stat stat-warn">
+          <div class="stat-icon" style="background:var(--warn-bg); color:var(--warn);"><i class="ti ti-clock"></i></div>
+          <div class="stat-label">Pending</div>
+          <div class="stat-value" id="rPending" style="color:var(--warn);">—</div>
+          <div class="stat-meta">awaiting review</div>
+        </div>
+        <div class="stat">
+          <div class="stat-icon" style="background:rgba(38,208,206,0.12); color:var(--accent-deep);"><i class="ti ti-car"></i></div>
+          <div class="stat-label">Unique vehicles</div>
+          <div class="stat-value" id="rVehicles">—</div>
+          <div class="stat-meta">documented</div>
+        </div>
+      </div>
+
+      <!-- Report dimension tabs -->
+      <div class="report-tabs">
+        <button class="report-tab active" data-rtab="location" onclick="switchReportTab('location')">
+          <i class="ti ti-map-2"></i> Location-wise <span class="count-pill" id="rLocCount">—</span>
+        </button>
+        <button class="report-tab" data-rtab="campaign" onclick="switchReportTab('campaign')">
+          <i class="ti ti-flag"></i> Campaign-wise <span class="count-pill" id="rCampCount">—</span>
+        </button>
+        <button class="report-tab" data-rtab="team" onclick="switchReportTab('team')">
+          <i class="ti ti-users"></i> Team-wise <span class="count-pill" id="rTeamCount">—</span>
+        </button>
+      </div>
+
+      <!-- Location-wise view -->
+      <div class="report-view active" data-rview="location" id="rLocationView">
+        <div class="spinner"></div>
+      </div>
+
+      <!-- Campaign-wise view -->
+      <div class="report-view" data-rview="campaign" id="rCampaignView">
+        <div class="spinner"></div>
+      </div>
+
+      <!-- Team-wise view -->
+      <div class="report-view" data-rview="team" id="rTeamView">
+        <div class="spinner"></div>
+      </div>
+
+      <!-- Daily trend chart (always visible at bottom) -->
+      <div class="sec-header" style="margin-top:24px;">
+        <div class="sec-title"><i class="ti ti-chart-bar"></i> Daily trend</div>
+        <span style="font-size:11px; color:var(--text-2);" id="trendSubtitle">last 7 days</span>
+      </div>
+      <div class="chart-card">
+        <div class="bar-chart" id="trendChart">
+          <div class="bar-col"><div class="bar-value">—</div><div class="bar" style="height:0%;"></div></div>
+        </div>
+        <div class="bar-labels" id="trendLabels">
+          <div>—</div>
+        </div>
+      </div>
+
+      <div class="notes-box">
+        <i class="ti ti-info-circle"></i><strong>Phase 3:</strong> Reports filter date range + campaign se. Excel export full data deta hai. PPT generation V1 admin se hoga (Photos browser tab).
+      </div>
+    </div>
+
+    <!-- ─── PHASE 3: SETTINGS ─── -->
+    <div id="tab-settings" class="tab-content">
+      <div class="topbar">
+        <div>
+          <h1 class="page-title">Settings</h1>
+          <p class="page-sub">System configuration · API keys · Account info</p>
+        </div>
+      </div>
+
+      <div class="settings-grid">
+
+        <!-- Account -->
+        <div class="settings-card">
+          <div class="settings-card-title"><i class="ti ti-user-circle"></i> Account</div>
+          <div class="settings-card-desc">Login info aur role details.</div>
+          <div class="settings-row">
+            <span class="label">Logged in as</span>
+            <span class="value" id="settingsAdminName">—</span>
+          </div>
+          <div class="settings-row">
+            <span class="label">Phone</span>
+            <span class="value" id="settingsAdminPhone">—</span>
+          </div>
+          <div class="settings-row">
+            <span class="label">Role</span>
+            <span class="value" id="settingsAdminRole">—</span>
+          </div>
+          <div class="settings-row">
+            <span class="label">Member ID</span>
+            <span class="value" id="settingsAdminId">—</span>
+          </div>
+        </div>
+
+        <!-- App Info -->
+        <div class="settings-card">
+          <div class="settings-card-title"><i class="ti ti-info-circle"></i> App information</div>
+          <div class="settings-card-desc">Version + deployment info.</div>
+          <div class="settings-row">
+            <span class="label">Admin V2 version</span>
+            <span class="value">2.0 (Phase 3 — Final)</span>
+          </div>
+          <div class="settings-row">
+            <span class="label">Build date</span>
+            <span class="value">16-May-2026</span>
+          </div>
+          <div class="settings-row">
+            <span class="label">Backend</span>
+            <span class="value">Supabase (fpbktcgtspqsqpaytslv)</span>
+          </div>
+          <div class="settings-row">
+            <span class="label">PWA status</span>
+            <span class="value" id="settingsPwaStatus">Checking...</span>
+          </div>
+        </div>
+
+        <!-- PWA Install -->
+        <div class="settings-card">
+          <div class="settings-card-title"><i class="ti ti-device-mobile-down"></i> Install as app</div>
+          <div class="settings-card-desc">
+            Phone/desktop home screen pe install karo — proper app jaise launch hoga, browser address bar nahi dikhega, notifications support.
+          </div>
+          <div id="installButtonContainer">
+            <button class="btn btn-primary" id="installBtn" onclick="installPwa()" style="display:none;">
+              <i class="ti ti-download"></i> Install app now
+            </button>
+            <div id="installStatus" style="font-size:12px; color:var(--text-2); padding:10px; background:var(--surface); border-radius:8px;">
+              <i class="ti ti-info-circle" style="vertical-align:-2px; color:var(--info);"></i>
+              <span id="installStatusText">Checking installability...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- External Tools -->
+        <div class="settings-card">
+          <div class="settings-card-title"><i class="ti ti-external-link"></i> External tools</div>
+          <div class="settings-card-desc">V1 admin tools jo Phase 3 me port nahi hue.</div>
+          <div class="settings-row">
+            <span class="label">Photos browser + ZIP/Excel/PPT</span>
+            <button class="btn btn-sm btn-ghost" onclick="openExternal('admin.html')">
+              <i class="ti ti-external-link"></i> Open V1
+            </button>
+          </div>
+          <div class="settings-row">
+            <span class="label">Findr API config</span>
+            <button class="btn btn-sm btn-ghost" onclick="openExternal('admin.html')">
+              <i class="ti ti-external-link"></i> Open V1
+            </button>
+          </div>
+          <div class="settings-row">
+            <span class="label">Bulk Import (vehicle data)</span>
+            <button class="btn btn-sm btn-ghost" onclick="openExternal('admin.html')">
+              <i class="ti ti-external-link"></i> Open V1
+            </button>
+          </div>
+          <div class="settings-row">
+            <span class="label">Verifier portal</span>
+            <button class="btn btn-sm btn-ghost" onclick="openExternal('verifier.html')">
+              <i class="ti ti-external-link"></i> Open
+            </button>
+          </div>
+        </div>
+
+        <!-- Cache/SW Controls -->
+        <div class="settings-card">
+          <div class="settings-card-title"><i class="ti ti-refresh"></i> Cache &amp; updates</div>
+          <div class="settings-card-desc">
+            Naya version dikhne me problem ho rahi? Yahaan se manually clear kar sakte ho.
+          </div>
+          <div class="settings-row">
+            <span class="label">Force update check</span>
+            <button class="btn btn-sm btn-ghost" onclick="forceSWUpdate()">
+              <i class="ti ti-refresh"></i> Check now
+            </button>
+          </div>
+          <div class="settings-row">
+            <span class="label">Clear all cache + reload</span>
+            <button class="btn btn-sm btn-danger" onclick="clearAllCache()">
+              <i class="ti ti-trash"></i> Clear
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="notes-box">
+        <i class="ti ti-rocket"></i><strong>V2 Phase 3 Complete!</strong> Reports + Settings + PWA shell deployed. Field app Phase 2.5 (read per-member GPS overrides on capture) abhi pending hai — separate small deploy.
       </div>
     </div>
 
@@ -1839,6 +2481,8 @@ function switchTab(tab) {
   else if (tab === 'members') loadMembers();
   else if (tab === 'campaigns') loadCampaigns();
   else if (tab === 'assignments') loadAssignments();
+  else if (tab === 'reports') loadReports();
+  else if (tab === 'settings') loadSettings();
 }
 
 function toggleSidebar() {
@@ -3082,6 +3726,498 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('assignDate').value = todayStr();
   }
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PHASE 3: REPORTS + SETTINGS + PWA INSTALL
+// ═══════════════════════════════════════════════════════════════════════════
+
+var p3state = {
+  reportData: null,
+  activeReportTab: 'location',
+  deferredPwaPrompt: null
+};
+
+// ─── REPORTS ───
+function setReportRange(range) {
+  var now = new Date();
+  var ist = new Date(now.getTime() + 5.5*60*60*1000);
+  var todayIso = ist.toISOString().split('T')[0];
+  var weekAgo = new Date(ist.getTime() - 7*24*60*60*1000).toISOString().split('T')[0];
+  var monthAgo = new Date(ist.getTime() - 30*24*60*60*1000).toISOString().split('T')[0];
+  
+  if (range === 'today') {
+    $('reportDateFrom').value = todayIso;
+    $('reportDateTo').value = todayIso;
+  } else if (range === 'week') {
+    $('reportDateFrom').value = weekAgo;
+    $('reportDateTo').value = todayIso;
+  } else if (range === 'month') {
+    $('reportDateFrom').value = monthAgo;
+    $('reportDateTo').value = todayIso;
+  } else if (range === 'all') {
+    $('reportDateFrom').value = '';
+    $('reportDateTo').value = '';
+  }
+  
+  document.querySelectorAll('.quick-range button').forEach(function(b){ b.classList.remove('active'); });
+  event.target.classList.add('active');
+  
+  loadReports();
+}
+
+function loadReports() {
+  // Initialize defaults if empty
+  if (!$('reportDateFrom').value && !$('reportDateTo').value) {
+    setReportRange('week');
+    return;
+  }
+  
+  // Populate campaign filter
+  var campSel = $('reportCampaign');
+  if (campSel.options.length <= 1 && state.campaigns.length > 0) {
+    campSel.innerHTML = '<option value="">All campaigns</option>';
+    state.campaigns.forEach(function(c) {
+      campSel.innerHTML += '<option value="' + escapeHtml(c.key) + '">' + escapeHtml(c.name || c.key) + '</option>';
+    });
+  }
+  
+  var dateFrom = $('reportDateFrom').value;
+  var dateTo = $('reportDateTo').value;
+  var campaignKey = $('reportCampaign').value;
+  
+  // Show loading
+  $('rLocationView').innerHTML = '<div class="spinner"></div>';
+  $('rCampaignView').innerHTML = '<div class="spinner"></div>';
+  $('rTeamView').innerHTML = '<div class="spinner"></div>';
+  
+  // Build query
+  var qs = '/rest/v1/trial_photos?select=*&order=captured_at.desc&deleted_at=is.null&limit=5000';
+  if (dateFrom) qs += '&captured_at=gte.' + new Date(dateFrom + 'T00:00:00+05:30').toISOString();
+  if (dateTo) qs += '&captured_at=lte.' + new Date(dateTo + 'T23:59:59+05:30').toISOString();
+  if (campaignKey) qs += '&campaign_key=eq.' + encodeURIComponent(campaignKey);
+  
+  api(qs).then(function(photos) {
+    photos = photos || [];
+    p3state.reportData = photos;
+    
+    // Update subtitle
+    var subText = photos.length + ' photos';
+    if (dateFrom && dateTo) subText += ' · ' + dateFrom + ' to ' + dateTo;
+    else if (dateFrom) subText += ' · from ' + dateFrom;
+    else subText += ' · all time';
+    $('reportsSubtitle').textContent = subText;
+    
+    // Stats overview
+    var verified = photos.filter(function(p){ return p.is_verified; }).length;
+    var pending = photos.filter(function(p){ return !p.is_verified && !p.rejected; }).length;
+    var uniqueVehicles = new Set();
+    photos.forEach(function(p) { if (p.vehicle_number) uniqueVehicles.add(p.vehicle_number.toUpperCase()); });
+    
+    $('rTotalPhotos').textContent = photos.length.toLocaleString('en-IN');
+    $('rTotalMeta').textContent = photos.length > 0 ? 'in selected range' : 'no data';
+    $('rVerified').textContent = verified.toLocaleString('en-IN');
+    var verPct = photos.length > 0 ? Math.round((verified/photos.length)*100) : 0;
+    $('rVerifiedMeta').textContent = verPct + '% of total';
+    $('rPending').textContent = pending.toLocaleString('en-IN');
+    $('rVehicles').textContent = uniqueVehicles.size.toLocaleString('en-IN');
+    
+    // Render all 3 views
+    renderLocationReport(photos);
+    renderCampaignReport(photos);
+    renderTeamReport(photos);
+    renderDailyTrend(photos, dateFrom, dateTo);
+  }).catch(function(err) {
+    console.error(err);
+    $('rLocationView').innerHTML = '<div class="empty-state"><i class="ti ti-alert-circle"></i>Load failed</div>';
+    showToast('Reports load error', 'error');
+  });
+}
+
+function switchReportTab(tab) {
+  p3state.activeReportTab = tab;
+  document.querySelectorAll('.report-tab').forEach(function(t){
+    t.classList.toggle('active', t.dataset.rtab === tab);
+  });
+  document.querySelectorAll('.report-view').forEach(function(v){
+    v.classList.toggle('active', v.dataset.rview === tab);
+  });
+}
+
+function extractCityFromAddress(addr) {
+  if (!addr) return 'Unknown';
+  var parts = addr.split(',').map(function(s){ return s.trim(); });
+  for (var i = 1; i < Math.min(parts.length, 4); i++) {
+    if (parts[i] && !parts[i].match(/^\d+/) && parts[i].length > 2) return parts[i];
+  }
+  return parts[0] || 'Unknown';
+}
+
+function renderLocationReport(photos) {
+  var byCity = {};
+  photos.forEach(function(p) {
+    var city = p.city || extractCityFromAddress(p.address) || 'Unknown';
+    if (!byCity[city]) byCity[city] = { city: city, total: 0, verified: 0, rejected: 0, pending: 0, members: new Set(), campaigns: new Set() };
+    byCity[city].total++;
+    if (p.is_verified) byCity[city].verified++;
+    else if (p.rejected) byCity[city].rejected++;
+    else byCity[city].pending++;
+    if (p.member_phone) byCity[city].members.add(p.member_phone);
+    if (p.campaign_key) byCity[city].campaigns.add(p.campaign_key);
+  });
+  
+  var cities = Object.values(byCity).sort(function(a,b){ return b.total - a.total; });
+  $('rLocCount').textContent = cities.length;
+  
+  if (cities.length === 0) {
+    $('rLocationView').innerHTML = '<div class="empty-state"><i class="ti ti-map-off"></i>No location data in selected range</div>';
+    return;
+  }
+  
+  // Find max for relative progress
+  var maxTotal = cities[0].total;
+  
+  var html = '';
+  cities.forEach(function(c) {
+    var pct = maxTotal > 0 ? Math.round((c.total/maxTotal)*100) : 0;
+    var verPct = c.total > 0 ? Math.round((c.verified/c.total)*100) : 0;
+    
+    html += '<div class="location-card">' +
+              '<div class="location-card-header">' +
+                '<div class="location-name-block">' +
+                  '<div class="location-icon"><i class="ti ti-map-pin"></i></div>' +
+                  '<div>' +
+                    '<div class="location-name">' + escapeHtml(c.city) + '</div>' +
+                    '<div class="location-meta">' +
+                      '<span><i class="ti ti-users" style="font-size:13px;"></i> ' + c.members.size + ' member' + (c.members.size === 1 ? '' : 's') + '</span>' +
+                      '<span><i class="ti ti-flag" style="font-size:13px;"></i> ' + c.campaigns.size + ' campaign' + (c.campaigns.size === 1 ? '' : 's') + '</span>' +
+                    '</div>' +
+                  '</div>' +
+                '</div>' +
+                '<div class="location-progress-block">' +
+                  '<div class="location-progress-num">' + c.total.toLocaleString('en-IN') + ' <small>photos</small></div>' +
+                  '<div class="location-progress-pct">' + verPct + '% verified</div>' +
+                '</div>' +
+              '</div>' +
+              '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%;"></div></div>' +
+              '<div class="mini-stats-grid">' +
+                '<div class="mini-stat-box"><div class="label">Verified</div><div class="val" style="color:var(--success);">' + c.verified + '</div></div>' +
+                '<div class="mini-stat-box"><div class="label">Pending</div><div class="val" style="color:var(--warn);">' + c.pending + '</div></div>' +
+                '<div class="mini-stat-box"><div class="label">Rejected</div><div class="val" style="color:var(--danger);">' + c.rejected + '</div></div>' +
+                '<div class="mini-stat-box"><div class="label">Members</div><div class="val">' + c.members.size + '</div></div>' +
+              '</div>' +
+            '</div>';
+  });
+  $('rLocationView').innerHTML = html;
+}
+
+function renderCampaignReport(photos) {
+  var byCamp = {};
+  photos.forEach(function(p) {
+    var key = p.campaign_key || 'unknown';
+    if (!byCamp[key]) byCamp[key] = { key: key, total: 0, verified: 0, rejected: 0, pending: 0, members: new Set(), cities: new Set(), modes: { hood: 0, back_panel: 0 } };
+    byCamp[key].total++;
+    if (p.is_verified) byCamp[key].verified++;
+    else if (p.rejected) byCamp[key].rejected++;
+    else byCamp[key].pending++;
+    if (p.member_phone) byCamp[key].members.add(p.member_phone);
+    if (p.city) byCamp[key].cities.add(p.city);
+    if (p.mode === 'hood') byCamp[key].modes.hood++;
+    else if (p.mode === 'back_panel') byCamp[key].modes.back_panel++;
+  });
+  
+  var camps = Object.values(byCamp).sort(function(a,b){ return b.total - a.total; });
+  $('rCampCount').textContent = camps.length;
+  
+  if (camps.length === 0) {
+    $('rCampaignView').innerHTML = '<div class="empty-state"><i class="ti ti-flag-off"></i>No campaign data</div>';
+    return;
+  }
+  
+  var maxTotal = camps[0].total || 1;
+  
+  var html = '';
+  camps.forEach(function(c) {
+    var campInfo = state.campaigns.find(function(x){ return x.key === c.key; });
+    var name = campInfo ? (campInfo.name || c.key) : c.key;
+    var client = campInfo ? (campInfo.client_name || '') : '';
+    var target = campInfo ? (campInfo.target_count || 100) : 100;
+    var targetPct = Math.min(100, Math.round((c.total/target)*100));
+    var fillClass = targetPct >= 75 ? '' : (targetPct >= 40 ? 'warn' : 'danger');
+    
+    html += '<div class="location-card">' +
+              '<div class="location-card-header">' +
+                '<div class="location-name-block">' +
+                  '<div class="location-icon" style="background:rgba(11,25,87,0.08); color:var(--primary);"><i class="ti ti-flag"></i></div>' +
+                  '<div>' +
+                    '<div class="location-name">' + escapeHtml(name) + '</div>' +
+                    '<div class="location-meta">' +
+                      (client ? '<span>' + escapeHtml(client) + '</span>' : '') +
+                      '<span><i class="ti ti-map-pin" style="font-size:13px;"></i> ' + c.cities.size + ' cit' + (c.cities.size === 1 ? 'y' : 'ies') + '</span>' +
+                      '<span><i class="ti ti-users" style="font-size:13px;"></i> ' + c.members.size + ' member' + (c.members.size === 1 ? '' : 's') + '</span>' +
+                    '</div>' +
+                  '</div>' +
+                '</div>' +
+                '<div class="location-progress-block">' +
+                  '<div class="location-progress-num">' + c.total + ' <small>/ ' + target + '</small></div>' +
+                  '<div class="location-progress-pct" style="color:' + (targetPct >= 75 ? 'var(--success)' : (targetPct >= 40 ? 'var(--warn)' : 'var(--danger)')) + ';">' + targetPct + '% of target</div>' +
+                '</div>' +
+              '</div>' +
+              '<div class="progress-track"><div class="progress-fill ' + fillClass + '" style="width:' + targetPct + '%;"></div></div>' +
+              '<div class="mini-stats-grid">' +
+                '<div class="mini-stat-box"><div class="label">Verified</div><div class="val" style="color:var(--success);">' + c.verified + '</div></div>' +
+                '<div class="mini-stat-box"><div class="label">Pending</div><div class="val" style="color:var(--warn);">' + c.pending + '</div></div>' +
+                '<div class="mini-stat-box"><div class="label">Hood</div><div class="val">' + c.modes.hood + '</div></div>' +
+                '<div class="mini-stat-box"><div class="label">Back</div><div class="val">' + c.modes.back_panel + '</div></div>' +
+              '</div>' +
+            '</div>';
+  });
+  $('rCampaignView').innerHTML = html;
+}
+
+function renderTeamReport(photos) {
+  var byMember = {};
+  photos.forEach(function(p) {
+    var key = p.member_phone || 'unknown';
+    if (!byMember[key]) byMember[key] = { phone: key, name: p.member_name || key, total: 0, verified: 0, rejected: 0, pending: 0, days: new Set(), campaigns: new Set(), cities: new Set() };
+    byMember[key].total++;
+    if (p.is_verified) byMember[key].verified++;
+    else if (p.rejected) byMember[key].rejected++;
+    else byMember[key].pending++;
+    if (p.captured_at) byMember[key].days.add(p.captured_at.slice(0, 10));
+    if (p.campaign_key) byMember[key].campaigns.add(p.campaign_key);
+    if (p.city) byMember[key].cities.add(p.city);
+  });
+  
+  var members = Object.values(byMember).sort(function(a,b){ return b.total - a.total; });
+  $('rTeamCount').textContent = members.length;
+  
+  if (members.length === 0) {
+    $('rTeamView').innerHTML = '<div class="empty-state"><i class="ti ti-users-off"></i>No team data</div>';
+    return;
+  }
+  
+  var maxTotal = members[0].total || 1;
+  
+  var html = '<div class="team-report-table"><table>' +
+             '<thead><tr>' +
+             '<th style="width:50px;">Rank</th>' +
+             '<th>Member</th>' +
+             '<th class="num-cell">Total</th>' +
+             '<th class="num-cell">Verified</th>' +
+             '<th class="num-cell">Pending</th>' +
+             '<th class="num-cell">Days</th>' +
+             '<th>Activity</th>' +
+             '</tr></thead><tbody>';
+  
+  members.forEach(function(m, idx) {
+    var rankClass = idx === 0 ? 'gold' : (idx === 1 ? 'silver' : (idx === 2 ? 'bronze' : ''));
+    var initials = (m.name || '?').split(' ').map(function(p){return p[0];}).join('').substring(0,2).toUpperCase();
+    var verPct = m.total > 0 ? Math.round((m.verified/m.total)*100) : 0;
+    var barWidth = Math.round((m.total/maxTotal)*100);
+    
+    // Find member role
+    var memberInfo = state.members.find(function(x){ return x.phone === m.phone; });
+    var roleClass = 'role-' + (memberInfo ? memberInfo.role : 'field');
+    
+    html += '<tr>' +
+              '<td><div class="leader-rank ' + rankClass + '">' + (idx+1) + '</div></td>' +
+              '<td><div class="name-cell">' +
+                '<div class="member-avatar ' + roleClass + '">' + escapeHtml(initials) + '</div>' +
+                '<div class="info">' +
+                  '<div>' + escapeHtml(m.name) + '</div>' +
+                  '<small>' + escapeHtml(m.phone) + '</small>' +
+                '</div>' +
+              '</div></td>' +
+              '<td class="num-cell" style="color:var(--primary);">' + m.total + '</td>' +
+              '<td class="num-cell" style="color:var(--success);">' + m.verified + '</td>' +
+              '<td class="num-cell" style="color:var(--warn);">' + m.pending + '</td>' +
+              '<td class="num-cell">' + m.days.size + '</td>' +
+              '<td>' +
+                '<div class="mini-bar"><div class="mini-bar-fill" style="width:' + barWidth + '%;"></div></div>' +
+                '<div style="font-size:10px; color:var(--text-2); margin-top:2px;">' + verPct + '% verified · ' + m.campaigns.size + ' campaign' + (m.campaigns.size === 1 ? '' : 's') + '</div>' +
+              '</td>' +
+            '</tr>';
+  });
+  
+  html += '</tbody></table></div>';
+  $('rTeamView').innerHTML = html;
+}
+
+function renderDailyTrend(photos, dateFrom, dateTo) {
+  // Group by date
+  var byDate = {};
+  photos.forEach(function(p) {
+    if (!p.captured_at) return;
+    var d = new Date(p.captured_at);
+    var ist = new Date(d.getTime() + 5.5*60*60*1000);
+    var key = ist.toISOString().slice(0, 10);
+    byDate[key] = (byDate[key] || 0) + 1;
+  });
+  
+  // Generate last 7 days range (or use filter range if shorter)
+  var dates = [];
+  var todayIso = new Date(new Date().getTime() + 5.5*60*60*1000).toISOString().slice(0, 10);
+  
+  for (var i = 6; i >= 0; i--) {
+    var d = new Date(new Date().getTime() + 5.5*60*60*1000 - i*24*60*60*1000);
+    dates.push(d.toISOString().slice(0, 10));
+  }
+  
+  var maxVal = Math.max(1, Math.max.apply(null, dates.map(function(d){ return byDate[d] || 0; })));
+  
+  var html = '';
+  var labels = '';
+  dates.forEach(function(d) {
+    var count = byDate[d] || 0;
+    var height = Math.max(2, Math.round((count/maxVal)*100));
+    var isToday = d === todayIso;
+    html += '<div class="bar-col">' +
+              '<div class="bar-value">' + count + '</div>' +
+              '<div class="bar' + (isToday ? ' today' : '') + '" style="height:' + height + '%;"></div>' +
+            '</div>';
+    var dayLabel = new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric' });
+    labels += '<div' + (isToday ? ' class="today"' : '') + '>' + dayLabel + (isToday ? ' (today)' : '') + '</div>';
+  });
+  
+  $('trendChart').innerHTML = html;
+  $('trendLabels').innerHTML = labels;
+}
+
+function exportReportExcel() {
+  // Open V1 admin's Excel Report function (full SheetJS-based)
+  if (confirm('Excel report V1 admin se generate hoga (full Excel with all sheets). Open karna hai?')) {
+    var url = 'admin.html';
+    window.open(url, '_blank');
+  }
+}
+
+// ─── SETTINGS ───
+function loadSettings() {
+  if (state.admin) {
+    $('settingsAdminName').textContent = state.admin.name || '—';
+    $('settingsAdminPhone').textContent = state.admin.phone || '—';
+    $('settingsAdminRole').textContent = (state.admin.role || '').toUpperCase();
+    $('settingsAdminId').textContent = (state.admin.id || '').substring(0, 8) + '...';
+  }
+  
+  // PWA status check
+  if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+    $('settingsPwaStatus').innerHTML = '<span style="color:var(--success);">✓ Installed (standalone)</span>';
+  } else if (p3state.deferredPwaPrompt) {
+    $('settingsPwaStatus').innerHTML = '<span style="color:var(--warn);">⏳ Installable (use button below)</span>';
+  } else {
+    $('settingsPwaStatus').innerHTML = '<span style="color:var(--text-3);">Browser tab (not installed)</span>';
+  }
+  
+  updateInstallButton();
+}
+
+function updateInstallButton() {
+  var btn = $('installBtn');
+  var statusText = $('installStatusText');
+  
+  if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+    btn.style.display = 'none';
+    statusText.innerHTML = '<strong style="color:var(--success);">✓ App already installed.</strong> Home screen se launch karo.';
+  } else if (p3state.deferredPwaPrompt) {
+    btn.style.display = 'inline-flex';
+    statusText.innerHTML = 'Click "Install" button to add to home screen.';
+  } else {
+    btn.style.display = 'none';
+    statusText.innerHTML = 'Browser auto-prompt show karega when ready. iOS me: Share menu → "Add to Home Screen".';
+  }
+}
+
+function forceSWUpdate() {
+  if (!('serviceWorker' in navigator)) {
+    showToast('Service Workers not supported', 'error');
+    return;
+  }
+  showToast('Checking for updates...', 'success');
+  navigator.serviceWorker.getRegistrations().then(function(regs) {
+    if (regs.length === 0) {
+      showToast('No service worker registered', 'error');
+      return;
+    }
+    regs.forEach(function(r) { r.update(); });
+    setTimeout(function() { showToast('Update check complete. Reloading...', 'success'); setTimeout(function(){ location.reload(); }, 1000); }, 800);
+  });
+}
+
+function clearAllCache() {
+  if (!confirm('Saara cache clear karke page reload hoga. Continue?')) return;
+  
+  Promise.all([
+    'serviceWorker' in navigator ? navigator.serviceWorker.getRegistrations().then(function(regs){
+      return Promise.all(regs.map(function(r){ return r.unregister(); }));
+    }) : Promise.resolve(),
+    
+    'caches' in window ? caches.keys().then(function(keys){
+      return Promise.all(keys.map(function(k){ return caches.delete(k); }));
+    }) : Promise.resolve()
+  ]).then(function() {
+    showToast('Cache cleared. Reloading...', 'success');
+    setTimeout(function(){ location.reload(true); }, 1000);
+  }).catch(function() {
+    showToast('Clear failed', 'error');
+  });
+}
+
+// ─── PWA INSTALL HANDLING ───
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  p3state.deferredPwaPrompt = e;
+  
+  // Show banner only if not dismissed before
+  var dismissed = localStorage.getItem('pwa_banner_dismissed');
+  if (!dismissed) {
+    $('pwaBanner').classList.add('show');
+  }
+  
+  updateInstallButton();
+});
+
+window.addEventListener('appinstalled', function() {
+  p3state.deferredPwaPrompt = null;
+  $('pwaBanner').classList.remove('show');
+  showToast('App installed successfully! Home screen se launch karo.', 'success');
+  updateInstallButton();
+});
+
+function installPwa() {
+  if (!p3state.deferredPwaPrompt) {
+    showToast('Install not available. Browser menu se "Add to home screen" use karo.', 'error');
+    return;
+  }
+  p3state.deferredPwaPrompt.prompt();
+  p3state.deferredPwaPrompt.userChoice.then(function(choice) {
+    if (choice.outcome === 'accepted') {
+      showToast('Installing...', 'success');
+    } else {
+      showToast('Install cancelled', 'error');
+    }
+    p3state.deferredPwaPrompt = null;
+    updateInstallButton();
+  });
+}
+
+function dismissPwaBanner() {
+  $('pwaBanner').classList.remove('show');
+  localStorage.setItem('pwa_banner_dismissed', '1');
+}
+
+// ─── REGISTER SERVICE WORKER ───
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('sw-admin.js')
+      .then(function(reg) {
+        console.log('[V2] Service Worker registered:', reg.scope);
+      })
+      .catch(function(err) {
+        console.warn('[V2] Service Worker register failed:', err);
+      });
+  });
+}
 
 // ─── AUTO-LOGIN IF SAVED ───
 document.addEventListener('DOMContentLoaded', function() {
