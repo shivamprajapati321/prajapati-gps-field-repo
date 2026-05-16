@@ -742,6 +742,307 @@ label {
 .tab-content { display: none; }
 .tab-content.active { display: block; }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   PHASE 2 STYLES — Campaigns + GPS Override + Assignments
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Campaign form card */
+.form-card {
+  background: var(--card);
+  border-radius: var(--r-xl);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  padding: 24px 28px;
+  margin-bottom: 22px;
+  display: none;
+}
+.form-card.active { display: block; }
+.form-section {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--border);
+}
+.form-section:last-child { border-bottom: none; padding-bottom: 0; }
+.form-section:first-of-type { padding-top: 0; }
+.form-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--primary);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.form-section-title i { font-size: 15px; color: var(--accent-deep); }
+.form-section-title .new-pill {
+  background: var(--gold);
+  color: #5C3D00;
+  font-size: 9px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.6px;
+  margin-left: 6px;
+}
+
+/* Branding mode grid */
+.mode-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.mode-option {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 12px 8px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s;
+}
+.mode-option:hover { border-color: var(--border-strong); }
+.mode-option.selected {
+  border-color: var(--accent);
+  background: rgba(38,208,206,0.06);
+}
+.mode-option .mode-label { font-size: 13px; font-weight: 700; color: var(--text-1); }
+.mode-option .mode-desc { font-size: 10px; color: var(--text-2); margin-top: 3px; line-height: 1.3; }
+.mode-option.selected .mode-label { color: var(--accent-deep); }
+
+/* City quantity rows */
+.city-row {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  display: grid;
+  grid-template-columns: 1fr 140px 40px;
+  gap: 12px;
+  align-items: center;
+  transition: all 0.15s;
+}
+.city-row:hover { border-color: var(--border-strong); }
+.city-row .city-name { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; flex-wrap: wrap; }
+.city-row .city-name i { font-size: 16px; color: var(--info); flex-shrink: 0; }
+.city-row .city-name small { color: var(--text-2); font-weight: 400; font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+.city-row .qty-wrap { display: flex; align-items: center; gap: 6px; }
+.city-row .qty-wrap input { width: 90px; text-align: center; height: 36px; font-weight: 600; font-family: 'JetBrains Mono', monospace; padding: 6px; }
+.city-row .qty-wrap span { font-size: 11px; color: var(--text-2); white-space: nowrap; }
+
+.city-add-row {
+  display: grid;
+  grid-template-columns: 1fr 140px 80px;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+}
+.city-add-row .city-search-wrap { position: relative; }
+
+/* Location search dropdown */
+.loc-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0; right: 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-lg);
+  max-height: 280px;
+  overflow-y: auto;
+  z-index: 100;
+  margin-top: 4px;
+}
+.loc-dropdown.active { display: block; }
+.loc-result {
+  padding: 9px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+.loc-result:last-child { border-bottom: none; }
+.loc-result:hover { background: var(--surface); }
+.loc-result .loc-primary {
+  font-weight: 600; font-size: 13px; color: var(--text-1);
+  display: flex; align-items: center; gap: 6px;
+}
+.loc-result .loc-primary i { color: var(--info); font-size: 14px; }
+.loc-result .loc-secondary { font-size: 11px; color: var(--text-2); margin-top: 2px; margin-left: 20px; }
+
+.target-summary {
+  display: flex; justify-content: flex-end; align-items: center;
+  gap: 18px; padding: 12px 4px 0; font-size: 12px;
+  border-top: 1px dashed var(--border); margin-top: 8px;
+}
+.target-summary .total { font-weight: 700; color: var(--text-1); font-size: 14px; }
+.target-summary .total b { color: var(--info); font-family: 'JetBrains Mono', monospace; font-size: 15px; }
+
+/* Per-member GPS override rows */
+.override-row {
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  background: linear-gradient(90deg, #FFF8E8 0%, var(--surface) 80%);
+  border: 1px solid #F5E1A8;
+  border-left: 3px solid var(--warn);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: start;
+}
+.override-row .override-member { font-weight: 600; font-size: 13px; }
+.override-row .override-member small { color: var(--text-2); font-weight: 400; font-size: 11px; display: block; margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+.override-row .override-detail {
+  grid-column: 1 / -1; padding-top: 8px;
+  border-top: 1px dashed #F5E1A8;
+  font-size: 12px; color: #6B3F00;
+  display: flex; flex-wrap: wrap; gap: 14px;
+}
+.override-row .override-detail span { display: inline-flex; align-items: center; gap: 4px; }
+.override-row .override-detail i { font-size: 13px; color: var(--warn); }
+.override-row .override-actions { display: flex; gap: 4px; }
+
+.override-add-btn {
+  background: rgba(245,184,0,0.1);
+  border: 1px dashed var(--warn);
+  color: #6B3F00;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px; font-weight: 600;
+  width: 100%; text-align: center; margin-top: 6px;
+}
+.override-add-btn:hover { background: rgba(245,184,0,0.15); }
+.override-add-btn i { vertical-align: -2px; margin-right: 4px; }
+
+/* Anchor location selected box */
+.anchor-selected {
+  background: rgba(38,208,206,0.08);
+  border: 1px solid var(--accent);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+  margin-top: 10px;
+}
+.anchor-selected .anchor-label {
+  font-size: 11px; font-weight: 700; color: var(--accent-deep);
+  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;
+}
+.anchor-selected .anchor-address { font-size: 13px; color: var(--text-1); margin-bottom: 8px; line-height: 1.4; }
+.anchor-selected .anchor-meta { display: flex; gap: 14px; font-size: 11px; color: var(--text-2); font-family: 'JetBrains Mono', monospace; flex-wrap: wrap; }
+
+/* Campaign card */
+.campaign-card {
+  background: var(--card);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+  padding: 16px 20px;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.15s;
+}
+.campaign-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); border-color: var(--border-strong); }
+.campaign-card-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 12px; margin-bottom: 12px;
+}
+.campaign-card-name { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; }
+.campaign-card-client { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+.campaign-card-key {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  background: var(--bg); color: var(--text-2);
+  padding: 3px 8px; border-radius: 4px;
+}
+.campaign-card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.campaign-card-stats {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 8px; padding: 10px;
+  background: var(--surface); border-radius: var(--r-sm);
+  margin-bottom: 10px;
+}
+.campaign-card-stats .mini-stat { text-align: center; }
+.campaign-card-stats .mini-stat .label {
+  font-size: 9px; color: var(--text-2);
+  text-transform: uppercase; letter-spacing: 0.4px; font-weight: 600;
+}
+.campaign-card-stats .mini-stat .value {
+  font-size: 16px; font-weight: 700;
+  font-family: 'JetBrains Mono', monospace; margin-top: 2px; color: var(--primary);
+}
+.campaign-card-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* Assignment row */
+.assign-row {
+  background: var(--card);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  display: grid;
+  grid-template-columns: auto 1.5fr 2fr auto;
+  gap: 14px; align-items: center;
+  box-shadow: var(--shadow-sm);
+}
+.assign-row:hover { border-color: var(--border-strong); }
+.assign-row .assign-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-700));
+  color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 12px; flex-shrink: 0;
+}
+.assign-row .member-info .name { font-size: 13px; font-weight: 600; }
+.assign-row .member-info .phone { font-size: 11px; color: var(--text-2); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+.assign-row select { font-size: 12px; padding: 8px 10px; }
+.assign-row .status-pill {
+  font-size: 10px; font-weight: 700;
+  padding: 3px 9px; border-radius: 999px;
+  text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap;
+}
+.assign-row .status-pill.assigned { background: var(--success-bg); color: var(--success); }
+.assign-row .status-pill.unassigned { background: var(--bg); color: var(--text-3); }
+
+/* Large modal for campaign */
+.modal.modal-lg { max-width: 720px; }
+
+/* Toggle switch */
+.toggle-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 14px;
+  background: var(--surface);
+  border-radius: var(--r-md);
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+}
+.toggle-info { flex: 1; }
+.toggle-info .title { font-size: 13px; font-weight: 600; }
+.toggle-info .desc { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+.toggle {
+  width: 40px; height: 22px;
+  background: #ccc; border-radius: 11px;
+  position: relative; cursor: pointer;
+  transition: background 0.2s; flex-shrink: 0;
+}
+.toggle.on { background: var(--success); }
+.toggle::after {
+  content: ''; width: 16px; height: 16px;
+  background: #fff; border-radius: 50%;
+  position: absolute; top: 3px; left: 3px;
+  transition: left 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.toggle.on::after { left: 21px; }
+
+@media (max-width: 768px) {
+  .city-row, .city-add-row { grid-template-columns: 1fr; gap: 6px; }
+  .city-row .qty-wrap input { width: 100%; }
+  .assign-row { grid-template-columns: auto 1fr; }
+  .mode-grid { grid-template-columns: 1fr; }
+}
+
 /* ─── COMING SOON PANEL ─── */
 .coming-soon {
   background: var(--card);
@@ -843,20 +1144,19 @@ label {
         <i class="ti ti-layout-dashboard"></i>
         <span>Dashboard</span>
       </div>
-      <div class="nav-item disabled" title="Coming in Phase 2">
+      <div class="nav-item" data-tab="campaigns" onclick="switchTab('campaigns')">
         <i class="ti ti-flag"></i>
         <span>Campaigns</span>
-        <span class="soon-tag">SOON</span>
+        <span class="count" id="navCampaignsCount">—</span>
       </div>
       <div class="nav-item" data-tab="members" onclick="switchTab('members')">
         <i class="ti ti-users"></i>
         <span>Team members</span>
         <span class="count" id="navMembersCount">—</span>
       </div>
-      <div class="nav-item disabled" title="Coming in Phase 2">
+      <div class="nav-item" data-tab="assignments" onclick="switchTab('assignments')">
         <i class="ti ti-calendar-event"></i>
         <span>Daily assignments</span>
-        <span class="soon-tag">SOON</span>
       </div>
       <div class="nav-item" onclick="openExternal('admin.html')" title="Open current admin v16.2 (with photos browser)">
         <i class="ti ti-photo"></i>
@@ -1031,6 +1331,53 @@ label {
       </div>
     </div>
 
+    <!-- ─── PHASE 2: CAMPAIGNS ─── -->
+    <div id="tab-campaigns" class="tab-content">
+      <div class="topbar">
+        <div>
+          <h1 class="page-title">Campaigns</h1>
+          <p class="page-sub" id="campaignsSubtitle">Loading campaigns...</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn-primary" onclick="openCampaignForm(null)">
+            <i class="ti ti-plus"></i> New campaign
+          </button>
+        </div>
+      </div>
+
+      <div id="campaignsList">
+        <div class="spinner"></div>
+      </div>
+
+      <div class="notes-box">
+        <i class="ti ti-info-circle"></i><strong>Phase 2 features:</strong> Multi-city quantity targets · Per-member GPS override with date range · Branding modes (Full/Clean/Custom). Field app per-member override 16-May ke baad effective hoga (Phase 2 deploy + field app update).
+      </div>
+    </div>
+
+    <!-- ─── PHASE 2: DAILY ASSIGNMENTS ─── -->
+    <div id="tab-assignments" class="tab-content">
+      <div class="topbar">
+        <div>
+          <h1 class="page-title">Daily assignments</h1>
+          <p class="page-sub" id="assignSubtitle">Date select karke members ko campaigns assign karo</p>
+        </div>
+        <div class="topbar-actions">
+          <input type="date" id="assignDate" style="width:160px;" onchange="loadAssignments()">
+          <button class="btn btn-ghost btn-sm" onclick="loadAssignments()">
+            <i class="ti ti-refresh"></i> Refresh
+          </button>
+        </div>
+      </div>
+
+      <div id="assignmentsList">
+        <div class="spinner"></div>
+      </div>
+
+      <div class="notes-box">
+        <i class="ti ti-calendar-event"></i><strong>How it works:</strong> Har member ke liye us date par campaign select karo. Field app mein members ko same campaign milega — campaign ke media type (Hood 3 / Back panel 1 / Both 4) ke hisaab se photos lene honge. Empty select karne se assignment delete ho jata hai.
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -1078,6 +1425,222 @@ label {
       <button class="btn btn-ghost" onclick="closeMemberModal()">Cancel</button>
       <button class="btn btn-primary" id="saveMemberBtn" onclick="saveMember()">
         <i class="ti ti-check"></i> Save member
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════════ CAMPAIGN MODAL ═════════════ -->
+<div class="modal-overlay" id="campaignModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h2 id="campaignModalTitle">New Campaign</h2>
+      <button class="modal-close" onclick="closeCampaignModal()">×</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Basic Info -->
+      <div class="form-section">
+        <div class="form-section-title"><i class="ti ti-info-circle"></i> Basic info</div>
+        <div class="field-row cols-2">
+          <div class="field">
+            <label>Campaign name *</label>
+            <input type="text" id="cName" placeholder="e.g. Hero Bikes Q2">
+          </div>
+          <div class="field">
+            <label>Campaign key *</label>
+            <input type="text" id="cKey" placeholder="lowercase_no_spaces" maxlength="40">
+            <div class="helper">Lowercase, numbers, underscores only</div>
+          </div>
+        </div>
+        <div class="field-row cols-2">
+          <div class="field">
+            <label>Client name</label>
+            <input type="text" id="cClient" placeholder="Hero MotoCorp Ltd.">
+          </div>
+          <div class="field">
+            <label>Photo coverage *</label>
+            <select id="cMediaType">
+              <option value="hood">Hood — 3 photos (back, left, right)</option>
+              <option value="back_panel">Back Panel — 1 photo</option>
+              <option value="both">Both — 4 photos (3 hood + 1 back)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Multi-city targets -->
+      <div class="form-section">
+        <div class="form-section-title">
+          <i class="ti ti-map-pin"></i> Cities &amp; quantity targets
+          <span class="new-pill">NEW</span>
+        </div>
+        <div id="campaignCitiesList">
+          <div class="empty-state" style="padding:20px; font-size:12px;"><i class="ti ti-map" style="font-size:32px;"></i>No cities added yet</div>
+        </div>
+        <div class="city-add-row">
+          <div class="city-search-wrap">
+            <input type="text" id="newCitySearch" placeholder="Search city (e.g. Pune)" autocomplete="off" oninput="searchCityForCampaign()" onblur="setTimeout(closeCityDropdown, 200)">
+            <div id="cityDropdown" class="loc-dropdown"></div>
+          </div>
+          <input type="number" id="newCityQty" placeholder="Qty" value="100" min="1">
+          <button class="btn btn-accent btn-sm" onclick="addCityToCampaign()">
+            <i class="ti ti-plus"></i> Add
+          </button>
+        </div>
+        <div class="target-summary">
+          <span style="color:var(--text-2);"><span id="cityCountLabel">0 cities</span></span>
+          <span class="total">Total target: <b id="totalTargetLabel">0</b> vehicles</span>
+        </div>
+      </div>
+
+      <!-- Per-member GPS overrides -->
+      <div class="form-section">
+        <div class="form-section-title">
+          <i class="ti ti-target"></i> Per-member GPS override
+          <span class="new-pill">NEW</span>
+        </div>
+        <div style="font-size:11px; color:var(--text-2); margin-bottom:10px; line-height:1.5;">
+          Specific members ke liye manual GPS anchor + date range set karo. Date ke beech mein photos pe manual anchor lagega, baahar real GPS use hoga.
+        </div>
+        <div id="overrideList"></div>
+        <button class="override-add-btn" onclick="openOverrideModal(null)">
+          <i class="ti ti-user-plus"></i> Add member GPS override
+        </button>
+      </div>
+
+      <!-- Branding -->
+      <div class="form-section">
+        <div class="form-section-title"><i class="ti ti-palette"></i> Branding mode</div>
+        <div class="mode-grid">
+          <div class="mode-option selected" data-mode="full" onclick="selectBrandingMode(this)">
+            <div class="mode-label">Full</div>
+            <div class="mode-desc">Prajapati branding</div>
+          </div>
+          <div class="mode-option" data-mode="clean" onclick="selectBrandingMode(this)">
+            <div class="mode-label">Clean</div>
+            <div class="mode-desc">No branding</div>
+          </div>
+          <div class="mode-option" data-mode="custom" onclick="selectBrandingMode(this)">
+            <div class="mode-label">Custom</div>
+            <div class="mode-desc">Agency logo</div>
+          </div>
+        </div>
+        <div id="customFields" style="display:none; margin-top:10px;">
+          <div class="field-row cols-2">
+            <div class="field">
+              <label>Brand name</label>
+              <input type="text" id="cBrand" placeholder="Agency name">
+            </div>
+            <div class="field">
+              <label>Website</label>
+              <input type="text" id="cWebsite" placeholder="agency.com">
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeCampaignModal()">Cancel</button>
+      <button class="btn btn-primary" id="saveCampaignBtn" onclick="saveCampaign()">
+        <i class="ti ti-check"></i> Save campaign
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════════ GPS OVERRIDE MODAL ═════════════ -->
+<div class="modal-overlay" id="overrideModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h2 id="overrideModalTitle">Add GPS Override</h2>
+      <button class="modal-close" onclick="closeOverrideModal()">×</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="field">
+        <label>Team member *</label>
+        <select id="ovMember">
+          <option value="">-- Select member --</option>
+        </select>
+        <div class="helper">Sirf field role wale members yahan dikhenge</div>
+      </div>
+
+      <!-- Anchor location search -->
+      <div class="form-section" style="padding-top:8px; border-top:none;">
+        <div class="form-section-title"><i class="ti ti-map-pin"></i> Manual GPS anchor location</div>
+        <div class="field">
+          <label>Search location</label>
+          <div style="position:relative;">
+            <input type="text" id="ovAnchorSearch" placeholder="e.g. Shivaji Nagar Pune" autocomplete="off" oninput="searchAnchorForOverride()" onblur="setTimeout(closeAnchorDropdown, 200)">
+            <div id="anchorDropdown" class="loc-dropdown"></div>
+          </div>
+          <div class="helper">Type karke select karo — lat/lng auto-fill</div>
+        </div>
+
+        <div id="ovAnchorBox" class="anchor-selected" style="display:none;">
+          <div class="anchor-label">✓ Selected anchor</div>
+          <div class="anchor-address" id="ovAnchorAddress">—</div>
+          <div class="anchor-meta">
+            <span>📍 <span id="ovAnchorLat">—</span>, <span id="ovAnchorLng">—</span></span>
+            <span>📮 <span id="ovAnchorPincode">—</span></span>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="clearAnchorSelection()" style="margin-top:8px;">
+            <i class="ti ti-x"></i> Clear
+          </button>
+        </div>
+      </div>
+
+      <!-- Date range -->
+      <div class="form-section">
+        <div class="form-section-title"><i class="ti ti-calendar"></i> Valid date range</div>
+        <div class="field-row cols-2">
+          <div class="field">
+            <label>Valid from *</label>
+            <input type="date" id="ovValidFrom">
+          </div>
+          <div class="field">
+            <label>Valid to *</label>
+            <input type="date" id="ovValidTo">
+          </div>
+        </div>
+        <div class="helper">In dates ke beech manual GPS lagega. Pehle/baad real GPS automatic.</div>
+      </div>
+
+      <!-- GPS radius + active toggle -->
+      <div class="form-section">
+        <div class="field">
+          <label>GPS variation radius</label>
+          <select id="ovRadius">
+            <option value="30">30m — Very close (same shop / parking)</option>
+            <option value="50" selected>50m — Same gali / building cluster</option>
+            <option value="100">100m — Same block</option>
+            <option value="200">200m — Larger area / market</option>
+            <option value="500">500m — Neighborhood scale</option>
+          </select>
+          <div class="helper">Photo lat/lng anchor ke around random distance pe hoga</div>
+        </div>
+
+        <div class="field">
+          <label>Reason (optional)</label>
+          <input type="text" id="ovReason" placeholder="e.g. Network area me GPS issue">
+        </div>
+
+        <div class="toggle-row" style="margin-top:10px;">
+          <div class="toggle-info">
+            <div class="title">Active</div>
+            <div class="desc">Active hone par hi yeh override apply hoga</div>
+          </div>
+          <div class="toggle on" id="ovActiveToggle" onclick="this.classList.toggle('on')"></div>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeOverrideModal()">Cancel</button>
+      <button class="btn btn-primary" id="saveOverrideBtn" onclick="saveOverride()">
+        <i class="ti ti-check"></i> Save override
       </button>
     </div>
   </div>
@@ -1274,6 +1837,8 @@ function switchTab(tab) {
   // Lazy load per tab
   if (tab === 'dashboard') loadDashboard();
   else if (tab === 'members') loadMembers();
+  else if (tab === 'campaigns') loadCampaigns();
+  else if (tab === 'assignments') loadAssignments();
 }
 
 function toggleSidebar() {
@@ -1672,6 +2237,850 @@ document.addEventListener('keydown', function(e) {
 // Click outside modal to close
 $('memberModal').addEventListener('click', function(e) {
   if (e.target === this) closeMemberModal();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PHASE 2: CAMPAIGNS + MULTI-CITY + GPS OVERRIDES + ASSIGNMENTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+// LocationIQ token (inherited from v1 admin)
+var LOCATIONIQ_TOKEN = 'pk.fde6fab706b3370a82c78ba286a896be';
+
+// Phase 2 state
+var p2state = {
+  editingCampaignId: null,
+  editingOverrideId: null,
+  campaignCities: [],           // Cities for currently-edited campaign
+  campaignOverrides: [],         // GPS overrides for currently-edited campaign
+  selectedAnchor: null,          // For override modal
+  campaignSearchResults: null,   // City search dropdown results
+  anchorSearchResults: null,     // Anchor search dropdown results
+  citySearchTimer: null,
+  anchorSearchTimer: null
+};
+
+// ─── CAMPAIGNS LIST ───
+function loadCampaigns() {
+  $('campaignsList').innerHTML = '<div class="spinner"></div>';
+  
+  api('/rest/v1/trial_campaigns?select=*&order=active.desc,name.asc')
+    .then(function(campaigns) {
+      state.campaigns = campaigns || [];
+      $('navCampaignsCount').textContent = state.campaigns.length;
+      var active = state.campaigns.filter(function(c){ return c.active; }).length;
+      $('campaignsSubtitle').textContent = state.campaigns.length + ' total · ' + active + ' active';
+      renderCampaigns();
+    })
+    .catch(function(err) {
+      console.error(err);
+      $('campaignsList').innerHTML = '<div class="empty-state"><i class="ti ti-alert-circle"></i>Load failed</div>';
+      showToast('Campaigns load error', 'error');
+    });
+}
+
+function getMediaTypeLabel(hood, back) {
+  if (hood > 0 && back > 0) return 'BOTH (3+1)';
+  if (back > 0) return 'BACK PANEL (1)';
+  if (hood > 0) return 'HOOD (3)';
+  return 'NONE';
+}
+
+function getMediaTypeFromCounts(hood, back) {
+  if (hood > 0 && back > 0) return 'both';
+  if (back > 0) return 'back_panel';
+  return 'hood';
+}
+
+function renderCampaigns() {
+  var list = $('campaignsList');
+  if (state.campaigns.length === 0) {
+    list.innerHTML = '<div class="empty-state"><i class="ti ti-flag-off"></i>Koi campaign nahi — "New campaign" se shuru karo</div>';
+    return;
+  }
+  
+  var html = '';
+  state.campaigns.forEach(function(c) {
+    var mediaLabel = getMediaTypeLabel(c.hood_photo_count || 0, c.back_panel_photo_count || 0);
+    var brandingTag = '<span class="tag tag-' + (c.branding_mode === 'full' ? 'info' : (c.branding_mode === 'clean' ? 'success' : 'gold')) + '">' + (c.branding_mode || 'full').toUpperCase() + '</span>';
+    var manualTag = c.manual_gps_enabled ? '<span class="tag tag-warn"><i class="ti ti-target"></i> Manual GPS default</span>' : '';
+    var activeTag = c.active ? '<span class="tag tag-success"><i class="ti ti-circle-filled" style="font-size:7px;"></i> Active</span>' : '<span class="tag" style="background:var(--bg); color:var(--text-3);">Inactive</span>';
+    var mediaTag = '<span class="tag tag-primary"><i class="ti ti-photo"></i> ' + mediaLabel + '</span>';
+    
+    html += '<div class="campaign-card">' +
+              '<div class="campaign-card-header">' +
+                '<div>' +
+                  '<div class="campaign-card-name">' + escapeHtml(c.name || c.key) + '</div>' +
+                  '<div class="campaign-card-client">' + escapeHtml(c.client_name || '—') + '</div>' +
+                '</div>' +
+                '<div class="campaign-card-key">' + escapeHtml(c.key) + '</div>' +
+              '</div>' +
+              '<div class="campaign-card-tags">' +
+                activeTag + mediaTag + brandingTag + manualTag +
+              '</div>' +
+              '<div class="campaign-card-stats">' +
+                '<div class="mini-stat"><div class="label">Target</div><div class="value">' + (c.target_count || 100) + '</div></div>' +
+                '<div class="mini-stat"><div class="label">Cities</div><div class="value" data-campaign-cities="' + escapeHtml(c.key) + '">—</div></div>' +
+                '<div class="mini-stat"><div class="label">Overrides</div><div class="value" data-campaign-overrides="' + escapeHtml(c.key) + '">—</div></div>' +
+                '<div class="mini-stat"><div class="label">Radius</div><div class="value">' + (c.detection_radius_km || 50) + 'km</div></div>' +
+              '</div>' +
+              '<div class="campaign-card-actions">' +
+                '<button class="btn btn-sm btn-ghost" onclick="openCampaignForm(\'' + c.id + '\')"><i class="ti ti-edit"></i> Edit</button>' +
+                '<button class="btn btn-sm btn-ghost" onclick="toggleCampaignActive(\'' + c.id + '\', ' + (!c.active) + ')"><i class="ti ti-' + (c.active ? 'pause' : 'play') + '"></i> ' + (c.active ? 'Deactivate' : 'Activate') + '</button>' +
+              '</div>' +
+            '</div>';
+  });
+  list.innerHTML = html;
+  
+  // Async-fill city/override counts
+  state.campaigns.forEach(function(c) {
+    Promise.all([
+      api('/rest/v1/trial_campaign_cities?campaign_key=eq.' + encodeURIComponent(c.key) + '&select=id'),
+      api('/rest/v1/trial_member_gps_overrides?campaign_key=eq.' + encodeURIComponent(c.key) + '&active=eq.true&select=id')
+    ]).then(function(results) {
+      var citiesCount = (results[0] || []).length;
+      var overridesCount = (results[1] || []).length;
+      var citiesEl = document.querySelector('[data-campaign-cities="' + c.key + '"]');
+      var overridesEl = document.querySelector('[data-campaign-overrides="' + c.key + '"]');
+      if (citiesEl) citiesEl.textContent = citiesCount;
+      if (overridesEl) overridesEl.textContent = overridesCount;
+    }).catch(function() {});
+  });
+}
+
+function toggleCampaignActive(id, newActive) {
+  if (!confirm('Campaign ko ' + (newActive ? 'activate' : 'deactivate') + ' karna hai?')) return;
+  
+  fetch(CONFIG.supabaseUrl + '/rest/v1/trial_campaigns?id=eq.' + id, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', apikey: CONFIG.supabaseKey, Authorization: 'Bearer ' + CONFIG.supabaseKey },
+    body: JSON.stringify({ active: newActive })
+  }).then(function(r) {
+    if (!r.ok) throw new Error('Failed');
+    showToast(newActive ? 'Activated' : 'Deactivated', 'success');
+    loadCampaigns();
+  }).catch(function() { showToast('Update failed', 'error'); });
+}
+
+// ─── CAMPAIGN FORM ───
+function openCampaignForm(id) {
+  p2state.editingCampaignId = id;
+  p2state.campaignCities = [];
+  p2state.campaignOverrides = [];
+  
+  if (id) {
+    var c = state.campaigns.find(function(x){ return x.id === id; });
+    if (!c) return;
+    $('campaignModalTitle').textContent = 'Edit: ' + (c.name || c.key);
+    $('cName').value = c.name || '';
+    $('cKey').value = c.key || '';
+    $('cKey').disabled = true;
+    $('cClient').value = c.client_name || '';
+    $('cMediaType').value = getMediaTypeFromCounts(c.hood_photo_count || 0, c.back_panel_photo_count || 0);
+    $('cBrand').value = c.custom_brand_name || '';
+    $('cWebsite').value = c.custom_website || '';
+    
+    var mode = c.branding_mode || 'full';
+    document.querySelectorAll('.mode-option[data-mode]').forEach(function(el) {
+      el.classList.toggle('selected', el.dataset.mode === mode);
+    });
+    $('customFields').style.display = mode === 'custom' ? 'block' : 'none';
+    
+    // Load existing cities + overrides
+    loadCampaignCities(c.key);
+    loadCampaignOverrides(c.key);
+  } else {
+    $('campaignModalTitle').textContent = 'New Campaign';
+    $('cName').value = '';
+    $('cKey').value = '';
+    $('cKey').disabled = false;
+    $('cClient').value = '';
+    $('cMediaType').value = 'hood';
+    $('cBrand').value = '';
+    $('cWebsite').value = '';
+    document.querySelectorAll('.mode-option[data-mode]').forEach(function(el) {
+      el.classList.toggle('selected', el.dataset.mode === 'full');
+    });
+    $('customFields').style.display = 'none';
+    renderCampaignCities();
+    renderCampaignOverrides();
+  }
+  
+  $('campaignModal').classList.add('active');
+  setTimeout(function() { $('cName').focus(); }, 100);
+}
+
+function closeCampaignModal() {
+  $('campaignModal').classList.remove('active');
+  p2state.editingCampaignId = null;
+  closeCityDropdown();
+}
+
+function selectBrandingMode(el) {
+  document.querySelectorAll('.mode-option[data-mode]').forEach(function(o){ o.classList.remove('selected'); });
+  el.classList.add('selected');
+  $('customFields').style.display = el.dataset.mode === 'custom' ? 'block' : 'none';
+}
+
+function loadCampaignCities(campaignKey) {
+  api('/rest/v1/trial_campaign_cities?campaign_key=eq.' + encodeURIComponent(campaignKey) + '&order=city.asc')
+    .then(function(cities) {
+      p2state.campaignCities = cities || [];
+      renderCampaignCities();
+    }).catch(function() {
+      p2state.campaignCities = [];
+      renderCampaignCities();
+    });
+}
+
+function renderCampaignCities() {
+  var list = $('campaignCitiesList');
+  if (p2state.campaignCities.length === 0) {
+    list.innerHTML = '<div class="empty-state" style="padding:16px; font-size:12px;"><i class="ti ti-map" style="font-size:28px;"></i>No cities added yet — search below to add</div>';
+  } else {
+    var html = '';
+    p2state.campaignCities.forEach(function(c, idx) {
+      html += '<div class="city-row">' +
+                '<div class="city-name">' +
+                  '<i class="ti ti-map-pin"></i>' +
+                  '<div><div>' + escapeHtml(c.city) + '</div>' +
+                  (c.state ? '<small>' + escapeHtml(c.state) + '</small>' : '') +
+                  '</div>' +
+                '</div>' +
+                '<div class="qty-wrap">' +
+                  '<input type="number" value="' + (c.target_quantity || 100) + '" min="1" onchange="updateCityQty(' + idx + ', this.value)">' +
+                  '<span>vehicles</span>' +
+                '</div>' +
+                '<button class="btn btn-icon btn-ghost" onclick="removeCityFromCampaign(' + idx + ')" title="Remove">' +
+                  '<i class="ti ti-trash"></i>' +
+                '</button>' +
+              '</div>';
+    });
+    list.innerHTML = html;
+  }
+  
+  var total = p2state.campaignCities.reduce(function(sum, c){ return sum + (parseInt(c.target_quantity) || 0); }, 0);
+  $('cityCountLabel').textContent = p2state.campaignCities.length + ' cit' + (p2state.campaignCities.length === 1 ? 'y' : 'ies');
+  $('totalTargetLabel').textContent = total.toLocaleString('en-IN');
+}
+
+function updateCityQty(idx, val) {
+  if (p2state.campaignCities[idx]) {
+    p2state.campaignCities[idx].target_quantity = parseInt(val) || 0;
+    p2state.campaignCities[idx]._dirty = true;
+    renderCampaignCities();
+  }
+}
+
+function removeCityFromCampaign(idx) {
+  if (!confirm('Remove this city?')) return;
+  p2state.campaignCities[idx]._deleted = true;
+  // Remove from array immediately for UI
+  p2state.campaignCities.splice(idx, 1);
+  renderCampaignCities();
+}
+
+function searchCityForCampaign() {
+  var q = $('newCitySearch').value.trim();
+  if (p2state.citySearchTimer) clearTimeout(p2state.citySearchTimer);
+  if (q.length < 2) { closeCityDropdown(); return; }
+  
+  p2state.citySearchTimer = setTimeout(function() {
+    var dd = $('cityDropdown');
+    dd.innerHTML = '<div style="padding:10px; color:var(--text-3); font-size:12px;">🔍 Searching...</div>';
+    dd.classList.add('active');
+    
+    var url = 'https://api.locationiq.com/v1/autocomplete?key=' + LOCATIONIQ_TOKEN + 
+              '&q=' + encodeURIComponent(q) + '&limit=6&countrycodes=in&dedupe=1&normalizeaddress=1&tag=place:city,place:town';
+    
+    fetch(url).then(function(r){ return r.json(); }).then(function(results) {
+      if (!Array.isArray(results) || results.length === 0) {
+        dd.innerHTML = '<div style="padding:10px; color:var(--text-3); font-size:12px;">No cities found</div>';
+        return;
+      }
+      p2state.campaignSearchResults = results;
+      dd.innerHTML = results.map(function(r, i) {
+        var addr = r.address || {};
+        var city = addr.name || addr.city || addr.town || (r.display_name || '').split(',')[0];
+        var stateName = addr.state || '';
+        return '<div class="loc-result" onclick="selectCityFromSearch(' + i + ')">' +
+                 '<div class="loc-primary"><i class="ti ti-map-pin"></i> ' + escapeHtml(city) + '</div>' +
+                 '<div class="loc-secondary">' + escapeHtml(stateName + (stateName ? ' · ' : '') + (r.display_name || '').substring(0, 70)) + '</div>' +
+               '</div>';
+      }).join('');
+    }).catch(function() {
+      dd.innerHTML = '<div style="padding:10px; color:var(--danger); font-size:12px;">Search failed</div>';
+    });
+  }, 350);
+}
+
+function selectCityFromSearch(idx) {
+  var r = p2state.campaignSearchResults && p2state.campaignSearchResults[idx];
+  if (!r) return;
+  
+  var addr = r.address || {};
+  var city = addr.name || addr.city || addr.town || (r.display_name || '').split(',')[0];
+  var stateName = addr.state || '';
+  
+  // Check duplicate
+  if (p2state.campaignCities.some(function(c){ return c.city === city; })) {
+    showToast('City already added', 'error');
+    closeCityDropdown();
+    return;
+  }
+  
+  var qty = parseInt($('newCityQty').value) || 100;
+  
+  p2state.campaignCities.push({
+    city: city,
+    state: stateName,
+    latitude: parseFloat(r.lat),
+    longitude: parseFloat(r.lon),
+    target_quantity: qty,
+    _new: true
+  });
+  
+  $('newCitySearch').value = '';
+  closeCityDropdown();
+  renderCampaignCities();
+}
+
+function addCityToCampaign() {
+  var q = $('newCitySearch').value.trim();
+  if (!q) { showToast('Pehle city search karo', 'error'); $('newCitySearch').focus(); return; }
+  showToast('Search dropdown se city select karo', 'error');
+}
+
+function closeCityDropdown() {
+  $('cityDropdown').classList.remove('active');
+  $('cityDropdown').innerHTML = '';
+}
+
+// ─── PER-MEMBER GPS OVERRIDES ───
+function loadCampaignOverrides(campaignKey) {
+  api('/rest/v1/trial_member_gps_overrides?campaign_key=eq.' + encodeURIComponent(campaignKey) + '&order=created_at.desc')
+    .then(function(overrides) {
+      p2state.campaignOverrides = overrides || [];
+      renderCampaignOverrides();
+    }).catch(function() {
+      p2state.campaignOverrides = [];
+      renderCampaignOverrides();
+    });
+}
+
+function renderCampaignOverrides() {
+  var list = $('overrideList');
+  if (p2state.campaignOverrides.length === 0) {
+    list.innerHTML = '<div style="padding:14px; text-align:center; color:var(--text-3); font-size:12px; border:1px dashed var(--border); border-radius:var(--r-md);">No overrides — sab members default GPS use karenge</div>';
+    return;
+  }
+  
+  var html = '';
+  p2state.campaignOverrides.forEach(function(o) {
+    if (o._deleted) return;
+    var member = state.members.find(function(m){ return m.phone === o.member_phone; });
+    var memberName = member ? member.name : o.member_phone;
+    var dateRange = (o.valid_from || '—') + ' to ' + (o.valid_to || '—');
+    var activeTag = o.active ? '<span class="tag tag-success">ACTIVE</span>' : '<span class="tag" style="background:var(--bg); color:var(--text-3);">INACTIVE</span>';
+    
+    html += '<div class="override-row">' +
+              '<div>' +
+                '<div class="override-member">' + escapeHtml(memberName) + ' ' + activeTag + '</div>' +
+                '<small>' + escapeHtml(o.member_phone) + '</small>' +
+              '</div>' +
+              '<div class="override-actions">' +
+                '<button class="btn btn-sm btn-ghost" onclick="openOverrideModal(\'' + (o.id || ('_new_' + p2state.campaignOverrides.indexOf(o))) + '\')"><i class="ti ti-edit"></i></button>' +
+                '<button class="btn btn-sm btn-ghost" onclick="removeOverride(\'' + (o.id || ('_new_' + p2state.campaignOverrides.indexOf(o))) + '\')"><i class="ti ti-trash"></i></button>' +
+              '</div>' +
+              '<div class="override-detail">' +
+                '<span><i class="ti ti-pin"></i> <strong>Anchor:</strong> ' + escapeHtml((o.anchor_address || '').substring(0, 50)) + '</span>' +
+                '<span><i class="ti ti-calendar"></i> <strong>Valid:</strong> ' + escapeHtml(dateRange) + '</span>' +
+                '<span><i class="ti ti-target"></i> <strong>±' + (o.gps_radius_m || 50) + 'm</strong></span>' +
+              '</div>' +
+            '</div>';
+  });
+  list.innerHTML = html;
+}
+
+function removeOverride(id) {
+  if (!confirm('Remove this GPS override?')) return;
+  var idx;
+  if (id.indexOf('_new_') === 0) {
+    idx = parseInt(id.replace('_new_', ''));
+    p2state.campaignOverrides.splice(idx, 1);
+  } else {
+    p2state.campaignOverrides.forEach(function(o, i) {
+      if (o.id === id) o._deleted = true;
+    });
+  }
+  renderCampaignOverrides();
+}
+
+function openOverrideModal(id) {
+  p2state.editingOverrideId = id;
+  p2state.selectedAnchor = null;
+  
+  // Populate member dropdown — field workers only, who aren't already overridden
+  var existingPhones = p2state.campaignOverrides
+    .filter(function(o){ return !o._deleted && (!id || (o.id !== id && '_new_' + p2state.campaignOverrides.indexOf(o) !== id)); })
+    .map(function(o){ return o.member_phone; });
+  
+  var sel = $('ovMember');
+  sel.innerHTML = '<option value="">-- Select member --</option>';
+  state.members.filter(function(m){ return m.role === 'field' && m.active; }).forEach(function(m) {
+    if (existingPhones.indexOf(m.phone) > -1 && !id) return; // skip if already overridden
+    sel.innerHTML += '<option value="' + escapeHtml(m.phone) + '">' + escapeHtml(m.name) + ' · ' + escapeHtml(m.phone) + '</option>';
+  });
+  
+  if (id) {
+    // Edit existing
+    var ov;
+    if (id.indexOf('_new_') === 0) {
+      ov = p2state.campaignOverrides[parseInt(id.replace('_new_', ''))];
+    } else {
+      ov = p2state.campaignOverrides.find(function(o){ return o.id === id; });
+    }
+    if (!ov) return;
+    
+    $('overrideModalTitle').textContent = 'Edit GPS Override';
+    sel.value = ov.member_phone;
+    sel.disabled = true;
+    // Add the locked member option if not in list
+    if (!Array.from(sel.options).some(function(o){ return o.value === ov.member_phone; })) {
+      var member = state.members.find(function(m){ return m.phone === ov.member_phone; });
+      sel.innerHTML += '<option value="' + escapeHtml(ov.member_phone) + '" selected>' + escapeHtml(member ? member.name : ov.member_phone) + '</option>';
+    }
+    
+    p2state.selectedAnchor = {
+      lat: ov.anchor_lat,
+      lng: ov.anchor_lng,
+      address: ov.anchor_address,
+      pincode: ov.anchor_pincode
+    };
+    $('ovAnchorAddress').textContent = ov.anchor_address || '—';
+    $('ovAnchorLat').textContent = (ov.anchor_lat || 0).toFixed(6);
+    $('ovAnchorLng').textContent = (ov.anchor_lng || 0).toFixed(6);
+    $('ovAnchorPincode').textContent = ov.anchor_pincode || '—';
+    $('ovAnchorBox').style.display = 'block';
+    
+    $('ovValidFrom').value = ov.valid_from || '';
+    $('ovValidTo').value = ov.valid_to || '';
+    $('ovRadius').value = String(ov.gps_radius_m || 50);
+    $('ovReason').value = ov.reason || '';
+    $('ovActiveToggle').classList.toggle('on', ov.active !== false);
+  } else {
+    // New
+    $('overrideModalTitle').textContent = 'Add GPS Override';
+    sel.disabled = false;
+    $('ovAnchorSearch').value = '';
+    $('ovAnchorBox').style.display = 'none';
+    $('ovValidFrom').value = todayStr();
+    var nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    $('ovValidTo').value = nextWeek.toISOString().split('T')[0];
+    $('ovRadius').value = '50';
+    $('ovReason').value = '';
+    $('ovActiveToggle').classList.add('on');
+  }
+  
+  $('overrideModal').classList.add('active');
+}
+
+function closeOverrideModal() {
+  $('overrideModal').classList.remove('active');
+  p2state.editingOverrideId = null;
+  p2state.selectedAnchor = null;
+  closeAnchorDropdown();
+}
+
+function searchAnchorForOverride() {
+  var q = $('ovAnchorSearch').value.trim();
+  if (p2state.anchorSearchTimer) clearTimeout(p2state.anchorSearchTimer);
+  if (q.length < 3) { closeAnchorDropdown(); return; }
+  
+  p2state.anchorSearchTimer = setTimeout(function() {
+    var dd = $('anchorDropdown');
+    dd.innerHTML = '<div style="padding:10px; color:var(--text-3); font-size:12px;">🔍 Searching...</div>';
+    dd.classList.add('active');
+    
+    var url = 'https://api.locationiq.com/v1/autocomplete?key=' + LOCATIONIQ_TOKEN + 
+              '&q=' + encodeURIComponent(q) + '&limit=8&countrycodes=in&dedupe=1&normalizeaddress=1';
+    
+    fetch(url).then(function(r){ return r.json(); }).then(function(results) {
+      if (!Array.isArray(results) || results.length === 0) {
+        dd.innerHTML = '<div style="padding:10px; color:var(--text-3); font-size:12px;">No results</div>';
+        return;
+      }
+      p2state.anchorSearchResults = results;
+      dd.innerHTML = results.map(function(r, i) {
+        var dn = r.display_name || '';
+        var primary = (r.address && (r.address.name || r.address.road || r.address.suburb)) || dn.split(',')[0];
+        var secondary = dn.replace(primary + ', ', '').substring(0, 80);
+        return '<div class="loc-result" onclick="selectAnchorFromSearch(' + i + ')">' +
+                 '<div class="loc-primary"><i class="ti ti-map-pin"></i> ' + escapeHtml(primary) + '</div>' +
+                 '<div class="loc-secondary">' + escapeHtml(secondary) + '</div>' +
+               '</div>';
+      }).join('');
+    }).catch(function() {
+      dd.innerHTML = '<div style="padding:10px; color:var(--danger); font-size:12px;">Search failed</div>';
+    });
+  }, 350);
+}
+
+function selectAnchorFromSearch(idx) {
+  var r = p2state.anchorSearchResults && p2state.anchorSearchResults[idx];
+  if (!r) return;
+  
+  p2state.selectedAnchor = {
+    lat: parseFloat(r.lat),
+    lng: parseFloat(r.lon),
+    address: r.display_name || '',
+    pincode: (r.address && r.address.postcode) || ''
+  };
+  
+  $('ovAnchorAddress').textContent = p2state.selectedAnchor.address;
+  $('ovAnchorLat').textContent = p2state.selectedAnchor.lat.toFixed(6);
+  $('ovAnchorLng').textContent = p2state.selectedAnchor.lng.toFixed(6);
+  $('ovAnchorPincode').textContent = p2state.selectedAnchor.pincode || '—';
+  $('ovAnchorBox').style.display = 'block';
+  
+  $('ovAnchorSearch').value = '';
+  closeAnchorDropdown();
+}
+
+function closeAnchorDropdown() {
+  $('anchorDropdown').classList.remove('active');
+  $('anchorDropdown').innerHTML = '';
+}
+
+function clearAnchorSelection() {
+  p2state.selectedAnchor = null;
+  $('ovAnchorBox').style.display = 'none';
+  $('ovAnchorSearch').focus();
+}
+
+function saveOverride() {
+  var memberPhone = $('ovMember').value;
+  var validFrom = $('ovValidFrom').value;
+  var validTo = $('ovValidTo').value;
+  var radius = parseInt($('ovRadius').value) || 50;
+  var reason = $('ovReason').value.trim();
+  var isActive = $('ovActiveToggle').classList.contains('on');
+  
+  if (!memberPhone) { showToast('Member select karo', 'error'); return; }
+  if (!p2state.selectedAnchor) { showToast('Anchor location select karo', 'error'); return; }
+  if (!validFrom || !validTo) { showToast('Date range zaroori hai', 'error'); return; }
+  if (validFrom > validTo) { showToast('Valid from < Valid to hona chahiye', 'error'); return; }
+  
+  var data = {
+    member_phone: memberPhone,
+    anchor_lat: p2state.selectedAnchor.lat,
+    anchor_lng: p2state.selectedAnchor.lng,
+    anchor_address: p2state.selectedAnchor.address,
+    anchor_pincode: p2state.selectedAnchor.pincode || null,
+    gps_radius_m: radius,
+    valid_from: validFrom,
+    valid_to: validTo,
+    reason: reason || null,
+    active: isActive,
+    manual_gps_enabled: true
+  };
+  
+  if (p2state.editingOverrideId) {
+    // Update in array
+    if (p2state.editingOverrideId.indexOf('_new_') === 0) {
+      var idx = parseInt(p2state.editingOverrideId.replace('_new_', ''));
+      Object.assign(p2state.campaignOverrides[idx], data, { _dirty: true });
+    } else {
+      p2state.campaignOverrides.forEach(function(o) {
+        if (o.id === p2state.editingOverrideId) Object.assign(o, data, { _dirty: true });
+      });
+    }
+  } else {
+    // Add new
+    p2state.campaignOverrides.push(Object.assign({}, data, { _new: true }));
+  }
+  
+  closeOverrideModal();
+  renderCampaignOverrides();
+  showToast('Override added (save campaign to persist)', 'success');
+}
+
+// ─── SAVE CAMPAIGN ───
+function saveCampaign() {
+  var name = $('cName').value.trim();
+  var key = $('cKey').value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+  var client = $('cClient').value.trim();
+  var mediaType = $('cMediaType').value;
+  
+  if (!name) { showToast('Campaign name zaroori hai', 'error'); $('cName').focus(); return; }
+  if (!key) { showToast('Campaign key zaroori hai', 'error'); $('cKey').focus(); return; }
+  
+  var hoodCount = (mediaType === 'hood' || mediaType === 'both') ? 3 : 0;
+  var backCount = (mediaType === 'back_panel' || mediaType === 'both') ? 1 : 0;
+  
+  var selectedMode = document.querySelector('.mode-option.selected[data-mode]').dataset.mode;
+  
+  var data = {
+    name: name,
+    client_name: client || null,
+    hood_photo_count: hoodCount,
+    back_panel_photo_count: backCount,
+    target_count: p2state.campaignCities.reduce(function(s,c){ return s + (parseInt(c.target_quantity) || 0); }, 0) || 100,
+    branding_mode: selectedMode,
+    custom_brand_name: selectedMode === 'custom' ? $('cBrand').value.trim() || null : null,
+    custom_website: selectedMode === 'custom' ? $('cWebsite').value.trim() || null : null,
+    active: true
+  };
+  
+  var btn = $('saveCampaignBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader"></i> Saving...';
+  
+  var promise;
+  if (p2state.editingCampaignId) {
+    promise = fetch(CONFIG.supabaseUrl + '/rest/v1/trial_campaigns?id=eq.' + p2state.editingCampaignId, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', apikey: CONFIG.supabaseKey, Authorization: 'Bearer ' + CONFIG.supabaseKey, Prefer: 'return=representation' },
+      body: JSON.stringify(data)
+    }).then(function(r){ if (!r.ok) return r.text().then(function(t){ throw new Error(t); }); return r.json(); });
+  } else {
+    data.key = key;
+    promise = fetch(CONFIG.supabaseUrl + '/rest/v1/trial_campaigns', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: CONFIG.supabaseKey, Authorization: 'Bearer ' + CONFIG.supabaseKey, Prefer: 'return=representation' },
+      body: JSON.stringify(data)
+    }).then(function(r){ if (!r.ok) return r.text().then(function(t){ throw new Error(t); }); return r.json(); });
+  }
+  
+  promise.then(function(rows) {
+    var campaign = Array.isArray(rows) ? rows[0] : rows;
+    var savedKey = campaign && campaign.key ? campaign.key : key;
+    
+    // Save cities + overrides
+    return saveCampaignCities(savedKey).then(function() {
+      return saveCampaignOverrides(savedKey);
+    });
+  }).then(function() {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-check"></i> Save campaign';
+    showToast('Campaign saved', 'success');
+    closeCampaignModal();
+    loadCampaigns();
+  }).catch(function(err) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-check"></i> Save campaign';
+    var msg = (err.message || '').toString();
+    var userMsg = 'Save failed';
+    if (msg.indexOf('duplicate') > -1) userMsg = 'Campaign key already exists';
+    else if (msg.length < 100) userMsg = 'Failed: ' + msg.substring(0, 80);
+    showToast(userMsg, 'error');
+    console.error('Save campaign error:', err);
+  });
+}
+
+function saveCampaignCities(campaignKey) {
+  var newCities = p2state.campaignCities.filter(function(c){ return c._new; });
+  var dirtyCities = p2state.campaignCities.filter(function(c){ return c._dirty && !c._new && c.id; });
+  
+  var promises = [];
+  
+  // Insert new
+  if (newCities.length > 0) {
+    var payload = newCities.map(function(c) {
+      return {
+        campaign_key: campaignKey,
+        city: c.city,
+        state: c.state || null,
+        latitude: c.latitude || null,
+        longitude: c.longitude || null,
+        target_quantity: parseInt(c.target_quantity) || 100,
+        created_by: state.admin.phone
+      };
+    });
+    promises.push(fetch(CONFIG.supabaseUrl + '/rest/v1/trial_campaign_cities', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: CONFIG.supabaseKey, Authorization: 'Bearer ' + CONFIG.supabaseKey, Prefer: 'return=minimal' },
+      body: JSON.stringify(payload)
+    }));
+  }
+  
+  // Update dirty
+  dirtyCities.forEach(function(c) {
+    promises.push(fetch(CONFIG.supabaseUrl + '/rest/v1/trial_campaign_cities?id=eq.' + c.id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', apikey: CONFIG.supabaseKey, Authorization: 'Bearer ' + CONFIG.supabaseKey },
+      body: JSON.stringify({ target_quantity: parseInt(c.target_quantity) || 100 })
+    }));
+  });
+  
+  return Promise.all(promises);
+}
+
+function saveCampaignOverrides(campaignKey) {
+  var newOverrides = p2state.campaignOverrides.filter(function(o){ return o._new && !o._deleted; });
+  var dirtyOverrides = p2state.campaignOverrides.filter(function(o){ return o._dirty && !o._new && o.id && !o._deleted; });
+  var deletedOverrides = p2state.campaignOverrides.filter(function(o){ return o._deleted && o.id; });
+  
+  var promises = [];
+  
+  // Insert new
+  if (newOverrides.length > 0) {
+    var payload = newOverrides.map(function(o) {
+      return {
+        member_phone: o.member_phone,
+        campaign_key: campaignKey,
+        manual_gps_enabled: true,
+        anchor_lat: o.anchor_lat,
+        anchor_lng: o.anchor_lng,
+        anchor_address: o.anchor_address,
+        anchor_pincode: o.anchor_pincode,
+        gps_radius_m: o.gps_radius_m,
+        valid_from: o.valid_from,
+        valid_to: o.valid_to,
+        reason: o.reason,
+        active: o.active,
+        created_by: state.admin.phone
+      };
+    });
+    promises.push(fetch(CONFIG.supabaseUrl + '/rest/v1/trial_member_gps_overrides?on_conflict=member_phone,campaign_key', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: CONFIG.supabaseKey, Authorization: 'Bearer ' + CONFIG.supabaseKey, Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify(payload)
+    }));
+  }
+  
+  // Update dirty
+  dirtyOverrides.forEach(function(o) {
+    promises.push(fetch(CONFIG.supabaseUrl + '/rest/v1/trial_member_gps_overrides?id=eq.' + o.id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', apikey: CONFIG.supabaseKey, Authorization: 'Bearer ' + CONFIG.supabaseKey },
+      body: JSON.stringify({
+        anchor_lat: o.anchor_lat,
+        anchor_lng: o.anchor_lng,
+        anchor_address: o.anchor_address,
+        anchor_pincode: o.anchor_pincode,
+        gps_radius_m: o.gps_radius_m,
+        valid_from: o.valid_from,
+        valid_to: o.valid_to,
+        reason: o.reason,
+        active: o.active,
+        updated_at: new Date().toISOString()
+      })
+    }));
+  });
+  
+  // Delete removed
+  deletedOverrides.forEach(function(o) {
+    promises.push(fetch(CONFIG.supabaseUrl + '/rest/v1/trial_member_gps_overrides?id=eq.' + o.id, {
+      method: 'DELETE',
+      headers: { apikey: CONFIG.supabaseKey, Authorization: 'Bearer ' + CONFIG.supabaseKey }
+    }));
+  });
+  
+  return Promise.all(promises);
+}
+
+// ─── DAILY ASSIGNMENTS ───
+function loadAssignments() {
+  if (!$('assignDate').value) $('assignDate').value = todayStr();
+  var date = $('assignDate').value;
+  
+  $('assignmentsList').innerHTML = '<div class="spinner"></div>';
+  
+  // Ensure members + campaigns loaded
+  var memberP = state.members.length > 0 ? Promise.resolve(state.members) : api('/rest/v1/trial_team_members?active=eq.true&order=name&select=*');
+  var campaignP = state.campaigns.length > 0 ? Promise.resolve(state.campaigns) : api('/rest/v1/trial_campaigns?active=eq.true&order=name&select=*');
+  var assignP = api('/rest/v1/trial_daily_assignments?assignment_date=eq.' + date + '&select=*');
+  
+  Promise.all([memberP, campaignP, assignP]).then(function(results) {
+    var members = (results[0] || []).filter(function(m){ return m.role === 'field' && m.active; });
+    var campaigns = (results[1] || []).filter(function(c){ return c.active; });
+    var assignments = results[2] || [];
+    
+    if (members.length === 0) {
+      $('assignmentsList').innerHTML = '<div class="empty-state"><i class="ti ti-users-off"></i>Koi active field member nahi — Team Members tab me add karo</div>';
+      return;
+    }
+    
+    var assignMap = {};
+    assignments.forEach(function(a){ assignMap[a.member_phone] = a; });
+    
+    var html = '';
+    members.forEach(function(m) {
+      var current = assignMap[m.phone];
+      var initials = (m.name || '?').split(' ').map(function(p){return p[0];}).join('').substring(0,2).toUpperCase();
+      
+      var options = '<option value="">Not assigned</option>';
+      campaigns.forEach(function(c) {
+        var mediaInfo = getMediaTypeLabel(c.hood_photo_count || 0, c.back_panel_photo_count || 0);
+        var sel = (current && current.campaign_key === c.key) ? ' selected' : '';
+        options += '<option value="' + escapeHtml(c.key) + '"' + sel + '>' + escapeHtml((c.name || c.key) + ' · ' + mediaInfo) + '</option>';
+      });
+      
+      var statusPill = current 
+        ? '<span class="status-pill assigned">✓ Assigned</span>' 
+        : '<span class="status-pill unassigned">— Not assigned</span>';
+      
+      html += '<div class="assign-row">' +
+                '<div class="assign-avatar">' + escapeHtml(initials) + '</div>' +
+                '<div class="member-info">' +
+                  '<div class="name">' + escapeHtml(m.name) + '</div>' +
+                  '<div class="phone">' + escapeHtml(m.phone) + (m.city ? ' · ' + escapeHtml(m.city) : '') + '</div>' +
+                '</div>' +
+                '<select onchange="saveAssignment(\'' + m.phone + '\', this.value, \'' + date + '\')">' + options + '</select>' +
+                statusPill +
+              '</div>';
+    });
+    $('assignmentsList').innerHTML = html;
+    $('assignSubtitle').textContent = members.length + ' field members · ' + assignments.length + ' assigned on ' + date;
+  }).catch(function(err) {
+    console.error(err);
+    $('assignmentsList').innerHTML = '<div class="empty-state"><i class="ti ti-alert-circle"></i>Load failed</div>';
+  });
+}
+
+function saveAssignment(phone, campaignKey, date) {
+  if (!campaignKey) {
+    // Delete
+    fetch(CONFIG.supabaseUrl + '/rest/v1/trial_daily_assignments?member_phone=eq.' + phone + '&assignment_date=eq.' + date, {
+      method: 'DELETE',
+      headers: { apikey: CONFIG.supabaseKey, Authorization: 'Bearer ' + CONFIG.supabaseKey }
+    }).then(function(){ showToast('Assignment removed', 'success'); loadAssignments(); })
+      .catch(function(){ showToast('Failed', 'error'); });
+    return;
+  }
+  
+  fetch(CONFIG.supabaseUrl + '/rest/v1/trial_daily_assignments?on_conflict=member_phone,assignment_date', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: CONFIG.supabaseKey, Authorization: 'Bearer ' + CONFIG.supabaseKey, Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({
+      member_phone: phone,
+      campaign_key: campaignKey,
+      assignment_date: date,
+      created_by: state.admin.phone
+    })
+  }).then(function(r) {
+    if (!r.ok) throw new Error('Failed');
+    showToast('Assigned', 'success');
+    loadAssignments();
+  }).catch(function() { showToast('Save failed', 'error'); });
+}
+
+// ─── ESC + Click-outside for new modals ───
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    if ($('campaignModal').classList.contains('active')) closeCampaignModal();
+    if ($('overrideModal').classList.contains('active')) closeOverrideModal();
+  }
+});
+$('campaignModal').addEventListener('click', function(e){ if (e.target === this) closeCampaignModal(); });
+$('overrideModal').addEventListener('click', function(e){ if (e.target === this) closeOverrideModal(); });
+
+// Initialize assignment date input on load
+document.addEventListener('DOMContentLoaded', function() {
+  if (document.getElementById('assignDate') && !document.getElementById('assignDate').value) {
+    document.getElementById('assignDate').value = todayStr();
+  }
 });
 
 // ─── AUTO-LOGIN IF SAVED ───
