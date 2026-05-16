@@ -5570,6 +5570,28 @@ function loadClientLinks() {
     $('navLinksCount').textContent = p4state.clientLinks.length;
     $('linksSubtitle').textContent = p4state.clientLinks.length + ' campaigns · share unique URL with each client';
     renderClientLinks();
+    
+    // AUTO-PERSIST: save any new tokens to DB immediately so URLs work without manual Copy
+    var unsaved = p4state.clientLinks.filter(function(l){ return !l._saved; });
+    if (unsaved.length > 0) {
+      console.log('[ClientLinks] Auto-saving ' + unsaved.length + ' new tokens to DB...');
+      var savedCount = 0;
+      var failedCount = 0;
+      unsaved.forEach(function(l) {
+        persistClientLink(l).then(function(rows) {
+          if (rows) {
+            savedCount++;
+            renderClientLinks();
+          } else {
+            failedCount++;
+          }
+          if (savedCount + failedCount === unsaved.length) {
+            if (savedCount > 0) showToast(savedCount + ' new client URLs auto-saved', 'success');
+            if (failedCount > 0) showToast(failedCount + ' failed to save — check console', 'error');
+          }
+        });
+      });
+    }
   }).catch(function(err) {
     console.error(err);
     $('clientLinksList').innerHTML = '<div class="empty-state"><i class="ti ti-alert-circle"></i>Load failed</div>';
@@ -5718,7 +5740,7 @@ function persistClientLink(l) {
     campaign_key: l.campaign_key,
     token: l.token,
     active: l.active,
-    created_by: state.admin && state.admin.phone
+    created_by: (state.admin && state.admin.phone) || 'unknown'
   };
   
   if (l._saved && l.id) {
@@ -5726,28 +5748,31 @@ function persistClientLink(l) {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', apikey: CONFIG.supabaseKey, Authorization: 'Bearer ' + CONFIG.supabaseKey },
       body: JSON.stringify({ token: l.token, active: l.active })
-    }).then(function(r){ if (!r.ok) throw new Error('save failed'); return r; })
-      .catch(function(err) {
-        // Table likely doesn't exist — silently work in memory
-        console.warn('Client links DB save failed (table missing?):', err);
-        return null;
-      });
+    }).then(function(r){
+      if (!r.ok) return r.text().then(function(t){ throw new Error('PATCH ' + r.status + ': ' + t); });
+      return r;
+    }).catch(function(err) {
+      console.error('[ClientLinks] PATCH failed:', err.message);
+      showToast('Save failed: ' + err.message, 'error');
+      return null;
+    });
   } else {
     return fetch(CONFIG.supabaseUrl + '/rest/v1/trial_client_links', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: CONFIG.supabaseKey, Authorization: 'Bearer ' + CONFIG.supabaseKey, Prefer: 'return=representation' },
       body: JSON.stringify(data)
     }).then(function(r) {
-      if (!r.ok) throw new Error('insert failed');
+      if (!r.ok) return r.text().then(function(t){ throw new Error('POST ' + r.status + ': ' + t); });
       return r.json();
     }).then(function(rows) {
       if (Array.isArray(rows) && rows[0]) {
         l.id = rows[0].id;
         l._saved = true;
+        console.log('[ClientLinks] Saved:', l.campaign_key, l.token.substring(0,8) + '...');
       }
       return rows;
     }).catch(function(err) {
-      console.warn('Client links DB insert failed (table missing?):', err);
+      console.error('[ClientLinks] INSERT failed:', err.message);
       return null;
     });
   }
