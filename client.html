@@ -616,53 +616,62 @@ function api(path) {
 }
 
 function init() {
-  // Parse URL params
+  // Parse URL params — supports both formats:
+  // 1. ?c=CAMPAIGN&t=TOKEN  (legacy, explicit)
+  // 2. ?t=TOKEN              (token-only, looks up campaign from DB)
+  // 3. ?token=TOKEN          (alternate name)
   var params = new URLSearchParams(window.location.search);
   var c = params.get('c');
-  var t = params.get('t');
+  var t = params.get('t') || params.get('token');
   
-  if (!c || !t) {
-    showGate('Invalid Link', 'Campaign or token missing. Please check the link you received.');
+  if (!t) {
+    showGate('Invalid Link', 'Token missing in URL. Please check the link you received.');
     return;
   }
   
-  state.campaignKey = c;
   state.token = t;
   
-  // Verify token against trial_client_links
-  api('/rest/v1/trial_client_links?campaign_key=eq.' + encodeURIComponent(c) + '&token=eq.' + encodeURIComponent(t) + '&active=eq.true&select=*')
+  // First, validate token & get campaign_key from trial_client_links
+  api('/rest/v1/trial_client_links?token=eq.' + encodeURIComponent(t) + '&active=eq.true&select=*')
     .then(function(rows) {
-      if (!rows || rows.length === 0) {
-        // Fallback: try loading campaign directly (in case trial_client_links table doesn't exist)
-        // This is dev-friendly fallback; in production with table, this won't trigger.
-        return api('/rest/v1/trial_campaigns?key=eq.' + encodeURIComponent(c) + '&active=eq.true&select=*').then(function(camps) {
-          if (!camps || camps.length === 0) {
-            showGate('Campaign Not Found', 'This campaign does not exist or has been deactivated.');
-            return null;
-          }
-          // No client_links table — accept token (dev mode)
-          return null;
-        });
+      if (rows && rows.length > 0) {
+        // Found valid link
+        var link = rows[0];
+        state.campaignKey = link.campaign_key;
+        
+        // Increment view count (fire-and-forget)
+        fetch(CONFIG.supabaseUrl + '/rest/v1/trial_client_links?id=eq.' + link.id, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', apikey: CONFIG.supabaseKey, Authorization: 'Bearer ' + CONFIG.supabaseKey },
+          body: JSON.stringify({ view_count: (link.view_count || 0) + 1, last_viewed_at: new Date().toISOString() })
+        }).catch(function(){});
+        
+        return link.campaign_key;
       }
-      // Increment view count
-      var link = rows[0];
-      fetch(CONFIG.supabaseUrl + '/rest/v1/trial_client_links?id=eq.' + link.id, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', apikey: CONFIG.supabaseKey, Authorization: 'Bearer ' + CONFIG.supabaseKey },
-        body: JSON.stringify({ view_count: (link.view_count || 0) + 1, last_viewed_at: new Date().toISOString() })
-      }).catch(function(){});
-      return link;
+      
+      // Token not in trial_client_links — fallback: maybe URL has c= AND token table missing
+      if (c) {
+        state.campaignKey = c;
+        return c;
+      }
+      
+      showGate('Invalid Link', 'This link is no longer active or token is incorrect.');
+      return null;
     })
-    .then(function() {
+    .then(function(campaignKey) {
+      if (!campaignKey) return;
+      
       // Load campaign details
-      return api('/rest/v1/trial_campaigns?key=eq.' + encodeURIComponent(c) + '&select=*');
+      return api('/rest/v1/trial_campaigns?key=eq.' + encodeURIComponent(campaignKey) + '&select=*');
     })
     .then(function(campaigns) {
-      if (!campaigns || campaigns.length === 0) {
+      if (!campaigns) return;
+      if (!campaigns.length) {
         showGate('Campaign Not Found', 'This campaign does not exist.');
         return;
       }
       state.campaign = campaigns[0];
+      state.campaignKey = state.campaign.key;
       
       if (!state.campaign.active) {
         showGate('Campaign Inactive', 'This campaign has been paused. Please contact us for more details.');
