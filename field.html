@@ -260,8 +260,8 @@ button,input{font-family:inherit}input{font-size:16px}
 <!-- Layer 2: GPS Permission Setup Modal (when denied) -->
 <div class="gps-modal" id="gps-setup-modal">
   <div class="icon-wrap">📍</div>
-  <h2>GPS Permission Chahiye</h2>
-  <p class="sub">Vehicle photos ke saath location stamp ke liye GPS chahiye. Permission allow karna padega.</p>
+  <h2 id="gps-modal-title">GPS Permission Chahiye</h2>
+  <p class="sub" id="gps-modal-subtitle">Vehicle photos ke saath location stamp ke liye GPS chahiye. Permission allow karna padega.</p>
   
   <div class="why-box">
     <strong>📋 Kyun zaroori hai?</strong>
@@ -271,30 +271,84 @@ button,input{font-family:inherit}input{font-size:16px}
   <div class="steps" id="gps-modal-steps">
     <div class="step">
       <span class="step-num">1</span>
-      <span class="step-txt">Address bar me <strong>🔒 lock icon</strong> tap karo (URL ke side)</span>
+      <span class="step-txt">Niche <strong>"GPS Allow Karo"</strong> button daba</span>
     </div>
     <div class="step">
       <span class="step-num">2</span>
-      <span class="step-txt"><strong>"Site settings"</strong> ya <strong>"Permissions"</strong> choose karo</span>
+      <span class="step-txt">Phone pe permission popup aayega → <strong>"Allow"</strong> daba</span>
     </div>
     <div class="step">
       <span class="step-num">3</span>
-      <span class="step-txt"><strong>"Location"</strong> par tap karke <strong>"Allow"</strong> karo</span>
-    </div>
-    <div class="step">
-      <span class="step-num">4</span>
-      <span class="step-txt">Vapas aake <strong>"Phir Try Karo"</strong> button daba</span>
+      <span class="step-txt">Agar popup nahi aaya → niche <strong>"Block Hai? Yahan Fix Karo"</strong> dekho</span>
     </div>
   </div>
   
   <div class="actions">
-    <button class="btn btn-retry" onclick="retryGpsPermission()">🔄 Phir Try Karo</button>
+    <button class="btn btn-retry" id="gps-allow-btn" onclick="forceRequestGpsPermission()" style="background:#26d0ce;color:#0B1957;font-weight:700;font-size:15px;padding:14px;">📍 GPS Allow Karo</button>
+    <button class="btn btn-skip" onclick="showBlockedRecovery()" style="background:rgba(255,184,0,0.15);color:#ffb800;border:1px solid #ffb800;">🚨 Block Hai? Yahan Fix Karo</button>
+    <button class="btn btn-skip" onclick="tryManualFallback()" id="gps-manual-btn">⚙️ Manual GPS Use Karo</button>
     <a class="btn btn-call" href="tel:9922138138" style="text-decoration:none">📞 Admin Ko Call Karo (9922138138)</a>
-    <button class="btn btn-skip" onclick="tryManualFallback()">⚙️ Manual GPS Try Karo</button>
   </div>
   
   <div class="browser-hint" id="gps-modal-hint">
-    Phone Settings → Apps → Chrome → Permissions → Location → Allow
+    Step-by-step instructions ke liye upar "Block Hai?" button daba
+  </div>
+</div>
+
+<!-- ⭐ NEW: Blocked Recovery Modal (Layer 6) — when permission is permanently denied -->
+<div class="gps-modal" id="gps-blocked-modal" style="display:none">
+  <div class="icon-wrap" style="background:rgba(220,38,38,0.15);">🚨</div>
+  <h2 style="color:#ff6b6b">GPS Block Hai</h2>
+  <p class="sub">Permission permanently block hai. 3 tareeke hain fix karne ke — koi bhi try karo:</p>
+  
+  <div class="why-box" style="background:rgba(245,184,0,0.1);border-color:rgba(245,184,0,0.4);">
+    <strong>⚠️ Yeh kyun hua?</strong>
+    Kabhi galti se "Block" daba diya tha. Ab phone ko bolna padega "Allow" karne ke liye.
+  </div>
+  
+  <div class="steps">
+    <div class="step" style="background:rgba(38,208,206,0.08);border-left:3px solid #26d0ce;padding-left:10px;">
+      <span class="step-num" style="background:#26d0ce;color:#0B1957">A</span>
+      <span class="step-txt"><strong>Chrome Menu Method (Best)</strong><br>
+      1️⃣ Chrome ke top-right me <strong>⋮ 3-dots</strong> tap karo<br>
+      2️⃣ <strong>Settings</strong> tap karo<br>
+      3️⃣ <strong>Site Settings</strong> tap karo<br>
+      4️⃣ <strong>Location</strong> tap karo<br>
+      5️⃣ "Blocked" section me <strong>prajapati-gps-field-repo.vercel.app</strong> dhundo<br>
+      6️⃣ Site pe tap karke <strong>Allow</strong> karo<br>
+      7️⃣ Wapas aake "GPS Allow Karo" daba
+      </span>
+    </div>
+    
+    <div class="step" style="background:rgba(245,184,0,0.08);border-left:3px solid #ffb800;padding-left:10px;margin-top:10px;">
+      <span class="step-num" style="background:#ffb800;color:#0B1957">B</span>
+      <span class="step-txt"><strong>Phone Settings Method</strong><br>
+      1️⃣ Phone <strong>Settings</strong> kholo (gear icon)<br>
+      2️⃣ <strong>Apps</strong> ya <strong>App Management</strong><br>
+      3️⃣ <strong>Chrome</strong> dhundo → tap<br>
+      4️⃣ <strong>Permissions</strong> → <strong>Location</strong><br>
+      5️⃣ <strong>"Allow only while using"</strong> select<br>
+      6️⃣ Chrome restart → URL fresh me kholo
+      </span>
+    </div>
+    
+    <div class="step" style="background:rgba(220,38,38,0.08);border-left:3px solid #ff6b6b;padding-left:10px;margin-top:10px;">
+      <span class="step-num" style="background:#ff6b6b;color:#fff">C</span>
+      <span class="step-txt"><strong>Nuclear Reset (Last Resort)</strong><br>
+      Niche button daba ke saari site data clear hogi → fresh prompt aayega
+      </span>
+    </div>
+  </div>
+  
+  <div class="actions">
+    <button class="btn btn-retry" onclick="hideBlockedRecovery()" style="background:#26d0ce;color:#0B1957;font-weight:700;">✅ Fix Kar Liya — Phir Try Karo</button>
+    <button class="btn btn-skip" onclick="nuclearReset()" style="background:rgba(220,38,38,0.2);color:#ff6b6b;border:1px solid #ff6b6b;font-weight:600;">💥 Nuclear Reset (Clear All & Reload)</button>
+    <button class="btn btn-skip" onclick="copyDiagnostics()" style="font-size:12px;">📋 Diagnostics Copy Karo (Admin ko bhejne ke liye)</button>
+    <button class="btn btn-skip" onclick="hideBlockedRecovery()" style="background:transparent;color:#888;">← Wapas</button>
+  </div>
+  
+  <div class="browser-hint">
+    🆘 Phir bhi nahi ho raha? Admin ko call karo: <a href="tel:9922138138" style="color:#26d0ce;">9922138138</a>
   </div>
 </div>
 

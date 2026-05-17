@@ -6,7 +6,7 @@
 //        + Strong PWA install + Aggressive auto-update
 // ═════════════════════════════════════════════════════════════════
 
-var APP_VERSION = 'v15.4.4';
+var APP_VERSION = 'v15.4.5';
 var BUILD_DATE = '2026-05-17';
 
 var CONFIG = {
@@ -257,7 +257,7 @@ function checkGpsPermissionState(){
   });
 }
 
-// Layer 2: Show GPS setup modal (Hinglish + step-by-step)
+// Layer 2 + 6: Show GPS setup modal (state-aware Hinglish + step-by-step)
 window.showGpsSetupModal = function(){
   var modal = $('gps-setup-modal');
   if (!modal) return;
@@ -268,13 +268,33 @@ window.showGpsSetupModal = function(){
   if (/iphone|ipad|ipod/.test(ua)){
     hint.textContent = 'iPhone: Settings → Safari → Location → Allow';
   } else if (/android/.test(ua)){
-    hint.textContent = 'Phone Settings → Apps → Chrome → Permissions → Location → Allow';
+    hint.textContent = '"Block Hai? Yahan Fix Karo" button daba detailed steps ke liye';
   } else {
     hint.textContent = 'Browser settings me location permission "Allow" karo';
   }
   
+  // ⭐ v15.4.5: Show/hide manual GPS button based on campaign config
+  var manualBtn = $('gps-manual-btn');
+  if (manualBtn){
+    manualBtn.style.display = hasCampaignAnchor() ? 'block' : 'none';
+  }
+  
   modal.classList.add('show');
-  console.log('[GPS v15.4.3] Setup modal shown');
+  console.log('[GPS v15.4.5] Setup modal shown');
+  
+  // ⭐ v15.4.5: Detect if permission is permanently blocked, auto-suggest blocked recovery
+  if (navigator.permissions && navigator.permissions.query){
+    navigator.permissions.query({ name: 'geolocation' }).then(function(result){
+      console.log('[GPS v15.4.5] Modal opened with state:', result.state);
+      if (result.state === 'denied'){
+        // Update modal to show blocked-specific guidance
+        var title = $('gps-modal-title');
+        var subtitle = $('gps-modal-subtitle');
+        if (title) title.textContent = 'GPS Block Hai';
+        if (subtitle) subtitle.textContent = 'Permission permanently block hai. "Block Hai? Yahan Fix Karo" daba — step-by-step guide milega.';
+      }
+    }).catch(function(){});
+  }
 };
 
 window.hideGpsSetupModal = function(){
@@ -282,22 +302,30 @@ window.hideGpsSetupModal = function(){
   if (modal) modal.classList.remove('show');
 };
 
-window.retryGpsPermission = function(){
-  console.log('[GPS v15.4.3] Retry button clicked');
-  // Try requesting permission again
+// ⭐ v15.4.5 Layer 6: Smart permission request that handles all states
+window.forceRequestGpsPermission = function(){
+  console.log('[GPS v15.4.5] Force-requesting GPS permission');
   if (!navigator.geolocation){
     toast('GPS not supported on this device','error');
     return;
   }
-  loader(true, 'GPS check kar rahe…');
+  
+  var btn = $('gps-allow-btn');
+  if (btn){ btn.disabled = true; btn.textContent = '⏳ Permission check kar rahe…'; }
+  loader(true, 'GPS permission maang rahe…');
+  
+  // Track timing — if call returns instantly with error, permission is likely BLOCKED
+  var startedAt = Date.now();
+  
   navigator.geolocation.getCurrentPosition(
     function(pos){
+      // SUCCESS
       loader(false);
+      if (btn){ btn.disabled = false; btn.textContent = '📍 GPS Allow Karo'; }
       setGpsFromPosition(pos);
       hideGpsSetupModal();
       toast('✅ GPS mil gaya! Ab kaam kar sakte ho', 'success');
       reportGpsStatus('granted');
-      // Resume watch if not active
       if (gpsWatchId === null && navigator.geolocation){
         gpsWatchId = navigator.geolocation.watchPosition(
           function(pos){ setGpsFromPosition(pos); },
@@ -308,16 +336,174 @@ window.retryGpsPermission = function(){
     },
     function(err){
       loader(false);
+      if (btn){ btn.disabled = false; btn.textContent = '📍 GPS Allow Karo'; }
+      
+      var elapsedMs = Date.now() - startedAt;
+      console.warn('[GPS v15.4.5] Permission failed:', err.code, 'elapsed:', elapsedMs + 'ms');
+      
       if (err.code === 1){
-        toast('Abhi bhi permission deny hai — phone settings me jaake allow karo', 'error');
-      } else {
-        toast('GPS error: ' + err.message, 'error');
+        // PERMISSION_DENIED
+        // If failed in <500ms → no prompt was shown → permanently blocked
+        if (elapsedMs < 500){
+          console.log('[GPS v15.4.5] Fast-fail detected — permission is BLOCKED, showing recovery');
+          toast('⚠️ GPS block hai — recovery steps follow karo', 'warn');
+          showBlockedRecovery();
+        } else {
+          toast('Permission deny ki — phir try karo ya "Block Hai?" daba', 'error');
+        }
+        reportGpsStatus('denied');
+      } else if (err.code === 2){
+        toast('📡 Phone ka GPS service on karo (Quick settings se)', 'error');
+        reportGpsStatus('unavailable');
+      } else if (err.code === 3){
+        toast('⏱️ GPS timeout — phir try karo', 'warn');
+        reportGpsStatus('timeout');
       }
-      reportGpsStatus('denied');
     },
-    { enableHighAccuracy:true, maximumAge:0, timeout:10000 }
+    { enableHighAccuracy:true, maximumAge:0, timeout:15000 }
   );
 };
+
+// Keep backward compat alias
+window.retryGpsPermission = window.forceRequestGpsPermission;
+
+// ⭐ Layer 6: Show "Block Hai" recovery modal with multi-path fix
+window.showBlockedRecovery = function(){
+  var setup = $('gps-setup-modal');
+  var blocked = $('gps-blocked-modal');
+  if (setup) setup.classList.remove('show');
+  if (blocked){
+    blocked.style.display = 'flex';
+    blocked.classList.add('show');
+  }
+  console.log('[GPS v15.4.5] Blocked recovery modal shown');
+};
+
+window.hideBlockedRecovery = function(){
+  var blocked = $('gps-blocked-modal');
+  if (blocked){
+    blocked.classList.remove('show');
+    blocked.style.display = 'none';
+  }
+  // After user says "Fix Kar Liya", try permission again
+  setTimeout(function(){
+    showGpsSetupModal();
+    setTimeout(forceRequestGpsPermission, 400);
+  }, 300);
+};
+
+// ⭐ Layer 6: Nuclear Reset — clear all site data and reload
+window.nuclearReset = function(){
+  if (!confirm('Sab data clear ho jaayega aur app restart hoga. Kya aap confirm karte ho?\n\n(Captured photos jo upload nahi hue, woh lost ho sakte hain.)')) {
+    return;
+  }
+  
+  loader(true, 'Reset kar rahe… 5 sec lagega');
+  console.log('[GPS v15.4.5] Nuclear reset initiated');
+  
+  var resetTasks = [];
+  
+  // 1. Clear all caches (Service Worker cache)
+  if ('caches' in window){
+    resetTasks.push(
+      caches.keys().then(function(keys){
+        return Promise.all(keys.map(function(key){
+          console.log('[Reset] Deleting cache:', key);
+          return caches.delete(key);
+        }));
+      })
+    );
+  }
+  
+  // 2. Unregister all service workers
+  if ('serviceWorker' in navigator){
+    resetTasks.push(
+      navigator.serviceWorker.getRegistrations().then(function(regs){
+        return Promise.all(regs.map(function(r){
+          console.log('[Reset] Unregistering SW:', r.scope);
+          return r.unregister();
+        }));
+      })
+    );
+  }
+  
+  // 3. Clear IndexedDB (don't delete the queue if photos pending)
+  // Just clear localStorage + sessionStorage
+  try {
+    localStorage.clear();
+    sessionStorage.clear();
+  } catch(e){}
+  
+  Promise.all(resetTasks).then(function(){
+    console.log('[GPS v15.4.5] Reset complete — reloading');
+    setTimeout(function(){
+      // Hard reload with cache bypass
+      window.location.href = window.location.href.split('?')[0] + '?reset=' + Date.now();
+    }, 800);
+  }).catch(function(err){
+    console.error('[Reset] Error:', err);
+    setTimeout(function(){ window.location.reload(true); }, 800);
+  });
+};
+
+// ⭐ Layer 6: Copy diagnostics for admin support
+window.copyDiagnostics = function(){
+  var diag = {
+    version: APP_VERSION,
+    build: BUILD_DATE,
+    timestamp: new Date().toISOString(),
+    userAgent: navigator.userAgent,
+    platform: navigator.platform || 'unknown',
+    geolocationSupported: 'geolocation' in navigator,
+    permissionsApiSupported: 'permissions' in navigator,
+    online: navigator.onLine,
+    member: state.member ? state.member.name + ' (' + state.member.phone + ')' : 'not logged in',
+    campaign: state.campaign ? state.campaign.key : 'none',
+    campaignHasAnchor: hasCampaignAnchor(),
+    lastGpsStatus: gpsLastReportedStatus || 'unknown',
+    standalone: window.matchMedia('(display-mode: standalone)').matches,
+    url: window.location.href
+  };
+  
+  // Try to get permission state
+  if (navigator.permissions){
+    navigator.permissions.query({ name: 'geolocation' }).then(function(result){
+      diag.permissionState = result.state;
+      var text = '🔧 Prajapati GPS Diagnostics\n' +
+                 '────────────────────────────\n' +
+                 Object.keys(diag).map(function(k){ return k + ': ' + diag[k]; }).join('\n') +
+                 '\n────────────────────────────\n' +
+                 'WhatsApp this to admin: 9922138138';
+      copyToClipboardAndShare(text);
+    }).catch(function(){
+      copyToClipboardAndShare(JSON.stringify(diag, null, 2));
+    });
+  } else {
+    copyToClipboardAndShare(JSON.stringify(diag, null, 2));
+  }
+};
+
+function copyToClipboardAndShare(text){
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(function(){
+      toast('✅ Diagnostics copy hue! WhatsApp pe paste karo', 'success');
+      // Also try Web Share API for direct share
+      if (navigator.share){
+        setTimeout(function(){
+          navigator.share({
+            title: 'GPS Issue Diagnostics',
+            text: text
+          }).catch(function(){});
+        }, 500);
+      }
+    }).catch(function(){
+      // Fallback: show in alert
+      prompt('Copy karke admin ko bhejo:', text);
+    });
+  } else {
+    prompt('Copy karke admin ko bhejo:', text);
+  }
+}
 
 // Layer 3 trigger: User explicitly chooses manual fallback
 window.tryManualFallback = function(){
