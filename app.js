@@ -6,7 +6,7 @@
 //        + Strong PWA install + Aggressive auto-update
 // ═════════════════════════════════════════════════════════════════
 
-var APP_VERSION = 'v15.4.3';
+var APP_VERSION = 'v15.4.4';
 var BUILD_DATE = '2026-05-17';
 
 var CONFIG = {
@@ -17,7 +17,7 @@ var CONFIG = {
   plateRecognizerToken: '4f6a384fb325649a527b7b2341aaf800b9f10306',
   plateRecognizerUrl: 'https://api.platerecognizer.com/v1/plate-reader/',
   sessionTtlMs: 12 * 60 * 60 * 1000,
-  swUpdateIntervalMs: 60 * 1000  // v15.4 FIX: Check every 60 sec (was 15 sec — too aggressive)
+  swUpdateIntervalMs: 5 * 60 * 1000  // v15.4.4 FIX: Check every 5 min (was 60s — too aggressive, caused update loop)
 };
 
 var state = {
@@ -1848,8 +1848,30 @@ if ('serviceWorker' in navigator) {
         if (!newWorker) return;
         newWorker.addEventListener('statechange', function(){
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller){
+            // ⭐ v15.4.4 FIX: Suppress duplicate banner after recent user-triggered update
+            var justUpdated = sessionStorage.getItem('pf_just_updated_at');
+            if (justUpdated) {
+              var elapsedMs = Date.now() - parseInt(justUpdated, 10);
+              if (elapsedMs < 10 * 60 * 1000) {  // within last 10 min
+                console.log('[PWA v15.4.4] Update banner suppressed — just updated ' + Math.round(elapsedMs/1000) + 's ago');
+                return;
+              }
+              // 10+ min ago — clear flag, allow new banner
+              sessionStorage.removeItem('pf_just_updated_at');
+            }
+            
+            // ⭐ v15.4.4 FIX: Track last shown version to avoid same-version banner
+            var lastShownVersion = sessionStorage.getItem('pf_banner_shown_version');
+            var currentAppVersion = APP_VERSION;
+            if (lastShownVersion === currentAppVersion) {
+              console.log('[PWA v15.4.4] Banner already shown for version ' + currentAppVersion + ' — skipping');
+              return;
+            }
+            sessionStorage.setItem('pf_banner_shown_version', currentAppVersion);
+            
             pendingWorker = newWorker;
             $('update-banner').classList.add('show');
+            console.log('[PWA v15.4.4] Update banner shown for version ' + currentAppVersion);
           }
         });
       });
@@ -1992,28 +2014,41 @@ window.dismissInstall = function(){
   localStorage.setItem('pf_install_dismissed_v15', '1');
 };
 
+// ⭐ v15.4.4: User can dismiss update banner — suppresses for 30 min
+window.dismissUpdate = function(){
+  $('update-banner').classList.remove('show');
+  sessionStorage.setItem('pf_just_updated_at', String(Date.now()));
+  console.log('[PWA v15.4.4] Update dismissed by user — suppressing banner for 10 min');
+};
+
 window.applyUpdate = function(){
   $('update-banner').classList.remove('show');
+  // ⭐ v15.4.4 FIX: Set timestamp so updatefound handler suppresses duplicate banner for 10 min
+  sessionStorage.setItem('pf_just_updated_at', String(Date.now()));
+  // Track which version was applied so we don't show banner for same version
+  sessionStorage.setItem('pf_last_applied_version', APP_VERSION);
+  
   // ⭐ v15.4.2 FIX: Set explicit user-triggered flag so controllerchange knows to reload
   sessionStorage.setItem('pf_user_triggered_update', '1');
   // Clear the loop guard since user explicitly wants update
   sessionStorage.removeItem('pf_sw_last_reload');
   
   if (pendingWorker){
-    console.log('[PWA v15.4.2] User clicked Update — sending SKIP_WAITING to pending SW');
+    console.log('[PWA v15.4.4] User clicked Update — sending SKIP_WAITING to pending SW');
     pendingWorker.postMessage({ type: 'SKIP_WAITING' });
+    pendingWorker = null;  // clear reference — banner handler will detect this
     
     // Fallback: if controllerchange doesn't fire within 3 sec, force reload
     setTimeout(function(){
       if (!refreshing){
-        console.log('[PWA v15.4.2] Fallback: forcing reload after 3 sec');
+        console.log('[PWA v15.4.4] Fallback: forcing reload after 3 sec');
         refreshing = true;
         window.location.reload();
       }
     }, 3000);
   } else {
     // No pending worker — just hard reload to fetch latest
-    console.log('[PWA v15.4.2] No pendingWorker — forcing hard reload');
+    console.log('[PWA v15.4.4] No pendingWorker — forcing hard reload');
     refreshing = true;
     window.location.reload();
   }
