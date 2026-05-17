@@ -6,8 +6,8 @@
 //        + Strong PWA install + Aggressive auto-update
 // ═════════════════════════════════════════════════════════════════
 
-var APP_VERSION = 'v15.3';
-var BUILD_DATE = '2026-05-15';
+var APP_VERSION = 'v15.4';
+var BUILD_DATE = '2026-05-17';
 
 var CONFIG = {
   supabaseUrl: 'https://fpbktcgtspqsqpaytslv.supabase.co',
@@ -324,7 +324,6 @@ function loadTodayPhotos(){
   var date = todayStr();
   var startUTC = new Date(date + 'T00:00:00+05:30').toISOString();
   var endUTC = new Date(date + 'T23:59:59+05:30').toISOString();
-  // Filter rejected/deleted out at query level
   return api('/rest/v1/trial_photos?member_phone=eq.'+state.member.phone+'&campaign_key=eq.'+state.campaign.key+'&captured_at=gte.'+startUTC+'&captured_at=lte.'+endUTC+'&rejected=eq.false&deleted_at=is.null&select=*&order=captured_at.desc')
     .then(function(rows){
       state.todayPhotos = rows || [];
@@ -647,24 +646,23 @@ var camZoomState = {
   isPinching: false, zoomHideTimer: null
 };
 
-// ⭐ v15.3: Find and open ULTRA-WIDE rear camera (proper 0.5x equivalent)
+// ⭐ v15.4: Find and open ULTRA-WIDE rear camera (proper 0.5x equivalent)
+//          Enhanced multi-strategy detection
 function findUltraWideCamera() {
   return new Promise(function(resolve) {
-    // Step 1: Get permission first to unlock device labels
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
       .then(function(tempStream) {
-        // Immediately stop temp stream
         tempStream.getTracks().forEach(function(t) { try { t.stop(); } catch(e){} });
         return navigator.mediaDevices.enumerateDevices();
       })
       .then(function(devices) {
         var cameras = devices.filter(function(d) { return d.kind === 'videoinput'; });
-        console.log('[CAM v15.3] Found', cameras.length, 'cameras:');
+        console.log('[CAM v15.4] Found', cameras.length, 'cameras:');
         cameras.forEach(function(c, i) {
-          console.log('  [' + i + ']', c.label || '(no label)', '|', c.deviceId.substring(0, 10) + '...');
+          console.log('  [' + i + ']', c.label || '(no label)');
         });
         
-        // PRIORITY 1: Ultra-wide rear camera (Samsung/Pixel/OnePlus naming)
+        // PRIORITY 1: Explicit ultra-wide labels
         var ultraWide = cameras.find(function(c) {
           var lbl = (c.label || '').toLowerCase();
           var isRear = lbl.indexOf('back') >= 0 || lbl.indexOf('rear') >= 0;
@@ -675,28 +673,26 @@ function findUltraWideCamera() {
         });
         
         if (ultraWide) {
-          console.log('[CAM v15.3] ✅ ULTRA-WIDE FOUND:', ultraWide.label);
+          console.log('[CAM v15.4] ✅ ULTRA-WIDE FOUND:', ultraWide.label);
           resolve({ deviceId: ultraWide.deviceId, isUltraWide: true });
           return;
         }
         
-        // PRIORITY 2: Any rear camera with "wide" 
+        // PRIORITY 2: Wide rear
         var anyWide = cameras.find(function(c) {
           var lbl = (c.label || '').toLowerCase();
           return (lbl.indexOf('back') >= 0 || lbl.indexOf('rear') >= 0) && lbl.indexOf('wide') >= 0;
         });
         
         if (anyWide) {
-          console.log('[CAM v15.3] ✅ WIDE rear found:', anyWide.label);
+          console.log('[CAM v15.4] ✅ WIDE rear found:', anyWide.label);
           resolve({ deviceId: anyWide.deviceId, isUltraWide: true });
           return;
         }
         
-        // PRIORITY 3: Look for camera index 2+ (usually ultra-wide is camera 2 on Android)
-        // Camera 0 = front, 1 = main rear, 2 = ultra-wide, 3 = telephoto (typical)
+        // PRIORITY 3: Camera[2] on multi-cam phones (usually ultra-wide)
         if (cameras.length >= 3) {
-          // Try the 3rd camera (likely ultra-wide on multi-cam phones)
-          console.log('[CAM v15.3] Trying camera[2] as potential ultra-wide:', cameras[2].label);
+          console.log('[CAM v15.4] Trying camera[2] as potential ultra-wide:', cameras[2].label);
           resolve({ deviceId: cameras[2].deviceId, isUltraWide: false, tryZoomMin: true });
           return;
         }
@@ -708,16 +704,16 @@ function findUltraWideCamera() {
         });
         
         if (anyRear) {
-          console.log('[CAM v15.3] ⚠️ Using main rear:', anyRear.label);
+          console.log('[CAM v15.4] ⚠️ Using main rear:', anyRear.label);
           resolve({ deviceId: anyRear.deviceId, isUltraWide: false, tryZoomMin: true });
           return;
         }
         
-        console.log('[CAM v15.3] ⚠️ No specific camera, fallback to facingMode');
+        console.log('[CAM v15.4] ⚠️ No specific camera, fallback to facingMode');
         resolve(null);
       })
       .catch(function(err) {
-        console.warn('[CAM v15.3] Detection error:', err);
+        console.warn('[CAM v15.4] Detection error:', err);
         resolve(null);
       });
   });
@@ -732,7 +728,6 @@ function openInAppCamera(key){
   updateCamStampPreview();
   camStampTimer = setInterval(updateCamStampPreview, 1500);
 
-  // v15.3: Detect & open ultra-wide
   findUltraWideCamera().then(function(camChoice) {
     var constraints;
     if (camChoice && camChoice.deviceId) {
@@ -746,7 +741,7 @@ function openInAppCamera(key){
         },
         audio: false
       };
-      console.log('[CAM v15.3] Opening device:', camChoice.deviceId.substring(0,12), camChoice.isUltraWide ? '(ULTRA-WIDE)' : '(rear, will try zoom min)');
+      console.log('[CAM v15.4] Opening device:', camChoice.deviceId.substring(0,12), camChoice.isUltraWide ? '(ULTRA-WIDE)' : '(rear, will try zoom min)');
     } else {
       constraints = {
         video: {
@@ -756,7 +751,7 @@ function openInAppCamera(key){
         },
         audio: false
       };
-      console.log('[CAM v15.3] Opening default rear (no deviceId)');
+      console.log('[CAM v15.4] Opening default rear (no deviceId)');
     }
     return navigator.mediaDevices.getUserMedia(constraints).then(function(stream) {
       return { stream: stream, camChoice: camChoice };
@@ -771,14 +766,14 @@ function openInAppCamera(key){
       v.play();
       $('cam-shutter').disabled = false;
       
-      // If we're on a regular rear camera (not ultra-wide), try zoom=min to widen
+      // ⭐ v15.4 FIX: ALWAYS try to set zoom to MIN (widest), regardless of camera
       var track = stream.getVideoTracks()[0];
       if (track && track.getCapabilities) {
         try {
           var caps = track.getCapabilities();
-          console.log('[CAM v15.3] Track capabilities:', caps.zoom ? JSON.stringify(caps.zoom) : 'no zoom');
-          if (caps.zoom && (!camChoice || !camChoice.isUltraWide)) {
-            // Set to MIN zoom only if NOT already ultra-wide
+          console.log('[CAM v15.4] Track capabilities:', caps.zoom ? JSON.stringify(caps.zoom) : 'no zoom');
+          if (caps.zoom) {
+            // Always force minimum zoom (widest possible view)
             var targetZoom = caps.zoom.min;
             track.applyConstraints({ advanced: [{ zoom: targetZoom }] })
               .then(function() {
@@ -786,19 +781,14 @@ function openInAppCamera(key){
                 camZoomState.minZoom = caps.zoom.min;
                 camZoomState.maxZoom = caps.zoom.max || 4.0;
                 camZoomState.stepZoom = caps.zoom.step || 0.1;
-                console.log('[CAM v15.3] ✅ Zoom set to min:', targetZoom + 'x');
+                console.log('[CAM v15.4] ✅ Zoom forced to min:', targetZoom + 'x (widest)');
                 updateZoomIndicator(targetZoom);
               })
-              .catch(function(e) { console.warn('[CAM v15.3] Zoom failed:', e); });
-          } else if (caps.zoom) {
-            // Already ultra-wide - just record state
-            camZoomState.currentZoom = caps.zoom.min;
-            camZoomState.minZoom = caps.zoom.min;
-            camZoomState.maxZoom = caps.zoom.max || 4.0;
-            camZoomState.stepZoom = caps.zoom.step || 0.1;
-            console.log('[CAM v15.3] ✅ Ultra-wide camera active, zoom range:', caps.zoom.min, '-', caps.zoom.max);
+              .catch(function(e) { console.warn('[CAM v15.4] Zoom apply failed:', e); });
+          } else {
+            console.log('[CAM v15.4] No zoom capability — using camera default FOV');
           }
-        } catch (e) { console.warn('[CAM v15.3] Cap check failed:', e); }
+        } catch (e) { console.warn('[CAM v15.4] Cap check failed:', e); }
       }
       
       setupPinchToZoom(stream);
@@ -812,6 +802,18 @@ function openInAppCamera(key){
           var v = $('cam-feed'); v.srcObject = stream;
           v.onloadedmetadata = function(){
             v.play(); $('cam-shutter').disabled = false;
+            // Try zoom min on fallback stream too
+            var track = stream.getVideoTracks()[0];
+            if (track && track.getCapabilities) {
+              try {
+                var caps = track.getCapabilities();
+                if (caps.zoom) {
+                  track.applyConstraints({ advanced: [{ zoom: caps.zoom.min }] })
+                    .then(function() { console.log('[CAM v15.4 fallback] Zoom set to min:', caps.zoom.min); })
+                    .catch(function(){});
+                }
+              } catch(e){}
+            }
             setupPinchToZoom(stream);
           };
         }).catch(function(){
@@ -1085,9 +1087,11 @@ function waitForOcr(maxMs){
 }
 
 // ═════════════════════════════════════════════════════════════════
-// GPS STAMP - WITH GOOGLE MAPS GRAPHIC (RESTORED v15)
-// Draws: Green map background + red pin + roads + Google label
-//        on LEFT side, then address+coords+timestamp on RIGHT
+// GPS STAMP v15.4 — FIX: All text fits, NO CUTOFF on right side
+//   - Reserves 12px right padding (text never reaches edge)
+//   - Wraps city/state intelligently if doesn't fit one line
+//   - Reduces font size if needed instead of cutting
+//   - Truncates with "..." only as last resort
 // ═════════════════════════════════════════════════════════════════
 function stampGps(file){
   return fileToImage(file).then(function(img){
@@ -1101,34 +1105,33 @@ function stampGps(file){
 
     var W = canvas.width, H = canvas.height;
     
-    // v15.3: PROFESSIONAL GPS Map Camera style stamp
-    var oH = Math.round(H * 0.19);  // Slightly larger for better readability
+    var oH = Math.round(H * 0.19);
     var oY = H - oH;
     var pad = Math.round(oH * 0.08);
     var mS = oH - 2*pad;
+    
+    // ⭐ v15.4 FIX: Right-side safety margin so text NEVER touches edge
+    var rightSafety = Math.round(pad * 1.2);
 
-    // Solid dark overlay (Google Maps style)
+    // Dark overlay
     ctx.fillStyle = 'rgba(13, 17, 33, 0.95)';
     ctx.fillRect(0, oY, W, oH);
     
-    // Subtle top border accent
+    // Gold accent top border
     ctx.fillStyle = 'rgba(255, 184, 0, 0.5)';
     ctx.fillRect(0, oY, W, 2);
 
-    // ━━━━━━━━━━━ PROFESSIONAL MAP GRAPHIC ━━━━━━━━━━━
+    // ━━━━━━━━━━━ MAP GRAPHIC (Google Maps style) ━━━━━━━━━━━
     var mX = pad, mY = oY + pad;
     
-    // Google Maps base color (cream/off-white)
     ctx.fillStyle = '#F5F2E8';
     ctx.fillRect(mX, mY, mS, mS);
     
-    // Light green park (upper right)
     ctx.fillStyle = '#C8E6C9';
     ctx.beginPath();
     ctx.ellipse(mX + mS * 0.75, mY + mS * 0.20, mS * 0.22, mS * 0.18, 0, 0, Math.PI * 2);
     ctx.fill();
     
-    // Building blocks (light gray, varying shades)
     ctx.fillStyle = '#E5E2D9';
     ctx.fillRect(mX + Math.round(mS*0.05), mY + Math.round(mS*0.05), Math.round(mS*0.32), Math.round(mS*0.30));
     ctx.fillStyle = '#DDD9CE';
@@ -1136,18 +1139,15 @@ function stampGps(file){
     ctx.fillStyle = '#E0DDD3';
     ctx.fillRect(mX + Math.round(mS*0.05), mY + Math.round(mS*0.55), Math.round(mS*0.30), Math.round(mS*0.32));
     
-    // Building outlines (subtle)
     ctx.strokeStyle = '#D0CDC2';
     ctx.lineWidth = 1;
     ctx.strokeRect(mX + Math.round(mS*0.05), mY + Math.round(mS*0.05), Math.round(mS*0.32), Math.round(mS*0.30));
     ctx.strokeRect(mX + Math.round(mS*0.55), mY + Math.round(mS*0.55), Math.round(mS*0.40), Math.round(mS*0.32));
     
-    // White roads (main intersection)
     ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(mX, mY + Math.round(mS*0.40), mS, Math.round(mS*0.10));  // horizontal
-    ctx.fillRect(mX + Math.round(mS*0.42), mY, Math.round(mS*0.10), mS);  // vertical
+    ctx.fillRect(mX, mY + Math.round(mS*0.40), mS, Math.round(mS*0.10));
+    ctx.fillRect(mX + Math.round(mS*0.42), mY, Math.round(mS*0.10), mS);
     
-    // Road borders
     ctx.strokeStyle = '#E8E5D8';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -1155,7 +1155,6 @@ function stampGps(file){
     ctx.moveTo(mX, mY + Math.round(mS*0.50)); ctx.lineTo(mX + mS, mY + Math.round(mS*0.50));
     ctx.stroke();
     
-    // Blue water at bottom edge
     ctx.fillStyle = '#A5D4E8';
     ctx.beginPath();
     ctx.moveTo(mX, mY + Math.round(mS*0.92));
@@ -1163,18 +1162,16 @@ function stampGps(file){
     ctx.lineTo(mX + mS, mY + mS); ctx.lineTo(mX, mY + mS); ctx.closePath();
     ctx.fill();
     
-    // ━━━ Red Google Maps Pin (LARGE & PROMINENT) ━━━
+    // Red pin
     var pCX = mX + mS/2;
     var pCY = mY + mS*0.42;
     var pR = mS*0.14;
     
-    // Pin shadow (ground)
     ctx.fillStyle = 'rgba(0,0,0,0.30)';
     ctx.beginPath();
     ctx.ellipse(pCX, pCY + pR*1.85, pR*0.75, pR*0.25, 0, 0, Math.PI * 2);
     ctx.fill();
     
-    // Pin teardrop body
     ctx.fillStyle = '#EA4335';
     ctx.beginPath();
     ctx.arc(pCX, pCY, pR, Math.PI * 1.1, Math.PI * 1.9);
@@ -1182,28 +1179,27 @@ function stampGps(file){
     ctx.closePath();
     ctx.fill();
     
-    // Pin top circle (darker outline)
     ctx.strokeStyle = '#C5221F';
     ctx.lineWidth = pR * 0.08;
     ctx.beginPath();
     ctx.arc(pCX, pCY, pR * 0.92, Math.PI, 0);
     ctx.stroke();
     
-    // White center dot
     ctx.fillStyle = '#FFFFFF';
     ctx.beginPath();
     ctx.arc(pCX, pCY, pR * 0.42, 0, Math.PI * 2);
     ctx.fill();
     
-    // ━━━ "Google" branding (bottom-left of map) ━━━
     ctx.fillStyle = '#5F6368';
     ctx.font = '700 ' + Math.round(mS*0.12) + 'px Arial, sans-serif';
     ctx.fillText('Google', mX + Math.round(mS*0.04), mY + mS - Math.round(mS*0.05));
 
-    // ━━━━━━━━━━━ TEXT PANEL ━━━━━━━━━━━
+    // ━━━━━━━━━━━ TEXT PANEL — v15.4 WIDTH-AWARE ━━━━━━━━━━━
     var tX = mX + mS + Math.round(pad * 1.5);
-    var tW = W - tX - pad;
+    // ⭐ v15.4 FIX: Subtract right safety from available width
+    var tW = W - tX - rightSafety;
 
+    // Build all the strings
     var now = new Date();
     var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
     var dayName = days[now.getDay()];
@@ -1214,7 +1210,7 @@ function stampGps(file){
     var min = String(now.getMinutes()).padStart(2,'0');
     var ampm = hh >= 12 ? 'PM' : 'AM';
     hh = ((hh + 11) % 12) + 1;
-    var dateStr = dayName + ', ' + dd + '/' + mm + '/' + yyyy + ' ' + String(hh).padStart(2,'0') + ':' + min + ' ' + ampm + ' GMT +05:30';
+    var dateStr = dayName + ', ' + dd + '/' + mm + '/' + yyyy + ' ' + String(hh).padStart(2,'0') + ':' + min + ' ' + ampm + ' GMT+5:30';
 
     var lat = state.gps.lat ? state.gps.lat.toFixed(6) : '—';
     var lng = state.gps.lng ? state.gps.lng.toFixed(6) : '—';
@@ -1229,34 +1225,64 @@ function stampGps(file){
 
     var cy = oY + pad + Math.round(oH*0.14);
 
-    // ━━━ 1. City name (BIG bold white) ━━━
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = '700 ' + Math.round(oH*0.14) + 'px -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
-    ctx.fillText(cityLine, tX, cy);
-    
-    // India flag (drawn properly)
-    var cityW = ctx.measureText(cityLine).width;
-    var flagX = tX + cityW + Math.round(oH*0.08);
-    var flagY = cy - Math.round(oH*0.11);
+    // ━━━ Helper: Truncate text with ellipsis if too wide ━━━
+    function fitText(text, maxWidth, fontStr){
+      ctx.font = fontStr;
+      if (ctx.measureText(text).width <= maxWidth) return text;
+      var truncated = text;
+      while (truncated.length > 1 && ctx.measureText(truncated + '…').width > maxWidth){
+        truncated = truncated.slice(0, -1);
+      }
+      return truncated + '…';
+    }
+
+    // ━━━ 1. City line (with flag — FIX: reserve flag space first) ━━━
     var flagW = Math.round(oH*0.16);
+    var flagSpaceNeeded = flagW + Math.round(oH*0.10); // flag + gap
+    
+    // Available width for city text (minus flag space)
+    var cityMaxW = tW - flagSpaceNeeded;
+    var cityFontSize = Math.round(oH*0.14);
+    var cityFontStr = '700 ' + cityFontSize + 'px -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
+    
+    // Try fitting cityLine. If too long, reduce font size, then truncate as last resort.
+    ctx.font = cityFontStr;
+    var cityFitted = cityLine;
+    if (ctx.measureText(cityLine).width > cityMaxW){
+      // Try smaller font
+      var smallerSize = Math.round(oH*0.12);
+      cityFontStr = '700 ' + smallerSize + 'px -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
+      ctx.font = cityFontStr;
+      cityFontSize = smallerSize;
+      if (ctx.measureText(cityLine).width > cityMaxW){
+        // Still too long — truncate
+        cityFitted = fitText(cityLine, cityMaxW, cityFontStr);
+      }
+    }
+    
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = cityFontStr;
+    ctx.fillText(cityFitted, tX, cy);
+    
+    // India flag (after city text)
+    var cityW = ctx.measureText(cityFitted).width;
+    var flagX = tX + cityW + Math.round(oH*0.08);
+    var flagY = cy - Math.round(cityFontSize * 0.78);
     var flagH = Math.round(flagW*0.66);
-    if (flagX + flagW < W - pad){
-      // Saffron
+    
+    // Only draw flag if it fits within safe zone
+    if (flagX + flagW <= W - rightSafety){
       ctx.fillStyle = '#FF9933'; 
       ctx.fillRect(flagX, flagY, flagW, Math.round(flagH/3));
-      // White
       ctx.fillStyle = '#FFFFFF'; 
       ctx.fillRect(flagX, flagY + Math.round(flagH/3), flagW, Math.round(flagH/3));
-      // Green
       ctx.fillStyle = '#138808'; 
       ctx.fillRect(flagX, flagY + Math.round(2*flagH/3), flagW, flagH - Math.round(2*flagH/3));
-      // Ashok Chakra (navy circle)
       ctx.strokeStyle = '#000080';
       ctx.lineWidth = Math.max(1, Math.round(flagH * 0.05));
       ctx.beginPath();
       ctx.arc(flagX + flagW/2, flagY + flagH/2, flagH * 0.20, 0, Math.PI * 2);
       ctx.stroke();
-      // Flag border
       ctx.strokeStyle = 'rgba(0,0,0,0.2)';
       ctx.lineWidth = 0.5;
       ctx.strokeRect(flagX, flagY, flagW, flagH);
@@ -1264,10 +1290,13 @@ function stampGps(file){
 
     cy += Math.round(oH*0.17);
 
-    // ━━━ 2. Address (lighter, smaller, max 2 lines) ━━━
+    // ━━━ 2. Address — multi-line with proper wrapping ━━━
+    var addrFontSize = Math.round(oH*0.095);
+    var addrFontStr = '400 ' + addrFontSize + 'px -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
     ctx.fillStyle = '#E8EAED';
-    ctx.font = '400 ' + Math.round(oH*0.095) + 'px -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
+    ctx.font = addrFontStr;
     
+    // Smart word wrapping — split by comma and space
     var words = addrText.split(/[, ]+/).filter(Boolean);
     var lines = [], cur = '';
     for (var i = 0; i < words.length; i++){
@@ -1276,14 +1305,24 @@ function stampGps(file){
       if (ctx.measureText(test).width > tW && cur){
         lines.push(cur);
         cur = w;
-        if (lines.length >= 2){ cur = words.slice(i).join(', '); break; }
-      } else { cur = test; }
+        if (lines.length >= 2){
+          // Already have 2 lines — put rest in line 2
+          cur = words.slice(i).join(', ');
+          break;
+        }
+      } else { 
+        cur = test; 
+      }
     }
     if (cur && lines.length < 2) lines.push(cur);
     while (lines.length < 2) lines.push('');
-    if (ctx.measureText(lines[1]).width > tW){
-      while (lines[1] && ctx.measureText(lines[1]+'…').width > tW){ lines[1] = lines[1].slice(0,-1); }
-      lines[1] += '…';
+    
+    // Ensure line 2 fits — if too long, truncate
+    if (lines[1] && ctx.measureText(lines[1]).width > tW){
+      lines[1] = fitText(lines[1], tW, addrFontStr);
+    }
+    if (lines[0] && ctx.measureText(lines[0]).width > tW){
+      lines[0] = fitText(lines[0], tW, addrFontStr);
     }
     
     for (var j = 0; j < lines.length; j++){
@@ -1291,16 +1330,25 @@ function stampGps(file){
       cy += Math.round(oH*0.12);
     }
     
-    // ━━━ 3. Lat/Long (monospace, white) ━━━
+    // ━━━ 3. Lat/Long (monospace) — FIX: ensure fits ━━━
+    var coordFontSize = Math.round(oH*0.095);
+    var coordFontStr = '500 ' + coordFontSize + 'px "JetBrains Mono", "SF Mono", Consolas, monospace';
+    var coordText = 'Lat ' + lat + '°  Long ' + lng + '°';
+    var coordFitted = fitText(coordText, tW, coordFontStr);
+    
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = '500 ' + Math.round(oH*0.095) + 'px "JetBrains Mono", "SF Mono", Consolas, monospace';
-    ctx.fillText('Lat ' + lat + '°  Long ' + lng + '°', tX, cy);
+    ctx.font = coordFontStr;
+    ctx.fillText(coordFitted, tX, cy);
     cy += Math.round(oH*0.12);
     
-    // ━━━ 4. Date/Time (subtle gray) ━━━
+    // ━━━ 4. Date/Time — FIX: ensure fits ━━━
+    var dtFontSize = Math.round(oH*0.085);
+    var dtFontStr = '400 ' + dtFontSize + 'px -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
+    var dtFitted = fitText(dateStr, tW, dtFontStr);
+    
     ctx.fillStyle = '#B0B6BE';
-    ctx.font = '400 ' + Math.round(oH*0.085) + 'px -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
-    ctx.fillText(dateStr, tX, cy);
+    ctx.font = dtFontStr;
+    ctx.fillText(dtFitted, tX, cy);
 
     return new Promise(function(resolve){
       canvas.toBlob(function(blob){ resolve({ blob: blob, width: canvas.width, height: canvas.height }); }, 'image/jpeg', 0.88);
@@ -1464,14 +1512,13 @@ function finishVehicleSession(){
 }
 
 // ═════════════════════════════════════════════════════════════════
-// PWA: SERVICE WORKER + STRONG INSTALL + AGGRESSIVE AUTO-UPDATE (v15.1)
+// PWA: SERVICE WORKER + STRONG INSTALL + AGGRESSIVE AUTO-UPDATE (v15.4)
 // ═════════════════════════════════════════════════════════════════
 
 var deferredInstallPrompt = null;
 var refreshing = false;
 var pendingWorker = null;
 
-// Detect environment
 function isIosSafari(){
   var ua = navigator.userAgent.toLowerCase();
   return /iphone|ipad|ipod/.test(ua) && /safari/.test(ua) && !/crios|fxios/.test(ua);
@@ -1482,12 +1529,25 @@ function isStandalone(){
 function isAndroid(){ return /android/i.test(navigator.userAgent); }
 function isChrome(){ return /chrome|crios/i.test(navigator.userAgent) && !/edg|opr/i.test(navigator.userAgent); }
 
-// Register service worker
+// ⭐ v15.4 FIX: SW registration uses /sw-field.js (NOT /sw.js) and tight scope
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function(){
-    navigator.serviceWorker.register('/sw.js?v=' + APP_VERSION).then(function(reg){
-      console.log('[PWA v15] SW registered:', reg.scope);
-      // Check for updates every 30 seconds
+    // First — clean up any wrong SW (admin SW that may have been wrongly installed)
+    navigator.serviceWorker.getRegistrations().then(function(regs){
+      var cleanupPromises = regs.map(function(reg){
+        var url = (reg.active && reg.active.scriptURL) || '';
+        if (url && url.indexOf('/sw-field.js') === -1){
+          console.log('[PWA v15.4] Unregistering wrong SW:', url);
+          return reg.unregister();
+        }
+        return Promise.resolve();
+      });
+      return Promise.all(cleanupPromises);
+    }).then(function(){
+      // Now register correct field SW
+      return navigator.serviceWorker.register('/sw-field.js?v=' + APP_VERSION, { scope: '/field.html' });
+    }).then(function(reg){
+      console.log('[PWA v15.4] Field SW registered:', reg.scope);
       setInterval(function(){
         reg.update().catch(function(e){ console.warn('[PWA] Update check failed:', e); });
       }, CONFIG.swUpdateIntervalMs);
@@ -1504,7 +1564,7 @@ if ('serviceWorker' in navigator) {
         });
       });
     }).catch(function(err){
-      console.warn('[PWA v15] SW register failed:', err);
+      console.warn('[PWA v15.4] SW register failed:', err);
     });
   });
   navigator.serviceWorker.addEventListener('controllerchange', function(){
@@ -1523,37 +1583,33 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// ━━━ STRONG INSTALL PROMPT (v15.1: shows ALWAYS) ━━━
 window.addEventListener('beforeinstallprompt', function(e){
-  console.log('[PWA v15] beforeinstallprompt captured!');
+  console.log('[PWA v15.4] beforeinstallprompt captured!');
   e.preventDefault();
   deferredInstallPrompt = e;
   showInstallBar();
 });
 
 window.addEventListener('appinstalled', function(){
-  console.log('[PWA v15] App installed!');
+  console.log('[PWA v15.4] App installed!');
   toast('✅ App installed!', 'success');
   $('install-bar').classList.remove('show');
   deferredInstallPrompt = null;
 });
 
 function showInstallBar(){
-  // Already installed? Skip.
   if (isStandalone()) {
-    console.log('[PWA v15] Already standalone - no install bar');
+    console.log('[PWA v15.4] Already standalone - no install bar');
     return;
   }
-  // Dismissed permanently? Skip.
   if (localStorage.getItem('pf_install_dismissed_v15') === '1') {
-    console.log('[PWA v15] User dismissed - skipping');
+    console.log('[PWA v15.4] User dismissed - skipping');
     return;
   }
   
   var bar = $('install-bar');
   if (!bar) return;
   
-  // Customize message based on browser/platform
   if (isIosSafari()){
     bar.querySelector('.ib-sub').textContent = 'Share button → "Add to Home Screen"';
     bar.querySelector('.ib-btn.primary').textContent = 'How to install';
@@ -1566,17 +1622,16 @@ function showInstallBar(){
   }
   
   bar.classList.add('show');
-  console.log('[PWA v15] Install bar shown');
+  console.log('[PWA v15.4] Install bar shown');
 }
 
 window.triggerInstall = function(){
-  console.log('[PWA v15] Install button clicked');
+  console.log('[PWA v15.4] Install button clicked');
   
   if (deferredInstallPrompt) {
-    // Native install (Chrome Android/Desktop)
     deferredInstallPrompt.prompt();
     deferredInstallPrompt.userChoice.then(function(choice){
-      console.log('[PWA v15] Install choice:', choice.outcome);
+      console.log('[PWA v15.4] Install choice:', choice.outcome);
       if (choice.outcome === 'accepted'){
         toast('Install ho raha hai…', 'success');
       }
@@ -1584,13 +1639,10 @@ window.triggerInstall = function(){
       $('install-bar').classList.remove('show');
     });
   } else if (isIosSafari()) {
-    // iOS Safari manual instructions
     alert('iPhone/iPad par install karne ke liye:\n\n1️⃣ Safari ke neeche Share button tap karo (square with arrow)\n2️⃣ Scroll down → "Add to Home Screen"\n3️⃣ "Add" tap karo\n\nApp home screen pe install ho jayega!');
   } else if (isAndroid() && isChrome()) {
-    // Android Chrome manual instructions
     alert('Chrome par install karne ke liye:\n\n1️⃣ Top-right me 3-dots menu tap karo\n2️⃣ "Install app" ya "Add to Home Screen" tap karo\n3️⃣ "Install" confirm karo\n\nApp install ho jayega!');
   } else {
-    // Desktop or other
     alert('Install karne ke liye:\n\n1️⃣ Browser ke address bar me icon dhundo (computer + arrow)\n2️⃣ Ya 3-dots menu → "Install app"\n3️⃣ Install confirm karo\n\nApp install ho jayega!');
   }
 };
@@ -1609,7 +1661,6 @@ window.applyUpdate = function(){
   }
 };
 
-// SHOW INSTALL BAR after 3 sec — ALWAYS if not standalone & not dismissed
 setTimeout(function(){
   if (state.member && !isStandalone() && localStorage.getItem('pf_install_dismissed_v15') !== '1'){
     showInstallBar();
