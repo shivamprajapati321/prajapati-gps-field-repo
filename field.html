@@ -8,19 +8,20 @@
 <meta http-equiv="Expires" content="0">
 <title>Prajapati GPS OCR Camera v15</title>
 
-<!-- PWA: Strong install support -->
-<link rel="manifest" href="/manifest.json">
-<meta name="application-name" content="GPS OCR Camera">
-<meta name="apple-mobile-web-app-title" content="GPS OCR">
+<!-- PWA: Field App — ISOLATED from admin -->
+<link rel="manifest" href="/manifest-field.json">
+<meta name="application-name" content="Prajapati GPS">
+<meta name="apple-mobile-web-app-title" content="Prajapati GPS">
 <meta name="description" content="GPS-stamped photo capture with auto OCR plate reading. Fast, reliable.">
-<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icon-field-apple-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="format-detection" content="telephone=no">
-<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
-<link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-field-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-field-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/icon-field-512.png">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#1a2980">
+<meta name="theme-color" content="#0B1957">
 <link rel="preconnect" href="https://fpbktcgtspqsqpaytslv.supabase.co" crossorigin>
 <link rel="preconnect" href="https://api.platerecognizer.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -241,6 +242,132 @@ button,input{font-family:inherit}input{font-size:16px}
 
 <div class="version-badge">v15.3</div>
 
-<script src="/app.js?v=15.3-2026-05-15"></script>
+<!-- ═══════════════════════════════════════════════════════════════
+     CRITICAL: FIELD-ONLY SW REGISTRATION
+     Unregisters any admin SW that may have wrongly installed,
+     then registers field SW with tight scope.
+     Runs BEFORE app.js so this wins control.
+     ═══════════════════════════════════════════════════════════════ -->
+<script>
+(function(){
+  if (!('serviceWorker' in navigator)) return;
+  
+  // STEP 1: Cleanup wrong SWs (admin SW or stale field SW)
+  navigator.serviceWorker.getRegistrations().then(function(regs){
+    var promises = regs.map(function(reg){
+      var url = (reg.active && reg.active.scriptURL) || '';
+      if (url && url.indexOf('/sw-field.js') === -1) {
+        console.log('[Field PWA] Unregistering wrong SW:', url);
+        return reg.unregister();
+      }
+      return Promise.resolve();
+    });
+    return Promise.all(promises);
+  }).then(function(){
+    // STEP 2: Register correct field SW with tight scope
+    return navigator.serviceWorker.register('/sw-field.js', { scope: '/field.html' });
+  }).then(function(reg){
+    console.log('[Field PWA] ✅ Registered v15.3.3 (field-only)');
+    window._fieldSWReg = reg;
+    
+    // Auto-update every 15 sec
+    setInterval(function(){ reg.update().catch(function(){}); }, 15000);
+    
+    // Show update banner when new SW installed
+    reg.addEventListener('updatefound', function(){
+      var nw = reg.installing;
+      if (!nw) return;
+      nw.addEventListener('statechange', function(){
+        if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+          var ub = document.getElementById('update-banner');
+          if (ub) ub.classList.add('show');
+        }
+      });
+    });
+  }).catch(function(err){
+    console.warn('[Field PWA] SW setup failed:', err);
+  });
+  
+  // Reload when SW takes control (fresh content)
+  var refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', function(){
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
+  
+  // Apply update (button handler)
+  window.applyUpdate = function(){
+    if (window._fieldSWReg && window._fieldSWReg.waiting) {
+      window._fieldSWReg.waiting.postMessage({ type: 'SKIP_WAITING' });
+    } else {
+      window.location.reload();
+    }
+  };
+  
+  // ── INSTALL PROMPT ──────────────────────────────────────────
+  var deferredPrompt = null;
+  var isStandalone = window.matchMedia('(display-mode: standalone)').matches 
+                  || window.navigator.standalone === true;
+  
+  // Hide install bar if already installed
+  if (isStandalone) {
+    console.log('[Field PWA] Running as installed app');
+    return;
+  }
+  
+  // Capture install prompt event
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault();
+    deferredPrompt = e;
+    
+    // Show install bar after 3 seconds (gentler than 5)
+    var dismissed = localStorage.getItem('pwa_field_install_dismissed');
+    var dismissedRecently = dismissed && (Date.now() - parseInt(dismissed)) < 7*24*60*60*1000;
+    if (!dismissedRecently) {
+      setTimeout(function(){
+        var bar = document.getElementById('install-bar');
+        if (bar) bar.classList.add('show');
+      }, 3000);
+    }
+  });
+  
+  // Trigger install (button handler)
+  window.triggerInstall = function(){
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(function(choice){
+        console.log('[Field PWA] User choice:', choice.outcome);
+        if (choice.outcome === 'accepted') {
+          var bar = document.getElementById('install-bar');
+          if (bar) bar.classList.remove('show');
+        }
+        deferredPrompt = null;
+      });
+    } else if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+      alert('iOS Safari me:\n1. Share button daba (square + up arrow)\n2. "Add to Home Screen" select karo\n3. "Add" daba');
+    } else {
+      alert('Browser menu se "Install app" / "Add to Home Screen" use karo');
+    }
+  };
+  
+  // Dismiss install bar (button handler)
+  window.dismissInstall = function(){
+    var bar = document.getElementById('install-bar');
+    if (bar) bar.classList.remove('show');
+    localStorage.setItem('pwa_field_install_dismissed', Date.now().toString());
+  };
+  
+  // Track successful install
+  window.addEventListener('appinstalled', function(){
+    console.log('[Field PWA] ✅ App installed');
+    var bar = document.getElementById('install-bar');
+    if (bar) bar.classList.remove('show');
+    deferredPrompt = null;
+  });
+})();
+</script>
+
+<script src="/app.js?v=15.3.3-2026-05-17"></script>
 </body>
 </html>
