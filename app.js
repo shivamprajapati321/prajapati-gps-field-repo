@@ -6,7 +6,7 @@
 //        + Strong PWA install + Aggressive auto-update
 // ═════════════════════════════════════════════════════════════════
 
-var APP_VERSION = 'v15.4.1';
+var APP_VERSION = 'v15.4.3';
 var BUILD_DATE = '2026-05-17';
 
 var CONFIG = {
@@ -223,6 +223,195 @@ window.addEventListener('offline', function(){ toast('Offline — captures will 
 setInterval(function(){ if (navigator.onLine) processQueue(); }, 25000);
 
 // ═══ AUTH ═══
+// ═════════════════════════════════════════════════════════════════
+// GPS PERMISSION — 5-LAYER STRATEGY (v15.4.3)
+// Layer 1: Pre-check on login (catch issues early)
+// Layer 2: Friendly Hinglish setup modal
+// Layer 3: Smart auto-fallback to manual GPS (handled in handleGpsError)
+// Layer 4: Admin dashboard reporting (reportGpsStatus)
+// Layer 5: First-time onboarding wizard
+// ═════════════════════════════════════════════════════════════════
+
+// Layer 1: Check current permission state via Permissions API
+function checkGpsPermissionState(){
+  return new Promise(function(resolve){
+    if (!navigator.permissions || !navigator.permissions.query){
+      // Permissions API not available — assume prompt
+      resolve('prompt');
+      return;
+    }
+    navigator.permissions.query({ name: 'geolocation' }).then(function(result){
+      console.log('[GPS v15.4.3] Permission state:', result.state);
+      // Listen for changes
+      result.onchange = function(){
+        console.log('[GPS v15.4.3] Permission changed to:', result.state);
+        if (result.state === 'granted'){
+          hideGpsSetupModal();
+          toast('✅ GPS permission granted!', 'success');
+          reportGpsStatus('granted');
+          if (gpsWatchId === null) watchGps();
+        }
+      };
+      resolve(result.state); // 'granted' | 'denied' | 'prompt'
+    }).catch(function(){ resolve('prompt'); });
+  });
+}
+
+// Layer 2: Show GPS setup modal (Hinglish + step-by-step)
+window.showGpsSetupModal = function(){
+  var modal = $('gps-setup-modal');
+  if (!modal) return;
+  
+  // Detect browser/OS for tailored instructions
+  var ua = navigator.userAgent.toLowerCase();
+  var hint = $('gps-modal-hint');
+  if (/iphone|ipad|ipod/.test(ua)){
+    hint.textContent = 'iPhone: Settings → Safari → Location → Allow';
+  } else if (/android/.test(ua)){
+    hint.textContent = 'Phone Settings → Apps → Chrome → Permissions → Location → Allow';
+  } else {
+    hint.textContent = 'Browser settings me location permission "Allow" karo';
+  }
+  
+  modal.classList.add('show');
+  console.log('[GPS v15.4.3] Setup modal shown');
+};
+
+window.hideGpsSetupModal = function(){
+  var modal = $('gps-setup-modal');
+  if (modal) modal.classList.remove('show');
+};
+
+window.retryGpsPermission = function(){
+  console.log('[GPS v15.4.3] Retry button clicked');
+  // Try requesting permission again
+  if (!navigator.geolocation){
+    toast('GPS not supported on this device','error');
+    return;
+  }
+  loader(true, 'GPS check kar rahe…');
+  navigator.geolocation.getCurrentPosition(
+    function(pos){
+      loader(false);
+      setGpsFromPosition(pos);
+      hideGpsSetupModal();
+      toast('✅ GPS mil gaya! Ab kaam kar sakte ho', 'success');
+      reportGpsStatus('granted');
+      // Resume watch if not active
+      if (gpsWatchId === null && navigator.geolocation){
+        gpsWatchId = navigator.geolocation.watchPosition(
+          function(pos){ setGpsFromPosition(pos); },
+          function(err){ handleGpsError(err); },
+          { enableHighAccuracy:true, maximumAge:3000, timeout:20000 }
+        );
+      }
+    },
+    function(err){
+      loader(false);
+      if (err.code === 1){
+        toast('Abhi bhi permission deny hai — phone settings me jaake allow karo', 'error');
+      } else {
+        toast('GPS error: ' + err.message, 'error');
+      }
+      reportGpsStatus('denied');
+    },
+    { enableHighAccuracy:true, maximumAge:0, timeout:10000 }
+  );
+};
+
+// Layer 3 trigger: User explicitly chooses manual fallback
+window.tryManualFallback = function(){
+  if (!hasCampaignAnchor()){
+    toast('Is campaign me manual GPS configure nahi hai — admin se contact karo', 'warn');
+    return;
+  }
+  enableManualFallback();
+  hideGpsSetupModal();
+  toast('✅ Manual GPS active (campaign anchor)', 'success');
+  reportGpsStatus('denied_fallback_manual');
+};
+
+// Layer 4: Report GPS status to admin (best-effort, never blocks UI)
+function reportGpsStatus(status){
+  // Throttle: only report if status changed
+  if (gpsLastReportedStatus === status) return;
+  gpsLastReportedStatus = status;
+  
+  if (!state.member || !state.member.phone) return;
+  
+  try {
+    api('/rest/v1/trial_team_members?phone=eq.' + state.member.phone, {
+      method: 'PATCH',
+      headers: { 'Prefer': 'return=minimal' },
+      body: {
+        gps_permission_status: status,
+        gps_last_check_at: new Date().toISOString()
+      }
+    }).catch(function(err){
+      // Silent fail — columns might not exist yet in DB
+      console.warn('[GPS v15.4.3] Status report failed (run SQL migration):', err.message);
+    });
+  } catch(e){}
+}
+
+// Layer 5: First-time onboarding screen
+window.showOnboardingScreen = function(){
+  var screen = $('onboard-screen');
+  if (!screen){
+    // Fallback if HTML not deployed yet — proceed normally
+    enterApp();
+    return;
+  }
+  var firstName = state.member ? state.member.name.split(' ')[0] : '';
+  $('onboard-title').textContent = 'Welcome' + (firstName ? ', ' + firstName : '') + '!';
+  screen.classList.add('show');
+};
+
+window.onboardingAllowGps = function(){
+  console.log('[GPS v15.4.3] Onboarding: requesting permission');
+  var btn = $('onboard-allow-btn');
+  if (btn){ btn.disabled = true; btn.textContent = 'GPS check kar rahe…'; }
+  
+  navigator.geolocation.getCurrentPosition(
+    function(pos){
+      // Granted!
+      localStorage.setItem('pf_gps_onboarded', '1');
+      setGpsFromPosition(pos);
+      reportGpsStatus('granted');
+      $('onboard-screen').classList.remove('show');
+      enterApp();
+      setTimeout(function(){ toast('✅ Setup complete — kaam shuru karo!', 'success'); }, 600);
+    },
+    function(err){
+      // Denied or error
+      if (btn){ btn.disabled = false; btn.textContent = '📍 GPS Permission Allow Karo'; }
+      if (err.code === 1){
+        localStorage.setItem('pf_gps_onboarded', '1');
+        $('onboard-screen').classList.remove('show');
+        enterApp();
+        setTimeout(function(){ showGpsSetupModal(); }, 600);
+        reportGpsStatus('denied');
+      } else {
+        toast('GPS error — phone ka GPS on hai?', 'error');
+      }
+    },
+    { enableHighAccuracy:true, timeout:15000, maximumAge:0 }
+  );
+};
+
+window.onboardingSkip = function(){
+  localStorage.setItem('pf_gps_onboarded', '1');
+  $('onboard-screen').classList.remove('show');
+  enterApp();
+  setTimeout(function(){
+    toast('GPS later allow karna — capture time pe puchega', 'warn');
+  }, 600);
+};
+
+// ═════════════════════════════════════════════════════════════════
+// AUTH (continued)
+// ═════════════════════════════════════════════════════════════════
+
 function bootAuth(){
   var saved = localStorage.getItem('pf_member_phone');
   if (!saved){ showScreen('screen-login'); return; }
@@ -236,13 +425,22 @@ function bootAuth(){
   api('/rest/v1/trial_team_members?phone=eq.'+saved+'&active=eq.true&select=*')
     .then(function(rows){
       if (rows && rows.length){
-        state.member = rows[0]; touchActivity(); enterApp();
-        setTimeout(function(){
-          var n = state.sessionCaptures.length || state.todayCount || 0;
-          var firstName = state.member.name.split(' ')[0];
-          if (n > 0) toast('Welcome back, ' + firstName + ' — ' + n + ' vehicles aaj', 'success');
-          else toast('Welcome back, ' + firstName, 'success');
-        }, 800);
+        state.member = rows[0]; touchActivity();
+        
+        // ⭐ Layer 1: Auto-login pre-check (silent — show modal only if denied)
+        checkGpsPermissionState().then(function(permState){
+          enterApp();
+          setTimeout(function(){
+            var n = state.sessionCaptures.length || state.todayCount || 0;
+            var firstName = state.member.name.split(' ')[0];
+            if (n > 0) toast('Welcome back, ' + firstName + ' — ' + n + ' vehicles aaj', 'success');
+            else toast('Welcome back, ' + firstName, 'success');
+            // If denied at app start, prompt to fix
+            if (permState === 'denied') {
+              setTimeout(function(){ showGpsSetupModal(); }, 1500);
+            }
+          }, 800);
+        });
       } else { clearSessionStorage(); showScreen('screen-login'); }
     }).catch(function(){ showScreen('screen-login'); });
 }
@@ -258,7 +456,27 @@ $('btn-login').addEventListener('click', function(){
       state.member = rows[0];
       state.sessionCaptures = [];
       localStorage.setItem('pf_member_phone', phone);
-      touchActivity(); persistSessionCaptures(); enterApp();
+      touchActivity(); persistSessionCaptures();
+      
+      // ⭐ Layer 1 + Layer 5: Check permission state BEFORE entering app
+      var hasOnboarded = localStorage.getItem('pf_gps_onboarded') === '1';
+      checkGpsPermissionState().then(function(permState){
+        if (permState === 'granted') {
+          // Already granted — straight to app
+          localStorage.setItem('pf_gps_onboarded', '1');
+          enterApp();
+        } else if (permState === 'denied') {
+          // Already denied — show setup modal AFTER entering app
+          enterApp();
+          setTimeout(function(){ showGpsSetupModal(); }, 600);
+        } else if (!hasOnboarded) {
+          // First-time user (prompt state, not onboarded) — show onboarding
+          showOnboardingScreen();
+        } else {
+          // Returning user, prompt state — proceed normally
+          enterApp();
+        }
+      });
     }).catch(function(){ loader(false); toast('Login error','error'); });
 });
 
@@ -425,20 +643,88 @@ function renderHome(){
   $('home-content').innerHTML = html;
 }
 
-// ═══ GPS ═══
+// ═══ GPS (v15.4.3 — 5-layer permission strategy) ═══
 var gpsWatchId = null;
+var gpsLastReportedStatus = null;
+
 function watchGps(){
   if (isManualMode()){
     applyManualGps();
     $('gps-strip').className = 'gps';
     $('gps-strip').innerHTML = '<div class="live"></div><span>📍 Manual GPS · '+state.gps.lat.toFixed(5)+', '+state.gps.lng.toFixed(5)+' · anchor ±'+(state.campaign.gps_radius_m||50)+'m</span>';
+    reportGpsStatus('manual_active');
     return;
   }
   if (gpsWatchId) return;
-  if (!navigator.geolocation){ $('gps-strip').className = 'gps warn'; $('gps-strip').innerHTML = '<div class="live"></div><span>GPS not supported</span>'; return; }
-  navigator.geolocation.getCurrentPosition(function(pos){ setGpsFromPosition(pos); }, function(){}, { enableHighAccuracy:true, maximumAge:0, timeout:8000 });
-  gpsWatchId = navigator.geolocation.watchPosition(function(pos){ setGpsFromPosition(pos); }, function(err){ $('gps-strip').className = 'gps warn'; $('gps-strip').innerHTML = '<div class="live"></div><span>GPS error: '+err.message+'</span>'; }, { enableHighAccuracy:true, maximumAge:3000, timeout:20000 });
+  if (!navigator.geolocation){
+    $('gps-strip').className = 'gps warn';
+    $('gps-strip').innerHTML = '<div class="live"></div><span>GPS not supported on this device</span>';
+    reportGpsStatus('not_supported');
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    function(pos){ setGpsFromPosition(pos); reportGpsStatus('granted'); },
+    function(err){ handleGpsError(err); },
+    { enableHighAccuracy:true, maximumAge:0, timeout:8000 }
+  );
+  gpsWatchId = navigator.geolocation.watchPosition(
+    function(pos){ setGpsFromPosition(pos); },
+    function(err){ handleGpsError(err); },
+    { enableHighAccuracy:true, maximumAge:3000, timeout:20000 }
+  );
 }
+
+// ⭐ Layer 3: Smart GPS error handler with auto-fallback
+function handleGpsError(err){
+  console.warn('[GPS v15.4.3] Error:', err.code, err.message);
+  
+  // PERMISSION_DENIED = 1, POSITION_UNAVAILABLE = 2, TIMEOUT = 3
+  if (err.code === 1){
+    // Permission denied — try auto-fallback to manual GPS if campaign supports it
+    if (hasCampaignAnchor()){
+      console.log('[GPS v15.4.3] Permission denied — auto-fallback to campaign anchor GPS');
+      enableManualFallback();
+      toast('📍 Manual GPS mode (campaign anchor)', 'warn');
+      reportGpsStatus('denied_fallback_manual');
+      return;
+    }
+    // No fallback possible — show setup modal
+    $('gps-strip').className = 'gps warn';
+    $('gps-strip').innerHTML = '<div class="live"></div><span>⚠️ GPS permission denied — tap to fix</span>';
+    $('gps-strip').onclick = function(){ showGpsSetupModal(); };
+    showGpsSetupModal();
+    reportGpsStatus('denied');
+  } else if (err.code === 2){
+    // Position unavailable (GPS off on phone)
+    $('gps-strip').className = 'gps warn';
+    $('gps-strip').innerHTML = '<div class="live"></div><span>📡 Phone ka GPS on karo</span>';
+    reportGpsStatus('unavailable');
+  } else if (err.code === 3){
+    // Timeout — retry silently
+    $('gps-strip').className = 'gps warn';
+    $('gps-strip').innerHTML = '<div class="live"></div><span>⏱️ GPS lock ho raha hai…</span>';
+    reportGpsStatus('timeout');
+  }
+}
+
+function hasCampaignAnchor(){
+  return !!(state.campaign && state.campaign.anchor_lat != null && state.campaign.anchor_lng != null);
+}
+
+function enableManualFallback(){
+  if (!hasCampaignAnchor()) return false;
+  // Treat as manual mode temporarily for this session
+  state._manualFallback = true;
+  applyManualGps();
+  $('gps-strip').className = 'gps';
+  $('gps-strip').innerHTML = '<div class="live"></div><span>📍 Manual GPS (fallback) · ±'+(state.campaign.gps_radius_m||50)+'m</span>';
+  return true;
+}
+
+// Override isManualMode to also include fallback
+var _originalIsManualMode = function(){
+  return !!(state.campaign && state.campaign.manual_gps_enabled && state.campaign.anchor_lat != null && state.campaign.anchor_lng != null);
+};
 
 function setGpsFromPosition(pos){
   state.gps.lat = pos.coords.latitude;
@@ -495,7 +781,11 @@ function fetchReverseGeocode(lat, lng){
 }
 
 function stopGps(){ if (gpsWatchId !== null){ navigator.geolocation.clearWatch(gpsWatchId); gpsWatchId = null; } }
-function isManualMode(){ return !!(state.campaign && state.campaign.manual_gps_enabled && state.campaign.anchor_lat != null && state.campaign.anchor_lng != null); }
+function isManualMode(){
+  // v15.4.3: Include fallback mode (when permission denied but campaign has anchor)
+  if (state._manualFallback && hasCampaignAnchor()) return true;
+  return !!(state.campaign && state.campaign.manual_gps_enabled && state.campaign.anchor_lat != null && state.campaign.anchor_lng != null);
+}
 function applyManualGps(){
   if (!isManualMode()) return false;
   var anchorLat = parseFloat(state.campaign.anchor_lat);
@@ -1581,29 +1871,38 @@ if ('serviceWorker' in navigator) {
   
   navigator.serviceWorker.addEventListener('controllerchange', function(){
     if (refreshing) {
-      console.log('[PWA v15.4] controllerchange ignored — already refreshing');
+      console.log('[PWA v15.4.2] controllerchange ignored — already refreshing');
       return;
     }
     
-    // CRITICAL: If page loaded WITHOUT a controller, this is the FIRST install
-    // — don't reload (it would just show login screen again unnecessarily)
+    // ⭐ v15.4.2 FIX: User-triggered update ALWAYS reloads (bypass guards)
+    if (sessionStorage.getItem('pf_user_triggered_update') === '1') {
+      sessionStorage.removeItem('pf_user_triggered_update');
+      refreshing = true;
+      sessionStorage.setItem('pf_sw_last_reload', String(Date.now()));
+      console.log('[PWA v15.4.2] User-triggered update — reloading now');
+      window.location.reload();
+      return;
+    }
+    
+    // First install (no prior controller) — don't reload (avoids unnecessary flicker)
     if (!hadControllerOnLoad) {
-      console.log('[PWA v15.4] First-time SW install — NOT reloading');
-      hadControllerOnLoad = true; // future changes are real updates
+      console.log('[PWA v15.4.2] First-time SW install — NOT reloading');
+      hadControllerOnLoad = true;
       return;
     }
     
-    // Suppress if we just reloaded (loop guard)
+    // Auto-update loop guard (only for background updates, NOT user-triggered)
     var lastReload = parseInt(sessionStorage.getItem('pf_sw_last_reload') || '0');
     if (Date.now() - lastReload < 10000) {
-      console.log('[PWA v15.4] controllerchange suppressed — reloaded ' + (Date.now() - lastReload) + 'ms ago');
+      console.log('[PWA v15.4.2] controllerchange suppressed — reloaded ' + (Date.now() - lastReload) + 'ms ago');
       return;
     }
     
-    // Real update — reload
+    // Background SW update with prior controller — reload once
     refreshing = true;
     sessionStorage.setItem('pf_sw_last_reload', String(Date.now()));
-    console.log('[PWA v15.4] Real SW update detected — reloading');
+    console.log('[PWA v15.4.2] Background SW update — reloading');
     window.location.reload();
   });
   
@@ -1695,9 +1994,27 @@ window.dismissInstall = function(){
 
 window.applyUpdate = function(){
   $('update-banner').classList.remove('show');
+  // ⭐ v15.4.2 FIX: Set explicit user-triggered flag so controllerchange knows to reload
+  sessionStorage.setItem('pf_user_triggered_update', '1');
+  // Clear the loop guard since user explicitly wants update
+  sessionStorage.removeItem('pf_sw_last_reload');
+  
   if (pendingWorker){
+    console.log('[PWA v15.4.2] User clicked Update — sending SKIP_WAITING to pending SW');
     pendingWorker.postMessage({ type: 'SKIP_WAITING' });
+    
+    // Fallback: if controllerchange doesn't fire within 3 sec, force reload
+    setTimeout(function(){
+      if (!refreshing){
+        console.log('[PWA v15.4.2] Fallback: forcing reload after 3 sec');
+        refreshing = true;
+        window.location.reload();
+      }
+    }, 3000);
   } else {
+    // No pending worker — just hard reload to fetch latest
+    console.log('[PWA v15.4.2] No pendingWorker — forcing hard reload');
+    refreshing = true;
     window.location.reload();
   }
 };

@@ -3544,13 +3544,30 @@ function loadDashStats() {
     $('statPending').textContent = count.toLocaleString('en-IN');
   }).catch(function() { $('statPending').textContent = '?'; });
   
-  // Active members count
+  // Active members count + GPS health (v15.4.3 Layer 4)
   api('/rest/v1/trial_team_members?select=*&active=eq.true')
     .then(function(members) {
       members = members || [];
       var fieldCount = members.filter(function(m){ return m.role === 'field'; }).length;
       $('statMembers').textContent = members.length;
-      $('statMembersMeta').textContent = fieldCount + ' field workers · ' + (members.length - fieldCount) + ' staff';
+      
+      // Count GPS issues
+      var gpsDenied = members.filter(function(m){ 
+        return m.gps_permission_status === 'denied'; 
+      }).length;
+      var gpsFallback = members.filter(function(m){ 
+        return m.gps_permission_status === 'denied_fallback_manual'; 
+      }).length;
+      
+      var meta = fieldCount + ' field workers · ' + (members.length - fieldCount) + ' staff';
+      if (gpsDenied > 0 || gpsFallback > 0){
+        meta += '<br><span style="color:#dc2626;font-weight:600;font-size:11px;">⚠ ' + 
+                (gpsDenied > 0 ? gpsDenied + ' GPS denied' : '') +
+                (gpsDenied > 0 && gpsFallback > 0 ? ' · ' : '') +
+                (gpsFallback > 0 ? gpsFallback + ' on fallback' : '') +
+                '</span>';
+      }
+      $('statMembersMeta').innerHTML = meta;
       $('navMembersCount').textContent = members.length;
     })
     .catch(function() { $('statMembers').textContent = '?'; });
@@ -3737,6 +3754,25 @@ function renderMembers() {
     var activeTag = m.active ? 
       '<span class="tag tag-success"><i class="ti ti-circle-filled" style="font-size:7px;"></i> Active</span>' : 
       '<span class="tag" style="background:var(--bg); color:var(--text-3);">Inactive</span>';
+    
+    // v15.4.3: GPS Status Badge (Layer 4 — admin visibility)
+    var gpsTag = '';
+    if (m.gps_permission_status){
+      var gpsLastSeen = m.gps_last_check_at ? 
+        Math.round((Date.now() - new Date(m.gps_last_check_at).getTime()) / 60000) + 'min ago' : '';
+      var gpsTitle = 'GPS Status: ' + m.gps_permission_status + (gpsLastSeen ? ' · ' + gpsLastSeen : '');
+      
+      if (m.gps_permission_status === 'granted' || m.gps_permission_status === 'manual_active'){
+        gpsTag = '<span class="tag tag-success" title="' + escapeHtml(gpsTitle) + '"><i class="ti ti-map-pin"></i> GPS OK</span>';
+      } else if (m.gps_permission_status === 'denied'){
+        gpsTag = '<span class="tag" style="background:#fee2e2;color:#991b1b;" title="' + escapeHtml(gpsTitle) + '"><i class="ti ti-map-pin-off"></i> GPS Denied</span>';
+      } else if (m.gps_permission_status === 'denied_fallback_manual'){
+        gpsTag = '<span class="tag tag-warn" title="' + escapeHtml(gpsTitle) + '"><i class="ti ti-alert-triangle"></i> GPS Fallback</span>';
+      } else if (m.gps_permission_status === 'unavailable' || m.gps_permission_status === 'timeout'){
+        gpsTag = '<span class="tag tag-warn" title="' + escapeHtml(gpsTitle) + '"><i class="ti ti-satellite-off"></i> GPS Issue</span>';
+      }
+    }
+    
     var cityLine = m.city ? ' · ' + escapeHtml(m.city) : '';
     
     html += '<div class="member-card">' +
@@ -3747,7 +3783,7 @@ function renderMembers() {
               '</div>' +
               '<div class="member-tags">' +
                 '<span class="tag ' + roleTagClass + '">' + roleIcon + ' ' + escapeHtml(roleLabel) + '</span>' +
-                activeTag +
+                activeTag + gpsTag +
               '</div>' +
               '<div class="member-actions">' +
                 '<button class="btn btn-sm btn-ghost" onclick="openMemberGPSManager(\'' + m.id + '\')" title="Manual GPS override with dates"><i class="ti ti-map-pin" style="color:var(--accent);"></i></button>' +

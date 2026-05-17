@@ -5,7 +5,7 @@
 // All other URLs pass through to network without interception.
 // ════════════════════════════════════════════════════════════════════
 
-const VERSION = 'field-v15.4.1-no-autoreload-20260517';
+const VERSION = 'field-v15.4.2-network-first-appjs-20260517';
 const CACHE_NAME = 'prajapati-field-' + VERSION;
 
 const FIELD_FILES = [
@@ -99,7 +99,28 @@ self.addEventListener('fetch', function(event) {
     return;
   }
   
-  // Cache-first for assets
+  // ⭐ v15.4.2 FIX: Network-first for app.js + sw-field.js too
+  //    (these change every version — must always fetch fresh when online)
+  if (url.pathname.endsWith('/app.js') || url.pathname.endsWith('/sw-field.js')) {
+    event.respondWith(
+      fetch(event.request, { cache: 'no-cache' })
+        .then(function(response) {
+          if (response && response.status === 200) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(function(cache) {
+              cache.put(event.request, copy);
+            });
+          }
+          return response;
+        })
+        .catch(function() {
+          return caches.match(event.request);
+        })
+    );
+    return;
+  }
+  
+  // Cache-first for OTHER assets (icons, manifest, etc.)
   event.respondWith(
     caches.match(event.request).then(function(cached) {
       if (cached) return cached;

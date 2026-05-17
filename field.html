@@ -63,6 +63,39 @@ button,input{font-family:inherit}input{font-size:16px}
 .splash .field input:focus{border-color:#fff;background:rgba(255,255,255,.15)}
 .splash .field label{color:rgba(255,255,255,.7)}
 .splash .btn{background:#fff;color:var(--p)}
+.gps-modal{position:fixed;inset:0;background:rgba(11,25,87,.96);z-index:9999;display:none;flex-direction:column;padding:24px;padding-top:max(24px,env(safe-area-inset-top));overflow-y:auto;color:#fff}
+.gps-modal.show{display:flex}
+.gps-modal .icon-wrap{margin:20px auto 24px;width:88px;height:88px;background:rgba(245,184,0,.15);border:2px solid rgba(245,184,0,.4);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:42px}
+.gps-modal h2{font-size:22px;font-weight:700;text-align:center;margin-bottom:8px;color:#fff}
+.gps-modal .sub{text-align:center;font-size:14px;color:rgba(255,255,255,.85);line-height:1.5;margin-bottom:28px;padding:0 12px}
+.gps-modal .steps{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:18px;margin-bottom:18px}
+.gps-modal .step{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+.gps-modal .step:last-child{border-bottom:none}
+.gps-modal .step-num{background:#f5b800;color:#0B1957;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
+.gps-modal .step-txt{font-size:14px;line-height:1.45;flex:1;padding-top:3px}
+.gps-modal .actions{display:flex;flex-direction:column;gap:10px;margin-top:20px}
+.gps-modal .actions .btn{padding:14px;border-radius:10px;font-weight:600;font-size:14px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.gps-modal .btn-retry{background:#f5b800;color:#0B1957}
+.gps-modal .btn-call{background:#10b981;color:#fff}
+.gps-modal .btn-skip{background:transparent;color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.25)}
+.gps-modal .why-box{background:rgba(38,208,206,.12);border:1px solid rgba(38,208,206,.35);border-radius:10px;padding:12px;margin-bottom:18px;font-size:13px;color:rgba(255,255,255,.92);line-height:1.5}
+.gps-modal .why-box strong{color:#26d0ce;display:block;margin-bottom:4px}
+.gps-modal .browser-hint{background:rgba(255,255,255,.06);border-radius:8px;padding:10px 14px;font-size:12px;color:rgba(255,255,255,.65);text-align:center;margin-top:14px}
+.gps-modal.allowing .step-active{background:rgba(245,184,0,.1);margin:0 -8px;padding:10px 8px;border-radius:6px}
+.gps-status-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;font-size:11px;font-weight:600}
+.gps-status-pill.ok{background:rgba(16,185,129,.15);color:#10b981}
+.gps-status-pill.warn{background:rgba(245,158,11,.15);color:#f59e0b}
+.gps-status-pill.err{background:rgba(239,68,68,.15);color:#ef4444}
+.onboard-screen{position:fixed;inset:0;background:linear-gradient(180deg,#0B1957 0%,#0f1c5e 100%);z-index:9998;display:none;flex-direction:column;color:#fff;padding:28px;overflow-y:auto}
+.onboard-screen.show{display:flex}
+.onboard-screen .icon-big{margin:30px auto 24px;width:120px;height:120px;background:rgba(245,184,0,.15);border:3px solid #f5b800;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:60px}
+.onboard-screen h2{font-size:24px;font-weight:700;text-align:center;margin-bottom:10px}
+.onboard-screen .lead-txt{font-size:15px;color:rgba(255,255,255,.85);text-align:center;line-height:1.6;margin-bottom:24px;padding:0 8px}
+.onboard-screen .perks{display:flex;flex-direction:column;gap:14px;margin-bottom:32px}
+.onboard-screen .perk{display:flex;gap:14px;align-items:center;background:rgba(255,255,255,.06);padding:14px;border-radius:12px}
+.onboard-screen .perk-icon{font-size:24px;flex-shrink:0}
+.onboard-screen .perk-txt{font-size:13px;line-height:1.5;color:rgba(255,255,255,.9)}
+.onboard-screen .actions{margin-top:auto;padding-top:20px}
 .hero{background:linear-gradient(135deg,var(--p) 0%,#26a 100%);color:#fff;padding:18px;border-radius:14px;margin-bottom:14px;position:relative;overflow:hidden}
 .hero::before{content:"";position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.1)}
 .hero .lbl{font-size:10px;opacity:.85;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px}
@@ -201,6 +234,69 @@ button,input{font-family:inherit}input{font-size:16px}
 <div class="toast" id="toast"></div>
 <div class="overlay" id="overlay"><div class="ring"></div><p id="overlay-text">Working…</p></div>
 <div class="flash" id="flash"><div class="bc">✓</div><h2 id="flash-title">Vehicle Saved!</h2><div class="pl" id="flash-plate">—</div><div class="meta" id="flash-meta"></div><div class="nx">Ready for next vehicle…</div></div>
+
+<!-- Layer 5: Onboarding Screen (first-time setup) -->
+<div class="onboard-screen" id="onboard-screen">
+  <div class="icon-big">📍</div>
+  <h2 id="onboard-title">Welcome!</h2>
+  <p class="lead-txt">Photos ke saath GPS location chahiye — taaki client verify kar sake ki vehicle correct location pe tha.</p>
+  
+  <div class="perks">
+    <div class="perk"><span class="perk-icon">📸</span><span class="perk-txt">Har photo me automatic GPS stamp lagega</span></div>
+    <div class="perk"><span class="perk-icon">🛡️</span><span class="perk-txt">Client trust badega — verified work</span></div>
+    <div class="perk"><span class="perk-icon">⚡</span><span class="perk-txt">Sirf ek baar permission — phir kabhi nahi puchega</span></div>
+  </div>
+  
+  <div class="actions">
+    <button class="btn btn-retry" id="onboard-allow-btn" onclick="onboardingAllowGps()" style="background:#f5b800;color:#0B1957;font-weight:700">
+      📍 GPS Permission Allow Karo
+    </button>
+    <button class="btn btn-skip" onclick="onboardingSkip()" style="background:transparent;color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.2);margin-top:10px">
+      Skip (later allow karunga)
+    </button>
+  </div>
+</div>
+
+<!-- Layer 2: GPS Permission Setup Modal (when denied) -->
+<div class="gps-modal" id="gps-setup-modal">
+  <div class="icon-wrap">📍</div>
+  <h2>GPS Permission Chahiye</h2>
+  <p class="sub">Vehicle photos ke saath location stamp ke liye GPS chahiye. Permission allow karna padega.</p>
+  
+  <div class="why-box">
+    <strong>📋 Kyun zaroori hai?</strong>
+    Client ko prove karna padega ki photo correct location se hai. GPS ke bina photo accept nahi hogi.
+  </div>
+  
+  <div class="steps" id="gps-modal-steps">
+    <div class="step">
+      <span class="step-num">1</span>
+      <span class="step-txt">Address bar me <strong>🔒 lock icon</strong> tap karo (URL ke side)</span>
+    </div>
+    <div class="step">
+      <span class="step-num">2</span>
+      <span class="step-txt"><strong>"Site settings"</strong> ya <strong>"Permissions"</strong> choose karo</span>
+    </div>
+    <div class="step">
+      <span class="step-num">3</span>
+      <span class="step-txt"><strong>"Location"</strong> par tap karke <strong>"Allow"</strong> karo</span>
+    </div>
+    <div class="step">
+      <span class="step-num">4</span>
+      <span class="step-txt">Vapas aake <strong>"Phir Try Karo"</strong> button daba</span>
+    </div>
+  </div>
+  
+  <div class="actions">
+    <button class="btn btn-retry" onclick="retryGpsPermission()">🔄 Phir Try Karo</button>
+    <a class="btn btn-call" href="tel:9922138138" style="text-decoration:none">📞 Admin Ko Call Karo (9922138138)</a>
+    <button class="btn btn-skip" onclick="tryManualFallback()">⚙️ Manual GPS Try Karo</button>
+  </div>
+  
+  <div class="browser-hint" id="gps-modal-hint">
+    Phone Settings → Apps → Chrome → Permissions → Location → Allow
+  </div>
+</div>
 
 <!-- PWA Install Bar -->
 <div class="install-bar" id="install-bar">
@@ -368,6 +464,6 @@ button,input{font-family:inherit}input{font-size:16px}
 })();
 </script>
 
-<script src="/app.js?v=15.3.3-2026-05-17"></script>
+<script src="/app.js?v=15.4.3-2026-05-17"></script>
 </body>
 </html>
