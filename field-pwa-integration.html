@@ -1,0 +1,199 @@
+<!--
+═══════════════════════════════════════════════════════════════════════
+  🚨 CRITICAL FIX — FIELD vs ADMIN PWA SEPARATION
+  
+  PROBLEM:
+    Field URL khulne pe Admin app open ho raha tha
+    Cause: Service workers ne overlap kiya tha scope "/" me
+  
+  SOLUTION:
+    1. Tight scope per manifest (/app.html vs /field.html)
+    2. Each SW only handles its OWN files
+    3. Cleanup script removes broken old SWs
+    4. Field.html me cleanup script paste karna ZARURI hai
+═══════════════════════════════════════════════════════════════════════
+-->
+
+<!-- ╔═══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  STEP 1 — Upload 9 files to GitHub root                       ║ -->
+<!-- ╚═══════════════════════════════════════════════════════════════╝ -->
+<!--
+  📂 Repo root (github.com/shivamprajapati321/prajapati-gps-field-repo/)
+     ├─ manifest-field.json          ← NEW (tight scope: /field.html)
+     ├─ manifest.json                ← NEW (tight scope: /app.html)
+     ├─ sw-field.js                  ← NEW (isolated)
+     ├─ sw-admin.js                  ← NEW (isolated)
+     ├─ icon-field-192.png           ← NEW (gold/navy)
+     ├─ icon-field-512.png           ← NEW
+     ├─ icon-field-maskable-192.png  ← NEW
+     ├─ icon-field-maskable-512.png  ← NEW
+     ├─ icon-field-apple-180.png     ← NEW
+     └─ favicon-field-32.png         ← NEW
+-->
+
+
+<!-- ╔═══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  STEP 2 — Field.html <head> (REPLACE old manifest tags)       ║ -->
+<!-- ╚═══════════════════════════════════════════════════════════════╝ -->
+
+<link rel="manifest" href="/manifest-field.json">
+<meta name="theme-color" content="#0B1957">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-field-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-field-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icon-field-apple-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Prajapati GPS">
+
+
+<!-- ╔═══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  STEP 3 — Field.html (REPLACE old SW registration)            ║ -->
+<!-- ║                                                               ║ -->
+<!-- ║  Paste this just before </body>:                              ║ -->
+<!-- ║  This script ALSO cleans up broken admin SW on field phones   ║ -->
+<!-- ╚═══════════════════════════════════════════════════════════════╝ -->
+
+<script>
+(function() {
+  if (!('serviceWorker' in navigator)) return;
+  
+  // CLEANUP — Unregister any wrong/broken SWs first
+  navigator.serviceWorker.getRegistrations().then(function(regs) {
+    regs.forEach(function(reg) {
+      var scriptURL = reg.active && reg.active.scriptURL || '';
+      if (scriptURL && scriptURL.indexOf('/sw-field.js') === -1) {
+        console.log('[Field PWA] Unregistering wrong SW:', scriptURL);
+        reg.unregister();
+      }
+    });
+  }).then(function() {
+    return navigator.serviceWorker.register('/sw-field.js', { scope: '/field.html' });
+  }).then(function(reg) {
+    console.log('[Field PWA] Registered v15.3.3');
+    setInterval(function() { reg.update().catch(function(){}); }, 15000);
+    
+    reg.addEventListener('updatefound', function() {
+      var nw = reg.installing;
+      if (!nw) return;
+      nw.addEventListener('statechange', function() {
+        if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+          var toast = document.getElementById('updateToast') 
+                   || document.getElementById('pwaUpdateToast');
+          if (toast) toast.style.display = 'flex';
+        }
+      });
+    });
+  }).catch(function(err) {
+    console.warn('[Field PWA] SW setup failed:', err);
+  });
+  
+  var refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', function() {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
+  
+  // Install prompt — ONLY on field.html
+  var deferredPrompt = null;
+  var isStandalone = window.matchMedia('(display-mode: standalone)').matches 
+                  || window.navigator.standalone === true;
+  
+  if (isStandalone) return;
+  
+  window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    window._pwaInstallPrompt = deferredPrompt;
+    
+    var banner = document.getElementById('installBanner') 
+              || document.getElementById('pwaInstallBanner');
+    if (banner) {
+      var dismissed = localStorage.getItem('pwa_field_install_dismissed');
+      var dismissedRecently = dismissed && (Date.now() - parseInt(dismissed)) < 7*24*60*60*1000;
+      if (!dismissedRecently) {
+        setTimeout(function() { banner.style.display = 'flex'; }, 5000);
+      }
+    }
+  });
+  
+  window.installFieldPWA = function() {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(function(choice) {
+        if (choice.outcome === 'accepted') {
+          var banner = document.getElementById('installBanner') 
+                    || document.getElementById('pwaInstallBanner');
+          if (banner) banner.style.display = 'none';
+        }
+        deferredPrompt = null;
+      });
+    } else if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+      alert('iOS Safari: Share button → Add to Home Screen');
+    } else {
+      alert('Browser menu → "Install app" / "Add to Home Screen"');
+    }
+  };
+})();
+</script>
+
+
+<!-- ╔═══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  STEP 4 — app.html — REPLACE existing SW registration         ║ -->
+<!-- ╚═══════════════════════════════════════════════════════════════╝ -->
+
+<script>
+(function() {
+  if (!('serviceWorker' in navigator)) return;
+  
+  navigator.serviceWorker.getRegistrations().then(function(regs) {
+    regs.forEach(function(reg) {
+      var scriptURL = reg.active && reg.active.scriptURL || '';
+      if (scriptURL && scriptURL.indexOf('/sw-admin.js') === -1) {
+        console.log('[Admin PWA] Unregistering wrong SW:', scriptURL);
+        reg.unregister();
+      }
+    });
+  }).then(function() {
+    return navigator.serviceWorker.register('/sw-admin.js', { scope: '/app.html' });
+  }).then(function(reg) {
+    console.log('[Admin PWA] Registered v2.3');
+    setInterval(function() { reg.update().catch(function(){}); }, 30000);
+  }).catch(function(err) {
+    console.warn('[Admin PWA] SW setup failed:', err);
+  });
+})();
+</script>
+
+
+<!--
+═══════════════════════════════════════════════════════════════════════
+  WHY THIS FIXES THE BUG
+
+  OLD (broken):
+    field.html → registers sw-field.js with scope "/"
+    app.html → registers sw-admin.js with scope "/"
+    → Both compete for / scope
+    → Last registered wins → wrong app loads
+
+  NEW (isolated):
+    field.html → registers sw-field.js with scope "/field.html"
+    app.html → registers sw-admin.js with scope "/app.html"
+    → No overlap, both coexist peacefully
+    → field.html ALWAYS shows field app
+    → app.html ALWAYS shows admin app
+═══════════════════════════════════════════════════════════════════════
+
+  FIELD TEAM IMPACT:
+  
+  Next time field worker opens field.html:
+   ✓ Old broken SW auto-unregistered (cleanup script)
+   ✓ New isolated field SW installed
+   ✓ Page reloads automatically
+   ✓ Premium gold P icon appears
+   ✓ Install prompt shows after 5 sec
+   ✓ Field work continues seamlessly
+   
+  No manual phone cleanup needed!
+═══════════════════════════════════════════════════════════════════════
+-->

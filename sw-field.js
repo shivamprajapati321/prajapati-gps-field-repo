@@ -1,26 +1,16 @@
 // ════════════════════════════════════════════════════════════════════
-// PRAJAPATI ADMIN — SERVICE WORKER (ISOLATED)
+// PRAJAPATI GPS FIELD APP — SERVICE WORKER (ISOLATED)
 // 
-// CRITICAL: This SW ONLY handles admin files (app.html, admin.html, admin-v2.html).
-// Never intercepts field.html or field assets.
+// CRITICAL: This SW ONLY handles field.html and its assets.
+// All other URLs pass through to network without interception.
 // ════════════════════════════════════════════════════════════════════
 
-const VERSION = 'admin-v2.3-isolated-20260517';
-const CACHE_NAME = 'prajapati-admin-' + VERSION;
-
-const ADMIN_FILES = [
-  '/app.html',
-  '/admin.html',
-  '/admin-v2.html',
-  '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png'
-];
+const VERSION = 'field-v15.3.3-isolated-20260517';
+const CACHE_NAME = 'prajapati-field-' + VERSION;
 
 const FIELD_FILES = [
   '/field.html',
   '/manifest-field.json',
-  '/sw-field.js',
   '/icon-field-192.png',
   '/icon-field-512.png',
   '/icon-field-maskable-192.png',
@@ -29,30 +19,44 @@ const FIELD_FILES = [
   '/favicon-field-32.png'
 ];
 
-function isAdminFile(p) { return ADMIN_FILES.indexOf(p) !== -1; }
+const ADMIN_FILES = [
+  '/app.html', '/admin.html', '/admin-v2.html',
+  '/manifest.json', '/sw-admin.js',
+  '/icon-192.png', '/icon-512.png'
+];
+
 function isFieldFile(p) { return FIELD_FILES.indexOf(p) !== -1; }
+function isAdminFile(p) { return ADMIN_FILES.indexOf(p) !== -1; }
 
 self.addEventListener('install', function(event) {
-  console.log('[SW-Admin] Installing:', VERSION);
+  console.log('[SW-Field] Installing:', VERSION);
   event.waitUntil(
     caches.open(CACHE_NAME).then(function(cache) {
-      return cache.addAll(ADMIN_FILES).catch(function(err) {
-        console.warn('[SW-Admin] Asset cache fail:', err);
+      return cache.addAll(FIELD_FILES).catch(function(err) {
+        console.warn('[SW-Field] Asset cache fail:', err);
       });
     }).then(function() { return self.skipWaiting(); })
   );
 });
 
 self.addEventListener('activate', function(event) {
-  console.log('[SW-Admin] Activating:', VERSION);
+  console.log('[SW-Field] Activating:', VERSION);
   event.waitUntil(
     caches.keys().then(function(keys) {
       return Promise.all(keys.map(function(key) {
-        if (key.indexOf('prajapati-admin-') === 0 && key !== CACHE_NAME) {
+        if (key.indexOf('prajapati-field-') === 0 && key !== CACHE_NAME) {
           return caches.delete(key);
         }
       }));
-    }).then(function() { return self.clients.claim(); })
+    }).then(function() {
+      return self.clients.claim();
+    }).then(function() {
+      return self.clients.matchAll().then(function(clients) {
+        clients.forEach(function(c) {
+          c.postMessage({ type: 'SW_UPDATED', version: VERSION });
+        });
+      });
+    })
   );
 });
 
@@ -63,11 +67,11 @@ self.addEventListener('fetch', function(event) {
   if (url.origin !== location.origin) return;
   if (url.protocol === 'data:' || url.protocol === 'blob:') return;
   
-  // CRITICAL: never intercept field files
-  if (isFieldFile(url.pathname)) return;
+  // CRITICAL: never intercept admin files
+  if (isAdminFile(url.pathname)) return;
   
-  // Only handle admin files
-  if (!isAdminFile(url.pathname)) return;
+  // Only handle field files
+  if (!isFieldFile(url.pathname)) return;
   
   // Network-first for HTML
   if (event.request.mode === 'navigate' || url.pathname.endsWith('.html')) {
@@ -83,8 +87,8 @@ self.addEventListener('fetch', function(event) {
           return response;
         })
         .catch(function() {
-          // Offline fallback — match the exact request, never cross over
-          return caches.match(event.request);
+          // Offline fallback ONLY to field.html (never admin)
+          return caches.match('/field.html');
         })
     );
     return;
