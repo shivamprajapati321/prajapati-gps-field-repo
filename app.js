@@ -6,7 +6,7 @@
 //        + Strong PWA install + Aggressive auto-update
 // ═════════════════════════════════════════════════════════════════
 
-var APP_VERSION = 'v15.4';
+var APP_VERSION = 'v15.4.1';
 var BUILD_DATE = '2026-05-17';
 
 var CONFIG = {
@@ -17,7 +17,7 @@ var CONFIG = {
   plateRecognizerToken: '4f6a384fb325649a527b7b2341aaf800b9f10306',
   plateRecognizerUrl: 'https://api.platerecognizer.com/v1/plate-reader/',
   sessionTtlMs: 12 * 60 * 60 * 1000,
-  swUpdateIntervalMs: 15 * 1000  // v15.2: Check for SW update every 15 seconds (aggressive)
+  swUpdateIntervalMs: 60 * 1000  // v15.4 FIX: Check every 60 sec (was 15 sec — too aggressive)
 };
 
 var state = {
@@ -1567,15 +1567,56 @@ if ('serviceWorker' in navigator) {
       console.warn('[PWA v15.4] SW register failed:', err);
     });
   });
+  // ⭐ v15.4 FIX: SW reload loop prevention
+  // Original bug: SW skipWaiting + clients.claim → controllerchange → reload
+  //   → loop → looks like "auto login/logout"
+  // Fix logic:
+  //   1. Track if we had a controller BEFORE registration (real update)
+  //   2. Only reload if controller was already there AND now changed
+  //   3. Suppress repeated controllerchange events within 5 sec
+  
+  // Snapshot: did we have an active SW controller when page loaded?
+  var hadControllerOnLoad = !!navigator.serviceWorker.controller;
+  console.log('[PWA v15.4] Page loaded with controller:', hadControllerOnLoad);
+  
   navigator.serviceWorker.addEventListener('controllerchange', function(){
-    if (refreshing) return;
+    if (refreshing) {
+      console.log('[PWA v15.4] controllerchange ignored — already refreshing');
+      return;
+    }
+    
+    // CRITICAL: If page loaded WITHOUT a controller, this is the FIRST install
+    // — don't reload (it would just show login screen again unnecessarily)
+    if (!hadControllerOnLoad) {
+      console.log('[PWA v15.4] First-time SW install — NOT reloading');
+      hadControllerOnLoad = true; // future changes are real updates
+      return;
+    }
+    
+    // Suppress if we just reloaded (loop guard)
+    var lastReload = parseInt(sessionStorage.getItem('pf_sw_last_reload') || '0');
+    if (Date.now() - lastReload < 10000) {
+      console.log('[PWA v15.4] controllerchange suppressed — reloaded ' + (Date.now() - lastReload) + 'ms ago');
+      return;
+    }
+    
+    // Real update — reload
     refreshing = true;
+    sessionStorage.setItem('pf_sw_last_reload', String(Date.now()));
+    console.log('[PWA v15.4] Real SW update detected — reloading');
     window.location.reload();
   });
+  
   navigator.serviceWorker.addEventListener('message', function(event){
     if (event.data && event.data.type === 'SW_ACTIVATED'){
+      var lastReload = parseInt(sessionStorage.getItem('pf_sw_last_reload') || '0');
+      if (Date.now() - lastReload < 10000) {
+        console.log('[PWA v15.4] SW_ACTIVATED suppressed (recent reload)');
+        return;
+      }
       if (!refreshing){
         refreshing = true;
+        sessionStorage.setItem('pf_sw_last_reload', String(Date.now()));
         toast('🔄 Updating to new version…', 'success');
         setTimeout(function(){ window.location.reload(); }, 800);
       }

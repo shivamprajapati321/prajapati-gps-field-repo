@@ -5,7 +5,7 @@
 // All other URLs pass through to network without interception.
 // ════════════════════════════════════════════════════════════════════
 
-const VERSION = 'field-v15.3.3-isolated-20260517';
+const VERSION = 'field-v15.4.1-no-autoreload-20260517';
 const CACHE_NAME = 'prajapati-field-' + VERSION;
 
 const FIELD_FILES = [
@@ -35,7 +35,10 @@ self.addEventListener('install', function(event) {
       return cache.addAll(FIELD_FILES).catch(function(err) {
         console.warn('[SW-Field] Asset cache fail:', err);
       });
-    }).then(function() { return self.skipWaiting(); })
+    })
+    // ⭐ v15.4 FIX: REMOVED auto skipWaiting() — was causing reload loop
+    // Old behavior: SW auto-activates → controllerchange → page reloads
+    // New behavior: SW waits → user sees "Update" banner → clicks → skipWaiting via message
   );
 });
 
@@ -49,6 +52,8 @@ self.addEventListener('activate', function(event) {
         }
       }));
     }).then(function() {
+      // ⭐ v15.4 FIX: clients.claim only on EXPLICIT activation
+      // (after user clicked Update or first install)
       return self.clients.claim();
     }).then(function() {
       return self.clients.matchAll().then(function(clients) {
