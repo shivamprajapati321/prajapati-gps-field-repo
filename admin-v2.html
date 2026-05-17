@@ -3959,7 +3959,16 @@ function renderCampaigns() {
   state.campaigns.forEach(function(c) {
     var mediaLabel = getMediaTypeLabel(c.hood_photo_count || 0, c.back_panel_photo_count || 0);
     var brandingTag = '<span class="tag tag-' + (c.branding_mode === 'full' ? 'info' : (c.branding_mode === 'clean' ? 'success' : 'gold')) + '">' + (c.branding_mode || 'full').toUpperCase() + '</span>';
-    var manualTag = c.manual_gps_enabled ? '<span class="tag tag-warn"><i class="ti ti-target"></i> Manual GPS default</span>' : '';
+    var manualTag = '';
+    if (c.manual_gps_enabled) {
+      if (c.manual_valid_from && c.manual_valid_to) {
+        var todayStr_v2 = new Date().toISOString().split('T')[0];
+        var inRange = todayStr_v2 >= c.manual_valid_from && todayStr_v2 <= c.manual_valid_to;
+        manualTag = '<span class="tag tag-warn" title="' + c.manual_valid_from + ' to ' + c.manual_valid_to + '"><i class="ti ti-target"></i> Manual GPS ' + (inRange ? '🟢' : '⏸') + ' ' + c.manual_valid_from + ' → ' + c.manual_valid_to + '</span>';
+      } else {
+        manualTag = '<span class="tag tag-warn"><i class="ti ti-target"></i> Manual GPS (always)</span>';
+      }
+    }
     var activeTag = c.active ? '<span class="tag tag-success"><i class="ti ti-circle-filled" style="font-size:7px;"></i> Active</span>' : '<span class="tag" style="background:var(--bg); color:var(--text-3);">Inactive</span>';
     var mediaTag = '<span class="tag tag-primary"><i class="ti ti-photo"></i> ' + mediaLabel + '</span>';
     

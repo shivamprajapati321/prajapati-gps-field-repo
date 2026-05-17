@@ -150,7 +150,7 @@ label { display: block; font-size: 10px; font-weight: 600; text-transform: upper
 
 <div class="header">
   <div>
-    <h1>Prajapati GPS - Admin <span style="font-size:10px;background:#34c759;color:#fff;padding:2px 7px;border-radius:4px;margin-left:6px;font-weight:600;vertical-align:middle;">v16.2</span></h1>
+    <h1>Prajapati GPS - Admin</h1>
     <div class="sub" id="adminUserSub">-</div>
   </div>
   <div class="header-right">
@@ -165,7 +165,6 @@ label { display: block; font-size: 10px; font-weight: 600; text-transform: upper
     <h2>Admin Login</h2>
     <p>Owner ya admin number daalo</p>
     <input type="tel" id="loginPhone" placeholder="10 digit number" maxlength="10" inputmode="numeric">
-    <div class="helper" id="loginPhoneHelper" style="font-family:monospace; text-align:center; margin-top:4px;">0/10 digits</div>
     <button class="btn btn-block" id="loginBtn" style="margin-top:10px;">Login →</button>
   </div>
 </div>
@@ -276,6 +275,32 @@ label { display: block; font-size: 10px; font-weight: 600; text-transform: upper
             </select>
             <div class="helper">Har photo ka lat/lng anchor ke around random distance pe hoga</div>
           </div>
+          
+          <div style="margin-top:14px; padding:14px; background:rgba(245,184,0,0.08); border:1px solid rgba(245,184,0,0.3); border-radius:8px;">
+            <div style="font-weight:600; color:#a06000; font-size:13px; margin-bottom:10px; letter-spacing:0.3px;">
+              📅 Manual GPS Date Range (optional)
+            </div>
+            <div style="font-size:11px; color:#a06000; margin-bottom:12px; line-height:1.5; opacity:0.85;">
+              In dates ke beech upload hone wale photos pe manual GPS lagega. Date range ke baahar = real device GPS automatic. Dates blank chodne pe = hamesha manual GPS (purana behavior).
+            </div>
+            <div class="field-row cols-2" style="margin-bottom:8px;">
+              <div class="field">
+                <label style="color:#a06000;">Valid From</label>
+                <input type="date" id="cManualValidFrom" style="width:100%; padding:8px; border:1px solid #fcd34d; border-radius:6px; background:#fffbe6; font-weight:600;">
+              </div>
+              <div class="field">
+                <label style="color:#a06000;">Valid To</label>
+                <input type="date" id="cManualValidTo" style="width:100%; padding:8px; border:1px solid #fcd34d; border-radius:6px; background:#fffbe6; font-weight:600;">
+              </div>
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button type="button" onclick="setManualDateRange(0)" style="background:#fff; border:1px solid #fcd34d; color:#a06000; padding:4px 10px; border-radius:99px; font-size:11px; cursor:pointer;">Today only</button>
+              <button type="button" onclick="setManualDateRange(7)" style="background:#fff; border:1px solid #fcd34d; color:#a06000; padding:4px 10px; border-radius:99px; font-size:11px; cursor:pointer;">Next 7 days</button>
+              <button type="button" onclick="setManualDateRange(30)" style="background:#fff; border:1px solid #fcd34d; color:#a06000; padding:4px 10px; border-radius:99px; font-size:11px; cursor:pointer;">Next 30 days</button>
+              <button type="button" onclick="setManualDateRange(-1)" style="background:#fff; border:1px solid #fcd34d; color:#a06000; padding:4px 10px; border-radius:99px; font-size:11px; cursor:pointer;">Clear (always on)</button>
+            </div>
+          </div>
+          
           <input type="hidden" id="cAnchorAddr">
           <div style="margin-top:10px;">
             <button class="btn btn-secondary" type="button" onclick="previewAnchorPoints()" style="padding:8px 16px; font-size:13px;">🎯 Preview 5 Random Points</button>
@@ -305,7 +330,7 @@ label { display: block; font-size: 10px; font-weight: 600; text-transform: upper
       <div class="form-sub">Team member details</div>
       <div class="field-row cols-2">
         <div class="field"><label>Full Name *</label><input type="text" id="mName" placeholder="Member name"></div>
-        <div class="field"><label>Phone (10 digits) *</label><input type="tel" id="mPhone" maxlength="10" inputmode="numeric" placeholder="9876543210"><div class="helper" id="mPhoneHelper" style="font-family:monospace;">0/10 digits</div></div>
+        <div class="field"><label>Phone (10 digits) *</label><input type="tel" id="mPhone" maxlength="10" placeholder="9876543210"></div>
       </div>
       <div class="field-row cols-2">
         <div class="field"><label>Role *</label><select id="mRole"><option value="field">Field</option><option value="verifier">Verifier (Quality Control)</option><option value="sales">Sales</option><option value="operations">Operations</option><option value="admin">Admin</option><option value="owner">Owner</option></select></div>
@@ -440,35 +465,6 @@ label { display: block; font-size: 10px; font-weight: 600; text-transform: upper
 <script>
 "use strict";
 
-// ─── PWA CACHE-BUST (16-May v16.2): Auto-update service worker silently ───
-// Field app me yeh logic hai, admin me nahi tha — yahi cause tha "deploy ke baad
-// changes nahi dikhe" problem. Ab 30 sec interval pe SW update check karta hai.
-// Naya version mile toh background me reload trigger ho jata hai.
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(function(regs) {
-    regs.forEach(function(r) {
-      r.update();
-      r.addEventListener('updatefound', function() {
-        var newWorker = r.installing;
-        if (newWorker) {
-          newWorker.addEventListener('statechange', function() {
-            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              console.log('[Admin v16.2] New version available — reloading silently');
-              setTimeout(function() { location.reload(); }, 1500);
-            }
-          });
-        }
-      });
-    });
-  });
-  // Periodic check every 30 sec
-  setInterval(function() {
-    navigator.serviceWorker.getRegistrations().then(function(regs) {
-      regs.forEach(function(r) { r.update(); });
-    });
-  }, 30000);
-}
-
 var CONFIG = {
   supabaseUrl: 'https://fpbktcgtspqsqpaytslv.supabase.co',
   supabaseKey: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j',
@@ -535,15 +531,7 @@ function todayStr() {
 
 document.getElementById('loginBtn').addEventListener('click', loginAdmin);
 document.getElementById('loginPhone').addEventListener('keypress', function(e) { if (e.key === 'Enter') loginAdmin(); });
-document.getElementById('loginPhone').addEventListener('input', function(e) {
-  this.value = this.value.replace(/\D/g, '');
-  var len = this.value.length;
-  var helper = document.getElementById('loginPhoneHelper');
-  if (helper) {
-    helper.textContent = len + '/10 digits' + (len === 10 ? ' ✓' : '');
-    helper.style.color = len === 10 ? '#34c759' : (len > 0 ? '#f59e0b' : '#888');
-  }
-});
+document.getElementById('loginPhone').addEventListener('input', function(e) { this.value = this.value.replace(/\D/g, ''); });
 
 function loginAdmin() {
   var phone = document.getElementById('loginPhone').value.trim();
@@ -583,7 +571,7 @@ function enterDashboard() {
   document.getElementById('userBadge').style.display = 'block';
   document.getElementById('userBadge').textContent = state.admin.name + ' (' + state.admin.role + ')';
   document.getElementById('logoutBtn').style.display = 'block';
-  document.getElementById('adminUserSub').textContent = 'Welcome ' + state.admin.name + ' · v16.2 (Phone+PPT fix)';
+  document.getElementById('adminUserSub').textContent = 'Welcome ' + state.admin.name;
   document.getElementById('assignDate').value = todayStr();
   // Default photo filter: last 7 days (better default than just today, which often has 0 photos)
   var ist = new Date(new Date().getTime() + 5.5*60*60*1000);
@@ -643,7 +631,19 @@ function renderCampaigns() {
   state.campaigns.forEach(function(c) {
     var brandingMode = c.branding_mode || 'full';
     var brandingTag = '<span class="tag tag-' + brandingMode + '">' + brandingMode.toUpperCase() + '</span>';
-    var manualTag = c.manual_gps_enabled ? '<span class="tag tag-on">Manual GPS</span>' : '<span class="tag tag-off">Real GPS</span>';
+    var manualTag;
+    if (c.manual_gps_enabled) {
+      if (c.manual_valid_from && c.manual_valid_to) {
+        var today = new Date().toISOString().split('T')[0];
+        var inRange = today >= c.manual_valid_from && today <= c.manual_valid_to;
+        var rangeIcon = inRange ? '🟢' : '⏸';
+        manualTag = '<span class="tag tag-on" title="' + c.manual_valid_from + ' to ' + c.manual_valid_to + '">Manual GPS ' + rangeIcon + ' ' + c.manual_valid_from + ' → ' + c.manual_valid_to + '</span>';
+      } else {
+        manualTag = '<span class="tag tag-on">Manual GPS (always)</span>';
+      }
+    } else {
+      manualTag = '<span class="tag tag-off">Real GPS</span>';
+    }
     var ocrTag = c.auto_vehicle_enabled ? '<span class="tag tag-on">Auto OCR</span>' : '';
     var activeTag = c.active ? '<span class="tag tag-success">ACTIVE</span>' : '<span class="tag tag-off">INACTIVE</span>';
     var mediaTag = '<span class="tag tag-media">' + getMediaTypeLabel(c.hood_photo_count || 0, c.back_panel_photo_count || 0) + '</span>';
@@ -720,6 +720,8 @@ function openCampaignForm() {
   document.getElementById('cAnchorPincode').value = '';
   document.getElementById('cAnchorSearch').value = '';
   document.getElementById('cGpsRadius').value = '50';
+  document.getElementById('cManualValidFrom').value = '';
+  document.getElementById('cManualValidTo').value = '';
   document.getElementById('anchorSelectedBox').style.display = 'none';
   document.getElementById('anchorPreview').style.display = 'none';
 
@@ -752,6 +754,29 @@ function selectMode(el) {
 function toggleManualGps(el) {
   el.classList.toggle('on');
   document.getElementById('manualFields').classList.toggle('active', el.classList.contains('on'));
+}
+
+function setManualDateRange(days) {
+  var fromEl = document.getElementById('cManualValidFrom');
+  var toEl = document.getElementById('cManualValidTo');
+  
+  if (days === -1) {
+    fromEl.value = '';
+    toEl.value = '';
+    return;
+  }
+  
+  var today = new Date();
+  var todayStr = today.toISOString().split('T')[0];
+  fromEl.value = todayStr;
+  
+  if (days === 0) {
+    toEl.value = todayStr;
+  } else {
+    var future = new Date();
+    future.setDate(future.getDate() + days);
+    toEl.value = future.toISOString().split('T')[0];
+  }
 }
 
 function editCampaign(id) {
@@ -799,6 +824,8 @@ function editCampaign(id) {
   var manualOn = !!c.manual_gps_enabled;
   document.getElementById('manualToggle').classList.toggle('on', manualOn);
   document.getElementById('manualFields').classList.toggle('active', manualOn);
+  document.getElementById('cManualValidFrom').value = c.manual_valid_from || '';
+  document.getElementById('cManualValidTo').value = c.manual_valid_to || '';
   document.getElementById('autoVehicleToggle').classList.toggle('on', !!c.auto_vehicle_enabled);
 
   document.getElementById('campaignFormCard').classList.add('active');
@@ -927,6 +954,8 @@ function saveCampaign() {
     anchor_lng: manualOn ? (parseFloat(document.getElementById('cAnchorLng').value) || null) : null,
     anchor_pincode: manualOn ? (document.getElementById('cAnchorPincode').value.trim() || null) : null,
     gps_radius_m: manualOn ? (parseInt(document.getElementById('cGpsRadius').value) || 50) : null,
+    manual_valid_from: manualOn ? (document.getElementById('cManualValidFrom').value || null) : null,
+    manual_valid_to: manualOn ? (document.getElementById('cManualValidTo').value || null) : null,
     active: true
   };
 
@@ -1015,9 +1044,6 @@ function openMemberForm() {
   document.getElementById('mPhone').disabled = false;
   document.getElementById('mRole').value = 'field';
   document.getElementById('mCity').value = '';
-  // V2: Reset phone counter
-  var ph = document.getElementById('mPhoneHelper');
-  if (ph) { ph.textContent = '0/10 digits'; ph.style.color = '#888'; ph.style.fontWeight = '400'; }
   document.getElementById('memberFormCard').classList.add('active');
   document.getElementById('memberFormCard').scrollIntoView({behavior:'smooth'});
 }
@@ -1037,9 +1063,6 @@ function editMember(id) {
   document.getElementById('mPhone').disabled = true;
   document.getElementById('mRole').value = m.role || 'field';
   document.getElementById('mCity').value = m.city || '';
-  // V2: Set phone counter to show full state
-  var ph = document.getElementById('mPhoneHelper');
-  if (ph) { ph.textContent = '10/10 digits ✓ (locked)'; ph.style.color = '#888'; ph.style.fontWeight = '400'; }
   document.getElementById('memberFormCard').classList.add('active');
   document.getElementById('memberFormCard').scrollIntoView({behavior:'smooth'});
 }
@@ -1047,11 +1070,8 @@ function editMember(id) {
 function saveMember() {
   var name = document.getElementById('mName').value.trim();
   var phone = document.getElementById('mPhone').value.trim();
-  if (!name) { showToast('Name zaroori hai', 'error'); document.getElementById('mName').focus(); return; }
-  // V2: Better phone validation messages (16-May fix)
-  if (phone.length === 0) { showToast('Phone number daalo', 'error'); document.getElementById('mPhone').focus(); return; }
-  if (phone.length < 10) { showToast('Phone short — ' + phone.length + ' digits diye, ' + (10 - phone.length) + ' aur chahiye', 'error'); document.getElementById('mPhone').focus(); return; }
-  if (phone.length !== 10) { showToast('Exactly 10 digits daalo', 'error'); document.getElementById('mPhone').focus(); return; }
+  if (!name) { showToast('Name zaroori hai', 'error'); return; }
+  if (phone.length !== 10) { showToast('10 digit phone daalo', 'error'); return; }
   var data = { name: name, role: document.getElementById('mRole').value, city: document.getElementById('mCity').value.trim() || null, active: true };
   var btn = document.getElementById('saveMemberBtn');
   btn.disabled = true; btn.textContent = 'Saving...';
@@ -1067,18 +1087,7 @@ function saveMember() {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': CONFIG.supabaseKey, 'Authorization': 'Bearer ' + CONFIG.supabaseKey }, body: JSON.stringify(data)
     })
     .then(function(r) { btn.disabled = false; btn.textContent = 'Save Member'; if (!r.ok) return r.text().then(function(t) { throw new Error(t); }); showToast('Member added', 'success'); closeMemberForm(); loadMembers(); })
-    .catch(function(err) {
-      // V2: Better error messages (16-May fix)
-      btn.disabled = false; btn.textContent = 'Save Member';
-      var msg = (err.message || '').toString();
-      var userMsg = 'Add failed';
-      if (msg.indexOf('duplicate') > -1 || msg.indexOf('unique') > -1) userMsg = 'Phone already exists in DB';
-      else if (msg.indexOf('check constraint') > -1 || msg.indexOf('23514') > -1) userMsg = 'Invalid role — check DB constraint';
-      else if (msg.indexOf('null value') > -1) userMsg = 'Required field missing';
-      else if (msg.length < 100 && msg.length > 0) userMsg = 'Failed: ' + msg.substring(0, 80);
-      showToast(userMsg, 'error');
-      console.error('Save member error:', err);
-    });
+    .catch(function(err) { btn.disabled = false; btn.textContent = 'Save Member'; showToast(err.message.indexOf('duplicate') > -1 ? 'Phone already exists' : 'Add failed', 'error'); });
   }
 }
 
@@ -1533,13 +1542,10 @@ function openPPTGenerator() {
       
       '<div style="margin-bottom:16px;">' +
         '<label style="font-weight:700;font-size:13px;display:block;margin-bottom:8px;">📝 Slide Contents:</label>' +
-        '<div style="background:#dbeafe;border:1px solid #93c5fd;border-radius:6px;padding:8px 10px;margin-bottom:8px;font-size:11px;color:#1e40af;">' +
-          '<b>🔒 Required (always shown):</b> Vehicle Number · Owner Name · Contact' +
-        '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">' +
-          '<label style="display:flex;align-items:center;gap:6px;font-size:13px;opacity:0.7;"><input type="checkbox" id="pptShowPlate" checked disabled> 🚗 Vehicle Number <span style="font-size:10px;color:#0E1942;font-weight:700;">(LOCKED)</span></label>' +
-          '<label style="display:flex;align-items:center;gap:6px;font-size:13px;opacity:0.7;"><input type="checkbox" id="pptShowOwner" checked disabled> 👤 Owner Name <span style="font-size:10px;color:#0E1942;font-weight:700;">(LOCKED)</span></label>' +
-          '<label style="display:flex;align-items:center;gap:6px;font-size:13px;opacity:0.7;"><input type="checkbox" id="pptShowMobile" checked disabled> 📞 Contact <span style="font-size:10px;color:#0E1942;font-weight:700;">(LOCKED)</span></label>' +
+          '<label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="pptShowPlate" checked> 🚗 Vehicle Number</label>' +
+          '<label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="pptShowOwner" checked> 👤 Owner Name</label>' +
+          '<label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="pptShowMobile" checked> 📞 Mobile</label>' +
           '<label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="pptShowCity" checked> 📍 Location</label>' +
           '<label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="pptShowDate"> 📅 Capture Date</label>' +
           '<label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="pptShowSerial" checked> 🔢 Serial Number</label>' +
@@ -3774,23 +3780,6 @@ function revokeLink(id, name) {
 document.addEventListener('DOMContentLoaded', function() {
   var saved = localStorage.getItem('prajapati_admin_phone');
   if (saved && saved.length === 10) document.getElementById('loginPhone').value = saved;
-
-  // ─── PHONE FIX (16-May): Real-time digit filter + live counter for mPhone ───
-  // Prevents the bug where 9 digits was accepted by form but rejected by save.
-  // User now sees X/10 counter live + only digits allowed.
-  var mPhoneInput = document.getElementById('mPhone');
-  if (mPhoneInput) {
-    mPhoneInput.addEventListener('input', function() {
-      this.value = this.value.replace(/\D/g, '');
-      var len = this.value.length;
-      var helper = document.getElementById('mPhoneHelper');
-      if (helper) {
-        helper.textContent = len + '/10 digits' + (len === 10 ? ' ✓' : (len > 0 ? ' (' + (10 - len) + ' more needed)' : ''));
-        helper.style.color = len === 10 ? '#34c759' : (len > 0 ? '#f59e0b' : '#888');
-        helper.style.fontWeight = len === 10 ? '600' : '400';
-      }
-    });
-  }
 });
 </script>
 </body>
