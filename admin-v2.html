@@ -3038,7 +3038,7 @@ label {
         <select id="ovMember">
           <option value="">-- Select member --</option>
         </select>
-        <div class="helper">Sirf field role wale members yahan dikhenge</div>
+        <div class="helper">Sabhi active members dikhenge (role ke saath) — agar khali hai toh pehle Team Members tab me member add karo</div>
       </div>
 
       <!-- Anchor location search -->
@@ -4276,16 +4276,57 @@ function openOverrideModal(id) {
   p2state.editingOverrideId = id;
   p2state.selectedAnchor = null;
   
-  // Populate member dropdown — field workers only, who aren't already overridden
+  // Show modal first
+  $('overrideModal').classList.add('active');
+  
+  // CRITICAL FIX: Ensure members are loaded before populating dropdown
+  // (User might open this from Campaign edit without visiting Team Members tab)
+  var ensureMembersLoaded;
+  if (state.members && state.members.length > 0) {
+    ensureMembersLoaded = Promise.resolve(state.members);
+  } else {
+    console.log('[GPS Override] Members not loaded, fetching now...');
+    var sel = $('ovMember');
+    sel.innerHTML = '<option value="">⏳ Loading members...</option>';
+    ensureMembersLoaded = api('/rest/v1/trial_team_members?select=*&order=role.asc,name.asc')
+      .then(function(members) {
+        state.members = members || [];
+        console.log('[GPS Override] Loaded', state.members.length, 'members');
+        return state.members;
+      })
+      .catch(function(err) {
+        console.error('[GPS Override] Failed to load members:', err);
+        showToast('Members load failed', 'error');
+        return [];
+      });
+  }
+  
+  ensureMembersLoaded.then(function() {
+    populateOverrideMemberDropdown(id);
+  });
+}
+
+function populateOverrideMemberDropdown(id) {
+  // Populate member dropdown — ALL active members (any role can be in field)
   var existingPhones = p2state.campaignOverrides
     .filter(function(o){ return !o._deleted && (!id || (o.id !== id && '_new_' + p2state.campaignOverrides.indexOf(o) !== id)); })
     .map(function(o){ return o.member_phone; });
   
   var sel = $('ovMember');
   sel.innerHTML = '<option value="">-- Select member --</option>';
-  state.members.filter(function(m){ return m.role === 'field' && m.active; }).forEach(function(m) {
-    if (existingPhones.indexOf(m.phone) > -1 && !id) return; // skip if already overridden
-    sel.innerHTML += '<option value="' + escapeHtml(m.phone) + '">' + escapeHtml(m.name) + ' · ' + escapeHtml(m.phone) + '</option>';
+  
+  // FIX: Don't restrict to 'field' role only — anyone can need manual GPS
+  var available = state.members.filter(function(m){ return m.active; });
+  
+  if (available.length === 0) {
+    sel.innerHTML += '<option value="" disabled>⚠️ No active members found — add members first</option>';
+    console.warn('[GPS Override] No active members. Total members:', state.members.length);
+  }
+  
+  available.forEach(function(m) {
+    if (existingPhones.indexOf(m.phone) > -1 && !id) return;
+    var role = m.role || 'field';
+    sel.innerHTML += '<option value="' + escapeHtml(m.phone) + '">' + escapeHtml(m.name || m.phone) + ' · ' + escapeHtml(m.phone) + ' · ' + escapeHtml(role) + '</option>';
   });
   
   if (id) {
@@ -5022,12 +5063,13 @@ function loadAssignments() {
   var assignP = api('/rest/v1/trial_daily_assignments?assignment_date=eq.' + date + '&select=*');
   
   Promise.all([memberP, campaignP, assignP]).then(function(results) {
-    var members = (results[0] || []).filter(function(m){ return m.role === 'field' && m.active; });
+    // FIX: Show all active members (not just role=field) — anyone can do field work
+    var members = (results[0] || []).filter(function(m){ return m.active; });
     var campaigns = (results[1] || []).filter(function(c){ return c.active; });
     var assignments = results[2] || [];
     
     if (members.length === 0) {
-      $('assignmentsList').innerHTML = '<div class="empty-state"><i class="ti ti-users-off"></i>Koi active field member nahi — Team Members tab me add karo</div>';
+      $('assignmentsList').innerHTML = '<div class="empty-state"><i class="ti ti-users-off"></i>Koi active member nahi — Team Members tab me add karo</div>';
       return;
     }
     
