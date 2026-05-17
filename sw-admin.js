@@ -4,12 +4,14 @@
 // Version bump triggers cache invalidation
 // ════════════════════════════════════════════════════════════════════
 
-const VERSION = 'admin-v2.1-phase4-photofix-20260516';
+const VERSION = 'admin-v2.2-pwa-app-hub-20260517';
 const CACHE_NAME = 'prajapati-admin-' + VERSION;
 
 // Files to cache on install
 const STATIC_ASSETS = [
+  '/app.html',
   '/admin-v2.html',
+  '/admin.html',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png'
@@ -78,7 +80,7 @@ self.addEventListener('fetch', function(event) {
         .catch(function() {
           // Offline fallback to cache
           return caches.match(event.request).then(function(cached) {
-            return cached || caches.match('/admin-v2.html');
+            return cached || caches.match('/app.html') || caches.match('/admin-v2.html');
           });
         })
     );
