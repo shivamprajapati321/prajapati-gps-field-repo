@@ -3120,7 +3120,131 @@ label {
   </div>
 </div>
 
-<!-- ═════════════ PHOTO LIGHTBOX (Phase 4) ═════════════ -->
+<!-- ═════════════ MEMBER GPS MANAGER MODAL (NEW) ═════════════ -->
+<!-- Shows ALL GPS overrides for one member across campaigns, with dates upfront -->
+<div class="modal-overlay" id="memberGpsModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h2><i class="ti ti-map-pin" style="color:var(--accent);"></i> <span id="mgmMemberName">Member</span> — GPS Overrides</h2>
+      <button class="modal-close" onclick="closeMemberGPSManager()">×</button>
+    </div>
+    <div class="modal-body">
+      
+      <!-- Member summary -->
+      <div style="background:var(--bg); padding:12px 14px; border-radius:8px; margin-bottom:14px; display:flex; gap:12px; align-items:center;">
+        <div id="mgmAvatar" class="member-avatar" style="width:42px; height:42px; flex-shrink:0;">—</div>
+        <div style="flex:1; min-width:0;">
+          <div id="mgmInfoName" style="font-size:14px; font-weight:600; color:var(--text-1);">—</div>
+          <div id="mgmInfoMeta" style="font-size:11px; color:var(--text-2); margin-top:2px; font-family:'JetBrains Mono',monospace;">—</div>
+        </div>
+        <span id="mgmCountBadge" class="tag tag-info">0 overrides</span>
+      </div>
+      
+      <!-- Add New Override (inline form) -->
+      <div class="form-section">
+        <div class="form-section-title">
+          <i class="ti ti-plus"></i> Set new manual GPS override
+          <span class="new-pill" style="background:#fef3c7; color:#a06000;">DATE RANGE</span>
+        </div>
+        <div style="font-size:11px; color:var(--text-2); margin-bottom:12px; line-height:1.5;">
+          📅 <strong>Selected date range</strong> ke beech me photos pe manual GPS lagega. Date range ke baahar real device GPS automatic use hoga.
+        </div>
+        
+        <!-- Campaign + Date row (PROMINENT) -->
+        <div class="field-row cols-2" style="margin-bottom:12px;">
+          <div class="field">
+            <label><i class="ti ti-flag" style="font-size:11px;"></i> Campaign *</label>
+            <select id="mgmCampaign" onchange="mgmCheckExisting()">
+              <option value="">-- Select campaign --</option>
+            </select>
+            <div class="helper" id="mgmCampaignHelper" style="display:none; color:var(--warn);">⚠️ Already has override for this campaign</div>
+          </div>
+          <div class="field">
+            <label><i class="ti ti-radius" style="font-size:11px;"></i> GPS radius</label>
+            <select id="mgmRadius">
+              <option value="30">30m — Very close</option>
+              <option value="50" selected>50m — Same gali</option>
+              <option value="100">100m — Same block</option>
+              <option value="200">200m — Market area</option>
+              <option value="500">500m — Neighborhood</option>
+            </select>
+          </div>
+        </div>
+        
+        <!-- BIG DATE FIELDS — most important -->
+        <div style="background:rgba(245,184,0,0.08); border:1px solid rgba(245,184,0,0.3); border-radius:8px; padding:14px; margin-bottom:12px;">
+          <div style="font-size:11px; font-weight:700; color:#a06000; letter-spacing:0.5px; text-transform:uppercase; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+            <i class="ti ti-calendar-event"></i> Valid date range *
+          </div>
+          <div class="field-row cols-2" style="margin-bottom:0;">
+            <div class="field" style="margin-bottom:0;">
+              <label style="color:#a06000;">From</label>
+              <input type="date" id="mgmValidFrom" style="border-color:#fcd34d; font-weight:600;">
+            </div>
+            <div class="field" style="margin-bottom:0;">
+              <label style="color:#a06000;">To</label>
+              <input type="date" id="mgmValidTo" style="border-color:#fcd34d; font-weight:600;">
+            </div>
+          </div>
+          <div style="font-size:10px; color:#a06000; margin-top:8px; opacity:0.85;">
+            💡 Quick: 
+            <button class="btn btn-ghost btn-sm" style="padding:2px 8px; font-size:10px;" onclick="mgmSetDateRange(1)">Today only</button>
+            <button class="btn btn-ghost btn-sm" style="padding:2px 8px; font-size:10px;" onclick="mgmSetDateRange(7)">Next 7 days</button>
+            <button class="btn btn-ghost btn-sm" style="padding:2px 8px; font-size:10px;" onclick="mgmSetDateRange(30)">Next 30 days</button>
+          </div>
+        </div>
+        
+        <!-- Anchor location -->
+        <div class="field">
+          <label><i class="ti ti-map-search" style="font-size:11px;"></i> Manual anchor location *</label>
+          <div style="position:relative;">
+            <input type="text" id="mgmAnchorSearch" placeholder="e.g. Shivaji Nagar Pune" autocomplete="off" oninput="mgmSearchAnchor()" onblur="setTimeout(mgmCloseAnchorDropdown, 200)">
+            <div id="mgmAnchorDropdown" class="loc-dropdown"></div>
+          </div>
+          <div class="helper">Type karke select karo — lat/lng auto-fill</div>
+        </div>
+        
+        <div id="mgmAnchorBox" class="anchor-selected" style="display:none;">
+          <div class="anchor-label">✓ Selected anchor</div>
+          <div class="anchor-address" id="mgmAnchorAddress">—</div>
+          <div class="anchor-meta">
+            <span>📍 <span id="mgmAnchorLat">—</span>, <span id="mgmAnchorLng">—</span></span>
+            <span>📮 <span id="mgmAnchorPincode">—</span></span>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="mgmClearAnchor()" style="margin-top:8px;">
+            <i class="ti ti-x"></i> Clear
+          </button>
+        </div>
+        
+        <!-- Reason -->
+        <div class="field">
+          <label>Reason (optional)</label>
+          <input type="text" id="mgmReason" placeholder="e.g. Stationary parking, depot loading point">
+        </div>
+        
+        <button class="btn btn-primary btn-sm" onclick="mgmSaveOverride()" style="width:100%;">
+          <i class="ti ti-check"></i> Save override
+        </button>
+      </div>
+      
+      <!-- Existing Overrides List -->
+      <div class="form-section" id="mgmExistingSection">
+        <div class="form-section-title">
+          <i class="ti ti-list-details"></i> Existing overrides
+        </div>
+        <div id="mgmExistingList">
+          <div class="empty-state" style="padding:20px;"><i class="ti ti-info-circle"></i> Koi override nahi — upar form se add karo</div>
+        </div>
+      </div>
+      
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeMemberGPSManager()">Close</button>
+    </div>
+  </div>
+</div>
+
+
 <div class="lightbox" id="photoLightbox">
   <div class="lightbox-content">
     <div class="lightbox-img-wrap">
@@ -3626,6 +3750,7 @@ function renderMembers() {
                 activeTag +
               '</div>' +
               '<div class="member-actions">' +
+                '<button class="btn btn-sm btn-ghost" onclick="openMemberGPSManager(\'' + m.id + '\')" title="Manual GPS override with dates"><i class="ti ti-map-pin" style="color:var(--accent);"></i></button>' +
                 '<button class="btn btn-sm btn-ghost" onclick="openMemberModal(\'' + m.id + '\')" title="Edit"><i class="ti ti-edit"></i></button>' +
                 '<button class="btn btn-sm btn-ghost" onclick="toggleMemberActive(\'' + m.id + '\', ' + (!m.active) + ')" title="' + (m.active?'Deactivate':'Activate') + '"><i class="ti ti-' + (m.active?'pause':'play') + '"></i></button>' +
               '</div>' +
@@ -4217,6 +4342,378 @@ function openOverrideModal(id) {
   $('overrideModal').classList.add('active');
 }
 
+// ═══════════════════════════════════════════════════════════════
+// MEMBER GPS MANAGER — Quick override with prominent date fields
+// Opened from Team Members tab → GPS pin icon on each card
+// ═══════════════════════════════════════════════════════════════
+
+var mgmState = {
+  member: null,
+  campaigns: [],
+  overrides: [],
+  selectedAnchor: null,
+  anchorSearchTimer: null,
+  editingId: null
+};
+
+function openMemberGPSManager(memberId) {
+  var m = state.members.find(function(x){ return x.id === memberId; });
+  if (!m) { showToast('Member not found', 'error'); return; }
+  
+  mgmState.member = m;
+  mgmState.editingId = null;
+  mgmState.selectedAnchor = null;
+  
+  // Populate member info
+  var initials = (m.name || '?').split(' ').map(function(p){return p[0];}).join('').substring(0,2).toUpperCase();
+  $('mgmMemberName').textContent = m.name || 'Member';
+  $('mgmAvatar').textContent = initials;
+  $('mgmAvatar').className = 'member-avatar role-' + (m.role || 'field');
+  $('mgmInfoName').textContent = (m.name || '—') + ' · ' + (m.role || 'field');
+  $('mgmInfoMeta').textContent = (m.phone || '—') + (m.city ? ' · ' + m.city : '');
+  
+  // Reset form
+  $('mgmCampaign').value = '';
+  $('mgmRadius').value = '50';
+  $('mgmAnchorSearch').value = '';
+  $('mgmAnchorBox').style.display = 'none';
+  $('mgmReason').value = '';
+  $('mgmCampaignHelper').style.display = 'none';
+  
+  // Pre-fill dates: today to next week
+  mgmSetDateRange(7);
+  
+  // Load campaigns + existing overrides
+  Promise.all([
+    api('/rest/v1/trial_campaigns?active=eq.true&select=key,name&order=name'),
+    api('/rest/v1/trial_member_gps_overrides?member_phone=eq.' + encodeURIComponent(m.phone || '') + '&order=created_at.desc')
+  ]).then(function(results) {
+    mgmState.campaigns = results[0] || [];
+    mgmState.overrides = results[1] || [];
+    
+    // Populate campaign dropdown
+    var sel = $('mgmCampaign');
+    sel.innerHTML = '<option value="">-- Select campaign --</option>';
+    mgmState.campaigns.forEach(function(c) {
+      var opt = document.createElement('option');
+      opt.value = c.key;
+      opt.textContent = c.name || c.key;
+      sel.appendChild(opt);
+    });
+    
+    mgmRenderExistingList();
+  }).catch(function(err) {
+    console.error('[Member GPS] Load failed:', err);
+    showToast('Failed to load data', 'error');
+  });
+  
+  $('memberGpsModal').classList.add('active');
+}
+
+function closeMemberGPSManager() {
+  $('memberGpsModal').classList.remove('active');
+  mgmState.member = null;
+  mgmState.selectedAnchor = null;
+  mgmState.editingId = null;
+  mgmCloseAnchorDropdown();
+}
+
+function mgmSetDateRange(days) {
+  var today = new Date();
+  var todayStr = today.toISOString().split('T')[0];
+  $('mgmValidFrom').value = todayStr;
+  
+  if (days === 1) {
+    $('mgmValidTo').value = todayStr;
+  } else {
+    var future = new Date();
+    future.setDate(future.getDate() + (days - 1));
+    $('mgmValidTo').value = future.toISOString().split('T')[0];
+  }
+}
+
+function mgmCheckExisting() {
+  var key = $('mgmCampaign').value;
+  if (!key) { $('mgmCampaignHelper').style.display = 'none'; return; }
+  
+  var existing = mgmState.overrides.find(function(o){
+    return o.campaign_key === key && o.active && o.id !== mgmState.editingId;
+  });
+  
+  if (existing) {
+    $('mgmCampaignHelper').style.display = 'block';
+    $('mgmCampaignHelper').textContent = '⚠️ Active override exists: ' + (existing.valid_from || '') + ' to ' + (existing.valid_to || '');
+  } else {
+    $('mgmCampaignHelper').style.display = 'none';
+  }
+}
+
+function mgmSearchAnchor() {
+  var q = $('mgmAnchorSearch').value.trim();
+  if (mgmState.anchorSearchTimer) clearTimeout(mgmState.anchorSearchTimer);
+  if (q.length < 3) { mgmCloseAnchorDropdown(); return; }
+  
+  mgmState.anchorSearchTimer = setTimeout(function() {
+    var dd = $('mgmAnchorDropdown');
+    dd.innerHTML = '<div style="padding:10px; color:var(--text-3); font-size:12px;">🔍 Searching...</div>';
+    dd.classList.add('active');
+    
+    fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(q + ' India') + '&limit=5&addressdetails=1', {
+      headers: { 'Accept-Language': 'en' }
+    })
+      .then(function(r){ return r.json(); })
+      .then(function(results) {
+        if (!results || results.length === 0) {
+          dd.innerHTML = '<div style="padding:10px; color:var(--text-3); font-size:12px;">No results</div>';
+          return;
+        }
+        var html = '';
+        results.forEach(function(r) {
+          var pincode = (r.address && (r.address.postcode || '')).match(/\d{6}/);
+          pincode = pincode ? pincode[0] : '';
+          html += '<div class="loc-item" onclick="mgmSelectAnchor(' + r.lat + ', ' + r.lon + ', \'' + (r.display_name || '').replace(/'/g, "\\'") + '\', \'' + pincode + '\')">';
+          html += '<div style="font-size:12px; font-weight:600; color:var(--text-1);">' + escapeHtml((r.display_name || '').substring(0, 80)) + '</div>';
+          html += '<div style="font-size:10px; color:var(--text-3); margin-top:2px;">' + (pincode ? '📮 ' + pincode + ' · ' : '') + '📍 ' + parseFloat(r.lat).toFixed(4) + ', ' + parseFloat(r.lon).toFixed(4) + '</div>';
+          html += '</div>';
+        });
+        dd.innerHTML = html;
+      })
+      .catch(function(){
+        dd.innerHTML = '<div style="padding:10px; color:var(--text-3); font-size:12px;">Search error</div>';
+      });
+  }, 400);
+}
+
+function mgmSelectAnchor(lat, lng, address, pincode) {
+  mgmState.selectedAnchor = { lat: lat, lng: lng, address: address, pincode: pincode };
+  $('mgmAnchorAddress').textContent = address;
+  $('mgmAnchorLat').textContent = lat.toFixed(6);
+  $('mgmAnchorLng').textContent = lng.toFixed(6);
+  $('mgmAnchorPincode').textContent = pincode || '—';
+  $('mgmAnchorBox').style.display = 'block';
+  $('mgmAnchorSearch').value = '';
+  mgmCloseAnchorDropdown();
+}
+
+function mgmClearAnchor() {
+  mgmState.selectedAnchor = null;
+  $('mgmAnchorBox').style.display = 'none';
+}
+
+function mgmCloseAnchorDropdown() {
+  var dd = $('mgmAnchorDropdown');
+  if (dd) { dd.classList.remove('active'); dd.innerHTML = ''; }
+}
+
+function mgmSaveOverride() {
+  if (!mgmState.member) { showToast('No member selected', 'error'); return; }
+  
+  var campaignKey = $('mgmCampaign').value;
+  var validFrom = $('mgmValidFrom').value;
+  var validTo = $('mgmValidTo').value;
+  var radius = parseInt($('mgmRadius').value, 10) || 50;
+  var reason = $('mgmReason').value.trim();
+  
+  // Validation
+  if (!campaignKey) { showToast('Campaign select karo', 'warn'); return; }
+  if (!mgmState.selectedAnchor) { showToast('Anchor location select karo', 'warn'); return; }
+  if (!validFrom || !validTo) { showToast('Date range set karo', 'warn'); return; }
+  if (validFrom > validTo) { showToast('Valid from must be before Valid to', 'warn'); return; }
+  
+  var payload = {
+    member_phone: mgmState.member.phone,
+    campaign_key: campaignKey,
+    anchor_lat: mgmState.selectedAnchor.lat,
+    anchor_lng: mgmState.selectedAnchor.lng,
+    anchor_address: mgmState.selectedAnchor.address,
+    gps_radius_m: radius,
+    valid_from: validFrom,
+    valid_to: validTo,
+    reason: reason || null,
+    active: true
+  };
+  
+  var url = CONFIG.supabaseUrl + '/rest/v1/trial_member_gps_overrides';
+  var method = 'POST';
+  var headers = {
+    'Content-Type': 'application/json',
+    apikey: CONFIG.supabaseKey,
+    Authorization: 'Bearer ' + CONFIG.supabaseKey,
+    Prefer: 'return=representation,resolution=merge-duplicates'
+  };
+  
+  // Use upsert via on_conflict to handle existing record
+  url += '?on_conflict=member_phone,campaign_key';
+  
+  fetch(url, {
+    method: method,
+    headers: headers,
+    body: JSON.stringify(payload)
+  })
+    .then(function(r){
+      if (!r.ok) return r.text().then(function(t){ throw new Error('HTTP ' + r.status + ': ' + t); });
+      return r.json();
+    })
+    .then(function(rows){
+      showToast('✅ Override saved with dates ' + validFrom + ' to ' + validTo, 'success');
+      // Reload overrides list
+      api('/rest/v1/trial_member_gps_overrides?member_phone=eq.' + encodeURIComponent(mgmState.member.phone) + '&order=created_at.desc')
+        .then(function(data){
+          mgmState.overrides = data || [];
+          mgmRenderExistingList();
+          // Reset form
+          $('mgmCampaign').value = '';
+          $('mgmAnchorBox').style.display = 'none';
+          $('mgmReason').value = '';
+          mgmState.selectedAnchor = null;
+          mgmSetDateRange(7);
+        });
+    })
+    .catch(function(err){
+      console.error('[Member GPS] Save failed:', err);
+      showToast('Save failed: ' + err.message, 'error');
+    });
+}
+
+function mgmRenderExistingList() {
+  var list = $('mgmExistingList');
+  var overrides = mgmState.overrides || [];
+  
+  $('mgmCountBadge').textContent = overrides.length + ' override' + (overrides.length === 1 ? '' : 's');
+  
+  if (overrides.length === 0) {
+    list.innerHTML = '<div class="empty-state" style="padding:20px;"><i class="ti ti-info-circle"></i> Koi override nahi — upar form se add karo</div>';
+    return;
+  }
+  
+  var today = new Date().toISOString().split('T')[0];
+  var html = '';
+  
+  overrides.forEach(function(o) {
+    var campaign = mgmState.campaigns.find(function(c){ return c.key === o.campaign_key; });
+    var campaignName = campaign ? campaign.name : o.campaign_key;
+    
+    var isActiveNow = o.active && o.valid_from <= today && o.valid_to >= today;
+    var isPast = o.valid_to < today;
+    var isFuture = o.valid_from > today;
+    var statusBadge, statusColor;
+    if (!o.active) {
+      statusBadge = 'Inactive';
+      statusColor = 'background:#f3f4f6; color:#6b7280;';
+    } else if (isActiveNow) {
+      statusBadge = '🟢 Active now';
+      statusColor = 'background:rgba(16,185,129,0.15); color:#0d9968;';
+    } else if (isFuture) {
+      statusBadge = '📅 Upcoming';
+      statusColor = 'background:rgba(38,208,206,0.15); color:#0fa6a4;';
+    } else {
+      statusBadge = '⏸ Expired';
+      statusColor = 'background:rgba(107,114,128,0.15); color:#6b7280;';
+    }
+    
+    html += '<div style="background:white; border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:10px;">';
+    html += '<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:8px;">';
+    html += '<div style="flex:1; min-width:0;">';
+    html += '<div style="font-size:13px; font-weight:600; color:var(--text-1);"><i class="ti ti-flag" style="font-size:12px; color:var(--accent);"></i> ' + escapeHtml(campaignName) + '</div>';
+    html += '<div style="font-size:11px; color:var(--text-2); margin-top:3px; font-family:JetBrains Mono,monospace;">📍 ' + (o.anchor_lat || 0).toFixed(4) + ', ' + (o.anchor_lng || 0).toFixed(4) + ' · ±' + (o.gps_radius_m || 0) + 'm</div>';
+    html += '<div style="font-size:10px; color:var(--text-3); margin-top:2px;">' + escapeHtml(o.anchor_address || '—') + '</div>';
+    html += '</div>';
+    html += '<span class="tag" style="' + statusColor + ' font-size:10px; padding:3px 8px; border-radius:6px; white-space:nowrap;">' + statusBadge + '</span>';
+    html += '</div>';
+    
+    // Date row — prominent
+    html += '<div style="background:rgba(245,184,0,0.06); border-left:2px solid #f5b800; padding:6px 10px; margin:8px 0; font-size:11px;">';
+    html += '<i class="ti ti-calendar" style="font-size:11px; color:#a06000;"></i> <strong style="color:#a06000;">' + (o.valid_from || '—') + '</strong> <span style="color:#a06000; opacity:0.7;">to</span> <strong style="color:#a06000;">' + (o.valid_to || '—') + '</strong>';
+    html += '</div>';
+    
+    if (o.reason) {
+      html += '<div style="font-size:10px; color:var(--text-3); font-style:italic; margin-bottom:6px;">"' + escapeHtml(o.reason) + '"</div>';
+    }
+    
+    html += '<div style="display:flex; gap:6px; margin-top:8px;">';
+    html += '<button class="btn btn-ghost btn-sm" onclick="mgmEditOverride(\'' + o.id + '\')" style="font-size:11px;"><i class="ti ti-edit"></i> Edit</button>';
+    html += '<button class="btn btn-ghost btn-sm" onclick="mgmToggleActive(\'' + o.id + '\', ' + (!o.active) + ')" style="font-size:11px;"><i class="ti ti-' + (o.active ? 'pause' : 'play') + '"></i> ' + (o.active ? 'Pause' : 'Activate') + '</button>';
+    html += '<button class="btn btn-ghost btn-sm" onclick="mgmDeleteOverride(\'' + o.id + '\')" style="font-size:11px; color:var(--danger);"><i class="ti ti-trash"></i> Delete</button>';
+    html += '</div>';
+    html += '</div>';
+  });
+  
+  list.innerHTML = html;
+}
+
+function mgmEditOverride(id) {
+  var o = mgmState.overrides.find(function(x){ return x.id === id; });
+  if (!o) return;
+  
+  mgmState.editingId = id;
+  $('mgmCampaign').value = o.campaign_key;
+  $('mgmRadius').value = String(o.gps_radius_m || 50);
+  $('mgmValidFrom').value = o.valid_from || '';
+  $('mgmValidTo').value = o.valid_to || '';
+  $('mgmReason').value = o.reason || '';
+  
+  // Set anchor
+  mgmState.selectedAnchor = {
+    lat: o.anchor_lat,
+    lng: o.anchor_lng,
+    address: o.anchor_address,
+    pincode: ''
+  };
+  $('mgmAnchorAddress').textContent = o.anchor_address || '—';
+  $('mgmAnchorLat').textContent = (o.anchor_lat || 0).toFixed(6);
+  $('mgmAnchorLng').textContent = (o.anchor_lng || 0).toFixed(6);
+  $('mgmAnchorPincode').textContent = '—';
+  $('mgmAnchorBox').style.display = 'block';
+  
+  showToast('Edit mode — change values and save again', 'info');
+  
+  // Scroll to top of modal
+  document.querySelector('#memberGpsModal .modal-body').scrollTop = 0;
+}
+
+function mgmToggleActive(id, newState) {
+  fetch(CONFIG.supabaseUrl + '/rest/v1/trial_member_gps_overrides?id=eq.' + id, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: CONFIG.supabaseKey,
+      Authorization: 'Bearer ' + CONFIG.supabaseKey
+    },
+    body: JSON.stringify({ active: newState })
+  })
+    .then(function(r){
+      if (!r.ok) throw new Error('Toggle failed');
+      var o = mgmState.overrides.find(function(x){ return x.id === id; });
+      if (o) o.active = newState;
+      mgmRenderExistingList();
+      showToast(newState ? 'Activated' : 'Paused', 'success');
+    })
+    .catch(function(err){
+      showToast('Toggle failed', 'error');
+    });
+}
+
+function mgmDeleteOverride(id) {
+  if (!confirm('Yeh override delete karna hai?')) return;
+  
+  fetch(CONFIG.supabaseUrl + '/rest/v1/trial_member_gps_overrides?id=eq.' + id, {
+    method: 'DELETE',
+    headers: {
+      apikey: CONFIG.supabaseKey,
+      Authorization: 'Bearer ' + CONFIG.supabaseKey
+    }
+  })
+    .then(function(r){
+      if (!r.ok) throw new Error('Delete failed');
+      mgmState.overrides = mgmState.overrides.filter(function(x){ return x.id !== id; });
+      mgmRenderExistingList();
+      showToast('Deleted', 'success');
+    })
+    .catch(function(err){
+      showToast('Delete failed', 'error');
+    });
+}
+
 function closeOverrideModal() {
   $('overrideModal').classList.remove('active');
   p2state.editingOverrideId = null;
@@ -4603,10 +5100,12 @@ document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
     if ($('campaignModal').classList.contains('active')) closeCampaignModal();
     if ($('overrideModal').classList.contains('active')) closeOverrideModal();
+    if ($('memberGpsModal').classList.contains('active')) closeMemberGPSManager();
   }
 });
 $('campaignModal').addEventListener('click', function(e){ if (e.target === this) closeCampaignModal(); });
 $('overrideModal').addEventListener('click', function(e){ if (e.target === this) closeOverrideModal(); });
+$('memberGpsModal').addEventListener('click', function(e){ if (e.target === this) closeMemberGPSManager(); });
 
 // Initialize assignment date input on load
 document.addEventListener('DOMContentLoaded', function() {
