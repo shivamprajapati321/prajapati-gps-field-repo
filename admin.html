@@ -1189,7 +1189,9 @@ function loadPhotos(silent) {
   var dateTo = document.getElementById('photoDateEnd').value || dateFrom;
   var campaign = document.getElementById('photoCampaign').value;
   var member = document.getElementById('photoMember').value;
-  var qs = '?select=*&order=captured_at.desc&limit=200';
+  // ⭐ v16.5 FIX: Increase limit 200→5000 to match PPT/ZIP queries
+  // Display first 200, but stats reflect ALL photos in filter range
+  var qs = '?select=*&order=captured_at.desc&limit=5000';
   if (dateFrom) {
     var istStartLocal = new Date(dateFrom + 'T00:00:00+05:30');
     qs += '&captured_at=gte.' + istStartLocal.toISOString();
@@ -1206,10 +1208,24 @@ function loadPhotos(silent) {
       var statsEl = document.getElementById('photoStats');
       var uniqueVehicles = {};
       photos.forEach(function(p) { if (p.vehicle_number) uniqueVehicles[p.vehicle_number] = true; });
-      statsEl.innerHTML = '<div class="stat-box"><div class="label">Photos</div><div class="value">' + photos.length + '</div></div><div class="stat-box"><div class="label">Vehicles</div><div class="value">' + Object.keys(uniqueVehicles).length + '</div></div><div class="stat-box"><div class="label">Hood</div><div class="value">' + photos.filter(function(p){return p.mode==='hood';}).length + '</div></div><div class="stat-box"><div class="label">Back Panel</div><div class="value">' + photos.filter(function(p){return p.mode==='back_panel';}).length + '</div></div>';
+      
+      // ⭐ v16.5: Warning if limit hit
+      var limitWarning = '';
+      if (photos.length === 5000) {
+        limitWarning = '<div style="background:#fef3c7;color:#92400e;padding:8px;border-radius:6px;margin-bottom:10px;font-size:12px;">⚠️ <b>5000 photos limit hit!</b> Narrow date range for accurate count.</div>';
+      }
+      
+      statsEl.innerHTML = limitWarning + '<div class="stat-box"><div class="label">Photos</div><div class="value">' + photos.length + '</div></div><div class="stat-box"><div class="label">Vehicles</div><div class="value">' + Object.keys(uniqueVehicles).length + '</div></div><div class="stat-box"><div class="label">Hood</div><div class="value">' + photos.filter(function(p){return p.mode==='hood';}).length + '</div></div><div class="stat-box"><div class="label">Back Panel</div><div class="value">' + photos.filter(function(p){return p.mode==='back_panel';}).length + '</div></div>';
       if (photos.length === 0) { listEl.innerHTML = '<div class="empty-state">No photos found in selected range. Try "Last 7 days" or "All time".</div>'; return; }
-      var html = '<div class="photos-grid">';
-      photos.forEach(function(p) {
+      
+      // ⭐ v16.5: Display only first 200 in grid for performance, but stats show ALL
+      var displayPhotos = photos.slice(0, 200);
+      var showingNote = photos.length > 200 
+        ? '<div style="background:#dbeafe;color:#1e40af;padding:8px;border-radius:6px;margin-bottom:10px;font-size:12px;">📋 Showing first 200 of ' + photos.length + ' photos. All ' + photos.length + ' will be included in ZIP/PPT.</div>'
+        : '';
+      
+      var html = showingNote + '<div class="photos-grid">';
+      displayPhotos.forEach(function(p) {
         var time = p.captured_at ? new Date(p.captured_at).toLocaleString('en-IN', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', timeZone: 'Asia/Kolkata'}) : '';
         var imgUrl = p.public_url || '';
         var isNew = _newPhotoIds.has(p.id);
@@ -1243,8 +1259,8 @@ function downloadPhotosZip() {
   var campaign = document.getElementById('photoCampaign').value;
   var member = document.getElementById('photoMember').value;
   
-  // Build query (max 500 photos per ZIP to keep memory in check)
-  var qs = '?select=*&order=captured_at.desc&limit=500';
+  // ⭐ v16.5 FIX: Limit bumped 500→5000 to match Photos tab + PPT (consistent across pages)
+  var qs = '?select=*&order=captured_at.desc&limit=5000';
   if (dateFrom) {
     var istStartLocal = new Date(dateFrom + 'T00:00:00+05:30');
     qs += '&captured_at=gte.' + istStartLocal.toISOString();
