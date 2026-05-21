@@ -381,8 +381,10 @@ label { display: block; font-size: 10px; font-weight: 600; text-transform: upper
         <button class="btn" onclick="loadPhotos()">Filter</button>
         <button class="btn" style="background:#10b981; color:#fff;" onclick="downloadPhotosZip()" id="zipDownloadBtn">📦 Download ZIP</button>
         <button class="btn" style="background:#22c55e; color:#fff;" onclick="downloadExcelReport()" title="Download standalone Excel report (campaign-wise, date-wise, team-wise, location-wise)">📊 Excel Report</button>
+        <button class="btn" style="background:#0B1957; color:#26d0ce;" onclick="downloadExcelReportV2()" title="Download approved format Excel — verified vehicles with Surepass owner details">📊 Excel V2 ✨</button>
         <button class="btn" style="background:#ef4444; color:#fff;" onclick="openPPTGenerator()" title="Generate PowerPoint presentation with verified vehicle data">📊 Generate PPT</button>
         <button class="btn" style="background:#f59e0b; color:#fff;" onclick="configFindrServer()" title="Configure Findr server URL for auto vehicle owner lookup">⚙️ Findr</button>
+        <button class="btn" style="background:#26d0ce; color:#0B1957; font-weight:700;" onclick="bulkFetchSurepass()" title="Fetch owner+contact details from Surepass for all verified vehicles in current filter">🔍 Bulk Fetch Surepass</button>
         <button class="btn" style="background:#8b5cf6; color:#fff;" onclick="openBulkUpload()" title="Upload existing vehicle data (Excel/CSV) - save Findr API costs">📤 Bulk Import</button>
       </div>
     </div>
@@ -4068,5 +4070,788 @@ document.addEventListener('DOMContentLoaded', function() {
   if (saved && saved.length === 10) document.getElementById('loginPhone').value = saved;
 });
 </script>
+
+<!-- ═══ EXCEL REPORT V2 MODULE (approved format, 21-May-2026) ═══ -->
+<!-- ═══════════════════════════════════════════════════════════════════════════
+  Prajapati GPS — Excel Report v2 (Approved Format)
+  Date: 21-May-2026
+  
+  Drop-in module that adds a new function: downloadExcelReportV2()
+  Generates the approved format Excel (Campaign Summary + Photo Inventory + About)
+  
+  DEPENDENCIES (already in admin.html):
+  - XLSX (SheetJS) — loaded at top
+  - saveAs (FileSaver) — used by existing Excel function
+  - window.api() — Supabase REST helper
+  - groupPhotosByVehicle() — existing helper
+═══════════════════════════════════════════════════════════════════════════ -->
+
+<script>
+(function() {
+  'use strict';
+
+  // Brand colors (hex for SheetJS)
+  var BRAND = {
+    NAVY: '0B1957',
+    TEAL: '26D0CE',
+    WHITE: 'FFFFFF',
+    LIGHT_BG: 'F4F6FA',
+    SOFT_BG: 'F8FAFC',
+    SUCCESS: '10B981',
+    SUCCESS_BG: 'D1FAE5',
+    WARNING: 'F59E0B',
+    BORDER: 'E2E8F0',
+    TEXT_DARK: '0F172A',
+    TEXT_GRAY: '64748B'
+  };
+
+  // ─── Cell style helpers ────────────────────────────────────────────────
+  function styleHeader(bold) {
+    return {
+      font: { name: 'Calibri', sz: 10, bold: true, color: { rgb: BRAND.WHITE } },
+      fill: { fgColor: { rgb: BRAND.NAVY } },
+      alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+      border: borderAll(BRAND.NAVY)
+    };
+  }
+  function styleTitle() {
+    return {
+      font: { name: 'Calibri', sz: 22, bold: true, color: { rgb: BRAND.NAVY } },
+      fill: { fgColor: { rgb: BRAND.WHITE } },
+      alignment: { horizontal: 'center', vertical: 'center' }
+    };
+  }
+  function styleBrandBand() {
+    return {
+      font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: BRAND.TEAL } },
+      fill: { fgColor: { rgb: BRAND.NAVY } },
+      alignment: { horizontal: 'center', vertical: 'center' }
+    };
+  }
+  function styleSubtitle() {
+    return {
+      font: { name: 'Calibri', sz: 10, italic: true, color: { rgb: BRAND.TEXT_GRAY } },
+      alignment: { horizontal: 'center', vertical: 'center' }
+    };
+  }
+  function styleMetaLabel() {
+    return {
+      font: { name: 'Calibri', sz: 9, bold: true, color: { rgb: BRAND.TEXT_GRAY } },
+      fill: { fgColor: { rgb: BRAND.LIGHT_BG } },
+      alignment: { horizontal: 'left', vertical: 'center', indent: 1 }
+    };
+  }
+  function styleMetaValue(color) {
+    return {
+      font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: color || BRAND.NAVY } },
+      fill: { fgColor: { rgb: BRAND.WHITE } },
+      alignment: { horizontal: 'left', vertical: 'center', indent: 1 }
+    };
+  }
+  function styleDataCell(opts) {
+    opts = opts || {};
+    return {
+      font: { 
+        name: opts.mono ? 'Consolas' : 'Calibri', 
+        sz: opts.size || 10, 
+        bold: !!opts.bold, 
+        color: { rgb: opts.color || BRAND.TEXT_DARK } 
+      },
+      fill: { fgColor: { rgb: opts.bg || BRAND.WHITE } },
+      alignment: { 
+        horizontal: opts.align || 'center', 
+        vertical: 'center',
+        indent: opts.align === 'left' ? 1 : 0,
+        wrapText: !!opts.wrap
+      },
+      border: borderAll(BRAND.BORDER)
+    };
+  }
+  function styleTotalRow(align) {
+    return {
+      font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: BRAND.WHITE } },
+      fill: { fgColor: { rgb: BRAND.NAVY } },
+      alignment: { horizontal: align || 'center', vertical: 'center', indent: align === 'right' ? 2 : 0 }
+    };
+  }
+  function styleTotalValue(color) {
+    return {
+      font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: color || BRAND.TEAL } },
+      fill: { fgColor: { rgb: BRAND.NAVY } },
+      alignment: { horizontal: 'center', vertical: 'center' }
+    };
+  }
+  function styleNote() {
+    return {
+      font: { name: 'Calibri', sz: 9, italic: true, color: { rgb: BRAND.TEXT_GRAY } },
+      alignment: { horizontal: 'center', vertical: 'center', wrapText: true }
+    };
+  }
+  function styleContact() {
+    return {
+      font: { name: 'Calibri', sz: 10, bold: true, color: { rgb: BRAND.NAVY } },
+      alignment: { horizontal: 'center', vertical: 'center' }
+    };
+  }
+  function borderAll(color) {
+    var s = { style: 'thin', color: { rgb: color } };
+    return { top: s, bottom: s, left: s, right: s };
+  }
+
+  // ─── Build the workbook ────────────────────────────────────────────────
+  function buildWorkbook(vehicles, photos, metadata) {
+    var wb = XLSX.utils.book_new();
+    
+    // ═══ SHEET 1: Campaign Summary ═══
+    var ws1 = buildSummarySheet(vehicles, metadata);
+    XLSX.utils.book_append_sheet(wb, ws1, 'Campaign Summary');
+    
+    // ═══ SHEET 2: Photo Inventory ═══
+    var ws2 = buildInventorySheet(photos, vehicles);
+    XLSX.utils.book_append_sheet(wb, ws2, 'Photo Inventory');
+    
+    // ═══ SHEET 3: About ═══
+    var ws3 = buildAboutSheet();
+    XLSX.utils.book_append_sheet(wb, ws3, 'About This Report');
+    
+    return wb;
+  }
+
+  function buildSummarySheet(vehicles, meta) {
+    var ws = {};
+    var merges = [];
+    
+    // Row 1: Brand band
+    setCell(ws, 'A1', 'PRAJAPATI ADVERTISING', styleBrandBand());
+    merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 6 } });
+    
+    // Row 2: Title
+    setCell(ws, 'A2', 'Vehicle Branding Campaign Report', styleTitle());
+    merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 6 } });
+    
+    // Row 3: Subtitle
+    setCell(ws, 'A3', 'GPS-stamped photo proof of work · Auto-fetched owner details from Surepass', styleSubtitle());
+    merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 6 } });
+    
+    // Row 5-7: Meta block (9 fields - 3 rows × 3 columns)
+    var metaItems = [
+      ['CAMPAIGN', meta.campaign, 'CLIENT', meta.client, 'REPORT DATE', meta.reportDate],
+      ['CITY', meta.city, 'BRANDING TYPE', meta.brandingType, 'PERIOD', meta.period],
+      ['TOTAL VEHICLES', vehicles.length, 'PHOTOS CAPTURED', meta.totalPhotos, 'COVERAGE %', meta.coverage]
+    ];
+    
+    var labelCols = ['A', 'C', 'F'];
+    var valueCols = ['B', 'D', 'G'];
+    
+    metaItems.forEach(function(rowItems, rowIdx) {
+      var excelRow = 5 + rowIdx;
+      for (var i = 0; i < 3; i++) {
+        var label = rowItems[i * 2];
+        var value = rowItems[i * 2 + 1];
+        setCell(ws, labelCols[i] + excelRow, label, styleMetaLabel());
+        var valColor = BRAND.NAVY;
+        if (label === 'PHOTOS CAPTURED') valColor = BRAND.TEAL;
+        if (label === 'COVERAGE %') valColor = BRAND.SUCCESS;
+        setCell(ws, valueCols[i] + excelRow, value, styleMetaValue(valColor));
+      }
+    });
+    
+    // Row 9: Table header (7 columns)
+    var headers = ['S.No.', 'Vehicle No.', 'Vehicle Owner', 'Contact No.', 'Location', 'Photos', 'Status'];
+    headers.forEach(function(h, i) {
+      var cell = String.fromCharCode(65 + i) + '9';
+      setCell(ws, cell, h, styleHeader());
+    });
+    
+    // Vehicle rows starting from row 10
+    var dataStartRow = 10;
+    vehicles.forEach(function(v, idx) {
+      var excelRow = dataStartRow + idx;
+      var bg = idx % 2 === 0 ? BRAND.SOFT_BG : BRAND.WHITE;
+      
+      setCell(ws, 'A' + excelRow, idx + 1, styleDataCell({ align: 'center', color: BRAND.TEXT_GRAY, bg: bg }));
+      setCell(ws, 'B' + excelRow, v.vehicleNumber, styleDataCell({ mono: true, bold: true, color: BRAND.NAVY, align: 'center', bg: bg }));
+      setCell(ws, 'C' + excelRow, v.ownerName || '—', styleDataCell({ align: 'left', bg: bg }));
+      setCell(ws, 'D' + excelRow, v.contactNumber || '—', styleDataCell({ mono: true, align: 'center', bg: bg }));
+      setCell(ws, 'E' + excelRow, v.location || '—', styleDataCell({ align: 'left', bg: bg }));
+      setCell(ws, 'F' + excelRow, v.photoCount, styleDataCell({ 
+        bold: true, 
+        align: 'center', 
+        color: v.photoCount >= v.expectedCount ? BRAND.TEAL : BRAND.WARNING, 
+        bg: bg 
+      }));
+      setCell(ws, 'G' + excelRow, v.status, styleDataCell({ 
+        bold: true, 
+        align: 'center', 
+        color: BRAND.SUCCESS, 
+        bg: BRAND.SUCCESS_BG 
+      }));
+    });
+    
+    // TOTAL row
+    var totalRow = dataStartRow + vehicles.length;
+    setCell(ws, 'A' + totalRow, 'TOTAL', styleTotalRow('right'));
+    merges.push({ s: { r: totalRow - 1, c: 0 }, e: { r: totalRow - 1, c: 4 } });
+    setCell(ws, 'F' + totalRow, '=SUM(F' + dataStartRow + ':F' + (totalRow - 1) + ')', styleTotalValue());
+    setCell(ws, 'G' + totalRow, vehicles.length + ' Vehicles', styleTotalValue());
+    
+    // Footer note
+    var noteRow = totalRow + 2;
+    setCell(ws, 'A' + noteRow, 
+      'All vehicle owner details fetched automatically via Surepass API · Photos available in separate folder · GPS coordinates recorded for each capture', 
+      styleNote()
+    );
+    merges.push({ s: { r: noteRow - 1, c: 0 }, e: { r: noteRow - 1, c: 6 } });
+    
+    // Contact footer
+    var contactRow = noteRow + 2;
+    setCell(ws, 'A' + contactRow, 
+      'Prajapati Advertising  ·  +91 9922138138  ·  www.prajapatiadvertising.com', 
+      styleContact()
+    );
+    merges.push({ s: { r: contactRow - 1, c: 0 }, e: { r: contactRow - 1, c: 6 } });
+    
+    // Column widths
+    ws['!cols'] = [
+      { wch: 8 },   // S.No
+      { wch: 16 },  // Vehicle
+      { wch: 26 },  // Owner
+      { wch: 16 },  // Contact
+      { wch: 18 },  // Location
+      { wch: 11 },  // Photos
+      { wch: 14 }   // Status
+    ];
+    
+    // Row heights
+    ws['!rows'] = [];
+    ws['!rows'][0] = { hpt: 26 };  // brand band
+    ws['!rows'][1] = { hpt: 36 };  // title
+    ws['!rows'][2] = { hpt: 20 };  // subtitle
+    ws['!rows'][3] = { hpt: 8 };   // spacer
+    ws['!rows'][4] = { hpt: 24 };  // meta row 1
+    ws['!rows'][5] = { hpt: 24 };  // meta row 2
+    ws['!rows'][6] = { hpt: 24 };  // meta row 3
+    ws['!rows'][7] = { hpt: 14 };  // spacer
+    ws['!rows'][8] = { hpt: 32 };  // header
+    for (var i = 0; i < vehicles.length; i++) {
+      ws['!rows'][9 + i] = { hpt: 24 };
+    }
+    ws['!rows'][9 + vehicles.length] = { hpt: 32 };  // total
+    ws['!rows'][9 + vehicles.length + 1] = { hpt: 8 };
+    ws['!rows'][9 + vehicles.length + 2] = { hpt: 20 };
+    ws['!rows'][9 + vehicles.length + 3] = { hpt: 8 };
+    ws['!rows'][9 + vehicles.length + 4] = { hpt: 22 };
+    
+    // Merges
+    ws['!merges'] = merges;
+    
+    // Freeze panes
+    ws['!ref'] = 'A1:G' + (contactRow + 1);
+    ws['!freeze'] = { xSplit: 0, ySplit: 9 };
+    
+    return ws;
+  }
+
+  function buildInventorySheet(photos, vehicles) {
+    var ws = {};
+    var merges = [];
+    
+    // Build vehicle → owner lookup
+    var vehicleLookup = {};
+    vehicles.forEach(function(v) {
+      vehicleLookup[v.vehicleNumber] = v;
+    });
+    
+    // Header band
+    setCell(ws, 'A1', 'PHOTO INVENTORY — Detail per Photo', {
+      font: { name: 'Calibri', sz: 14, bold: true, color: { rgb: BRAND.WHITE } },
+      fill: { fgColor: { rgb: BRAND.NAVY } },
+      alignment: { horizontal: 'center', vertical: 'center' }
+    });
+    merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 9 } });
+    
+    setCell(ws, 'A2', 'Each row = one photo · Use this for granular audit', styleSubtitle());
+    merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 9 } });
+    
+    var headers = ['S.No.', 'Vehicle No.', 'Vehicle Owner', 'Contact No.', 'Date', 'Time', 'Photo Angle', 'Latitude', 'Longitude', 'Address'];
+    headers.forEach(function(h, i) {
+      setCell(ws, String.fromCharCode(65 + i) + '4', h, styleHeader());
+    });
+    
+    // Photo rows
+    photos.forEach(function(p, idx) {
+      var excelRow = 5 + idx;
+      var bg = idx % 2 === 0 ? BRAND.SOFT_BG : BRAND.WHITE;
+      var v = vehicleLookup[(p.verified_plate || p.vehicle_number || '').toUpperCase()] || {};
+      
+      var captured = p.captured_at ? new Date(p.captured_at) : null;
+      var dateStr = captured ? captured.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' }) : '—';
+      var timeStr = captured ? captured.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }) : '—';
+      
+      var angle = detectAngle(p);
+      
+      setCell(ws, 'A' + excelRow, idx + 1, styleDataCell({ size: 9, color: BRAND.TEXT_GRAY, bg: bg }));
+      setCell(ws, 'B' + excelRow, p.verified_plate || p.vehicle_number || '—', styleDataCell({ size: 9, mono: true, bold: true, color: BRAND.NAVY, bg: bg }));
+      setCell(ws, 'C' + excelRow, v.ownerName || p.owner_name || '—', styleDataCell({ size: 9, align: 'left', bg: bg }));
+      setCell(ws, 'D' + excelRow, v.contactNumber || p.contact_number || '—', styleDataCell({ size: 9, mono: true, bg: bg }));
+      setCell(ws, 'E' + excelRow, dateStr, styleDataCell({ size: 9, bg: bg }));
+      setCell(ws, 'F' + excelRow, timeStr, styleDataCell({ size: 9, bg: bg }));
+      setCell(ws, 'G' + excelRow, angle, styleDataCell({ size: 9, bold: true, color: BRAND.TEAL, bg: bg }));
+      setCell(ws, 'H' + excelRow, p.latitude ? Number(p.latitude).toFixed(6) : '—', styleDataCell({ size: 9, mono: true, bg: bg }));
+      setCell(ws, 'I' + excelRow, p.longitude ? Number(p.longitude).toFixed(6) : '—', styleDataCell({ size: 9, mono: true, bg: bg }));
+      setCell(ws, 'J' + excelRow, p.address || '—', styleDataCell({ size: 9, align: 'left', bg: bg, wrap: true }));
+    });
+    
+    ws['!cols'] = [
+      { wch: 6 }, { wch: 13 }, { wch: 20 }, { wch: 13 }, { wch: 12 },
+      { wch: 10 }, { wch: 11 }, { wch: 11 }, { wch: 11 }, { wch: 38 }
+    ];
+    
+    ws['!rows'] = [];
+    ws['!rows'][0] = { hpt: 28 };
+    ws['!rows'][1] = { hpt: 18 };
+    ws['!rows'][2] = { hpt: 8 };
+    ws['!rows'][3] = { hpt: 32 };
+    for (var i = 0; i < photos.length; i++) {
+      ws['!rows'][4 + i] = { hpt: 22 };
+    }
+    
+    ws['!merges'] = merges;
+    ws['!ref'] = 'A1:J' + (4 + photos.length);
+    ws['!freeze'] = { xSplit: 0, ySplit: 4 };
+    
+    return ws;
+  }
+
+  function buildAboutSheet() {
+    var ws = {};
+    var merges = [];
+    
+    setCell(ws, 'A1', 'ABOUT THIS REPORT', {
+      font: { name: 'Calibri', sz: 18, bold: true, color: { rgb: BRAND.WHITE } },
+      fill: { fgColor: { rgb: BRAND.NAVY } },
+      alignment: { horizontal: 'center', vertical: 'center' }
+    });
+    merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 4 } });
+    
+    var sections = [
+      { type: 'header', text: '📊 SHEET STRUCTURE' },
+      { type: 'kv', k: 'Campaign Summary', v: 'Master vehicle list with owner/contact details (1 row per vehicle)' },
+      { type: 'kv', k: 'Photo Inventory', v: 'Granular photo-level audit (1 row per photo)' },
+      { type: 'kv', k: 'About This Report', v: 'This page — column definitions and data sources' },
+      { type: 'blank' },
+      { type: 'header', text: '📋 COLUMN DEFINITIONS' },
+      { type: 'kv', k: 'Vehicle No.', v: 'RTO-registered vehicle number — verified manually from GPS-stamped photos' },
+      { type: 'kv', k: 'Vehicle Owner', v: 'Auto-fetched from Surepass API using RC number lookup' },
+      { type: 'kv', k: 'Contact No.', v: 'Auto-fetched from Surepass API (RC-to-Mobile lookup)' },
+      { type: 'kv', k: 'Location', v: 'GPS-derived city from reverse geocoding' },
+      { type: 'kv', k: 'Photos', v: 'Number of photos captured (Hood = 3, Back Panel = 1)' },
+      { type: 'kv', k: 'Status', v: 'Verification status (Verified after manual review)' },
+      { type: 'blank' },
+      { type: 'header', text: '🔒 DATA INTEGRITY' },
+      { type: 'kv', k: '✓ GPS-stamped at capture', v: 'Each photo records exact location coordinates' },
+      { type: 'kv', k: '✓ Mock GPS detection', v: 'Blocks fake locations from spoofing apps' },
+      { type: 'kv', k: '✓ Manual verifier approval', v: 'Required before report inclusion' },
+      { type: 'kv', k: '✓ Owner details verified', v: 'Fetched only AFTER plate verification' },
+      { type: 'kv', k: '✓ Audit trail maintained', v: 'All edits/corrections logged with reason' },
+      { type: 'blank' },
+      { type: 'header', text: '📞 CONTACT' },
+      { type: 'kv', k: 'Shivam Prajapati', v: '+91 9922138138' },
+      { type: 'kv', k: 'Website', v: 'www.prajapatiadvertising.com' },
+      { type: 'kv', k: 'Email', v: 'info@prajapatiadvertising.com' }
+    ];
+    
+    var row = 3;
+    ws['!rows'] = [];
+    ws['!rows'][0] = { hpt: 36 };
+    ws['!rows'][1] = { hpt: 10 };
+    
+    sections.forEach(function(s) {
+      if (s.type === 'header') {
+        setCell(ws, 'A' + row, s.text, {
+          font: { name: 'Calibri', sz: 13, bold: true, color: { rgb: BRAND.TEAL } },
+          fill: { fgColor: { rgb: BRAND.LIGHT_BG } },
+          alignment: { horizontal: 'left', vertical: 'center', indent: 1 }
+        });
+        merges.push({ s: { r: row - 1, c: 0 }, e: { r: row - 1, c: 4 } });
+        ws['!rows'][row - 1] = { hpt: 28 };
+      } else if (s.type === 'kv') {
+        setCell(ws, 'A' + row, s.k, {
+          font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: BRAND.NAVY } },
+          alignment: { horizontal: 'left', vertical: 'top', indent: 1, wrapText: true }
+        });
+        setCell(ws, 'B' + row, s.v, {
+          font: { name: 'Calibri', sz: 10, color: { rgb: BRAND.TEXT_DARK } },
+          alignment: { horizontal: 'left', vertical: 'top', indent: 1, wrapText: true }
+        });
+        merges.push({ s: { r: row - 1, c: 1 }, e: { r: row - 1, c: 4 } });
+        ws['!rows'][row - 1] = { hpt: 24 };
+      } else {
+        ws['!rows'][row - 1] = { hpt: 8 };
+      }
+      row++;
+    });
+    
+    ws['!cols'] = [
+      { wch: 22 }, { wch: 25 }, { wch: 25 }, { wch: 20 }, { wch: 15 }
+    ];
+    ws['!merges'] = merges;
+    ws['!ref'] = 'A1:E' + (row + 1);
+    
+    return ws;
+  }
+
+  // ─── Cell setter ────────────────────────────────────────────────────────
+  function setCell(ws, addr, value, style) {
+    var cell = { v: value, s: style };
+    if (typeof value === 'number') cell.t = 'n';
+    else if (typeof value === 'string' && value.charAt(0) === '=') {
+      cell.t = 'n';
+      cell.f = value.substring(1);
+      cell.v = 0;  // placeholder, will be calc'd by Excel
+    }
+    else cell.t = 's';
+    ws[addr] = cell;
+  }
+
+  // ─── Helpers ────────────────────────────────────────────────────────────
+  function detectAngle(p) {
+    var url = (p.public_url || '').toLowerCase();
+    if (url.match(/\/front[\-_]/)) return 'Front';
+    if (url.match(/\/back[\-_](?!panel)/)) return 'Back';
+    if (url.match(/\/left[\-_]/)) return 'Left';
+    if (url.match(/\/right[\-_]/)) return 'Right';
+    if (p.mode === 'back_panel') return 'Back Panel';
+    return p.mode === 'hood' ? 'Hood' : '—';
+  }
+
+  function extractCity(addr) {
+    if (!addr) return '—';
+    var parts = String(addr).split(',').map(function(s) { return s.trim(); });
+    // Typical format: "Locality, City, Taluka, City, State, PIN, India"
+    // Pick a meaningful city-ish token
+    for (var i = parts.length - 4; i >= 0 && i < parts.length; i++) {
+      if (parts[i] && parts[i].length > 2 && !/^\d{6}$/.test(parts[i]) && parts[i].toLowerCase() !== 'india') {
+        return parts[i];
+      }
+    }
+    return parts[0] || '—';
+  }
+
+  // ─── Group photos into vehicles (using existing helper if available) ───
+  function buildVehiclesList(photos) {
+    var groups = {};
+    
+    photos.forEach(function(p) {
+      var plate = (p.verified_plate || p.vehicle_number || '').toUpperCase().trim();
+      if (!plate || plate.length < 4) return;  // Skip unidentified
+      
+      if (!groups[plate]) {
+        groups[plate] = {
+          vehicleNumber: plate,
+          photos: [],
+          mode: p.mode,
+          location: extractCity(p.address),
+          ownerName: p.owner_name || '',
+          contactNumber: p.contact_number || '',
+          ownerAddress: p.owner_address || '',
+          isVerified: !!p.is_verified
+        };
+      }
+      groups[plate].photos.push(p);
+      
+      // Update fields if newer photo has data
+      if (p.owner_name && !groups[plate].ownerName) groups[plate].ownerName = p.owner_name;
+      if (p.contact_number && !groups[plate].contactNumber) groups[plate].contactNumber = p.contact_number;
+      if (p.is_verified) groups[plate].isVerified = true;
+    });
+    
+    return Object.values(groups).map(function(g) {
+      g.photoCount = g.photos.length;
+      g.expectedCount = g.mode === 'hood' ? 3 : 1;
+      g.status = g.isVerified ? 'Verified' : 'Pending';
+      return g;
+    }).sort(function(a, b) {
+      return a.vehicleNumber.localeCompare(b.vehicleNumber);
+    });
+  }
+
+  // ─── Public API: window.downloadExcelReportV2() ────────────────────────
+  window.downloadExcelReportV2 = async function() {
+    var btn = document.querySelector('button[onclick="downloadExcelReportV2()"]');
+    var originalText = btn ? btn.innerHTML : '📊 Excel V2';
+    if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Loading...'; }
+    
+    try {
+      if (typeof XLSX === 'undefined') {
+        throw new Error('Excel library not loaded. Refresh page.');
+      }
+      
+      // Read filters
+      var dateFrom = document.getElementById('photoDate').value;
+      var dateTo = document.getElementById('photoDateEnd').value || dateFrom;
+      var campaign = document.getElementById('photoCampaign').value;
+      var member = document.getElementById('photoMember').value;
+      
+      // Build query
+      var qs = '/rest/v1/trial_photos?select=*&order=captured_at.desc&limit=5000';
+      if (dateFrom) qs += '&captured_at=gte.' + new Date(dateFrom + 'T00:00:00+05:30').toISOString();
+      if (dateTo) qs += '&captured_at=lte.' + new Date(dateTo + 'T23:59:59+05:30').toISOString();
+      if (campaign) qs += '&campaign_key=eq.' + encodeURIComponent(campaign);
+      if (member) qs += '&member_phone=eq.' + encodeURIComponent(member);
+      
+      if (btn) btn.innerHTML = '⏳ Loading photos...';
+      var photos = await window.api(qs);
+      photos = photos || [];
+      
+      if (photos.length === 0) {
+        alert('❌ No photos found in selected filters.\n\nTry different date range or campaign.');
+        if (btn) { btn.disabled = false; btn.innerHTML = originalText; }
+        return;
+      }
+      
+      if (btn) btn.innerHTML = '⏳ Grouping vehicles...';
+      
+      // Filter only verified photos (per approved format requirement)
+      var verifiedPhotos = photos.filter(function(p) { return p.is_verified === true; });
+      
+      if (verifiedPhotos.length === 0) {
+        var proceed = confirm(
+          '⚠️ No verified photos found in this filter.\n\n' +
+          'Total photos: ' + photos.length + '\n' +
+          'Verified: 0\n\n' +
+          'Include unverified photos anyway?'
+        );
+        if (!proceed) {
+          if (btn) { btn.disabled = false; btn.innerHTML = originalText; }
+          return;
+        }
+        verifiedPhotos = photos;
+      }
+      
+      // Build vehicles list
+      var vehicles = buildVehiclesList(verifiedPhotos);
+      
+      if (btn) btn.innerHTML = '⏳ Fetching owner cache...';
+      
+      // Enrich from prajapati_vehicle_lookup cache
+      var allPlates = vehicles.map(function(v) { return v.vehicleNumber; });
+      if (allPlates.length > 0) {
+        try {
+          var cacheQs = '/rest/v1/prajapati_vehicle_lookup?select=vehicle_number,owner_name,contact_number,present_address,permanent_address,pincode&vehicle_number=in.(' + 
+                       allPlates.map(function(p) { return '"' + p + '"'; }).join(',') + ')';
+          var cacheData = await window.api(cacheQs);
+          cacheData = cacheData || [];
+          
+          var cacheMap = {};
+          cacheData.forEach(function(c) { cacheMap[c.vehicle_number] = c; });
+          
+          vehicles.forEach(function(v) {
+            var c = cacheMap[v.vehicleNumber];
+            if (c) {
+              if (c.owner_name && !v.ownerName) v.ownerName = c.owner_name;
+              if (c.contact_number && !v.contactNumber) v.contactNumber = c.contact_number;
+              if ((c.present_address || c.permanent_address) && !v.ownerAddress) {
+                v.ownerAddress = c.present_address || c.permanent_address;
+              }
+            }
+          });
+        } catch (e) {
+          console.warn('[Excel V2] Owner cache enrichment failed:', e);
+        }
+      }
+      
+      if (btn) btn.innerHTML = '⏳ Building Excel...';
+      
+      // Compute metadata
+      var totalPhotos = verifiedPhotos.length;
+      var expectedTotal = vehicles.reduce(function(sum, v) { return sum + v.expectedCount; }, 0);
+      var coverage = expectedTotal > 0 ? (totalPhotos / expectedTotal * 100).toFixed(1) + '%' : '—';
+      
+      // Determine campaign info
+      var campaignNameMap = {};
+      try {
+        var campData = await window.api('/rest/v1/trial_campaigns?select=key,name&active=eq.true');
+        (campData || []).forEach(function(c) { campaignNameMap[c.key] = c.name; });
+      } catch(e) {}
+      
+      var campaignDisplay = campaign ? (campaignNameMap[campaign] || campaign) : 'All Campaigns';
+      var firstMode = vehicles.length > 0 ? vehicles[0].mode : '';
+      var brandingType = firstMode === 'hood' ? 'Auto Rickshaw — Hood' : (firstMode === 'back_panel' ? 'Auto Rickshaw — Back Panel' : 'Mixed');
+      var primaryCity = vehicles.length > 0 ? vehicles[0].location : 'All Cities';
+      
+      var period;
+      if (dateFrom && dateTo && dateFrom === dateTo) {
+        period = formatExcelDate(dateFrom);
+      } else if (dateFrom && dateTo) {
+        period = formatExcelDate(dateFrom) + ' to ' + formatExcelDate(dateTo);
+      } else if (dateFrom) {
+        period = 'From ' + formatExcelDate(dateFrom);
+      } else {
+        period = 'All Time';
+      }
+      
+      var metadata = {
+        campaign: campaignDisplay,
+        client: campaignDisplay,  // Could be enhanced with separate client field
+        reportDate: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+        city: primaryCity,
+        brandingType: brandingType,
+        period: period,
+        totalPhotos: totalPhotos,
+        coverage: coverage
+      };
+      
+      // Build workbook
+      var wb = buildWorkbook(vehicles, verifiedPhotos, metadata);
+      
+      // Save file
+      var safeCampaign = (campaignDisplay || 'campaign').replace(/[^a-zA-Z0-9]/g, '_');
+      var safeDate = (dateFrom || new Date().toISOString().slice(0, 10)).replace(/-/g, '');
+      var filename = 'Prajapati_' + safeCampaign + '_' + safeDate + '.xlsx';
+      
+      XLSX.writeFile(wb, filename);
+      
+      if (btn) { btn.disabled = false; btn.innerHTML = originalText; }
+      
+      var withOwner = vehicles.filter(function(v) { return v.ownerName; }).length;
+      var withContact = vehicles.filter(function(v) { return v.contactNumber; }).length;
+      
+      alert(
+        '✅ Excel Report Downloaded!\n\n' +
+        'File: ' + filename + '\n\n' +
+        '📊 Summary:\n' +
+        '  Vehicles: ' + vehicles.length + '\n' +
+        '  Photos: ' + totalPhotos + '\n' +
+        '  Coverage: ' + coverage + '\n' +
+        '  With owner name: ' + withOwner + '/' + vehicles.length + '\n' +
+        '  With contact: ' + withContact + '/' + vehicles.length + '\n\n' +
+        (withOwner < vehicles.length 
+          ? '⚠️ Some vehicles missing owner data. Use Bulk Fetch button to refresh.' 
+          : '🎉 All owner details populated!')
+      );
+      
+    } catch (e) {
+      console.error('[Excel V2] Error:', e);
+      alert('❌ Excel generation failed: ' + e.message);
+      if (btn) { btn.disabled = false; btn.innerHTML = originalText; }
+    }
+  };
+  
+  function formatExcelDate(dateStr) {
+    var d = new Date(dateStr + 'T12:00:00');
+    return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  // ─── Bulk Surepass Fetch ──────────────────────────────────────────────
+  window.bulkFetchSurepass = async function() {
+    var btn = document.querySelector('button[onclick="bulkFetchSurepass()"]');
+    var originalText = btn ? btn.innerHTML : '🔍 Bulk Fetch Surepass';
+    if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Loading...'; }
+    
+    try {
+      // Get filter
+      var dateFrom = document.getElementById('photoDate').value;
+      var dateTo = document.getElementById('photoDateEnd').value || dateFrom;
+      var campaign = document.getElementById('photoCampaign').value;
+      
+      var qs = '/rest/v1/trial_photos?select=vehicle_number,verified_plate,is_verified&is_verified=eq.true&order=captured_at.desc&limit=2000';
+      if (dateFrom) qs += '&captured_at=gte.' + new Date(dateFrom + 'T00:00:00+05:30').toISOString();
+      if (dateTo) qs += '&captured_at=lte.' + new Date(dateTo + 'T23:59:59+05:30').toISOString();
+      if (campaign) qs += '&campaign_key=eq.' + encodeURIComponent(campaign);
+      
+      var photos = await window.api(qs);
+      photos = photos || [];
+      
+      // Unique verified plates
+      var platesSet = {};
+      photos.forEach(function(p) {
+        var plate = (p.verified_plate || p.vehicle_number || '').toUpperCase().trim();
+        if (plate.length >= 6) platesSet[plate] = true;
+      });
+      var plates = Object.keys(platesSet);
+      
+      if (plates.length === 0) {
+        alert('❌ No verified vehicles found in current filter.');
+        if (btn) { btn.disabled = false; btn.innerHTML = originalText; }
+        return;
+      }
+      
+      var confirmMsg = '🔍 Fetch owner + contact details from Surepass?\n\n' +
+                       'Vehicles: ' + plates.length + '\n' +
+                       'Each fetch makes 2 API calls (Name + Contact)\n' +
+                       'Cached results skip API call (free)\n\n' +
+                       'Proceed?';
+      if (!confirm(confirmMsg)) {
+        if (btn) { btn.disabled = false; btn.innerHTML = originalText; }
+        return;
+      }
+      
+      var success = 0, failed = 0, cached = 0;
+      var failedPlates = [];
+      
+      for (var i = 0; i < plates.length; i++) {
+        var plate = plates[i];
+        if (btn) btn.innerHTML = '⏳ ' + (i + 1) + '/' + plates.length + ' · ' + plate;
+        
+        try {
+          var resp = await fetch(window.CONFIG.supabaseUrl + '/functions/v1/surepass-lookup', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + window.CONFIG.supabaseKey,
+              'apikey': window.CONFIG.supabaseKey
+            },
+            body: JSON.stringify({ vehicle_number: plate })
+          });
+          
+          var data = await resp.json();
+          
+          if (data.success) {
+            success++;
+            if (data.cached) cached++;
+          } else {
+            failed++;
+            failedPlates.push(plate + ' (' + (data.error || 'unknown') + ')');
+          }
+        } catch (e) {
+          failed++;
+          failedPlates.push(plate + ' (' + e.message + ')');
+        }
+        
+        // Throttle to avoid hammering Surepass
+        if (i < plates.length - 1) await new Promise(function(r) { setTimeout(r, 300); });
+      }
+      
+      if (btn) { btn.disabled = false; btn.innerHTML = originalText; }
+      
+      var summary = '✅ Bulk Surepass Fetch Complete!\n\n' +
+        '📊 Results:\n' +
+        '  Total: ' + plates.length + '\n' +
+        '  Success: ' + success + ' (Cached: ' + cached + ', Fresh: ' + (success - cached) + ')\n' +
+        '  Failed: ' + failed + '\n\n';
+      
+      if (failed > 0 && failedPlates.length > 0) {
+        summary += '⚠️ Failed plates:\n' + failedPlates.slice(0, 10).join('\n');
+        if (failedPlates.length > 10) summary += '\n... and ' + (failedPlates.length - 10) + ' more';
+      }
+      
+      alert(summary);
+      
+      // Refresh photos browser
+      if (typeof loadPhotos === 'function') loadPhotos(true);
+      
+    } catch (e) {
+      console.error('[Bulk Surepass] Error:', e);
+      alert('❌ Bulk fetch failed: ' + e.message);
+      if (btn) { btn.disabled = false; btn.innerHTML = originalText; }
+    }
+  };
+
+  console.log('[Excel Report V2] Module loaded — call downloadExcelReportV2() to generate approved format');
+})();
+</script>
+
+<!-- ═══ END EXCEL V2 MODULE ═══ -->
 </body>
 </html>
