@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Photo Edit Feature — Mockup · Prajapati GPS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --nav: #0B1957;
+    --accent: #26d0ce;
+    --accent-dk: #0fa8a5;
+    --ink: #0f172a;
+    --ink-2: #475569;
+    --mute: #94a3b8;
+    --line: #e2e8f0;
+    --soft: #f1f5f9;
+    --white: #ffffff;
+    --bg: #f8fafc;
+    --green: #10b981;
+    --green-soft: #d1fae5;
+    --green-dk: #047857;
+    --amber: #f59e0b;
+    --amber-soft: #fef3c7;
+    --amber-dk: #b45309;
+    --red: #ef4444;
+    --red-soft: #fee2e2;
+    --red-dk: #b91c1c;
+    --blue-soft: #dbeafe;
+    --purple: #8b5cf6;
+    --purple-soft: #ede9fe;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* === Layout === */
+  .container { max-width: 1280px; margin: 0 auto; padding: 24px; }
+
+  .mockup-banner {
+    background: linear-gradient(135deg, #fff7ed 0%, #fef3c7 100%);
+    border: 2px dashed var(--amber);
+    border-radius: 14px;
+    padding: 14px 20px;
+    margin-bottom: 24px;
+    display: flex;
+    gap: 14px;
+    align-items: center;
+  }
+  .mockup-banner .icn { font-size: 24px; }
+  .mockup-banner .txt strong { color: var(--amber-dk); font-weight: 800; font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; display: block; margin-bottom: 2px; }
+  .mockup-banner .txt span { color: var(--ink-2); font-size: 12px; font-weight: 600; }
+
+  .page-head {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    margin-bottom: 18px; padding-bottom: 16px; border-bottom: 1px solid var(--line);
+  }
+  .page-title {
+    font-size: 22px; font-weight: 800; color: var(--nav);
+    letter-spacing: -0.02em;
+  }
+  .page-title em { font-style: normal; color: var(--accent); font-weight: 600; }
+  .page-sub { font-size: 12px; color: var(--mute); font-weight: 600; margin-top: 2px; }
+
+  /* === Stats === */
+  .stats-row {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+    margin-bottom: 20px;
+  }
+  .stat-card {
+    background: white; border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .stat-card .lbl {
+    font-size: 10px; font-weight: 800; color: var(--mute);
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .stat-card .val {
+    font-family: 'JetBrains Mono', monospace; font-size: 24px; font-weight: 800;
+    color: var(--nav); margin-top: 6px;
+  }
+  .stat-card .val.red { color: var(--red-dk); }
+  .stat-card .val.amber { color: var(--amber-dk); }
+  .stat-card .val.teal { color: var(--accent-dk); }
+  .stat-card .sub {
+    font-size: 11px; color: var(--mute); font-weight: 600; margin-top: 2px;
+  }
+
+  /* === Section === */
+  .section {
+    background: white; border: 1px solid var(--line); border-radius: 14px;
+    margin-bottom: 16px; overflow: hidden;
+  }
+  .section-head {
+    padding: 14px 18px; border-bottom: 1px solid var(--line);
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 12px;
+  }
+  .section-head h3 {
+    font-size: 13px; font-weight: 800; color: var(--nav);
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .section-head .actions { display: flex; gap: 8px; }
+
+  /* === Buttons === */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 14px; font-size: 12px; font-weight: 700;
+    border-radius: 8px; cursor: pointer;
+    border: 1px solid transparent;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn.primary { background: var(--accent); color: var(--nav); }
+  .btn.primary:hover { background: var(--accent-dk); color: white; }
+  .btn.nav { background: var(--nav); color: white; }
+  .btn.nav:hover { background: #1a2d6e; }
+  .btn.ghost { background: var(--soft); color: var(--ink-2); border-color: var(--line); }
+  .btn.ghost:hover { background: white; border-color: var(--accent); color: var(--accent); }
+  .btn.amber { background: var(--amber-soft); color: var(--amber-dk); border-color: var(--amber); }
+  .btn.amber:hover { background: var(--amber); color: white; }
+  .btn.purple { background: var(--purple-soft); color: var(--purple); border-color: var(--purple); }
+  .btn.purple:hover { background: var(--purple); color: white; }
+  .btn.red { background: var(--red-soft); color: var(--red-dk); border-color: var(--red); }
+  .btn.red:hover { background: var(--red); color: white; }
+  .btn.sm { padding: 5px 9px; font-size: 11px; }
+
+  /* === Table === */
+  .vehicles-table {
+    width: 100%; border-collapse: collapse;
+  }
+  .vehicles-table th {
+    background: var(--soft); padding: 11px 14px; text-align: left;
+    font-size: 10px; font-weight: 800; color: var(--mute);
+    letter-spacing: 0.07em; text-transform: uppercase;
+    border-bottom: 1px solid var(--line);
+  }
+  .vehicles-table td {
+    padding: 12px 14px; font-size: 13px; color: var(--ink);
+    border-bottom: 1px solid var(--line);
+    vertical-align: middle;
+  }
+  .vehicles-table tr.suspect {
+    background: linear-gradient(90deg, var(--amber-soft) 0%, transparent 100%);
+  }
+  .vehicles-table tr.suspect td:first-child { border-left: 3px solid var(--amber); }
+  .vehicles-table tr:hover { background: #fafbfc; }
+  .vehicles-table tr.suspect:hover { background: linear-gradient(90deg, #fef3c7 0%, #fff9eb 100%); }
+
+  .veh-no {
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    font-weight: 800; color: var(--nav);
+  }
+  .badge {
+    display: inline-flex; padding: 3px 8px;
+    border-radius: 6px; font-size: 10px; font-weight: 800;
+    letter-spacing: 0.03em;
+  }
+  .badge.hood { background: var(--blue-soft); color: #1e40af; }
+  .badge.back { background: var(--purple-soft); color: var(--purple); }
+  .badge.complete { background: var(--green-soft); color: var(--green-dk); }
+  .badge.incomplete { background: var(--amber-soft); color: var(--amber-dk); }
+  .badge.duplicate {
+    background: var(--red-soft); color: var(--red-dk);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+  .photo-count {
+    font-family: 'JetBrains Mono', monospace; font-weight: 700;
+  }
+
+  /* === Action buttons in table === */
+  .row-actions { display: flex; gap: 6px; }
+
+  /* === Smart Alert === */
+  .smart-alert {
+    background: linear-gradient(135deg, #fff7ed 0%, #fef3c7 100%);
+    border: 1px solid var(--amber);
+    border-left: 4px solid var(--amber);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+  }
+  .smart-alert .heading {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+  }
+  .smart-alert .heading .ico { font-size: 22px; }
+  .smart-alert .heading h4 {
+    font-size: 14px; font-weight: 800; color: var(--amber-dk);
+    letter-spacing: 0.02em;
+  }
+  .smart-alert .body { font-size: 13px; color: var(--ink); font-weight: 600; }
+  .smart-alert .dup-pair {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: white; padding: 5px 10px; border-radius: 7px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    font-weight: 800; color: var(--amber-dk);
+    border: 1px solid var(--amber);
+    margin: 4px 6px 0 0;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .smart-alert .dup-pair:hover { background: var(--amber); color: white; }
+  .smart-alert .arrow { color: var(--amber); font-weight: 800; }
+
+  /* === Modal === */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(11, 25, 87, 0.6);
+    backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center;
+    z-index: 100; padding: 20px;
+  }
+  .modal-overlay.active {
+    display: flex;
+    animation: fadeIn 0.2s ease-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .modal {
+    background: white;
+    border-radius: 16px;
+    width: 100%; max-width: 540px;
+    max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 25px 70px rgba(0, 0, 0, 0.25);
+    animation: slideUp 0.25s ease-out;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  .modal-head {
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--line);
+    display: flex; justify-content: space-between; align-items: center;
+    position: sticky; top: 0; background: white; z-index: 1;
+  }
+  .modal-head h2 {
+    font-size: 17px; font-weight: 800; color: var(--nav);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .modal-close {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: var(--soft); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; color: var(--ink-2);
+    transition: all 0.15s;
+  }
+  .modal-close:hover { background: var(--red-soft); color: var(--red-dk); }
+
+  .modal-body { padding: 22px; }
+  .modal-footer {
+    padding: 14px 22px; border-top: 1px solid var(--line);
+    display: flex; gap: 8px; justify-content: flex-end;
+    position: sticky; bottom: 0; background: white;
+  }
+
+  /* === Form fields === */
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block; font-size: 11px; font-weight: 800;
+    color: var(--mute); letter-spacing: 0.05em;
+    text-transform: uppercase; margin-bottom: 6px;
+  }
+  .field input, .field select, .field textarea {
+    width: 100%; padding: 10px 13px;
+    font-size: 14px; font-weight: 600; color: var(--ink);
+    border: 1px solid var(--line); border-radius: 9px;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(38, 208, 206, 0.12);
+  }
+  .field .veh-input {
+    font-family: 'JetBrains Mono', monospace; font-size: 16px;
+    font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;
+  }
+  .field .help {
+    font-size: 11px; color: var(--mute); font-weight: 600;
+    margin-top: 4px;
+  }
+  .field .err {
+    font-size: 11px; color: var(--red-dk); font-weight: 700;
+    margin-top: 4px; display: none;
+  }
+  .field.invalid input { border-color: var(--red); }
+  .field.invalid .err { display: block; }
+  .field.valid input { border-color: var(--green); }
+
+  /* === Info panel inside modal === */
+  .info-panel {
+    background: var(--soft); border-radius: 10px;
+    padding: 14px 16px; margin-bottom: 16px;
+    display: flex; gap: 12px; align-items: center;
+  }
+  .info-panel .ico {
+    width: 40px; height: 40px;
+    background: var(--accent); color: var(--nav);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 800;
+    flex-shrink: 0;
+  }
+  .info-panel .txt strong {
+    display: block; font-size: 13px; font-weight: 800;
+    color: var(--nav); margin-bottom: 2px;
+  }
+  .info-panel .txt span {
+    font-size: 12px; color: var(--ink-2); font-weight: 600;
+  }
+  .info-panel.warn { background: var(--amber-soft); }
+  .info-panel.warn .ico { background: var(--amber); color: white; }
+  .info-panel.warn .txt strong { color: var(--amber-dk); }
+
+  /* === Change preview === */
+  .change-preview {
+    background: white; border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px; margin-top: 12px;
+  }
+  .change-preview .row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 0;
+  }
+  .change-preview .row .lbl {
+    font-size: 11px; font-weight: 800; color: var(--mute);
+    letter-spacing: 0.05em; text-transform: uppercase;
+    min-width: 60px;
+  }
+  .change-preview .row .from {
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    font-weight: 800; color: var(--red-dk);
+    background: var(--red-soft); padding: 3px 8px; border-radius: 5px;
+    text-decoration: line-through;
+  }
+  .change-preview .row .arrow { color: var(--mute); font-weight: 800; }
+  .change-preview .row .to {
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    font-weight: 800; color: var(--green-dk);
+    background: var(--green-soft); padding: 3px 8px; border-radius: 5px;
+  }
+
+  /* === Photo thumbnails === */
+  .photo-thumbs {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    margin-top: 12px;
+  }
+  .photo-thumb {
+    aspect-ratio: 3/4; background: var(--soft);
+    border: 1px solid var(--line); border-radius: 8px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 11px; color: var(--mute); font-weight: 700;
+    position: relative; overflow: hidden;
+  }
+  .photo-thumb .icn { font-size: 28px; margin-bottom: 4px; opacity: 0.4; }
+  .photo-thumb .lbl-thumb {
+    position: absolute; top: 6px; left: 6px;
+    background: var(--nav); color: white;
+    font-size: 9px; font-weight: 800;
+    padding: 2px 6px; border-radius: 4px;
+    letter-spacing: 0.04em;
+  }
+  .photo-thumb.missing { opacity: 0.4; border-style: dashed; }
+
+  /* === Merge styles === */
+  .merge-flow {
+    display: flex; align-items: center; gap: 14px;
+    background: linear-gradient(135deg, var(--blue-soft) 0%, var(--purple-soft) 100%);
+    padding: 16px; border-radius: 12px; margin-bottom: 14px;
+  }
+  .merge-side { flex: 1; }
+  .merge-side .label-mini {
+    font-size: 10px; font-weight: 800; color: var(--mute);
+    letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px;
+  }
+  .merge-side .veh-pill {
+    font-family: 'JetBrains Mono', monospace; font-size: 14px;
+    font-weight: 800; background: white; color: var(--nav);
+    padding: 6px 12px; border-radius: 7px; display: inline-block;
+  }
+  .merge-side .stats-mini {
+    font-size: 11px; color: var(--ink-2); font-weight: 700; margin-top: 4px;
+  }
+  .merge-arrow {
+    font-size: 22px; color: var(--accent); font-weight: 900;
+  }
+  .merge-result {
+    background: white; padding: 12px 14px; border-radius: 10px;
+    border: 1px dashed var(--accent); margin-top: 10px;
+  }
+  .merge-result .lbl-res {
+    font-size: 11px; font-weight: 800; color: var(--accent-dk);
+    letter-spacing: 0.05em; text-transform: uppercase;
+  }
+  .merge-result .res-text {
+    font-size: 13px; font-weight: 700; color: var(--nav);
+    margin-top: 4px;
+  }
+
+  /* === Toast === */
+  .toast {
+    position: fixed; bottom: 30px; right: 30px;
+    background: var(--nav); color: white;
+    padding: 14px 20px; border-radius: 12px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25);
+    font-size: 13px; font-weight: 700;
+    display: none; align-items: center; gap: 10px;
+    z-index: 200;
+    animation: slideUpToast 0.3s ease-out;
+  }
+  .toast.success { background: var(--green-dk); }
+  .toast.show { display: flex; }
+  @keyframes slideUpToast {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  /* === Mockup view tabs === */
+  .mockup-tabs {
+    display: flex; gap: 4px; background: white; padding: 4px;
+    border-radius: 12px; border: 1px solid var(--line);
+    margin-bottom: 18px;
+    width: fit-content;
+  }
+  .mockup-tabs button {
+    padding: 8px 16px; font-size: 12px; font-weight: 700;
+    background: none; border: none; cursor: pointer;
+    border-radius: 8px; color: var(--mute);
+    font-family: inherit;
+    transition: all 0.15s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .mockup-tabs button.active {
+    background: var(--nav); color: white;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Mockup banner -->
+  <div class="mockup-banner">
+    <div class="icn">🎨</div>
+    <div class="txt">
+      <strong>UI Mockup — Photo Edit Feature</strong>
+      <span>Yeh interactive mockup hai. Buttons click karke modals dekho. Approval ke baad actual admin.html + admin-v2.html mein add karenge.</span>
+    </div>
+  </div>
+
+  <!-- Mockup operation tabs -->
+  <div class="mockup-tabs">
+    <button class="active" onclick="switchView('main')">🏠 Photos Browser View</button>
+    <button onclick="openModal('edit-modal')">✏️ Edit Vehicle Modal</button>
+    <button onclick="openModal('reassign-modal')">🔀 Reassign Photo Modal</button>
+    <button onclick="openModal('merge-modal')">🔗 Merge Duplicates Modal</button>
+  </div>
+
+  <!-- === MAIN VIEW === -->
+  <div id="main-view">
+
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Photos Browser <em>— Purohit sweets</em></h1>
+        <div class="page-sub">20 May 2026 · Vehicle-level edit aur photo reassign options · Bulk merge available</div>
+      </div>
+      <button class="btn nav" onclick="alert('Returns to main admin')">← Back to Admin</button>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="lbl">Total Vehicles</div>
+        <div class="val">22</div>
+        <div class="sub">Captured today</div>
+      </div>
+      <div class="stat-card">
+        <div class="lbl">Total Photos</div>
+        <div class="val teal">60</div>
+        <div class="sub">All in storage</div>
+      </div>
+      <div class="stat-card">
+        <div class="lbl">Incomplete</div>
+        <div class="val amber">4</div>
+        <div class="sub">&lt;3 photos in hood mode</div>
+      </div>
+      <div class="stat-card">
+        <div class="lbl">Possible Duplicates</div>
+        <div class="val red">2</div>
+        <div class="sub">Likely typo errors</div>
+      </div>
+    </div>
+
+    <!-- Smart Alert -->
+    <div class="smart-alert">
+      <div class="heading">
+        <div class="ico">🔍</div>
+        <h4>Possible Duplicate Vehicles Detected — Typo Likely</h4>
+      </div>
+      <div class="body">
+        Inn vehicles ka spelling almost same hai. Manual approval ke time galti ho gayi ho sakti hai. Click karke merge karo:
+        <div style="margin-top: 10px;">
+          <span class="dup-pair" onclick="openMergeModalWith('MH08E7586', 'MH08EF7586')">
+            <strong>MH08E7586</strong> (1 photo) <span class="arrow">⟷</span> <strong>MH08EF7586</strong> (2 photos)
+          </span>
+          <span class="dup-pair" onclick="openMergeModalWith('MH03EL3526', 'MH09EL3526')">
+            <strong>MH03EL3526</strong> (2 photos) <span class="arrow">⟷</span> <strong>MH09EL3526</strong> (1 photo)
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vehicles Table -->
+    <div class="section">
+      <div class="section-head">
+        <h3>📋 Vehicles List (8 of 22 shown)</h3>
+        <div class="actions">
+          <button class="btn ghost sm">🔍 Filter</button>
+          <button class="btn ghost sm">⬇️ Export</button>
+        </div>
+      </div>
+      <table class="vehicles-table">
+        <thead>
+          <tr>
+            <th>Vehicle</th>
+            <th>Mode</th>
+            <th>Photos</th>
+            <th>Member</th>
+            <th>Status</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Suspect 1 -->
+          <tr class="suspect">
+            <td><span class="veh-no">MH08E7586</span></td>
+            <td><span class="badge hood">Hood</span></td>
+            <td class="photo-count">1/3</td>
+            <td>Deepak Gautam</td>
+            <td>
+              <span class="badge duplicate">⚠️ Possible Dup</span>
+              <span class="badge incomplete">Incomplete</span>
+            </td>
+            <td>
+              <div class="row-actions" style="justify-content: flex-end;">
+                <button class="btn nav sm" onclick="openEditModalWith('MH08E7586', 1, 'hood')">✏️ Edit</button>
+                <button class="btn amber sm" onclick="openMergeModalWith('MH08E7586', 'MH08EF7586')">🔗 Merge</button>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Suspect 2 -->
+          <tr class="suspect">
+            <td><span class="veh-no">MH08EF7586</span></td>
+            <td><span class="badge hood">Hood</span></td>
+            <td class="photo-count">2/3</td>
+            <td>Deepak Gautam</td>
+            <td>
+              <span class="badge duplicate">⚠️ Possible Dup</span>
+              <span class="badge incomplete">Incomplete</span>
+            </td>
+            <td>
+              <div class="row-actions" style="justify-content: flex-end;">
+                <button class="btn nav sm" onclick="openEditModalWith('MH08EF7586', 2, 'hood')">✏️ Edit</button>
+                <button class="btn amber sm" onclick="openMergeModalWith('MH08E7586', 'MH08EF7586')">🔗 Merge</button>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Normal complete -->
+          <tr>
+            <td><span class="veh-no">MH09EL7823</span></td>
+            <td><span class="badge hood">Hood</span></td>
+            <td class="photo-count">3/3</td>
+            <td>Deepak Gautam</td>
+            <td><span class="badge complete">✓ Complete</span></td>
+            <td>
+              <div class="row-actions" style="justify-content: flex-end;">
+                <button class="btn ghost sm" onclick="openEditModalWith('MH09EL7823', 3, 'hood')">✏️ Edit</button>
+              </div>
+            </td>
+          </tr>
+
+          <tr>
+            <td><span class="veh-no">MH09CW2994</span></td>
+            <td><span class="badge hood">Hood</span></td>
+            <td class="photo-count">3/3</td>
+            <td>Deepak Gautam</td>
+            <td><span class="badge complete">✓ Complete</span></td>
+            <td>
+              <div class="row-actions" style="justify-content: flex-end;">
+                <button class="btn ghost sm" onclick="openEditModalWith('MH09CW2994', 3, 'hood')">✏️ Edit</button>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Suspect 3 -->
+          <tr class="suspect">
+            <td><span class="veh-no">MH03EL3526</span></td>
+            <td><span class="badge hood">Hood</span></td>
+            <td class="photo-count">2/3</td>
+            <td>Deepak Gautam</td>
+            <td>
+              <span class="badge duplicate">⚠️ Possible Dup</span>
+              <span class="badge incomplete">Incomplete</span>
+            </td>
+            <td>
+              <div class="row-actions" style="justify-content: flex-end;">
+                <button class="btn nav sm" onclick="openEditModalWith('MH03EL3526', 2, 'hood')">✏️ Edit</button>
+                <button class="btn amber sm" onclick="openMergeModalWith('MH03EL3526', 'MH09EL3526')">🔗 Merge</button>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Suspect 4 -->
+          <tr class="suspect">
+            <td><span class="veh-no">MH09EL3526</span></td>
+            <td><span class="badge hood">Hood</span></td>
+            <td class="photo-count">1/3</td>
+            <td>Deepak Gautam</td>
+            <td>
+              <span class="badge duplicate">⚠️ Possible Dup</span>
+              <span class="badge incomplete">Incomplete</span>
+            </td>
+            <td>
+              <div class="row-actions" style="justify-content: flex-end;">
+                <button class="btn nav sm" onclick="openEditModalWith('MH09EL3526', 1, 'hood')">✏️ Edit</button>
+                <button class="btn amber sm" onclick="openMergeModalWith('MH03EL3526', 'MH09EL3526')">🔗 Merge</button>
+              </div>
+            </td>
+          </tr>
+
+          <tr>
+            <td><span class="veh-no">MH09EL1365</span></td>
+            <td><span class="badge hood">Hood</span></td>
+            <td class="photo-count">3/3</td>
+            <td>Deepak Gautam</td>
+            <td><span class="badge complete">✓ Complete</span></td>
+            <td>
+              <div class="row-actions" style="justify-content: flex-end;">
+                <button class="btn ghost sm" onclick="openEditModalWith('MH09EL1365', 3, 'hood')">✏️ Edit</button>
+              </div>
+            </td>
+          </tr>
+
+          <tr>
+            <td><span class="veh-no">MH09EL0595</span></td>
+            <td><span class="badge hood">Hood</span></td>
+            <td class="photo-count">3/3</td>
+            <td>Deepak Gautam</td>
+            <td><span class="badge complete">✓ Complete</span></td>
+            <td>
+              <div class="row-actions" style="justify-content: flex-end;">
+                <button class="btn ghost sm" onclick="openEditModalWith('MH09EL0595', 3, 'hood')">✏️ Edit</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="margin-top: 16px; font-size: 11px; color: var(--mute); text-align: center; font-weight: 600;">
+      💡 <strong>Tip:</strong> Suspect rows highlighted hain. Edit ✏️ se vehicle number change karo · Merge 🔗 se duplicates combine karo · Individual photo reassign ke liye photo card click karo (next view)
+    </div>
+
+  </div>
+
+  <!-- === EDIT VEHICLE MODAL === -->
+  <div class="modal-overlay" id="edit-modal">
+    <div class="modal">
+      <div class="modal-head">
+        <h2>✏️ Edit Vehicle Number</h2>
+        <div class="modal-close" onclick="closeModal('edit-modal')">✕</div>
+      </div>
+      <div class="modal-body">
+
+        <div class="info-panel">
+          <div class="ico">🚗</div>
+          <div class="txt">
+            <strong id="edit-current-veh">MH08E7586</strong>
+            <span><span id="edit-photo-count">1</span> photo(s) · Hood mode · Captured 20 May 2026</span>
+          </div>
+        </div>
+
+        <div class="field" id="new-veh-field">
+          <label>New Vehicle Number *</label>
+          <input type="text" class="veh-input" id="new-veh-input"
+                 placeholder="MH00XX0000"
+                 oninput="validateVehicle(this.value)"
+                 maxlength="11">
+          <div class="help">RTO format: 2 letters + 2 digits + 1-2 letters + 4 digits</div>
+          <div class="err">Invalid RTO format. Example: MH08EF7586</div>
+        </div>
+
+        <div class="field">
+          <label>Reason for Edit (optional)</label>
+          <input type="text" placeholder="e.g. Typo correction during manual approval">
+          <div class="help">History mein audit ke liye save hoga</div>
+        </div>
+
+        <div class="change-preview" id="change-preview" style="display: none;">
+          <div style="font-size: 11px; font-weight: 800; color: var(--accent-dk); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 6px;">
+            🔄 Change Preview
+          </div>
+          <div class="row">
+            <span class="lbl">Vehicle</span>
+            <span class="from" id="preview-from">MH08E7586</span>
+            <span class="arrow">→</span>
+            <span class="to" id="preview-to">MH08EF7586</span>
+          </div>
+          <div class="row" style="font-size: 11px; color: var(--mute); font-weight: 700; margin-top: 4px;">
+            <span style="margin-left: 70px;">📸 <span id="preview-affected">1</span> photo(s) ka vehicle number update hoga</span>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button class="btn ghost" onclick="closeModal('edit-modal')">Cancel</button>
+        <button class="btn primary" onclick="saveEdit()">💾 Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- === REASSIGN PHOTO MODAL === -->
+  <div class="modal-overlay" id="reassign-modal">
+    <div class="modal">
+      <div class="modal-head">
+        <h2>🔀 Reassign Photo to Different Vehicle</h2>
+        <div class="modal-close" onclick="closeModal('reassign-modal')">✕</div>
+      </div>
+      <div class="modal-body">
+
+        <div class="info-panel warn">
+          <div class="ico">📸</div>
+          <div class="txt">
+            <strong>Photo currently in: MH08E7586</strong>
+            <span>Captured 20 May 2026 · Front view · GPS: Kolhapur</span>
+          </div>
+        </div>
+
+        <div class="photo-thumbs" style="grid-template-columns: 1fr;">
+          <div class="photo-thumb" style="aspect-ratio: 16/10;">
+            <div class="lbl-thumb">Photo Preview</div>
+            <div class="icn">🖼️</div>
+            <div>image-preview.jpg</div>
+          </div>
+        </div>
+
+        <div class="field" style="margin-top: 16px;">
+          <label>Target Vehicle Number *</label>
+          <select>
+            <option value="">— Select existing vehicle —</option>
+            <option value="new" style="font-weight: 800; color: var(--accent-dk);">+ Create new vehicle entry</option>
+            <option disabled>──────────</option>
+            <option value="MH08EF7586">MH08EF7586 (currently 2/3 photos)</option>
+            <option value="MH09EL7823">MH09EL7823 (currently 3/3)</option>
+            <option value="MH09CW2994">MH09CW2994 (currently 3/3)</option>
+            <option value="MH03EL3526">MH03EL3526 (currently 2/3)</option>
+          </select>
+          <div class="help">Existing vehicles same campaign aur same date se</div>
+        </div>
+
+        <div class="field">
+          <label>Reason for Reassignment</label>
+          <textarea rows="2" placeholder="e.g. Photo wrong vehicle ke saath save ho gayi thi"></textarea>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button class="btn ghost" onclick="closeModal('reassign-modal')">Cancel</button>
+        <button class="btn primary" onclick="reassignPhoto()">🔀 Reassign Photo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- === MERGE MODAL === -->
+  <div class="modal-overlay" id="merge-modal">
+    <div class="modal" style="max-width: 580px;">
+      <div class="modal-head">
+        <h2>🔗 Merge Duplicate Vehicles</h2>
+        <div class="modal-close" onclick="closeModal('merge-modal')">✕</div>
+      </div>
+      <div class="modal-body">
+
+        <div class="merge-flow">
+          <div class="merge-side">
+            <div class="label-mini">Source (will be removed)</div>
+            <div class="veh-pill" id="merge-source">MH08E7586</div>
+            <div class="stats-mini" id="merge-source-stats">📸 1 photo · Hood mode</div>
+          </div>
+          <div class="merge-arrow">➡️</div>
+          <div class="merge-side">
+            <div class="label-mini">Target (will keep all photos)</div>
+            <div class="veh-pill" id="merge-target">MH08EF7586</div>
+            <div class="stats-mini" id="merge-target-stats">📸 2 photos · Hood mode</div>
+          </div>
+        </div>
+
+        <div class="merge-result">
+          <div class="lbl-res">✨ After Merge</div>
+          <div class="res-text" id="merge-result-text">
+            <strong>MH08EF7586</strong> ke paas <strong>3 photos</strong> ho jayenge (1+2 combined)<br>
+            <span style="font-weight: 600; color: var(--ink-2); font-size: 12px;">MH08E7586 entry delete ho jayegi · Photos ka vehicle number update hoga</span>
+          </div>
+        </div>
+
+        <div class="field" style="margin-top: 14px;">
+          <label>Swap Source ↔ Target?</label>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn ghost sm" style="flex: 1;" onclick="swapMergeDirection()">🔄 Swap Direction</button>
+            <span class="help" style="font-size: 11px; margin-top: 7px;">Agar target galat hai</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Merge Reason</label>
+          <input type="text" value="Typo in manual approval — same vehicle as target" placeholder="Reason for merge...">
+          <div class="help">Default suggestion editable hai · Audit log mein save hoga</div>
+        </div>
+
+        <div style="background: var(--red-soft); border-left: 3px solid var(--red); border-radius: 8px; padding: 12px 14px; margin-top: 14px;">
+          <div style="font-size: 12px; font-weight: 700; color: var(--red-dk);">
+            ⚠️ <strong>Yeh action UNDO ho sakta hai</strong> — last 7 days ke andar
+          </div>
+          <div style="font-size: 11px; color: var(--ink-2); font-weight: 600; margin-top: 4px;">
+            History tab mein "Restore" option milega. 7 din ke baad permanent ho jayega.
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button class="btn ghost" onclick="closeModal('merge-modal')">Cancel</button>
+        <button class="btn primary" onclick="confirmMerge()">🔗 Confirm Merge</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+  // ===== MOCK STATE =====
+  let currentEditVeh = '';
+  let currentEditCount = 0;
+  let mergeSource = 'MH08E7586';
+  let mergeTarget = 'MH08EF7586';
+
+  // ===== MODAL CONTROLS =====
+  function openModal(id) {
+    closeAllModals();
+    document.getElementById(id).classList.add('active');
+  }
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
+  }
+  function closeAllModals() {
+    document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+  }
+
+  // ===== EDIT MODAL =====
+  function openEditModalWith(veh, photoCount, mode) {
+    currentEditVeh = veh;
+    currentEditCount = photoCount;
+    document.getElementById('edit-current-veh').textContent = veh;
+    document.getElementById('edit-photo-count').textContent = photoCount;
+    document.getElementById('new-veh-input').value = '';
+    document.getElementById('new-veh-input').focus();
+    document.getElementById('new-veh-field').classList.remove('valid', 'invalid');
+    document.getElementById('change-preview').style.display = 'none';
+    document.getElementById('preview-from').textContent = veh;
+    document.getElementById('preview-affected').textContent = photoCount;
+    openModal('edit-modal');
+  }
+
+  function validateVehicle(value) {
+    const cleaned = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    document.getElementById('new-veh-input').value = cleaned;
+    const field = document.getElementById('new-veh-field');
+    const preview = document.getElementById('change-preview');
+    // Indian RTO format: 2 letters + 2 digits + 1-3 letters + 4 digits
+    const rtoRegex = /^[A-Z]{2}[0-9]{2}[A-Z]{1,3}[0-9]{4}$/;
+    if (cleaned.length === 0) {
+      field.classList.remove('valid', 'invalid');
+      preview.style.display = 'none';
+    } else if (rtoRegex.test(cleaned)) {
+      field.classList.add('valid');
+      field.classList.remove('invalid');
+      document.getElementById('preview-to').textContent = cleaned;
+      preview.style.display = 'block';
+    } else {
+      field.classList.add('invalid');
+      field.classList.remove('valid');
+      preview.style.display = 'none';
+    }
+  }
+
+  function saveEdit() {
+    const newVeh = document.getElementById('new-veh-input').value;
+    const field = document.getElementById('new-veh-field');
+    if (!field.classList.contains('valid')) {
+      field.classList.add('invalid');
+      return;
+    }
+    closeModal('edit-modal');
+    showToast(`✅ ${currentEditVeh} → ${newVeh} (${currentEditCount} photo(s) updated)`);
+  }
+
+  // ===== MERGE MODAL =====
+  function openMergeModalWith(source, target) {
+    mergeSource = source;
+    mergeTarget = target;
+    updateMergeDisplay();
+    openModal('merge-modal');
+  }
+
+  function swapMergeDirection() {
+    [mergeSource, mergeTarget] = [mergeTarget, mergeSource];
+    updateMergeDisplay();
+  }
+
+  function updateMergeDisplay() {
+    document.getElementById('merge-source').textContent = mergeSource;
+    document.getElementById('merge-target').textContent = mergeTarget;
+    // Mock photo counts from screenshot data
+    const counts = {
+      'MH08E7586': 1, 'MH08EF7586': 2,
+      'MH03EL3526': 2, 'MH09EL3526': 1
+    };
+    const sourcePhotos = counts[mergeSource] || 1;
+    const targetPhotos = counts[mergeTarget] || 2;
+    document.getElementById('merge-source-stats').textContent = `📸 ${sourcePhotos} photo${sourcePhotos > 1 ? 's' : ''} · Hood mode`;
+    document.getElementById('merge-target-stats').textContent = `📸 ${targetPhotos} photo${targetPhotos > 1 ? 's' : ''} · Hood mode`;
+    document.getElementById('merge-result-text').innerHTML = `
+      <strong>${mergeTarget}</strong> ke paas <strong>${sourcePhotos + targetPhotos} photo${(sourcePhotos + targetPhotos) > 1 ? 's' : ''}</strong> ho ${(sourcePhotos + targetPhotos) > 1 ? 'jayenge' : 'jayega'} (${sourcePhotos}+${targetPhotos} combined)<br>
+      <span style="font-weight: 600; color: var(--ink-2); font-size: 12px;">${mergeSource} entry delete ho jayegi · Photos ka vehicle number update hoga</span>
+    `;
+  }
+
+  function confirmMerge() {
+    closeModal('merge-modal');
+    showToast(`🔗 Merged successfully! ${mergeSource} → ${mergeTarget}`);
+  }
+
+  function reassignPhoto() {
+    closeModal('reassign-modal');
+    showToast(`🔀 Photo reassigned successfully`);
+  }
+
+  // ===== VIEW SWITCHING =====
+  function switchView(view) {
+    document.querySelectorAll('.mockup-tabs button').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+  }
+
+  // ===== TOAST =====
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.innerHTML = `<span style="font-size: 18px;">✓</span> ${msg}`;
+    t.classList.add('show', 'success');
+    setTimeout(() => t.classList.remove('show'), 3500);
+  }
+
+  // ===== ESC TO CLOSE =====
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeAllModals();
+  });
+
+  // ===== CLICK OUTSIDE TO CLOSE =====
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.classList.remove('active');
+    });
+  });
+</script>
+
+</body>
+</html>
