@@ -503,7 +503,9 @@ function renderVehicleCard(v, idx) {
       '<div><div class="field-label">Plate</div><div class="field-value plate">' + escHtml(v.verifiedPlate || '') + '</div></div>' +
       '<div><div class="field-label">Photos</div><div class="field-value">' + v.photos.length + ' verified</div></div>' +
       '<div><div class="field-label">Location</div><div class="field-value">' + escHtml(v.city || '—') + '</div></div>' +
-      '<button onclick="reEditPlate(' + idx + ')" style="margin-left:auto;background:#fff;border:1px solid var(--border);padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;">✏️ Re-edit</button>' +
+      // ─── Photo Edit (added 21-May-2026): Use modal-based edit + add Merge ───
+      '<button onclick="(window.VerifierPhotoEdit ? VerifierPhotoEdit.openEdit(' + idx + ') : reEditPlate(' + idx + '))" style="margin-left:auto;background:#fff;border:1px solid var(--border);padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;" title="Plate edit karke audit log mein save karo">✏️ Edit Plate</button>' +
+      '<button onclick="(function(){var p=prompt(\'Kis plate ke saath merge karna hai? (target plate type karo)\', \'\');if(p){VerifierPhotoEdit.openMerge(' + idx + ', p.trim().toUpperCase());}})()" style="background:#ddd6fe;color:#5b21b6;border:1px solid #a78bfa;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;" title="Duplicate vehicle ke saath merge karo">🔗 Merge</button>' +
       '<button onclick="openDeleteModal(' + idx + ')" style="background:var(--err);color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;">🗑️ Delete</button>' +
     '</div>';
   } else if (v.rejected) {
@@ -758,5 +760,754 @@ document.addEventListener('DOMContentLoaded', function(){
   });
 });
 </script>
+
+<!-- ═══ VERIFIER PHOTO EDIT MODULE v1 (added 21-May-2026) ═══ -->
+<!--
+═══════════════════════════════════════════════════════════════════════════
+  Prajapati GPS — Verifier Photo Edit Module v1.0
+  Date: 21-May-2026
+  
+  PURPOSE:
+  Verifier-specific enhancements for fixing typos and merging duplicate
+  vehicles AFTER verification. Designed to integrate seamlessly with
+  the existing verifier.html flow.
+
+  WHAT THIS REPLACES / ENHANCES:
+  - Existing reEditPlate() — now opens proper modal with validation + audit
+  - Adds "🔗 Merge" button for verified vehicles
+  - Adds duplicate detection alert at top of queue
+
+  DEPENDENCIES (already exist in verifier.html):
+  - window.api()      ← existing
+  - window.toast()    ← existing
+  - window.escHtml()  ← existing
+  - window.cleanPlate() ← existing
+  - window.state      ← existing (state.vehicles, state.user)
+  - window.renderVehicles()  ← existing
+
+  HOW TO USE:
+  1. Paste this ENTIRE block before </body> in verifier.html
+  2. That's it — auto-wires into existing buttons and re-renders queue
+═══════════════════════════════════════════════════════════════════════════
+-->
+
+<!-- ─── CSS ─── -->
+<style id="vpe-styles">
+  /* Modal */
+  .vpe-overlay {
+    position: fixed; inset: 0;
+    background: rgba(11, 25, 87, 0.65);
+    backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center;
+    z-index: 9999; padding: 20px;
+    font-family: inherit;
+  }
+  .vpe-overlay.active { display: flex; animation: vpe-fadeIn 0.2s; }
+  @keyframes vpe-fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .vpe-modal {
+    background: white; border-radius: 14px;
+    width: 100%; max-width: 520px;
+    max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 25px 70px rgba(0,0,0,0.25);
+    animation: vpe-slideUp 0.25s;
+  }
+  @keyframes vpe-slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .vpe-head {
+    padding: 16px 20px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex; justify-content: space-between; align-items: center;
+    position: sticky; top: 0; background: white;
+  }
+  .vpe-head h2 { font-size: 16px; font-weight: 800; color: #0B1957; margin: 0; }
+  .vpe-close {
+    width: 28px; height: 28px; border-radius: 7px;
+    background: #f3f4f6; cursor: pointer; border: none;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; color: #4b5563;
+  }
+  .vpe-close:hover { background: #fee2e2; color: #991b1b; }
+  .vpe-body { padding: 20px; }
+  .vpe-footer {
+    padding: 12px 20px; border-top: 1px solid #e5e7eb;
+    display: flex; gap: 8px; justify-content: flex-end;
+    position: sticky; bottom: 0; background: white;
+  }
+  /* Info panel */
+  .vpe-info {
+    background: #f3f4f6; border-radius: 9px;
+    padding: 12px 14px; margin-bottom: 14px;
+    display: flex; gap: 10px; align-items: center;
+  }
+  .vpe-info .ico {
+    width: 36px; height: 36px;
+    background: #0B1957; color: #fff;
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .vpe-info .txt strong {
+    display: block; font-size: 13px; font-weight: 800;
+    color: #0B1957; margin-bottom: 2px;
+    font-family: 'Courier New', monospace;
+  }
+  .vpe-info .txt span { font-size: 11px; color: #4b5563; font-weight: 600; }
+  /* Form */
+  .vpe-field { margin-bottom: 12px; }
+  .vpe-field label {
+    display: block; font-size: 11px; font-weight: 800;
+    color: #6b7280; letter-spacing: 0.04em;
+    text-transform: uppercase; margin-bottom: 5px;
+  }
+  .vpe-field input, .vpe-field select, .vpe-field textarea {
+    width: 100%; padding: 9px 12px;
+    font-size: 14px; font-weight: 600; color: #111827;
+    border: 1px solid #d1d5db; border-radius: 8px;
+    font-family: inherit; box-sizing: border-box;
+  }
+  .vpe-field input:focus, .vpe-field select:focus, .vpe-field textarea:focus {
+    outline: none; border-color: #1D9E75;
+    box-shadow: 0 0 0 3px rgba(29, 158, 117, 0.12);
+  }
+  .vpe-field .veh-input {
+    font-family: 'Courier New', monospace; font-size: 16px;
+    font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .vpe-field .help { font-size: 11px; color: #6b7280; font-weight: 600; margin-top: 3px; }
+  .vpe-field .err { font-size: 11px; color: #dc2626; font-weight: 700; margin-top: 3px; display: none; }
+  .vpe-field.invalid input { border-color: #ef4444; }
+  .vpe-field.invalid .err { display: block; }
+  .vpe-field.valid input { border-color: #10b981; }
+  /* Preview */
+  .vpe-preview {
+    background: white; border: 1px solid #e5e7eb; border-radius: 8px;
+    padding: 12px; margin-top: 10px;
+  }
+  .vpe-preview .pr-row {
+    display: flex; align-items: center; gap: 8px; padding: 4px 0;
+    flex-wrap: wrap;
+  }
+  .vpe-preview .pr-from {
+    font-family: 'Courier New', monospace; font-size: 13px;
+    font-weight: 800; color: #991b1b;
+    background: #fee2e2; padding: 3px 8px; border-radius: 5px;
+    text-decoration: line-through;
+  }
+  .vpe-preview .pr-arrow { color: #6b7280; font-weight: 800; }
+  .vpe-preview .pr-to {
+    font-family: 'Courier New', monospace; font-size: 13px;
+    font-weight: 800; color: #047857;
+    background: #d1fae5; padding: 3px 8px; border-radius: 5px;
+  }
+  /* Buttons */
+  .vpe-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 9px 16px; font-size: 13px; font-weight: 700;
+    border-radius: 8px; cursor: pointer;
+    border: 1px solid transparent; font-family: inherit;
+    transition: all 0.15s;
+  }
+  .vpe-btn:hover { transform: translateY(-1px); }
+  .vpe-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .vpe-btn.primary { background: #1D9E75; color: white; }
+  .vpe-btn.primary:hover { background: #0d8262; }
+  .vpe-btn.ghost { background: #f3f4f6; color: #4b5563; border-color: #d1d5db; }
+  .vpe-btn.ghost:hover { background: white; border-color: #1D9E75; color: #0d8262; }
+  /* Merge flow */
+  .vpe-merge {
+    display: flex; align-items: center; gap: 12px;
+    background: linear-gradient(135deg, #fef3c7 0%, #ddd6fe 100%);
+    padding: 14px; border-radius: 10px; margin-bottom: 12px;
+  }
+  .vpe-merge-side { flex: 1; min-width: 0; }
+  .vpe-merge-side .lm {
+    font-size: 9px; font-weight: 800; color: #6b7280;
+    letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 3px;
+  }
+  .vpe-merge-side .vp {
+    font-family: 'Courier New', monospace; font-size: 13px;
+    font-weight: 800; background: white; color: #0B1957;
+    padding: 5px 10px; border-radius: 6px; display: inline-block;
+  }
+  .vpe-merge-side .sm { font-size: 10px; color: #4b5563; font-weight: 700; margin-top: 3px; }
+  .vpe-merge-arrow { font-size: 20px; color: #1D9E75; font-weight: 900; }
+  .vpe-merge-result {
+    background: white; padding: 10px 12px; border-radius: 8px;
+    border: 1px dashed #1D9E75; margin-top: 8px;
+  }
+  .vpe-merge-result .lbl {
+    font-size: 10px; font-weight: 800; color: #0d8262;
+    letter-spacing: 0.05em; text-transform: uppercase;
+  }
+  .vpe-merge-result .rt {
+    font-size: 12px; font-weight: 700; color: #0B1957; margin-top: 3px; line-height: 1.5;
+  }
+  /* Duplicate alert (in queue header) */
+  .vpe-dup-alert {
+    background: linear-gradient(135deg, #fff7ed 0%, #fef3c7 100%);
+    border: 1px solid #f59e0b;
+    border-left: 4px solid #f59e0b;
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin: 0 0 12px 0;
+  }
+  .vpe-dup-alert .dh {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+  }
+  .vpe-dup-alert .dh h4 {
+    font-size: 12px; font-weight: 800; color: #b45309;
+    letter-spacing: 0.02em; margin: 0;
+  }
+  .vpe-dup-alert .db { font-size: 11px; color: #1f2937; font-weight: 600; }
+  .vpe-dup-pair {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: white; padding: 4px 9px; border-radius: 6px;
+    font-family: 'Courier New', monospace; font-size: 10px;
+    font-weight: 800; color: #b45309;
+    border: 1px solid #f59e0b;
+    margin: 4px 5px 0 0; cursor: pointer; transition: all 0.15s;
+  }
+  .vpe-dup-pair:hover { background: #f59e0b; color: white; transform: translateY(-1px); }
+  /* Merge button on verified vehicle cards */
+  .vpe-merge-btn-inline {
+    background: #ddd6fe !important;
+    color: #5b21b6 !important;
+    border: 1px solid #a78bfa !important;
+    padding: 6px 12px !important;
+    border-radius: 6px !important;
+    font-size: 12px !important;
+    cursor: pointer !important;
+    font-weight: 700 !important;
+  }
+  .vpe-merge-btn-inline:hover { background: #a78bfa !important; color: white !important; }
+</style>
+
+<!-- ─── EDIT MODAL ─── -->
+<div class="vpe-overlay" id="vpe-edit-modal">
+  <div class="vpe-modal">
+    <div class="vpe-head">
+      <h2>✏️ Edit Verified Plate</h2>
+      <button class="vpe-close" onclick="VerifierPhotoEdit._close('vpe-edit-modal')">✕</button>
+    </div>
+    <div class="vpe-body">
+      <div class="vpe-info">
+        <div class="ico">🚗</div>
+        <div class="txt">
+          <strong id="vpe-current-veh">—</strong>
+          <span id="vpe-current-meta">—</span>
+        </div>
+      </div>
+      <div class="vpe-field" id="vpe-new-veh-field">
+        <label>Corrected Plate Number *</label>
+        <input type="text" class="veh-input" id="vpe-new-veh-input"
+               placeholder="MH00XX0000" maxlength="11"
+               oninput="VerifierPhotoEdit._validate(this.value)">
+        <div class="help">RTO format: 2 letters + 2 digits + 1-3 letters + 4 digits</div>
+        <div class="err">Invalid RTO format. Example: MH08EF7586</div>
+      </div>
+      <div class="vpe-field">
+        <label>Reason (audit log mein save hoga)</label>
+        <input type="text" id="vpe-edit-reason" placeholder="e.g. Typo while verifying — missed F">
+      </div>
+      <div class="vpe-preview" id="vpe-change-preview" style="display:none;">
+        <div style="font-size:10px;font-weight:800;color:#0d8262;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:5px;">
+          🔄 Change Preview
+        </div>
+        <div class="pr-row">
+          <span class="pr-from" id="vpe-preview-from">—</span>
+          <span class="pr-arrow">→</span>
+          <span class="pr-to" id="vpe-preview-to">—</span>
+        </div>
+        <div class="pr-row" style="font-size:11px;color:#6b7280;font-weight:700;">
+          📸 <span id="vpe-preview-affected">—</span> photo(s) ka plate update hoga
+        </div>
+      </div>
+    </div>
+    <div class="vpe-footer">
+      <button class="vpe-btn ghost" onclick="VerifierPhotoEdit._close('vpe-edit-modal')">Cancel</button>
+      <button class="vpe-btn primary" id="vpe-save-btn" onclick="VerifierPhotoEdit._saveEdit()">💾 Save Correction</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MERGE MODAL ─── -->
+<div class="vpe-overlay" id="vpe-merge-modal">
+  <div class="vpe-modal" style="max-width:560px;">
+    <div class="vpe-head">
+      <h2>🔗 Merge Duplicate Vehicles</h2>
+      <button class="vpe-close" onclick="VerifierPhotoEdit._close('vpe-merge-modal')">✕</button>
+    </div>
+    <div class="vpe-body">
+      <div style="background:#fef3c7;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:#92400e;font-weight:600;">
+        ⚠️ Same vehicle ke 2 entries lag rahe hain — typo se 2 alag groups ban gaye. Inhe combine karke ek correct vehicle banao.
+      </div>
+      <div class="vpe-merge">
+        <div class="vpe-merge-side">
+          <div class="lm">Source (remove)</div>
+          <div class="vp" id="vpe-merge-source">—</div>
+          <div class="sm" id="vpe-merge-source-stats">—</div>
+        </div>
+        <div class="vpe-merge-arrow">➡️</div>
+        <div class="vpe-merge-side">
+          <div class="lm">Target (keep)</div>
+          <div class="vp" id="vpe-merge-target">—</div>
+          <div class="sm" id="vpe-merge-target-stats">—</div>
+        </div>
+      </div>
+      <div class="vpe-merge-result">
+        <div class="lbl">✨ After Merge</div>
+        <div class="rt" id="vpe-merge-result-text">—</div>
+      </div>
+      <div class="vpe-field" style="margin-top:12px;">
+        <button class="vpe-btn ghost" style="width:100%;justify-content:center;" onclick="VerifierPhotoEdit._swapMerge()">
+          🔄 Swap Source ↔ Target (target galat hai toh)
+        </button>
+      </div>
+      <div class="vpe-field">
+        <label>Merge Reason</label>
+        <input type="text" id="vpe-merge-reason" value="Typo created duplicate — same vehicle">
+      </div>
+    </div>
+    <div class="vpe-footer">
+      <button class="vpe-btn ghost" onclick="VerifierPhotoEdit._close('vpe-merge-modal')">Cancel</button>
+      <button class="vpe-btn primary" id="vpe-merge-save-btn" onclick="VerifierPhotoEdit._confirmMerge()">🔗 Confirm Merge</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── JAVASCRIPT MODULE ─── -->
+<script>
+(function() {
+  'use strict';
+
+  // Verify dependencies
+  if (typeof window.api !== 'function' || typeof window.state === 'undefined') {
+    console.warn('[VerifierPhotoEdit] Dependencies missing, module disabled');
+    return;
+  }
+
+  var RTO_REGEX = /^[A-Z]{2}[0-9]{2}[A-Z]{1,3}[0-9]{4}$/;
+
+  var vstate = {
+    editVeh: '',
+    editVehicleObj: null,
+    mergeSource: null,    // vehicle object
+    mergeTarget: null
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  //  PUBLIC API — window.VerifierPhotoEdit
+  // ═══════════════════════════════════════════════════════════════
+  var VerifierPhotoEdit = {
+    
+    /**
+     * Open edit modal for a verified vehicle (by idx in current filtered list)
+     * Replaces the old reEditPlate flow.
+     */
+    openEdit: function(idx) {
+      var vehicles = window.getFilteredVehicles ? window.getFilteredVehicles() : (window.state.vehicles || []);
+      var v = vehicles[idx];
+      if (!v) { window.toast('Vehicle not found', 'error'); return; }
+      if (!v.verified) { window.toast('Sirf verified vehicles edit ho sakte', 'error'); return; }
+
+      vstate.editVeh = v.verifiedPlate || '';
+      vstate.editVehicleObj = v;
+      document.getElementById('vpe-current-veh').textContent = v.verifiedPlate || '—';
+      document.getElementById('vpe-current-meta').textContent = 
+        v.photos.length + ' photo(s) · ' + (v.mode === 'hood' ? 'Hood mode' : 'Back Panel') + 
+        ' · ' + (v.city || '—') + ' · by ' + (v.member || '—');
+      document.getElementById('vpe-new-veh-input').value = '';
+      document.getElementById('vpe-edit-reason').value = '';
+      document.getElementById('vpe-new-veh-field').classList.remove('valid', 'invalid');
+      document.getElementById('vpe-change-preview').style.display = 'none';
+      document.getElementById('vpe-preview-from').textContent = v.verifiedPlate || '—';
+      document.getElementById('vpe-preview-affected').textContent = v.photos.length;
+      this._open('vpe-edit-modal');
+      setTimeout(function() { document.getElementById('vpe-new-veh-input').focus(); }, 100);
+    },
+
+    /**
+     * Open merge modal with two vehicle objects (or plates)
+     */
+    openMerge: function(sourceIdxOrPlate, targetIdxOrPlate) {
+      var vehicles = window.getFilteredVehicles ? window.getFilteredVehicles() : (window.state.vehicles || []);
+      
+      var source, target;
+      if (typeof sourceIdxOrPlate === 'number') {
+        source = vehicles[sourceIdxOrPlate];
+      } else {
+        source = vehicles.find(function(v) { return v.verifiedPlate === sourceIdxOrPlate; });
+      }
+      if (typeof targetIdxOrPlate === 'number') {
+        target = vehicles[targetIdxOrPlate];
+      } else {
+        target = vehicles.find(function(v) { return v.verifiedPlate === targetIdxOrPlate; });
+      }
+      
+      if (!source || !target) { window.toast('Vehicle not found in current view', 'error'); return; }
+      if (!source.verified || !target.verified) { window.toast('Dono verified hone chahiye merge ke liye', 'error'); return; }
+      if (source === target) { window.toast('Same vehicle hai', 'error'); return; }
+
+      vstate.mergeSource = source;
+      vstate.mergeTarget = target;
+      this._updateMergeUi();
+      this._open('vpe-merge-modal');
+    },
+
+    /**
+     * Detect duplicate verified vehicles in current view
+     */
+    detectDuplicates: function() {
+      var vehicles = window.getFilteredVehicles ? window.getFilteredVehicles() : (window.state.vehicles || []);
+      var verified = vehicles.filter(function(v) { return v.verified && v.verifiedPlate; });
+      
+      var pairs = [];
+      var seen = {};
+      
+      for (var i = 0; i < verified.length; i++) {
+        for (var j = i + 1; j < verified.length; j++) {
+          var a = verified[i].verifiedPlate.toUpperCase();
+          var b = verified[j].verifiedPlate.toUpperCase();
+          var key = [a, b].sort().join('|');
+          if (seen[key]) continue;
+          seen[key] = true;
+          
+          var dist = VerifierPhotoEdit._levenshtein(a, b);
+          if (dist >= 1 && dist <= 2 && 
+              Math.abs(a.length - b.length) <= 2 &&
+              a.length >= 9 && b.length >= 9 &&
+              a.length <= 11 && b.length <= 11) {
+            pairs.push({
+              sourcePlate: a, targetPlate: b,
+              sourceCount: verified[i].photos.length,
+              targetCount: verified[j].photos.length,
+              distance: dist
+            });
+          }
+        }
+      }
+      pairs.sort(function(x, y) { return x.distance - y.distance; });
+      return pairs;
+    },
+
+    /**
+     * Render duplicate alert HTML (call after renderVehicles)
+     */
+    renderDuplicateAlert: function() {
+      var pairs = this.detectDuplicates();
+      if (pairs.length === 0) return '';
+      
+      var html = '<div class="vpe-dup-alert">' +
+        '<div class="dh">' +
+          '<span style="font-size:16px;">🔍</span>' +
+          '<h4>' + pairs.length + ' Possible Duplicate' + (pairs.length > 1 ? 's' : '') + ' — Typo Likely</h4>' +
+        '</div>' +
+        '<div class="db">' +
+          'Inn vehicles ka plate spelling almost same hai. Verification ke time typo ho gayi ho sakti hai. Click karke merge karo:<br>';
+      pairs.slice(0, 5).forEach(function(p) {
+        html += '<span class="vpe-dup-pair" onclick="VerifierPhotoEdit.openMerge(\'' + window.escHtml(p.sourcePlate) + '\',\'' + window.escHtml(p.targetPlate) + '\')">' +
+                  '<strong>' + window.escHtml(p.sourcePlate) + '</strong> (' + p.sourceCount + ')' +
+                  '<span>⟷</span>' +
+                  '<strong>' + window.escHtml(p.targetPlate) + '</strong> (' + p.targetCount + ')' +
+                '</span>';
+      });
+      html += '</div></div>';
+      return html;
+    },
+
+    /**
+     * Inject merge button into a verified vehicle card (called from renderVehicleCard hook)
+     */
+    getMergeButtonHtml: function(idx) {
+      return '<button onclick="VerifierPhotoEdit.openMerge(' + idx + ', null)" class="vpe-merge-btn-inline" title="Merge with another duplicate vehicle">🔗 Merge</button>';
+    },
+
+    // ═══════════════════════════════════════════════════════════════
+    //  INTERNAL HELPERS
+    // ═══════════════════════════════════════════════════════════════
+    _open: function(id) { document.getElementById(id).classList.add('active'); },
+    _close: function(id) { document.getElementById(id).classList.remove('active'); },
+
+    _validate: function(value) {
+      var cleaned = (value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      document.getElementById('vpe-new-veh-input').value = cleaned;
+      var field = document.getElementById('vpe-new-veh-field');
+      var preview = document.getElementById('vpe-change-preview');
+      if (cleaned.length === 0) {
+        field.classList.remove('valid', 'invalid');
+        preview.style.display = 'none';
+      } else if (RTO_REGEX.test(cleaned)) {
+        if (cleaned === vstate.editVeh) {
+          field.classList.remove('valid');
+          field.classList.add('invalid');
+          field.querySelector('.err').textContent = 'Same as current — koi change nahi';
+          preview.style.display = 'none';
+        } else {
+          field.classList.add('valid');
+          field.classList.remove('invalid');
+          document.getElementById('vpe-preview-to').textContent = cleaned;
+          preview.style.display = 'block';
+        }
+      } else {
+        field.classList.add('invalid');
+        field.classList.remove('valid');
+        field.querySelector('.err').textContent = 'Invalid RTO format. Example: MH08EF7586';
+        preview.style.display = 'none';
+      }
+    },
+
+    _saveEdit: function() {
+      var newPlate = document.getElementById('vpe-new-veh-input').value.trim().toUpperCase();
+      var reason = document.getElementById('vpe-edit-reason').value.trim();
+      var field = document.getElementById('vpe-new-veh-field');
+      var v = vstate.editVehicleObj;
+      
+      if (!RTO_REGEX.test(newPlate)) {
+        field.classList.add('invalid');
+        return;
+      }
+      if (newPlate === vstate.editVeh) {
+        window.toast('Same plate — koi change nahi', 'error');
+        return;
+      }
+      if (!v || !v.photos || v.photos.length === 0) {
+        window.toast('Photos not found', 'error');
+        return;
+      }
+
+      var btn = document.getElementById('vpe-save-btn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Saving...';
+
+      var oldPlate = vstate.editVeh;
+      var photoIds = v.photos.map(function(p) { return p.id; });
+      var editedBy = (window.state && window.state.user && window.state.user.phone) || '9922138138';
+      var editedByName = (window.state && window.state.user && window.state.user.name) || 'Admin';
+      var nowIso = new Date().toISOString();
+
+      // Step 1: Preserve original_vehicle_number where NULL
+      window.api('/rest/v1/trial_photos?id=in.(' + photoIds.join(',') + ')&original_vehicle_number=is.null', {
+        method: 'PATCH',
+        headers: { 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ original_vehicle_number: oldPlate })
+      }).then(function() {
+        // Step 2: Update plate + verified_plate + edit metadata
+        return window.api('/rest/v1/trial_photos?id=in.(' + photoIds.join(',') + ')', {
+          method: 'PATCH',
+          headers: { 'Prefer': 'return=minimal' },
+          body: JSON.stringify({
+            vehicle_number: newPlate,
+            verified_plate: newPlate,
+            edited_at: nowIso,
+            edited_by: editedBy,
+            edit_reason: reason || null
+          })
+        });
+      }).then(function() {
+        // Step 3: Log to audit
+        return window.api('/rest/v1/trial_photo_edits', {
+          method: 'POST',
+          headers: { 'Prefer': 'return=minimal' },
+          body: JSON.stringify({
+            action_type: 'vehicle_edit',
+            photo_ids: photoIds,
+            affected_count: photoIds.length,
+            before_value: { vehicle_number: oldPlate, verified_plate: oldPlate },
+            after_value: { vehicle_number: newPlate, verified_plate: newPlate },
+            reason: reason || null,
+            edited_by: editedBy + ' (' + editedByName + ')'
+          })
+        });
+      }).then(function() {
+        // Update local state
+        v.verifiedPlate = newPlate;
+        v.photos.forEach(function(p) {
+          p.vehicle_number = newPlate;
+          p.verified_plate = newPlate;
+          if (!p.original_vehicle_number) p.original_vehicle_number = oldPlate;
+        });
+        window.toast('✅ Plate corrected: ' + oldPlate + ' → ' + newPlate + ' (' + photoIds.length + ' photo' + (photoIds.length > 1 ? 's' : '') + ')', 'success');
+        VerifierPhotoEdit._close('vpe-edit-modal');
+        btn.disabled = false;
+        btn.textContent = '💾 Save Correction';
+        if (typeof window.renderVehicles === 'function') window.renderVehicles();
+      }).catch(function(e) {
+        console.error('[VerifierPhotoEdit] save failed', e);
+        window.toast('❌ Save failed: ' + e.message, 'error');
+        btn.disabled = false;
+        btn.textContent = '💾 Save Correction';
+      });
+    },
+
+    _swapMerge: function() {
+      var tmp = vstate.mergeSource;
+      vstate.mergeSource = vstate.mergeTarget;
+      vstate.mergeTarget = tmp;
+      this._updateMergeUi();
+    },
+
+    _updateMergeUi: function() {
+      var s = vstate.mergeSource;
+      var t = vstate.mergeTarget;
+      document.getElementById('vpe-merge-source').textContent = s.verifiedPlate || '—';
+      document.getElementById('vpe-merge-target').textContent = t.verifiedPlate || '—';
+      document.getElementById('vpe-merge-source-stats').textContent = 
+        '📸 ' + s.photos.length + ' photo(s) · ' + (s.mode === 'hood' ? 'Hood' : 'Back');
+      document.getElementById('vpe-merge-target-stats').textContent = 
+        '📸 ' + t.photos.length + ' photo(s) · ' + (t.mode === 'hood' ? 'Hood' : 'Back');
+      var total = s.photos.length + t.photos.length;
+      document.getElementById('vpe-merge-result-text').innerHTML = 
+        '<strong>' + window.escHtml(t.verifiedPlate) + '</strong> ke paas <strong>' + total + ' photo(s)</strong> ho jayenge (' + s.photos.length + '+' + t.photos.length + ')<br>' +
+        '<span style="font-weight:600;color:#6b7280;font-size:11px;">' + window.escHtml(s.verifiedPlate) + ' entry consolidate ho jayegi · Same group_id</span>';
+    },
+
+    _confirmMerge: function() {
+      var s = vstate.mergeSource;
+      var t = vstate.mergeTarget;
+      var reason = document.getElementById('vpe-merge-reason').value.trim();
+      if (!s || !t) { window.toast('Vehicles not found', 'error'); return; }
+
+      var btn = document.getElementById('vpe-merge-save-btn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Merging...';
+
+      var sourcePlate = s.verifiedPlate;
+      var targetPlate = t.verifiedPlate;
+      var sourcePhotoIds = s.photos.map(function(p) { return p.id; });
+      var targetGroupId = t.groupId || (t.photos[0] && t.photos[0].vehicle_group_id) || null;
+      var editedBy = (window.state && window.state.user && window.state.user.phone) || '9922138138';
+      var editedByName = (window.state && window.state.user && window.state.user.name) || 'Admin';
+      var nowIso = new Date().toISOString();
+
+      // Step 1: Preserve original on source photos
+      window.api('/rest/v1/trial_photos?id=in.(' + sourcePhotoIds.join(',') + ')&original_vehicle_number=is.null', {
+        method: 'PATCH',
+        headers: { 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ original_vehicle_number: sourcePlate })
+      }).then(function() {
+        // Step 2: Update source photos with target plate + same group_id
+        var updateBody = {
+          vehicle_number: targetPlate,
+          verified_plate: targetPlate,
+          edited_at: nowIso,
+          edited_by: editedBy,
+          edit_reason: reason || ('Merged from ' + sourcePlate)
+        };
+        if (targetGroupId) updateBody.vehicle_group_id = targetGroupId;
+        return window.api('/rest/v1/trial_photos?id=in.(' + sourcePhotoIds.join(',') + ')', {
+          method: 'PATCH',
+          headers: { 'Prefer': 'return=minimal' },
+          body: JSON.stringify(updateBody)
+        });
+      }).then(function() {
+        // Step 3: Log to audit
+        return window.api('/rest/v1/trial_photo_edits', {
+          method: 'POST',
+          headers: { 'Prefer': 'return=minimal' },
+          body: JSON.stringify({
+            action_type: 'merge',
+            photo_ids: sourcePhotoIds,
+            affected_count: sourcePhotoIds.length,
+            before_value: { vehicle_number: sourcePlate, count: sourcePhotoIds.length },
+            after_value: { vehicle_number: targetPlate, group_id: targetGroupId, merged_into_count: t.photos.length },
+            reason: reason || null,
+            edited_by: editedBy + ' (' + editedByName + ')'
+          })
+        });
+      }).then(function() {
+        // Update local state — merge source photos into target
+        s.photos.forEach(function(p) {
+          p.vehicle_number = targetPlate;
+          p.verified_plate = targetPlate;
+          if (!p.original_vehicle_number) p.original_vehicle_number = sourcePlate;
+          if (targetGroupId) p.vehicle_group_id = targetGroupId;
+        });
+        
+        window.toast('🔗 Merged! ' + sourcePlate + ' → ' + targetPlate + ' (' + sourcePhotoIds.length + ' photos moved)', 'success');
+        VerifierPhotoEdit._close('vpe-merge-modal');
+        btn.disabled = false;
+        btn.textContent = '🔗 Confirm Merge';
+        // Re-load entire queue from DB to refresh groups
+        if (typeof window.loadQueue === 'function') window.loadQueue();
+        else if (typeof window.renderVehicles === 'function') window.renderVehicles();
+      }).catch(function(e) {
+        console.error('[VerifierPhotoEdit] merge failed', e);
+        window.toast('❌ Merge failed: ' + e.message, 'error');
+        btn.disabled = false;
+        btn.textContent = '🔗 Confirm Merge';
+      });
+    },
+
+    _levenshtein: function(a, b) {
+      if (a === b) return 0;
+      if (a.length === 0) return b.length;
+      if (b.length === 0) return a.length;
+      var matrix = [], i, j;
+      for (i = 0; i <= b.length; i++) matrix[i] = [i];
+      for (j = 0; j <= a.length; j++) matrix[0][j] = j;
+      for (i = 1; i <= b.length; i++) {
+        for (j = 1; j <= a.length; j++) {
+          if (b.charAt(i-1) === a.charAt(j-1)) {
+            matrix[i][j] = matrix[i-1][j-1];
+          } else {
+            matrix[i][j] = Math.min(matrix[i-1][j-1] + 1, matrix[i][j-1] + 1, matrix[i-1][j] + 1);
+          }
+        }
+      }
+      return matrix[b.length][a.length];
+    }
+  };
+
+  // ─── ESC + outside click ───
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      ['vpe-edit-modal', 'vpe-merge-modal'].forEach(function(id) {
+        var m = document.getElementById(id);
+        if (m && m.classList.contains('active')) m.classList.remove('active');
+      });
+    }
+  });
+  ['vpe-edit-modal', 'vpe-merge-modal'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('click', function(e) {
+        if (e.target === el) el.classList.remove('active');
+      });
+    }
+  });
+
+  window.VerifierPhotoEdit = VerifierPhotoEdit;
+  console.log('[VerifierPhotoEdit] v1.0 ready');
+})();
+</script>
+
+<!-- ═══ END VERIFIER PHOTO EDIT MODULE ═══ -->
+<script>
+  // Wire VerifierPhotoEdit duplicate alert into queue
+  (function() {
+    if (!window.VerifierPhotoEdit) return;
+    // Wrap renderVehicles to inject duplicate alert
+    var originalRender = window.renderVehicles;
+    if (typeof originalRender !== 'function') return;
+    window.renderVehicles = function() {
+      originalRender.apply(this, arguments);
+      // Inject duplicate alert at top of vehicleList
+      try {
+        var listEl = document.getElementById('vehicleList');
+        if (listEl) {
+          // Remove any existing alert
+          var oldAlert = listEl.querySelector('.vpe-dup-alert');
+          if (oldAlert) oldAlert.remove();
+          // Inject new alert
+          var alertHtml = window.VerifierPhotoEdit.renderDuplicateAlert();
+          if (alertHtml) {
+            listEl.insertAdjacentHTML('afterbegin', alertHtml);
+          }
+        }
+      } catch (e) { console.warn('[VPE] hook error', e); }
+    };
+    console.log('[VerifierPhotoEdit] renderVehicles hook wired');
+  })();
+</script>
+
 </body>
 </html>
