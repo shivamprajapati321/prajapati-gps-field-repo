@@ -1,0 +1,951 @@
+<!--
+═══════════════════════════════════════════════════════════════════════════
+  Prajapati GPS — Photo Edit Module v1.0
+  Date: 21-May-2026
+  
+  PURPOSE:
+  Drop-in HTML+CSS+JS module for vehicle number editing, photo reassignment,
+  and duplicate vehicle merging in admin photos browser.
+  
+  DEPENDENCIES (must exist in host file):
+  - window.api(path, options)         — Supabase REST helper
+  - window.showToast(msg, type)       — toast notification
+  - window.escapeHtml(s)              — HTML escape
+  - window.CONFIG.supabaseUrl/Key     — Supabase config
+  
+  HOW TO USE:
+  1. Paste this ENTIRE block before </body> in admin.html or admin-v2.html
+  2. Add an "Edit" button somewhere in your photos browser:
+     <button onclick="PhotoEdit.openEditFromPhoto(currentPhoto)">✏️ Edit Vehicle</button>
+  3. Optionally add Merge button on vehicle rows:
+     <button onclick="PhotoEdit.openMerge('MH08E7586','MH08EF7586')">🔗 Merge</button>
+  4. Done. Module auto-detects duplicates and shows alerts when photos load.
+
+  PUBLIC API:
+  - PhotoEdit.openEditFromPhoto(photo)   — opens edit modal for that photo's vehicle
+  - PhotoEdit.openEdit(vehicleNumber, campaignKey)  — opens edit modal by vehicle
+  - PhotoEdit.openReassign(photoId)      — opens reassign modal for single photo
+  - PhotoEdit.openMerge(source, target)  — opens merge modal
+  - PhotoEdit.detectDuplicates(photos)   — returns array of suspect pairs
+  - PhotoEdit.refreshHook = function()   — set callback to reload photos after edit
+═══════════════════════════════════════════════════════════════════════════
+-->
+
+<!-- ─── CSS ─── -->
+<style id="pe-styles">
+  /* Modal */
+  .pe-overlay {
+    position: fixed; inset: 0;
+    background: rgba(11, 25, 87, 0.6);
+    backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center;
+    z-index: 10000; padding: 20px;
+    font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  }
+  .pe-overlay.active { display: flex; animation: pe-fadeIn 0.2s; }
+  @keyframes pe-fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .pe-modal {
+    background: white; border-radius: 16px;
+    width: 100%; max-width: 540px;
+    max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 25px 70px rgba(0, 0, 0, 0.25);
+    animation: pe-slideUp 0.25s;
+  }
+  @keyframes pe-slideUp {
+    from { transform: translateY(30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  .pe-head {
+    padding: 18px 22px; border-bottom: 1px solid #e2e8f0;
+    display: flex; justify-content: space-between; align-items: center;
+    position: sticky; top: 0; background: white; z-index: 1;
+  }
+  .pe-head h2 {
+    font-size: 17px; font-weight: 800; color: #0B1957;
+    display: flex; align-items: center; gap: 8px; margin: 0;
+  }
+  .pe-close {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: #f1f5f9; cursor: pointer; border: none;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; color: #475569;
+  }
+  .pe-close:hover { background: #fee2e2; color: #b91c1c; }
+  .pe-body { padding: 22px; }
+  .pe-footer {
+    padding: 14px 22px; border-top: 1px solid #e2e8f0;
+    display: flex; gap: 8px; justify-content: flex-end;
+    position: sticky; bottom: 0; background: white;
+  }
+  /* Info panel */
+  .pe-info {
+    background: #f1f5f9; border-radius: 10px;
+    padding: 14px 16px; margin-bottom: 16px;
+    display: flex; gap: 12px; align-items: center;
+  }
+  .pe-info .ico {
+    width: 40px; height: 40px;
+    background: #26d0ce; color: #0B1957;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 800; flex-shrink: 0;
+  }
+  .pe-info .txt strong {
+    display: block; font-size: 13px; font-weight: 800;
+    color: #0B1957; margin-bottom: 2px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .pe-info .txt span { font-size: 12px; color: #475569; font-weight: 600; }
+  .pe-info.warn { background: #fef3c7; }
+  .pe-info.warn .ico { background: #f59e0b; color: white; }
+  .pe-info.warn .txt strong { color: #b45309; }
+  /* Field */
+  .pe-field { margin-bottom: 14px; }
+  .pe-field label {
+    display: block; font-size: 11px; font-weight: 800;
+    color: #94a3b8; letter-spacing: 0.05em;
+    text-transform: uppercase; margin-bottom: 6px;
+  }
+  .pe-field input, .pe-field select, .pe-field textarea {
+    width: 100%; padding: 10px 13px;
+    font-size: 14px; font-weight: 600; color: #0f172a;
+    border: 1px solid #e2e8f0; border-radius: 9px;
+    font-family: inherit; box-sizing: border-box;
+  }
+  .pe-field input:focus, .pe-field select:focus, .pe-field textarea:focus {
+    outline: none; border-color: #26d0ce;
+    box-shadow: 0 0 0 3px rgba(38, 208, 206, 0.12);
+  }
+  .pe-field .veh-input {
+    font-family: 'JetBrains Mono', monospace; font-size: 16px;
+    font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;
+  }
+  .pe-field .help { font-size: 11px; color: #94a3b8; font-weight: 600; margin-top: 4px; }
+  .pe-field .err { font-size: 11px; color: #b91c1c; font-weight: 700; margin-top: 4px; display: none; }
+  .pe-field.invalid input { border-color: #ef4444; }
+  .pe-field.invalid .err { display: block; }
+  .pe-field.valid input { border-color: #10b981; }
+  /* Preview */
+  .pe-preview {
+    background: white; border: 1px solid #e2e8f0; border-radius: 10px;
+    padding: 14px; margin-top: 12px;
+  }
+  .pe-preview .pe-row {
+    display: flex; align-items: center; gap: 10px; padding: 6px 0;
+    flex-wrap: wrap;
+  }
+  .pe-preview .pe-lbl {
+    font-size: 11px; font-weight: 800; color: #94a3b8;
+    letter-spacing: 0.05em; text-transform: uppercase; min-width: 60px;
+  }
+  .pe-preview .pe-from {
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    font-weight: 800; color: #b91c1c;
+    background: #fee2e2; padding: 3px 8px; border-radius: 5px;
+    text-decoration: line-through;
+  }
+  .pe-preview .pe-arrow { color: #94a3b8; font-weight: 800; }
+  .pe-preview .pe-to {
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    font-weight: 800; color: #047857;
+    background: #d1fae5; padding: 3px 8px; border-radius: 5px;
+  }
+  /* Buttons */
+  .pe-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 16px; font-size: 13px; font-weight: 700;
+    border-radius: 9px; cursor: pointer;
+    border: 1px solid transparent; font-family: inherit;
+    transition: all 0.15s;
+  }
+  .pe-btn:hover { transform: translateY(-1px); }
+  .pe-btn:active { transform: translateY(0); }
+  .pe-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .pe-btn.primary { background: #26d0ce; color: #0B1957; }
+  .pe-btn.primary:hover { background: #0fa8a5; color: white; }
+  .pe-btn.ghost { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
+  .pe-btn.ghost:hover { background: white; border-color: #26d0ce; color: #0fa8a5; }
+  .pe-btn.danger { background: #fee2e2; color: #b91c1c; border-color: #ef4444; }
+  .pe-btn.danger:hover { background: #ef4444; color: white; }
+  /* Merge flow visual */
+  .pe-merge-flow {
+    display: flex; align-items: center; gap: 14px;
+    background: linear-gradient(135deg, #dbeafe 0%, #ede9fe 100%);
+    padding: 16px; border-radius: 12px; margin-bottom: 14px;
+  }
+  .pe-merge-side { flex: 1; min-width: 0; }
+  .pe-merge-side .lm {
+    font-size: 10px; font-weight: 800; color: #94a3b8;
+    letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px;
+  }
+  .pe-merge-side .vp {
+    font-family: 'JetBrains Mono', monospace; font-size: 14px;
+    font-weight: 800; background: white; color: #0B1957;
+    padding: 6px 12px; border-radius: 7px; display: inline-block;
+  }
+  .pe-merge-side .sm { font-size: 11px; color: #475569; font-weight: 700; margin-top: 4px; }
+  .pe-merge-arrow { font-size: 22px; color: #26d0ce; font-weight: 900; }
+  .pe-merge-result {
+    background: white; padding: 12px 14px; border-radius: 10px;
+    border: 1px dashed #26d0ce; margin-top: 10px;
+  }
+  .pe-merge-result .lbl-res {
+    font-size: 11px; font-weight: 800; color: #0fa8a5;
+    letter-spacing: 0.05em; text-transform: uppercase;
+  }
+  .pe-merge-result .rt {
+    font-size: 13px; font-weight: 700; color: #0B1957; margin-top: 4px; line-height: 1.5;
+  }
+  /* Duplicate alert (injected into photos browser) */
+  .pe-dup-alert {
+    background: linear-gradient(135deg, #fff7ed 0%, #fef3c7 100%);
+    border: 1px solid #f59e0b;
+    border-left: 4px solid #f59e0b;
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin: 12px 0;
+    font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  }
+  .pe-dup-alert .pe-head-alert {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+  }
+  .pe-dup-alert .pe-head-alert h4 {
+    font-size: 13px; font-weight: 800; color: #b45309;
+    letter-spacing: 0.02em; margin: 0;
+  }
+  .pe-dup-alert .pe-body-alert {
+    font-size: 12px; color: #0f172a; font-weight: 600;
+  }
+  .pe-dup-pair {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: white; padding: 5px 10px; border-radius: 7px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    font-weight: 800; color: #b45309;
+    border: 1px solid #f59e0b;
+    margin: 6px 6px 0 0;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .pe-dup-pair:hover { background: #f59e0b; color: white; transform: translateY(-1px); }
+  .pe-dup-pair .pe-arr { color: currentColor; }
+</style>
+
+<!-- ─── HTML MODALS ─── -->
+<!-- Edit Vehicle Modal -->
+<div class="pe-overlay" id="pe-edit-modal">
+  <div class="pe-modal">
+    <div class="pe-head">
+      <h2>✏️ Edit Vehicle Number</h2>
+      <button class="pe-close" onclick="PhotoEdit._close('pe-edit-modal')">✕</button>
+    </div>
+    <div class="pe-body">
+      <div class="pe-info">
+        <div class="ico">🚗</div>
+        <div class="txt">
+          <strong id="pe-current-veh">—</strong>
+          <span id="pe-current-meta">—</span>
+        </div>
+      </div>
+      <div class="pe-field" id="pe-new-veh-field">
+        <label>New Vehicle Number *</label>
+        <input type="text" class="veh-input" id="pe-new-veh-input"
+               placeholder="MH00XX0000" maxlength="11"
+               oninput="PhotoEdit._validate(this.value)">
+        <div class="help">RTO format: 2 letters + 2 digits + 1-3 letters + 4 digits</div>
+        <div class="err">Invalid RTO format. Example: MH08EF7586</div>
+      </div>
+      <div class="pe-field">
+        <label>Reason for Edit (optional)</label>
+        <input type="text" id="pe-edit-reason" placeholder="e.g. Typo correction during manual approval">
+        <div class="help">Audit log mein save hoga</div>
+      </div>
+      <div class="pe-preview" id="pe-change-preview" style="display:none;">
+        <div style="font-size:11px;font-weight:800;color:#0fa8a5;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:6px;">
+          🔄 Change Preview
+        </div>
+        <div class="pe-row">
+          <span class="pe-lbl">Vehicle</span>
+          <span class="pe-from" id="pe-preview-from">—</span>
+          <span class="pe-arrow">→</span>
+          <span class="pe-to" id="pe-preview-to">—</span>
+        </div>
+        <div class="pe-row" style="font-size:11px;color:#94a3b8;font-weight:700;margin-top:4px;">
+          <span style="margin-left:70px;">📸 <span id="pe-preview-affected">—</span> photo(s) ka vehicle number update hoga</span>
+        </div>
+      </div>
+    </div>
+    <div class="pe-footer">
+      <button class="pe-btn ghost" onclick="PhotoEdit._close('pe-edit-modal')">Cancel</button>
+      <button class="pe-btn primary" id="pe-save-btn" onclick="PhotoEdit._saveEdit()">💾 Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reassign Single Photo Modal -->
+<div class="pe-overlay" id="pe-reassign-modal">
+  <div class="pe-modal">
+    <div class="pe-head">
+      <h2>🔀 Reassign Photo to Different Vehicle</h2>
+      <button class="pe-close" onclick="PhotoEdit._close('pe-reassign-modal')">✕</button>
+    </div>
+    <div class="pe-body">
+      <div class="pe-info warn">
+        <div class="ico">📸</div>
+        <div class="txt">
+          <strong id="pe-ra-current">—</strong>
+          <span id="pe-ra-meta">—</span>
+        </div>
+      </div>
+      <div class="pe-field">
+        <label>Target Vehicle Number *</label>
+        <input type="text" class="veh-input" id="pe-ra-target"
+               placeholder="MH00XX0000" maxlength="11"
+               oninput="PhotoEdit._validateRa(this.value)">
+        <div class="help">Existing vehicle ya new — RTO format mein daalo</div>
+        <div class="err">Invalid RTO format</div>
+      </div>
+      <div class="pe-field">
+        <label>Reason for Reassignment</label>
+        <textarea id="pe-ra-reason" rows="2" placeholder="e.g. Photo wrong vehicle ke saath save ho gayi thi"></textarea>
+      </div>
+    </div>
+    <div class="pe-footer">
+      <button class="pe-btn ghost" onclick="PhotoEdit._close('pe-reassign-modal')">Cancel</button>
+      <button class="pe-btn primary" id="pe-ra-save-btn" onclick="PhotoEdit._saveReassign()">🔀 Reassign Photo</button>
+    </div>
+  </div>
+</div>
+
+<!-- Merge Modal -->
+<div class="pe-overlay" id="pe-merge-modal">
+  <div class="pe-modal" style="max-width:580px;">
+    <div class="pe-head">
+      <h2>🔗 Merge Duplicate Vehicles</h2>
+      <button class="pe-close" onclick="PhotoEdit._close('pe-merge-modal')">✕</button>
+    </div>
+    <div class="pe-body">
+      <div class="pe-merge-flow">
+        <div class="pe-merge-side">
+          <div class="lm">Source (will be removed)</div>
+          <div class="vp" id="pe-merge-source">—</div>
+          <div class="sm" id="pe-merge-source-stats">—</div>
+        </div>
+        <div class="pe-merge-arrow">➡️</div>
+        <div class="pe-merge-side">
+          <div class="lm">Target (will keep all photos)</div>
+          <div class="vp" id="pe-merge-target">—</div>
+          <div class="sm" id="pe-merge-target-stats">—</div>
+        </div>
+      </div>
+      <div class="pe-merge-result">
+        <div class="lbl-res">✨ After Merge</div>
+        <div class="rt" id="pe-merge-result-text">—</div>
+      </div>
+      <div class="pe-field" style="margin-top:14px;">
+        <label>Direction</label>
+        <button class="pe-btn ghost" style="width:100%;justify-content:center;" onclick="PhotoEdit._swapMerge()">
+          🔄 Swap Source ↔ Target
+        </button>
+        <div class="help">Agar target galat hai toh swap kar lo</div>
+      </div>
+      <div class="pe-field">
+        <label>Merge Reason</label>
+        <input type="text" id="pe-merge-reason" value="Typo in manual approval — same vehicle as target">
+        <div class="help">Audit log mein save hoga · Editable</div>
+      </div>
+    </div>
+    <div class="pe-footer">
+      <button class="pe-btn ghost" onclick="PhotoEdit._close('pe-merge-modal')">Cancel</button>
+      <button class="pe-btn primary" id="pe-merge-save-btn" onclick="PhotoEdit._confirmMerge()">🔗 Confirm Merge</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── JAVASCRIPT MODULE ─── -->
+<script>
+(function() {
+  'use strict';
+
+  // Verify dependencies
+  if (typeof window.api !== 'function') {
+    console.warn('[PhotoEdit] window.api not found — module disabled');
+    return;
+  }
+  if (typeof window.showToast !== 'function') {
+    window.showToast = function(msg) { alert(msg); };
+  }
+  if (typeof window.escapeHtml !== 'function') {
+    window.escapeHtml = function(s) {
+      if (s == null) return '';
+      return String(s).replace(/[&<>"']/g, function(c) {
+        return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+      });
+    };
+  }
+
+  // RTO regex: 2 letters + 2 digits + 1-3 letters + 4 digits
+  var RTO_REGEX = /^[A-Z]{2}[0-9]{2}[A-Z]{1,3}[0-9]{4}$/;
+
+  // State for current operation
+  var state = {
+    editCurrentVeh: '',
+    editAffectedPhotos: [],   // array of photo objects
+    editCampaignKey: '',
+    reassignPhoto: null,      // single photo object
+    mergeSource: '',
+    mergeTarget: '',
+    mergeSourcePhotos: [],
+    mergeTargetPhotos: []
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  //  PUBLIC API
+  // ═══════════════════════════════════════════════════════════════
+  var PhotoEdit = {
+    refreshHook: null,  // Set by host: function(){} to reload photos after edit
+    
+    // Open edit modal from a photo object (uses photo.vehicle_number)
+    openEditFromPhoto: function(photo) {
+      if (!photo || !photo.vehicle_number) {
+        showToast('Vehicle number nahi mila', 'error');
+        return;
+      }
+      this.openEdit(photo.vehicle_number, photo.campaign_key);
+    },
+
+    // Open edit modal — fetches all photos with this vehicle_number
+    openEdit: function(vehicleNumber, campaignKey) {
+      if (!vehicleNumber) return;
+      state.editCurrentVeh = vehicleNumber;
+      state.editCampaignKey = campaignKey || '';
+
+      // Fetch all photos with this vehicle_number (and optionally same campaign)
+      var qs = '/rest/v1/trial_photos?select=id,vehicle_number,campaign_key,mode,captured_at,member_name&vehicle_number=eq.' + encodeURIComponent(vehicleNumber);
+      if (campaignKey) qs += '&campaign_key=eq.' + encodeURIComponent(campaignKey);
+      qs += '&order=captured_at.desc&limit=100';
+
+      document.getElementById('pe-current-veh').textContent = vehicleNumber;
+      document.getElementById('pe-current-meta').textContent = 'Loading photos...';
+      document.getElementById('pe-new-veh-input').value = '';
+      document.getElementById('pe-edit-reason').value = '';
+      document.getElementById('pe-new-veh-field').classList.remove('valid', 'invalid');
+      document.getElementById('pe-change-preview').style.display = 'none';
+      this._open('pe-edit-modal');
+      setTimeout(function() { document.getElementById('pe-new-veh-input').focus(); }, 100);
+
+      window.api(qs).then(function(photos) {
+        photos = photos || [];
+        state.editAffectedPhotos = photos;
+        var mode = photos.length > 0 ? photos[0].mode : '';
+        var campaign = photos.length > 0 ? (photos[0].campaign_key || '—') : '';
+        document.getElementById('pe-current-meta').textContent = 
+          photos.length + ' photo(s) · ' + (mode === 'hood' ? 'Hood mode' : (mode === 'back_panel' ? 'Back Panel' : mode)) + 
+          ' · ' + campaign;
+        document.getElementById('pe-preview-from').textContent = vehicleNumber;
+        document.getElementById('pe-preview-affected').textContent = photos.length;
+      }).catch(function(e) {
+        document.getElementById('pe-current-meta').textContent = '⚠️ Failed to load photos';
+        console.error('[PhotoEdit] fetch failed', e);
+      });
+    },
+
+    // Open reassign modal for a single photo
+    openReassign: function(photoOrId) {
+      var fetchP;
+      if (typeof photoOrId === 'string') {
+        fetchP = window.api('/rest/v1/trial_photos?select=*&id=eq.' + photoOrId + '&limit=1').then(function(arr) {
+          return arr && arr[0] ? arr[0] : null;
+        });
+      } else {
+        fetchP = Promise.resolve(photoOrId);
+      }
+      fetchP.then(function(photo) {
+        if (!photo) { showToast('Photo not found', 'error'); return; }
+        state.reassignPhoto = photo;
+        var time = photo.captured_at ? new Date(photo.captured_at).toLocaleString('en-IN', {
+          dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata'
+        }) : '—';
+        document.getElementById('pe-ra-current').textContent = 'Currently in: ' + (photo.vehicle_number || '—');
+        document.getElementById('pe-ra-meta').textContent = time + ' · ' + (photo.city || photo.campaign_key || '—');
+        document.getElementById('pe-ra-target').value = '';
+        document.getElementById('pe-ra-reason').value = '';
+        document.querySelector('#pe-reassign-modal .pe-field').classList.remove('valid', 'invalid');
+        PhotoEdit._open('pe-reassign-modal');
+        setTimeout(function() { document.getElementById('pe-ra-target').focus(); }, 100);
+      });
+    },
+
+    // Open merge modal
+    openMerge: function(sourceVeh, targetVeh) {
+      if (!sourceVeh || !targetVeh) {
+        showToast('Source aur target dono chahiye', 'error');
+        return;
+      }
+      state.mergeSource = sourceVeh;
+      state.mergeTarget = targetVeh;
+      
+      document.getElementById('pe-merge-source').textContent = sourceVeh;
+      document.getElementById('pe-merge-target').textContent = targetVeh;
+      document.getElementById('pe-merge-source-stats').textContent = 'Loading...';
+      document.getElementById('pe-merge-target-stats').textContent = 'Loading...';
+      document.getElementById('pe-merge-result-text').textContent = 'Calculating...';
+      document.getElementById('pe-merge-reason').value = 'Typo in manual approval — same vehicle as target';
+      this._open('pe-merge-modal');
+
+      this._loadMergeData();
+    },
+
+    // Detect possible duplicates in a photos array
+    // Returns: [{source, target, distance, sourceCount, targetCount}, ...]
+    detectDuplicates: function(photos) {
+      if (!photos || photos.length === 0) return [];
+      
+      // Group photos by vehicle_number
+      var byVeh = {};
+      photos.forEach(function(p) {
+        var v = (p.vehicle_number || '').toUpperCase().trim();
+        if (!v) return;
+        if (!byVeh[v]) byVeh[v] = [];
+        byVeh[v].push(p);
+      });
+      
+      var vehicles = Object.keys(byVeh);
+      var pairs = [];
+      var seen = {};
+      
+      // Compare each pair
+      for (var i = 0; i < vehicles.length; i++) {
+        for (var j = i + 1; j < vehicles.length; j++) {
+          var a = vehicles[i], b = vehicles[j];
+          var key = [a, b].sort().join('|');
+          if (seen[key]) continue;
+          seen[key] = true;
+          
+          var dist = PhotoEdit._levenshtein(a, b);
+          var maxLen = Math.max(a.length, b.length);
+          
+          // Suspect: 1-2 char difference AND length difference <= 2
+          // AND lengths within RTO valid range (9-11 chars)
+          if (dist >= 1 && dist <= 2 && 
+              Math.abs(a.length - b.length) <= 2 &&
+              a.length >= 9 && b.length >= 9 &&
+              a.length <= 11 && b.length <= 11) {
+            pairs.push({
+              source: a,
+              target: b,
+              distance: dist,
+              sourceCount: byVeh[a].length,
+              targetCount: byVeh[b].length
+            });
+          }
+        }
+      }
+      
+      // Sort by lowest distance first (most similar)
+      pairs.sort(function(x, y) { return x.distance - y.distance; });
+      return pairs;
+    },
+
+    // Render duplicate alert into a container element (or returns HTML)
+    renderDuplicateAlert: function(photos, containerSelector) {
+      var pairs = this.detectDuplicates(photos);
+      if (pairs.length === 0) {
+        if (containerSelector) {
+          var c = document.querySelector(containerSelector);
+          if (c) c.innerHTML = '';
+        }
+        return '';
+      }
+      var html = '<div class="pe-dup-alert">' +
+        '<div class="pe-head-alert">' +
+          '<span style="font-size:18px;">🔍</span>' +
+          '<h4>' + pairs.length + ' Possible Duplicate Vehicle' + (pairs.length > 1 ? 's' : '') + ' Detected — Typo Likely</h4>' +
+        '</div>' +
+        '<div class="pe-body-alert">' +
+          'Inn vehicles ka spelling almost same hai. Manual approval ke time galti ho sakti hai. Click karke merge karo:<br>';
+      pairs.slice(0, 5).forEach(function(p) {
+        html += '<span class="pe-dup-pair" onclick="PhotoEdit.openMerge(\'' + escapeHtml(p.source) + '\',\'' + escapeHtml(p.target) + '\')">' +
+                  '<strong>' + escapeHtml(p.source) + '</strong> (' + p.sourceCount + ')' +
+                  '<span class="pe-arr">⟷</span>' +
+                  '<strong>' + escapeHtml(p.target) + '</strong> (' + p.targetCount + ')' +
+                '</span>';
+      });
+      html += '</div></div>';
+      
+      if (containerSelector) {
+        var el = document.querySelector(containerSelector);
+        if (el) el.innerHTML = html;
+      }
+      return html;
+    },
+
+    // ═══════════════════════════════════════════════════════════════
+    //  INTERNAL HELPERS (prefixed with _)
+    // ═══════════════════════════════════════════════════════════════
+    _open: function(id) { document.getElementById(id).classList.add('active'); },
+    _close: function(id) { document.getElementById(id).classList.remove('active'); },
+
+    _validate: function(value) {
+      var cleaned = (value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      document.getElementById('pe-new-veh-input').value = cleaned;
+      var field = document.getElementById('pe-new-veh-field');
+      var preview = document.getElementById('pe-change-preview');
+      if (cleaned.length === 0) {
+        field.classList.remove('valid', 'invalid');
+        preview.style.display = 'none';
+      } else if (RTO_REGEX.test(cleaned)) {
+        if (cleaned === state.editCurrentVeh) {
+          field.classList.remove('valid');
+          field.classList.add('invalid');
+          field.querySelector('.err').textContent = 'Same as current — koi change nahi hua';
+          preview.style.display = 'none';
+        } else {
+          field.classList.add('valid');
+          field.classList.remove('invalid');
+          field.querySelector('.err').textContent = 'Invalid RTO format. Example: MH08EF7586';
+          document.getElementById('pe-preview-to').textContent = cleaned;
+          preview.style.display = 'block';
+        }
+      } else {
+        field.classList.add('invalid');
+        field.classList.remove('valid');
+        field.querySelector('.err').textContent = 'Invalid RTO format. Example: MH08EF7586';
+        preview.style.display = 'none';
+      }
+    },
+
+    _validateRa: function(value) {
+      var cleaned = (value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      document.getElementById('pe-ra-target').value = cleaned;
+      var field = document.querySelector('#pe-reassign-modal .pe-field');
+      if (cleaned.length === 0) {
+        field.classList.remove('valid', 'invalid');
+      } else if (RTO_REGEX.test(cleaned)) {
+        field.classList.add('valid');
+        field.classList.remove('invalid');
+      } else {
+        field.classList.add('invalid');
+        field.classList.remove('valid');
+      }
+    },
+
+    _saveEdit: function() {
+      var newVeh = document.getElementById('pe-new-veh-input').value.trim().toUpperCase();
+      var reason = document.getElementById('pe-edit-reason').value.trim();
+      var field = document.getElementById('pe-new-veh-field');
+      
+      if (!RTO_REGEX.test(newVeh)) {
+        field.classList.add('invalid');
+        return;
+      }
+      if (newVeh === state.editCurrentVeh) {
+        showToast('Same vehicle number — koi change nahi', 'error');
+        return;
+      }
+      if (state.editAffectedPhotos.length === 0) {
+        showToast('Koi photo affected nahi mili', 'error');
+        return;
+      }
+
+      var btn = document.getElementById('pe-save-btn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Saving...';
+
+      var photoIds = state.editAffectedPhotos.map(function(p) { return p.id; });
+      var oldVeh = state.editCurrentVeh;
+      var editedBy = PhotoEdit._currentAdmin();
+      var nowIso = new Date().toISOString();
+
+      // 1. Update all photos with this vehicle_number
+      var qs = '/rest/v1/trial_photos?vehicle_number=eq.' + encodeURIComponent(oldVeh);
+      if (state.editCampaignKey) {
+        qs += '&campaign_key=eq.' + encodeURIComponent(state.editCampaignKey);
+      }
+      
+      var updatePayload = {
+        vehicle_number: newVeh,
+        edited_at: nowIso,
+        edited_by: editedBy,
+        edit_reason: reason || null
+      };
+      // Only set original_vehicle_number if not already set (preserve true original)
+      // Will use a separate update for photos that don't have it yet
+
+      // Step A: Set original_vehicle_number where it's NULL (preserves true original)
+      window.api(qs + '&original_vehicle_number=is.null', {
+        method: 'PATCH',
+        headers: { 'Prefer': 'return=minimal' },
+        body: { original_vehicle_number: oldVeh }
+      }).then(function() {
+        // Step B: Now update vehicle_number and edit metadata
+        return window.api(qs, {
+          method: 'PATCH',
+          headers: { 'Prefer': 'return=minimal' },
+          body: updatePayload
+        });
+      }).then(function() {
+        // Step C: Log to audit table
+        return window.api('/rest/v1/trial_photo_edits', {
+          method: 'POST',
+          headers: { 'Prefer': 'return=minimal' },
+          body: {
+            action_type: 'vehicle_edit',
+            photo_ids: photoIds,
+            affected_count: photoIds.length,
+            before_value: { vehicle_number: oldVeh },
+            after_value: { vehicle_number: newVeh },
+            reason: reason || null,
+            edited_by: editedBy
+          }
+        });
+      }).then(function() {
+        showToast('✅ ' + oldVeh + ' → ' + newVeh + ' (' + photoIds.length + ' photo' + (photoIds.length > 1 ? 's' : '') + ' updated)', 'success');
+        PhotoEdit._close('pe-edit-modal');
+        btn.disabled = false;
+        btn.textContent = '💾 Save Changes';
+        if (typeof PhotoEdit.refreshHook === 'function') PhotoEdit.refreshHook();
+      }).catch(function(e) {
+        console.error('[PhotoEdit] edit failed', e);
+        showToast('❌ Save failed: ' + e.message, 'error');
+        btn.disabled = false;
+        btn.textContent = '💾 Save Changes';
+      });
+    },
+
+    _saveReassign: function() {
+      var target = document.getElementById('pe-ra-target').value.trim().toUpperCase();
+      var reason = document.getElementById('pe-ra-reason').value.trim();
+      var photo = state.reassignPhoto;
+      
+      if (!RTO_REGEX.test(target)) {
+        document.querySelector('#pe-reassign-modal .pe-field').classList.add('invalid');
+        return;
+      }
+      if (!photo) { showToast('Photo not found', 'error'); return; }
+      if (target === photo.vehicle_number) {
+        showToast('Same vehicle — koi change nahi', 'error');
+        return;
+      }
+
+      var btn = document.getElementById('pe-ra-save-btn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Saving...';
+
+      var oldVeh = photo.vehicle_number;
+      var nowIso = new Date().toISOString();
+      var editedBy = PhotoEdit._currentAdmin();
+
+      // Preserve original_vehicle_number if not set
+      var preserveOrig = !photo.original_vehicle_number ? 
+        window.api('/rest/v1/trial_photos?id=eq.' + photo.id + '&original_vehicle_number=is.null', {
+          method: 'PATCH',
+          headers: { 'Prefer': 'return=minimal' },
+          body: { original_vehicle_number: oldVeh }
+        }) : Promise.resolve();
+
+      preserveOrig.then(function() {
+        return window.api('/rest/v1/trial_photos?id=eq.' + photo.id, {
+          method: 'PATCH',
+          headers: { 'Prefer': 'return=minimal' },
+          body: {
+            vehicle_number: target,
+            edited_at: nowIso,
+            edited_by: editedBy,
+            edit_reason: reason || 'Photo reassigned'
+          }
+        });
+      }).then(function() {
+        return window.api('/rest/v1/trial_photo_edits', {
+          method: 'POST',
+          headers: { 'Prefer': 'return=minimal' },
+          body: {
+            action_type: 'reassign',
+            photo_ids: [photo.id],
+            affected_count: 1,
+            before_value: { vehicle_number: oldVeh, photo_id: photo.id },
+            after_value: { vehicle_number: target, photo_id: photo.id },
+            reason: reason || null,
+            edited_by: editedBy
+          }
+        });
+      }).then(function() {
+        showToast('🔀 Photo reassigned: ' + oldVeh + ' → ' + target, 'success');
+        PhotoEdit._close('pe-reassign-modal');
+        btn.disabled = false;
+        btn.textContent = '🔀 Reassign Photo';
+        if (typeof PhotoEdit.refreshHook === 'function') PhotoEdit.refreshHook();
+      }).catch(function(e) {
+        console.error('[PhotoEdit] reassign failed', e);
+        showToast('❌ Reassign failed: ' + e.message, 'error');
+        btn.disabled = false;
+        btn.textContent = '🔀 Reassign Photo';
+      });
+    },
+
+    _swapMerge: function() {
+      var tmp = state.mergeSource;
+      state.mergeSource = state.mergeTarget;
+      state.mergeTarget = tmp;
+      var tmpP = state.mergeSourcePhotos;
+      state.mergeSourcePhotos = state.mergeTargetPhotos;
+      state.mergeTargetPhotos = tmpP;
+      PhotoEdit._updateMergeUi();
+    },
+
+    _loadMergeData: function() {
+      // Fetch counts for both vehicles
+      var p1 = window.api('/rest/v1/trial_photos?select=id,mode&vehicle_number=eq.' + encodeURIComponent(state.mergeSource) + '&limit=200');
+      var p2 = window.api('/rest/v1/trial_photos?select=id,mode&vehicle_number=eq.' + encodeURIComponent(state.mergeTarget) + '&limit=200');
+      Promise.all([p1, p2]).then(function(results) {
+        state.mergeSourcePhotos = results[0] || [];
+        state.mergeTargetPhotos = results[1] || [];
+        PhotoEdit._updateMergeUi();
+      }).catch(function(e) {
+        console.error('[PhotoEdit] merge data fetch failed', e);
+        document.getElementById('pe-merge-source-stats').textContent = '⚠️ Failed';
+        document.getElementById('pe-merge-target-stats').textContent = '⚠️ Failed';
+      });
+    },
+
+    _updateMergeUi: function() {
+      document.getElementById('pe-merge-source').textContent = state.mergeSource;
+      document.getElementById('pe-merge-target').textContent = state.mergeTarget;
+      var sCount = state.mergeSourcePhotos.length;
+      var tCount = state.mergeTargetPhotos.length;
+      var sMode = sCount > 0 ? (state.mergeSourcePhotos[0].mode || '') : '';
+      var tMode = tCount > 0 ? (state.mergeTargetPhotos[0].mode || '') : '';
+      document.getElementById('pe-merge-source-stats').textContent = 
+        '📸 ' + sCount + ' photo' + (sCount !== 1 ? 's' : '') + (sMode ? ' · ' + sMode : '');
+      document.getElementById('pe-merge-target-stats').textContent = 
+        '📸 ' + tCount + ' photo' + (tCount !== 1 ? 's' : '') + (tMode ? ' · ' + tMode : '');
+      var total = sCount + tCount;
+      document.getElementById('pe-merge-result-text').innerHTML = 
+        '<strong>' + escapeHtml(state.mergeTarget) + '</strong> ke paas <strong>' + total + ' photo' + 
+        (total !== 1 ? 's' : '') + '</strong> ho ' + (total !== 1 ? 'jayenge' : 'jayega') + 
+        ' (' + sCount + '+' + tCount + ' combined)<br>' +
+        '<span style="font-weight:600;color:#475569;font-size:12px;">' + 
+        escapeHtml(state.mergeSource) + ' entry effectively delete ho jayegi · Photos ka vehicle number update hoga' +
+        '</span>';
+    },
+
+    _confirmMerge: function() {
+      var reason = document.getElementById('pe-merge-reason').value.trim();
+      if (state.mergeSourcePhotos.length === 0) {
+        showToast('Source mein koi photo nahi — merge nahi kar sakte', 'error');
+        return;
+      }
+
+      var btn = document.getElementById('pe-merge-save-btn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Merging...';
+
+      var sourceVeh = state.mergeSource;
+      var targetVeh = state.mergeTarget;
+      var sourcePhotoIds = state.mergeSourcePhotos.map(function(p) { return p.id; });
+      var editedBy = PhotoEdit._currentAdmin();
+      var nowIso = new Date().toISOString();
+
+      // Step A: Preserve original_vehicle_number for source photos that don't have it
+      window.api('/rest/v1/trial_photos?vehicle_number=eq.' + encodeURIComponent(sourceVeh) + '&original_vehicle_number=is.null', {
+        method: 'PATCH',
+        headers: { 'Prefer': 'return=minimal' },
+        body: { original_vehicle_number: sourceVeh }
+      }).then(function() {
+        // Step B: Update all source photos to target vehicle_number
+        return window.api('/rest/v1/trial_photos?vehicle_number=eq.' + encodeURIComponent(sourceVeh), {
+          method: 'PATCH',
+          headers: { 'Prefer': 'return=minimal' },
+          body: {
+            vehicle_number: targetVeh,
+            edited_at: nowIso,
+            edited_by: editedBy,
+            edit_reason: reason || ('Merged from ' + sourceVeh)
+          }
+        });
+      }).then(function() {
+        // Step C: Log to audit table
+        return window.api('/rest/v1/trial_photo_edits', {
+          method: 'POST',
+          headers: { 'Prefer': 'return=minimal' },
+          body: {
+            action_type: 'merge',
+            photo_ids: sourcePhotoIds,
+            affected_count: sourcePhotoIds.length,
+            before_value: { vehicle_number: sourceVeh, count: sourcePhotoIds.length },
+            after_value: { vehicle_number: targetVeh, merged_into_existing_count: state.mergeTargetPhotos.length },
+            reason: reason || null,
+            edited_by: editedBy
+          }
+        });
+      }).then(function() {
+        showToast('🔗 Merged! ' + sourceVeh + ' → ' + targetVeh + ' (' + sourcePhotoIds.length + ' photo' + (sourcePhotoIds.length > 1 ? 's' : '') + ' moved)', 'success');
+        PhotoEdit._close('pe-merge-modal');
+        btn.disabled = false;
+        btn.textContent = '🔗 Confirm Merge';
+        if (typeof PhotoEdit.refreshHook === 'function') PhotoEdit.refreshHook();
+      }).catch(function(e) {
+        console.error('[PhotoEdit] merge failed', e);
+        showToast('❌ Merge failed: ' + e.message, 'error');
+        btn.disabled = false;
+        btn.textContent = '🔗 Confirm Merge';
+      });
+    },
+
+    _currentAdmin: function() {
+      // Try common storage keys; fall back to 'admin'
+      try {
+        return localStorage.getItem('adminPhone') || 
+               localStorage.getItem('admin_phone') || 
+               localStorage.getItem('userPhone') || 
+               (window.CONFIG && window.CONFIG.adminPhone) ||
+               '9922138138';
+      } catch (e) {
+        return '9922138138';
+      }
+    },
+
+    _levenshtein: function(a, b) {
+      if (a === b) return 0;
+      if (a.length === 0) return b.length;
+      if (b.length === 0) return a.length;
+      var matrix = [];
+      var i, j;
+      for (i = 0; i <= b.length; i++) matrix[i] = [i];
+      for (j = 0; j <= a.length; j++) matrix[0][j] = j;
+      for (i = 1; i <= b.length; i++) {
+        for (j = 1; j <= a.length; j++) {
+          if (b.charAt(i-1) === a.charAt(j-1)) {
+            matrix[i][j] = matrix[i-1][j-1];
+          } else {
+            matrix[i][j] = Math.min(matrix[i-1][j-1] + 1, matrix[i][j-1] + 1, matrix[i-1][j] + 1);
+          }
+        }
+      }
+      return matrix[b.length][a.length];
+    }
+  };
+
+  // ESC closes modals
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      ['pe-edit-modal', 'pe-reassign-modal', 'pe-merge-modal'].forEach(function(id) {
+        var m = document.getElementById(id);
+        if (m && m.classList.contains('active')) m.classList.remove('active');
+      });
+    }
+  });
+
+  // Click outside to close
+  ['pe-edit-modal', 'pe-reassign-modal', 'pe-merge-modal'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('click', function(e) {
+        if (e.target === el) el.classList.remove('active');
+      });
+    }
+  });
+
+  // Expose globally
+  window.PhotoEdit = PhotoEdit;
+  console.log('[PhotoEdit] v1.0 ready');
+})();
+</script>
