@@ -1287,13 +1287,13 @@ document.addEventListener('DOMContentLoaded', function(){
       // Step 1: Preserve original_vehicle_number where NULL
       window.api('/rest/v1/trial_photos?id=in.(' + photoIds.join(',') + ')&original_vehicle_number=is.null', {
         method: 'PATCH',
-        headers: { 'Prefer': 'return=minimal' },
+        headers: { 'Prefer': 'return=minimal', 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: { original_vehicle_number: oldPlate }
       }).then(function() {
         // Step 2: Update plate + verified_plate + edit metadata
         return window.api('/rest/v1/trial_photos?id=in.(' + photoIds.join(',') + ')', {
           method: 'PATCH',
-          headers: { 'Prefer': 'return=minimal' },
+          headers: { 'Prefer': 'return=minimal', 'Content-Type': 'application/json', 'Accept': 'application/json' },
           body: {
             vehicle_number: newPlate,
             verified_plate: newPlate,
@@ -1306,7 +1306,7 @@ document.addEventListener('DOMContentLoaded', function(){
         // Step 3: Log to audit
         return window.api('/rest/v1/trial_photo_edits', {
           method: 'POST',
-          headers: { 'Prefer': 'return=minimal' },
+          headers: { 'Prefer': 'return=minimal', 'Content-Type': 'application/json', 'Accept': 'application/json' },
           body: {
             action_type: 'vehicle_edit',
             photo_ids: photoIds,
@@ -1381,7 +1381,7 @@ document.addEventListener('DOMContentLoaded', function(){
       // Step 1: Preserve original on source photos
       window.api('/rest/v1/trial_photos?id=in.(' + sourcePhotoIds.join(',') + ')&original_vehicle_number=is.null', {
         method: 'PATCH',
-        headers: { 'Prefer': 'return=minimal' },
+        headers: { 'Prefer': 'return=minimal', 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: { original_vehicle_number: sourcePlate }
       }).then(function() {
         // Step 2: Update source photos with target plate + same group_id
@@ -1395,14 +1395,14 @@ document.addEventListener('DOMContentLoaded', function(){
         if (targetGroupId) updateBody.vehicle_group_id = targetGroupId;
         return window.api('/rest/v1/trial_photos?id=in.(' + sourcePhotoIds.join(',') + ')', {
           method: 'PATCH',
-          headers: { 'Prefer': 'return=minimal' },
+          headers: { 'Prefer': 'return=minimal', 'Content-Type': 'application/json', 'Accept': 'application/json' },
           body: updateBody
         });
       }).then(function() {
         // Step 3: Log to audit
         return window.api('/rest/v1/trial_photo_edits', {
           method: 'POST',
-          headers: { 'Prefer': 'return=minimal' },
+          headers: { 'Prefer': 'return=minimal', 'Content-Type': 'application/json', 'Accept': 'application/json' },
           body: {
             action_type: 'merge',
             photo_ids: sourcePhotoIds,
