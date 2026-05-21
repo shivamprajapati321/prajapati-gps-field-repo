@@ -1288,26 +1288,26 @@ document.addEventListener('DOMContentLoaded', function(){
       window.api('/rest/v1/trial_photos?id=in.(' + photoIds.join(',') + ')&original_vehicle_number=is.null', {
         method: 'PATCH',
         headers: { 'Prefer': 'return=minimal' },
-        body: JSON.stringify({ original_vehicle_number: oldPlate })
+        body: { original_vehicle_number: oldPlate }
       }).then(function() {
         // Step 2: Update plate + verified_plate + edit metadata
         return window.api('/rest/v1/trial_photos?id=in.(' + photoIds.join(',') + ')', {
           method: 'PATCH',
           headers: { 'Prefer': 'return=minimal' },
-          body: JSON.stringify({
+          body: {
             vehicle_number: newPlate,
             verified_plate: newPlate,
             edited_at: nowIso,
             edited_by: editedBy,
             edit_reason: reason || null
-          })
+          }
         });
       }).then(function() {
         // Step 3: Log to audit
         return window.api('/rest/v1/trial_photo_edits', {
           method: 'POST',
           headers: { 'Prefer': 'return=minimal' },
-          body: JSON.stringify({
+          body: {
             action_type: 'vehicle_edit',
             photo_ids: photoIds,
             affected_count: photoIds.length,
@@ -1315,7 +1315,7 @@ document.addEventListener('DOMContentLoaded', function(){
             after_value: { vehicle_number: newPlate, verified_plate: newPlate },
             reason: reason || null,
             edited_by: editedBy + ' (' + editedByName + ')'
-          })
+          }
         });
       }).then(function() {
         // Update local state
@@ -1382,7 +1382,7 @@ document.addEventListener('DOMContentLoaded', function(){
       window.api('/rest/v1/trial_photos?id=in.(' + sourcePhotoIds.join(',') + ')&original_vehicle_number=is.null', {
         method: 'PATCH',
         headers: { 'Prefer': 'return=minimal' },
-        body: JSON.stringify({ original_vehicle_number: sourcePlate })
+        body: { original_vehicle_number: sourcePlate }
       }).then(function() {
         // Step 2: Update source photos with target plate + same group_id
         var updateBody = {
@@ -1396,14 +1396,14 @@ document.addEventListener('DOMContentLoaded', function(){
         return window.api('/rest/v1/trial_photos?id=in.(' + sourcePhotoIds.join(',') + ')', {
           method: 'PATCH',
           headers: { 'Prefer': 'return=minimal' },
-          body: JSON.stringify(updateBody)
+          body: updateBody
         });
       }).then(function() {
         // Step 3: Log to audit
         return window.api('/rest/v1/trial_photo_edits', {
           method: 'POST',
           headers: { 'Prefer': 'return=minimal' },
-          body: JSON.stringify({
+          body: {
             action_type: 'merge',
             photo_ids: sourcePhotoIds,
             affected_count: sourcePhotoIds.length,
@@ -1411,7 +1411,7 @@ document.addEventListener('DOMContentLoaded', function(){
             after_value: { vehicle_number: targetPlate, group_id: targetGroupId, merged_into_count: t.photos.length },
             reason: reason || null,
             edited_by: editedBy + ' (' + editedByName + ')'
-          })
+          }
         });
       }).then(function() {
         // Update local state — merge source photos into target
