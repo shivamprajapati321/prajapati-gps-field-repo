@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vehicle Owner Database — Prajapati GPS (Admin)</title>
+
+<!-- SheetJS for Excel generation -->
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<!-- SheetJS Style addon for styling -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx-js-style/1.2.0/xlsx.bundle.js"></script>
+
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+    min-height: 100vh;
+    color: #0f172a;
+    padding: 20px;
+  }
+  
+  .container { max-width: 1200px; margin: 0 auto; }
+  
+  .access-screen {
+    background: white;
+    border-radius: 16px;
+    padding: 40px;
+    max-width: 480px;
+    margin: 80px auto;
+    box-shadow: 0 25px 70px rgba(0,0,0,0.1);
+    text-align: center;
+  }
+  .access-screen h1 { color: #0B1957; font-size: 22px; margin-bottom: 8px; }
+  .access-screen .sub { color: #64748b; font-size: 13px; margin-bottom: 24px; }
+  .access-screen input {
+    width: 100%; padding: 14px;
+    font-size: 16px;
+    border: 2px solid #e5e7eb; border-radius: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    text-align: center;
+    margin-bottom: 14px;
+    letter-spacing: 1px;
+  }
+  .access-screen input:focus {
+    outline: none; border-color: #26d0ce;
+    box-shadow: 0 0 0 4px rgba(38,208,206,0.12);
+  }
+  .access-screen .btn-login {
+    width: 100%; padding: 14px;
+    background: #0B1957; color: #26d0ce;
+    border: none; border-radius: 10px;
+    font-weight: 800; font-size: 15px;
+    cursor: pointer;
+  }
+  .access-screen .btn-login:hover { background: #142366; }
+  .access-screen .error {
+    background: #fee2e2; color: #991b1b;
+    padding: 10px; border-radius: 8px;
+    font-size: 13px; margin-top: 12px;
+    display: none;
+  }
+  
+  .header {
+    background: white; border-radius: 16px;
+    padding: 24px 28px; margin-bottom: 18px;
+    box-shadow: 0 4px 12px rgba(11,25,87,0.08);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .header h1 { color: #0B1957; font-size: 22px; }
+  .header .sub { color: #64748b; font-size: 13px; margin-top: 4px; }
+  .header .badge {
+    background: #d1fae5; color: #047857;
+    padding: 6px 14px; border-radius: 20px;
+    font-size: 12px; font-weight: 700;
+  }
+  
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  .stat-card {
+    background: white; border-radius: 12px;
+    padding: 18px 20px;
+    box-shadow: 0 2px 8px rgba(11,25,87,0.06);
+    border-left: 4px solid #26d0ce;
+  }
+  .stat-card .label {
+    font-size: 11px; font-weight: 700;
+    color: #64748b; text-transform: uppercase;
+    letter-spacing: 0.05em; margin-bottom: 6px;
+  }
+  .stat-card .value {
+    font-size: 26px; font-weight: 800;
+    color: #0B1957;
+  }
+  .stat-card.green { border-color: #10b981; }
+  .stat-card.green .value { color: #047857; }
+  .stat-card.orange { border-color: #f59e0b; }
+  .stat-card.orange .value { color: #d97706; }
+  .stat-card.purple { border-color: #8b5cf6; }
+  .stat-card.purple .value { color: #7c3aed; }
+  
+  .savings-panel {
+    background: linear-gradient(135deg, #047857 0%, #10b981 100%);
+    color: white;
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 18px;
+    box-shadow: 0 10px 30px rgba(16,185,129,0.25);
+  }
+  .savings-panel h2 {
+    font-size: 18px; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .savings-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+  }
+  .savings-item .v {
+    font-size: 26px; font-weight: 800;
+    margin-bottom: 4px;
+  }
+  .savings-item .l {
+    font-size: 12px; opacity: 0.9;
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  
+  .campaigns-section {
+    background: white; border-radius: 16px;
+    padding: 24px 28px; margin-bottom: 18px;
+    box-shadow: 0 4px 12px rgba(11,25,87,0.08);
+  }
+  .campaigns-section h2 {
+    color: #0B1957; font-size: 17px;
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .campaigns-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 14px;
+  }
+  .campaign-card {
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.15s;
+  }
+  .campaign-card:hover {
+    border-color: #26d0ce;
+    box-shadow: 0 4px 12px rgba(38,208,206,0.15);
+    transform: translateY(-2px);
+  }
+  .campaign-card .name {
+    font-weight: 800; color: #0B1957;
+    font-size: 14px; margin-bottom: 6px;
+  }
+  .campaign-card .stats {
+    display: flex; gap: 12px;
+    font-size: 12px; color: #64748b;
+    margin-bottom: 10px;
+  }
+  .campaign-card .stat-val {
+    font-weight: 700; color: #0B1957;
+  }
+  .campaign-card .progress {
+    width: 100%; height: 6px;
+    background: #e5e7eb; border-radius: 3px;
+    overflow: hidden; margin-bottom: 12px;
+  }
+  .campaign-card .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #10b981 0%, #26d0ce 100%);
+    transition: width 0.4s;
+  }
+  .campaign-card .btn-dl {
+    width: 100%; padding: 9px;
+    background: #0B1957; color: #26d0ce;
+    border: none; border-radius: 7px;
+    font-weight: 700; font-size: 12px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .campaign-card .btn-dl:hover { background: #142366; }
+  .campaign-card .btn-dl:disabled { opacity: 0.5; cursor: not-allowed; }
+  
+  .download-all {
+    background: white; border-radius: 16px;
+    padding: 20px 24px; margin-bottom: 18px;
+    box-shadow: 0 4px 12px rgba(11,25,87,0.08);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .download-all h3 { color: #0B1957; font-size: 15px; }
+  .download-all p { color: #64748b; font-size: 12px; margin-top: 3px; }
+  .download-all .btn {
+    background: linear-gradient(135deg, #0B1957 0%, #1a2d6e 100%);
+    color: #26d0ce;
+    border: none;
+    padding: 12px 20px;
+    font-size: 13px; font-weight: 700;
+    border-radius: 8px; cursor: pointer;
+    font-family: inherit;
+  }
+  
+  .toast {
+    position: fixed; bottom: 20px; right: 20px;
+    background: #0B1957; color: white;
+    padding: 14px 22px; border-radius: 10px;
+    font-size: 14px; font-weight: 600;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    opacity: 0; transform: translateY(20px);
+    transition: all 0.25s;
+    z-index: 9999;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.error { background: #b91c1c; }
+  .toast.success { background: #047857; }
+  
+  .empty-state {
+    text-align: center; padding: 40px 20px;
+    color: #64748b; font-size: 14px;
+  }
+  
+  .header-actions {
+    display: flex; gap: 10px; align-items: center;
+  }
+  .btn-link {
+    background: transparent; color: #0B1957;
+    border: 1px solid #e5e7eb;
+    padding: 8px 14px; border-radius: 8px;
+    font-size: 12px; font-weight: 700;
+    cursor: pointer; text-decoration: none;
+    display: inline-block;
+    font-family: inherit;
+  }
+  .btn-link:hover { background: #f3f4f6; }
+  
+  @media (max-width: 768px) {
+    .stats-grid, .savings-grid { grid-template-columns: repeat(2, 1fr); }
+    .campaigns-grid { grid-template-columns: 1fr; }
+    .header { flex-direction: column; gap: 10px; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- ACCESS SCREEN (Admin login required) -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="access-screen" id="accessScreen">
+  <h1>🗄️ Vehicle Owner Database</h1>
+  <div class="sub">Admin-only access · Campaign-wise master cache</div>
+  <input type="tel" id="loginPhone" placeholder="10-digit admin phone" maxlength="10" pattern="[0-9]{10}">
+  <button class="btn-login" onclick="loginAdmin()">Access Database →</button>
+  <div class="error" id="loginError"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- MAIN DASHBOARD (visible after login) -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="container" id="mainDashboard" style="display:none;">
+  
+  <div class="header">
+    <div>
+      <h1>🗄️ Vehicle Owner Database</h1>
+      <div class="sub" id="adminWelcome">Welcome</div>
+    </div>
+    <div class="header-actions">
+      <span class="badge" id="accessBadge">👤 Admin Access</span>
+      <a href="admin.html" class="btn-link">← Back to Admin</a>
+      <button class="btn-link" onclick="logoutAdmin()">Logout</button>
+    </div>
+  </div>
+  
+  <!-- COST SAVING PANEL -->
+  <div class="savings-panel">
+    <h2>💰 Cost Savings Dashboard</h2>
+    <div class="savings-grid">
+      <div class="savings-item">
+        <div class="v" id="savedTotal">₹0</div>
+        <div class="l">Total Saved</div>
+      </div>
+      <div class="savings-item">
+        <div class="v" id="cachedCount">0</div>
+        <div class="l">Vehicles in Database</div>
+      </div>
+      <div class="savings-item">
+        <div class="v" id="cacheHits">0</div>
+        <div class="l">Total Reuse Count</div>
+      </div>
+      <div class="savings-item">
+        <div class="v" id="futureCapacity">50,000+</div>
+        <div class="l">Growth Capacity</div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- QUICK STATS -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="label">Total Campaigns</div>
+      <div class="value" id="totalCampaigns">0</div>
+    </div>
+    <div class="stat-card green">
+      <div class="label">With Owner Data</div>
+      <div class="value" id="withOwner">0</div>
+    </div>
+    <div class="stat-card orange">
+      <div class="label">With Contact</div>
+      <div class="value" id="withContact">0</div>
+    </div>
+    <div class="stat-card purple">
+      <div class="label">With PIN Code</div>
+      <div class="value" id="withPin">0</div>
+    </div>
+  </div>
+  
+  <!-- DOWNLOAD ALL -->
+  <div class="download-all">
+    <div>
+      <h3>📥 Download Master Database (All Campaigns)</h3>
+      <p>Complete cache backup — 4 sheets: Vehicles · Campaigns · Sources · Cost Saving</p>
+    </div>
+    <button class="btn" onclick="downloadMasterAll()" id="btnDownloadAll">📥 Download Master Excel</button>
+  </div>
+  
+  <!-- CAMPAIGN-WISE GRID -->
+  <div class="campaigns-section">
+    <h2>📊 Campaign-wise Master Cache</h2>
+    <div class="campaigns-grid" id="campaignsGrid">
+      <div class="empty-state">Loading campaigns...</div>
+    </div>
+  </div>
+  
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+const CONFIG = {
+  supabaseUrl: 'https://fpbktcgtspqsqpaytslv.supabase.co',
+  supabaseKey: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j'
+};
+
+const SUREPASS_COST_PER_CALL = 3;  // ₹ per Surepass API call (estimate)
+
+let state = {
+  admin: null,
+  campaigns: [],
+  allCache: [],     // All vehicles from prajapati_vehicle_lookup
+  allPhotos: [],    // For mapping vehicles to campaigns
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  API HELPER
+// ═══════════════════════════════════════════════════════════════
+function api(path, options) {
+  options = options || {};
+  options.headers = options.headers || {};
+  options.headers.apikey = CONFIG.supabaseKey;
+  options.headers.Authorization = 'Bearer ' + CONFIG.supabaseKey;
+  return fetch(CONFIG.supabaseUrl + path, options).then(r => {
+    if (!r.ok) throw new Error('API ' + r.status);
+    return r.json();
+  });
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (type || '');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => 
+    ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LOGIN (Admin Only — strict check)
+// ═══════════════════════════════════════════════════════════════
+async function loginAdmin() {
+  const phone = document.getElementById('loginPhone').value.trim();
+  const errEl = document.getElementById('loginError');
+  
+  if (phone.length !== 10) {
+    errEl.style.display = 'block';
+    errEl.textContent = '10 digit number daalo';
+    return;
+  }
+  
+  try {
+    const members = await api('/rest/v1/trial_team_members?phone=eq.' + encodeURIComponent(phone) + '&active=eq.true&select=*');
+    
+    if (!members || members.length === 0) {
+      errEl.style.display = 'block';
+      errEl.textContent = 'Number registered nahi hai';
+      return;
+    }
+    
+    const member = members[0];
+    const role = (member.role || '').toLowerCase();
+    
+    // STRICT: Only admin/owner can access this page (DEO cannot)
+    if (role !== 'admin' && role !== 'owner') {
+      errEl.style.display = 'block';
+      errEl.textContent = 'Yeh page sirf Admin ke liye hai. DEO/team ko access nahi.';
+      return;
+    }
+    
+    state.admin = member;
+    localStorage.setItem('prajapati_admin_phone', phone);
+    
+    document.getElementById('accessScreen').style.display = 'none';
+    document.getElementById('mainDashboard').style.display = 'block';
+    document.getElementById('adminWelcome').textContent = 'Welcome ' + member.name;
+    
+    loadDashboard();
+    
+  } catch (err) {
+    errEl.style.display = 'block';
+    errEl.textContent = 'Login error: ' + err.message;
+  }
+}
+
+function logoutAdmin() {
+  if (!confirm('Logout karna hai?')) return;
+  localStorage.removeItem('prajapati_admin_phone');
+  state.admin = null;
+  document.getElementById('mainDashboard').style.display = 'none';
+  document.getElementById('accessScreen').style.display = 'block';
+  document.getElementById('loginPhone').value = '';
+  document.getElementById('loginError').style.display = 'none';
+}
+
+// Auto-login if stored phone is admin
+async function tryAutoLogin() {
+  const phone = localStorage.getItem('prajapati_admin_phone');
+  if (!phone || phone.length !== 10) return false;
+  
+  try {
+    const members = await api('/rest/v1/trial_team_members?phone=eq.' + encodeURIComponent(phone) + '&active=eq.true&select=*');
+    if (!members || members.length === 0) return false;
+    
+    const member = members[0];
+    const role = (member.role || '').toLowerCase();
+    if (role !== 'admin' && role !== 'owner') return false;
+    
+    state.admin = member;
+    document.getElementById('accessScreen').style.display = 'none';
+    document.getElementById('mainDashboard').style.display = 'block';
+    document.getElementById('adminWelcome').textContent = 'Welcome ' + member.name;
+    loadDashboard();
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LOAD DASHBOARD DATA
+// ═══════════════════════════════════════════════════════════════
+async function loadDashboard() {
+  showToast('Loading database...', '');
+  
+  try {
+    // 1. Load all campaigns
+    const campaigns = await api('/rest/v1/trial_campaigns?select=key,name,active&active=eq.true&order=name.asc');
+    state.campaigns = campaigns || [];
+    
+    // 2. Load entire cache (prajapati_vehicle_lookup)
+    const cache = await api('/rest/v1/prajapati_vehicle_lookup?select=*&order=fetched_at.desc&limit=100000');
+    state.allCache = cache || [];
+    
+    // 3. Load distinct vehicles per campaign from trial_photos
+    // (to map cache → campaign)
+    const photos = await api('/rest/v1/trial_photos?select=vehicle_number,campaign_key&deleted_at=is.null&limit=100000');
+    state.allPhotos = (photos || []).filter(p => p.vehicle_number);
+    
+    renderDashboard();
+    showToast('✓ Database loaded', 'success');
+  } catch (err) {
+    console.error('Dashboard load error:', err);
+    showToast('Load failed: ' + err.message, 'error');
+  }
+}
+
+// Group cache entries by campaign
+function getCampaignMapping() {
+  // vehicle_number → campaign_key map (from trial_photos)
+  const vehicleToCampaign = {};
+  state.allPhotos.forEach(p => {
+    if (!vehicleToCampaign[p.vehicle_number]) {
+      vehicleToCampaign[p.vehicle_number] = new Set();
+    }
+    vehicleToCampaign[p.vehicle_number].add(p.campaign_key);
+  });
+  return vehicleToCampaign;
+}
+
+function renderDashboard() {
+  const cache = state.allCache;
+  const totalCached = cache.length;
+  const withOwner = cache.filter(c => c.owner_name).length;
+  const withContact = cache.filter(c => c.contact_number).length;
+  const withPin = cache.filter(c => c.pincode).length;
+  
+  // Cost savings calculation
+  const totalReuse = cache.reduce((sum, c) => sum + (c.fetch_count || 1), 0);
+  const cacheHits = totalReuse - cache.length;  // reuses beyond initial fetch
+  const moneySaved = cacheHits * SUREPASS_COST_PER_CALL;
+  
+  document.getElementById('savedTotal').textContent = '₹' + moneySaved.toLocaleString('en-IN');
+  document.getElementById('cachedCount').textContent = totalCached.toLocaleString('en-IN');
+  document.getElementById('cacheHits').textContent = totalReuse.toLocaleString('en-IN');
+  
+  // Campaign stats
+  document.getElementById('totalCampaigns').textContent = state.campaigns.length;
+  document.getElementById('withOwner').textContent = withOwner.toLocaleString('en-IN');
+  document.getElementById('withContact').textContent = withContact.toLocaleString('en-IN');
+  document.getElementById('withPin').textContent = withPin.toLocaleString('en-IN');
+  
+  // Campaign-wise grid
+  renderCampaignsGrid();
+}
+
+function renderCampaignsGrid() {
+  const grid = document.getElementById('campaignsGrid');
+  const vToCampaigns = getCampaignMapping();
+  const cacheMap = {};
+  state.allCache.forEach(c => { cacheMap[c.vehicle_number] = c; });
+  
+  // For each campaign, count vehicles + how many have cache data
+  const campaignStats = state.campaigns.map(camp => {
+    const vehiclesInCampaign = new Set();
+    state.allPhotos.forEach(p => {
+      if (p.campaign_key === camp.key) vehiclesInCampaign.add(p.vehicle_number);
+    });
+    
+    let withOwner = 0;
+    let withContact = 0;
+    vehiclesInCampaign.forEach(v => {
+      const c = cacheMap[v];
+      if (c) {
+        if (c.owner_name) withOwner++;
+        if (c.contact_number) withContact++;
+      }
+    });
+    
+    return {
+      key: camp.key,
+      name: camp.name,
+      totalVehicles: vehiclesInCampaign.size,
+      withOwner,
+      withContact,
+      coverage: vehiclesInCampaign.size > 0 ? (withOwner / vehiclesInCampaign.size * 100) : 0
+    };
+  }).filter(c => c.totalVehicles > 0)  // only show active campaigns
+    .sort((a, b) => b.totalVehicles - a.totalVehicles);
+  
+  if (campaignStats.length === 0) {
+    grid.innerHTML = '<div class="empty-state">Koi campaign data nahi mila. Pehle photos capture karo aur Get Vehicle Owners run karo.</div>';
+    return;
+  }
+  
+  grid.innerHTML = campaignStats.map(c => {
+    const pct = Math.round(c.coverage);
+    return `
+      <div class="campaign-card">
+        <div class="name">${escapeHtml(c.name)}</div>
+        <div class="stats">
+          <span>🚗 <span class="stat-val">${c.totalVehicles}</span> vehicles</span>
+          <span>👤 <span class="stat-val">${c.withOwner}</span> owners</span>
+          <span>📞 <span class="stat-val">${c.withContact}</span> contacts</span>
+        </div>
+        <div class="progress">
+          <div class="progress-fill" style="width:${pct}%"></div>
+        </div>
+        <div style="font-size:11px;color:#64748b;margin-bottom:10px;">${pct}% coverage</div>
+        <button class="btn-dl" onclick="downloadCampaignCache('${c.key}', '${escapeHtml(c.name).replace(/'/g, "&apos;")}')">📥 Download Master Cache</button>
+      </div>
+    `;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DOWNLOAD CAMPAIGN-SPECIFIC EXCEL
+// ═══════════════════════════════════════════════════════════════
+async function downloadCampaignCache(campaignKey, campaignName) {
+  showToast('Building ' + campaignName + ' master cache...', '');
+  
+  try {
+    // Get vehicles in this campaign
+    const vehiclesInCampaign = new Set();
+    state.allPhotos.forEach(p => {
+      if (p.campaign_key === campaignKey) vehiclesInCampaign.add(p.vehicle_number);
+    });
+    
+    if (vehiclesInCampaign.size === 0) {
+      showToast('Is campaign me koi vehicle nahi', 'error');
+      return;
+    }
+    
+    // Match cache entries
+    const cacheRecords = state.allCache.filter(c => vehiclesInCampaign.has(c.vehicle_number));
+    
+    // Build workbook
+    const wb = XLSX.utils.book_new();
+    
+    // Sheet 1: Vehicle Master Data
+    const headerRow1 = [
+      'S.No.', 'Vehicle No.', 'Owner Name', 'Contact', 'PIN Code', 
+      'Present Address', 'Permanent Address', 'Owner Address',
+      'Father Name', 'Vehicle Maker', 'Vehicle Model', 'Fuel Type',
+      'State', 'Fetched On', 'Last Used', 'Reuse Count', 'Source'
+    ];
+    
+    const dataRows = cacheRecords.map((c, idx) => [
+      idx + 1,
+      c.vehicle_number || '',
+      c.owner_name || '',
+      c.contact_number || '',
+      c.pincode || '',
+      c.present_address || '',
+      c.permanent_address || '',
+      c.owner_address || '',
+      c.father_name || '',
+      c.vehicle_maker || '',
+      c.vehicle_model || '',
+      c.fuel_type || '',
+      c.state || '',
+      c.fetched_at ? new Date(c.fetched_at).toLocaleDateString('en-IN') : '',
+      c.last_used_at ? new Date(c.last_used_at).toLocaleDateString('en-IN') : '',
+      c.fetch_count || 1,
+      c.source || 'Verified Database'
+    ]);
+    
+    // Add missing vehicles (in campaign but not in cache)
+    const cachedNumbers = new Set(cacheRecords.map(c => c.vehicle_number));
+    const missing = Array.from(vehiclesInCampaign).filter(v => !cachedNumbers.has(v));
+    missing.forEach((v, i) => {
+      dataRows.push([
+        dataRows.length + 1, v, '', '', '', '', '', '', '', '', '', '', '',
+        '', '', 0, '⚠ Not in database yet'
+      ]);
+    });
+    
+    const ws1 = XLSX.utils.aoa_to_sheet([
+      ['VEHICLE OWNER DATABASE — ' + campaignName.toUpperCase()],
+      ['Generated: ' + new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })],
+      ['Admin Only · Confidential'],
+      [],
+      headerRow1,
+      ...dataRows
+    ]);
+    
+    // Column widths
+    ws1['!cols'] = [
+      { wch: 6 },   // S.No
+      { wch: 14 },  // Vehicle No
+      { wch: 26 },  // Owner
+      { wch: 14 },  // Contact
+      { wch: 9 },   // PIN
+      { wch: 35 },  // Present Address
+      { wch: 35 },  // Permanent Address
+      { wch: 35 },  // Owner Address
+      { wch: 20 },  // Father
+      { wch: 14 },  // Maker
+      { wch: 14 },  // Model
+      { wch: 10 },  // Fuel
+      { wch: 12 },  // State
+      { wch: 12 },  // Fetched
+      { wch: 12 },  // Last Used
+      { wch: 11 },  // Reuse
+      { wch: 16 }   // Source
+    ];
+    
+    // Merge title row
+    ws1['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 16 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 16 } },
+      { s: { r: 2, c: 0 }, e: { r: 2, c: 16 } }
+    ];
+    
+    XLSX.utils.book_append_sheet(wb, ws1, 'Vehicle Master Data');
+    
+    // Sheet 2: Summary
+    const totalInCampaign = vehiclesInCampaign.size;
+    const withOwner = cacheRecords.filter(c => c.owner_name).length;
+    const withContact = cacheRecords.filter(c => c.contact_number).length;
+    const withPin = cacheRecords.filter(c => c.pincode).length;
+    const totalReuse = cacheRecords.reduce((sum, c) => sum + (c.fetch_count || 1), 0);
+    const moneySaved = (totalReuse - cacheRecords.length) * SUREPASS_COST_PER_CALL;
+    
+    const ws2 = XLSX.utils.aoa_to_sheet([
+      ['CAMPAIGN SUMMARY — ' + campaignName.toUpperCase()],
+      [],
+      ['Metric', 'Value'],
+      ['Total Vehicles in Campaign', totalInCampaign],
+      ['Vehicles in Database', cacheRecords.length],
+      ['Coverage %', totalInCampaign > 0 ? ((cacheRecords.length / totalInCampaign * 100).toFixed(1) + '%') : '0%'],
+      [],
+      ['Data Completeness', ''],
+      ['With Owner Name', withOwner + ' (' + (cacheRecords.length > 0 ? Math.round(withOwner / cacheRecords.length * 100) : 0) + '%)'],
+      ['With Contact No.', withContact + ' (' + (cacheRecords.length > 0 ? Math.round(withContact / cacheRecords.length * 100) : 0) + '%)'],
+      ['With PIN Code', withPin + ' (' + (cacheRecords.length > 0 ? Math.round(withPin / cacheRecords.length * 100) : 0) + '%)'],
+      [],
+      ['Cost Saving (this campaign)', ''],
+      ['Total Reuse Count', totalReuse],
+      ['Cache Hits (free reuses)', totalReuse - cacheRecords.length],
+      ['Money Saved (₹)', '₹' + moneySaved.toLocaleString('en-IN')],
+      [],
+      ['Generated By', state.admin.name],
+      ['Generated On', new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })]
+    ]);
+    ws2['!cols'] = [{ wch: 28 }, { wch: 28 }];
+    ws2['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }];
+    XLSX.utils.book_append_sheet(wb, ws2, 'Summary');
+    
+    // Sheet 3: Cost Saving Detail
+    const ws3 = XLSX.utils.aoa_to_sheet([
+      ['COST SAVING ANALYSIS'],
+      [],
+      ['Per-API-call cost estimate: ₹' + SUREPASS_COST_PER_CALL],
+      [],
+      ['Vehicle', 'Reuse Count', 'Saved (₹)'],
+      ...cacheRecords
+        .filter(c => (c.fetch_count || 1) > 1)
+        .sort((a, b) => (b.fetch_count || 1) - (a.fetch_count || 1))
+        .map(c => [
+          c.vehicle_number,
+          c.fetch_count || 1,
+          '₹' + (((c.fetch_count || 1) - 1) * SUREPASS_COST_PER_CALL)
+        ]),
+      [],
+      ['TOTAL SAVED', totalReuse - cacheRecords.length, '₹' + moneySaved.toLocaleString('en-IN')]
+    ]);
+    ws3['!cols'] = [{ wch: 16 }, { wch: 14 }, { wch: 14 }];
+    ws3['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }];
+    XLSX.utils.book_append_sheet(wb, ws3, 'Cost Saving');
+    
+    // Generate filename
+    const safeCampaignName = campaignName.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const dateStr = new Date().toISOString().split('T')[0];
+    const filename = `MasterCache_${safeCampaignName}_${dateStr}.xlsx`;
+    
+    XLSX.writeFile(wb, filename);
+    showToast('✓ Downloaded: ' + filename, 'success');
+    
+  } catch (err) {
+    console.error('Download error:', err);
+    showToast('Download failed: ' + err.message, 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DOWNLOAD MASTER (All Campaigns Combined)
+// ═══════════════════════════════════════════════════════════════
+async function downloadMasterAll() {
+  showToast('Building master database (all campaigns)...', '');
+  
+  const btn = document.getElementById('btnDownloadAll');
+  btn.disabled = true;
+  btn.textContent = '⏳ Building...';
+  
+  try {
+    const wb = XLSX.utils.book_new();
+    
+    // Sheet 1: All Vehicles
+    const cacheMap = {};
+    state.allCache.forEach(c => { cacheMap[c.vehicle_number] = c; });
+    
+    // Build vehicle → campaigns map
+    const vToCampaigns = {};
+    state.allPhotos.forEach(p => {
+      if (!vToCampaigns[p.vehicle_number]) vToCampaigns[p.vehicle_number] = new Set();
+      vToCampaigns[p.vehicle_number].add(p.campaign_key);
+    });
+    const campaignNameMap = {};
+    state.campaigns.forEach(c => { campaignNameMap[c.key] = c.name; });
+    
+    const headerRow = [
+      'S.No.', 'Vehicle No.', 'Owner Name', 'Contact', 'PIN Code',
+      'Address', 'Father Name', 'Maker', 'Fuel Type', 'State',
+      'Campaigns', 'Fetched On', 'Reuse Count', 'Source'
+    ];
+    
+    const dataRows = state.allCache.map((c, idx) => {
+      const campaignKeys = vToCampaigns[c.vehicle_number] || new Set();
+      const campaignNames = Array.from(campaignKeys).map(k => campaignNameMap[k] || k).join(', ');
+      
+      return [
+        idx + 1,
+        c.vehicle_number || '',
+        c.owner_name || '',
+        c.contact_number || '',
+        c.pincode || '',
+        c.present_address || c.permanent_address || c.owner_address || '',
+        c.father_name || '',
+        c.vehicle_maker || '',
+        c.fuel_type || '',
+        c.state || '',
+        campaignNames,
+        c.fetched_at ? new Date(c.fetched_at).toLocaleDateString('en-IN') : '',
+        c.fetch_count || 1,
+        c.source || 'Verified Database'
+      ];
+    });
+    
+    const ws1 = XLSX.utils.aoa_to_sheet([
+      ['MASTER VEHICLE OWNER DATABASE'],
+      ['Generated: ' + new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' · Admin Only · Confidential'],
+      [],
+      headerRow,
+      ...dataRows
+    ]);
+    ws1['!cols'] = [
+      { wch: 6 }, { wch: 14 }, { wch: 26 }, { wch: 14 }, { wch: 9 },
+      { wch: 40 }, { wch: 20 }, { wch: 14 }, { wch: 10 }, { wch: 12 },
+      { wch: 30 }, { wch: 12 }, { wch: 11 }, { wch: 16 }
+    ];
+    ws1['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 13 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 13 } }
+    ];
+    XLSX.utils.book_append_sheet(wb, ws1, 'Master Vehicle Data');
+    
+    // Sheet 2: Campaign Summary
+    const campaignRows = [];
+    state.campaigns.forEach(camp => {
+      const vehicles = new Set();
+      state.allPhotos.forEach(p => {
+        if (p.campaign_key === camp.key) vehicles.add(p.vehicle_number);
+      });
+      if (vehicles.size === 0) return;
+      
+      let withOwner = 0, withContact = 0, withPin = 0, totalReuse = 0;
+      vehicles.forEach(v => {
+        const c = cacheMap[v];
+        if (c) {
+          if (c.owner_name) withOwner++;
+          if (c.contact_number) withContact++;
+          if (c.pincode) withPin++;
+          totalReuse += (c.fetch_count || 1);
+        }
+      });
+      
+      const coverage = vehicles.size > 0 ? Math.round(withOwner / vehicles.size * 100) : 0;
+      campaignRows.push([
+        camp.name,
+        vehicles.size,
+        withOwner,
+        withContact,
+        withPin,
+        coverage + '%',
+        totalReuse
+      ]);
+    });
+    
+    const ws2 = XLSX.utils.aoa_to_sheet([
+      ['CAMPAIGN-WISE BREAKDOWN'],
+      [],
+      ['Campaign', 'Total Vehicles', 'With Owner', 'With Contact', 'With PIN', 'Coverage', 'Reuse Count'],
+      ...campaignRows
+    ]);
+    ws2['!cols'] = [{ wch: 28 }, { wch: 14 }, { wch: 12 }, { wch: 13 }, { wch: 11 }, { wch: 11 }, { wch: 14 }];
+    ws2['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 6 } }];
+    XLSX.utils.book_append_sheet(wb, ws2, 'Campaigns');
+    
+    // Sheet 3: Cost Saving Summary
+    const totalCache = state.allCache.length;
+    const totalReuse = state.allCache.reduce((sum, c) => sum + (c.fetch_count || 1), 0);
+    const cacheHits = totalReuse - totalCache;
+    const moneySaved = cacheHits * SUREPASS_COST_PER_CALL;
+    
+    const ws3 = XLSX.utils.aoa_to_sheet([
+      ['COST SAVING REPORT'],
+      [],
+      ['Per Vehicle Lookup Cost Estimate', '₹' + SUREPASS_COST_PER_CALL],
+      [],
+      ['Database Stats', ''],
+      ['Total Vehicles in Database', totalCache],
+      ['Total Reuse Count', totalReuse],
+      ['Cache Hits (free reuses)', cacheHits],
+      [],
+      ['Financial Impact', ''],
+      ['Money Saved (Total)', '₹' + moneySaved.toLocaleString('en-IN')],
+      ['Avg Reuse per Vehicle', totalCache > 0 ? (totalReuse / totalCache).toFixed(2) : '0'],
+      [],
+      ['Growth Potential', ''],
+      ['Recommended Pre-upload', '50,000+ vehicles'],
+      ['Estimated Annual Saving', '₹1,50,000+ (with full pre-upload)'],
+      [],
+      ['Generated By', state.admin.name],
+      ['Generated On', new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })]
+    ]);
+    ws3['!cols'] = [{ wch: 32 }, { wch: 22 }];
+    ws3['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }];
+    XLSX.utils.book_append_sheet(wb, ws3, 'Cost Saving');
+    
+    // Sheet 4: Data Sources
+    const sources = {};
+    state.allCache.forEach(c => {
+      const src = c.source || 'Verified Database';
+      sources[src] = (sources[src] || 0) + 1;
+    });
+    const sourceRows = Object.entries(sources).map(([src, count]) => [
+      src, count, ((count / totalCache) * 100).toFixed(1) + '%'
+    ]);
+    
+    const ws4 = XLSX.utils.aoa_to_sheet([
+      ['DATA SOURCES'],
+      [],
+      ['Source', 'Count', 'Percentage'],
+      ...sourceRows
+    ]);
+    ws4['!cols'] = [{ wch: 25 }, { wch: 10 }, { wch: 12 }];
+    ws4['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }];
+    XLSX.utils.book_append_sheet(wb, ws4, 'Sources');
+    
+    const dateStr = new Date().toISOString().split('T')[0];
+    const filename = `MasterDatabase_AllCampaigns_${dateStr}.xlsx`;
+    XLSX.writeFile(wb, filename);
+    
+    showToast('✓ Downloaded: ' + filename, 'success');
+  } catch (err) {
+    console.error('Master download error:', err);
+    showToast('Download failed: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📥 Download Master Excel';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  // Auto-login if admin phone in localStorage
+  tryAutoLogin();
+  
+  // Enter key on phone input
+  document.getElementById('loginPhone').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') loginAdmin();
+  });
+});
+</script>
+
+</body>
+</html>

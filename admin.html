@@ -176,6 +176,7 @@ label { display: block; font-size: 10px; font-weight: 600; text-transform: upper
   <div class="tab" data-tab="photos" onclick="switchTab('photos')">Photos</div>
   <div class="tab" data-tab="clientlinks" onclick="switchTab('clientlinks')">Client Links</div>
   <div class="tab" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:#fff;font-weight:700;" onclick="window.open('verifier.html','_blank')">🔍 Verifier Portal</div>
+  <div id="masterDbTab" class="tab" style="background:linear-gradient(135deg,#0B1957,#1a2d6e);color:#26d0ce;font-weight:700;display:none;" onclick="window.open('master-cache.html','_blank')">🗄️ Master Database</div>
 </div>
 
 <div id="mainContainer" class="container" style="display:none;">
@@ -381,10 +382,10 @@ label { display: block; font-size: 10px; font-weight: 600; text-transform: upper
         <button class="btn" onclick="loadPhotos()">Filter</button>
         <button class="btn" style="background:#10b981; color:#fff;" onclick="downloadPhotosZip()" id="zipDownloadBtn">📦 Download ZIP</button>
         <button class="btn" style="background:#22c55e; color:#fff;" onclick="downloadExcelReport()" title="Download standalone Excel report (campaign-wise, date-wise, team-wise, location-wise)">📊 Excel Report</button>
-        <button class="btn" style="background:#0B1957; color:#26d0ce;" onclick="downloadExcelReportV2()" title="Download approved format Excel — verified vehicles with Surepass owner details">📊 Excel V2 ✨</button>
+        <button class="btn" style="background:#0B1957; color:#26d0ce;" onclick="downloadExcelReportV2()" title="Download approved format Excel — verified vehicles with owner details from Verified Database">📊 Excel V2 ✨</button>
         <button class="btn" style="background:#ef4444; color:#fff;" onclick="openPPTGenerator()" title="Generate PowerPoint presentation with verified vehicle data">📊 Generate PPT</button>
         <button class="btn" style="background:#f59e0b; color:#fff;" onclick="configFindrServer()" title="Configure Findr server URL for auto vehicle owner lookup">⚙️ Findr</button>
-        <button class="btn" style="background:#26d0ce; color:#0B1957; font-weight:700;" onclick="bulkFetchSurepass()" title="Fetch owner+contact details from Surepass for all verified vehicles in current filter">🔍 Bulk Fetch Surepass</button>
+        <button class="btn" style="background:#26d0ce; color:#0B1957; font-weight:700;" onclick="bulkFetchSurepass()" title="Fetch owner+contact details from Verified Database for all verified vehicles in current filter">🔍 Get Vehicle Owners</button>
         <button class="btn" style="background:#8b5cf6; color:#fff;" onclick="openBulkUpload()" title="Upload existing vehicle data (Excel/CSV) - save Findr API costs">📤 Bulk Import</button>
       </div>
     </div>
@@ -609,6 +610,12 @@ function canSeePinCode() {
 }
 
 function applyRoleBasedUI() {
+  // Show Master Database tab only for admin/owner (hidden from DEO)
+  const masterDbTab = document.getElementById('masterDbTab');
+  if (masterDbTab) {
+    masterDbTab.style.display = isAdmin() ? 'block' : 'none';
+  }
+  
   // Hide Settings/RBAC tab for DEO users
   if (isDEO()) {
     // Find and hide settings-related tabs/buttons (if any)
@@ -626,7 +633,7 @@ function applyRoleBasedUI() {
       badge.title = 'Data Entry Operator - PIN code hidden in Excel reports';
     }
     
-    console.log('[RBAC] DEO role active - PIN code hidden in Excel exports');
+    console.log('[RBAC] DEO role active - PIN code hidden in Excel exports, Master DB hidden');
   }
 }
 
@@ -4276,7 +4283,7 @@ document.addEventListener('DOMContentLoaded', function() {
     merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 6 } });
     
     // Row 3: Subtitle
-    setCell(ws, 'A3', 'GPS-stamped photo proof of work · Auto-fetched owner details from Surepass', styleSubtitle());
+    setCell(ws, 'A3', 'GPS-stamped photo proof of work · Auto-fetched owner details from Verified Database', styleSubtitle());
     merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 6 } });
     
     // Row 5-7: Meta block (9 fields - 3 rows × 3 columns)
@@ -4376,7 +4383,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Footer note - full width
     var noteRow = totalRow + 2;
     setCell(ws, 'A' + noteRow, 
-      'All vehicle owner details fetched automatically via Surepass API · Photos available in separate folder · GPS coordinates recorded for each capture', 
+      'All vehicle owner details fetched automatically from Verified Database · Photos available in separate folder · GPS coordinates recorded for each capture', 
       styleNote()
     );
     merges.push({ s: { r: noteRow - 1, c: 0 }, e: { r: noteRow - 1, c: totalCols - 1 } });
@@ -4539,8 +4546,8 @@ document.addEventListener('DOMContentLoaded', function() {
       { type: 'blank' },
       { type: 'header', text: '📋 COLUMN DEFINITIONS' },
       { type: 'kv', k: 'Vehicle No.', v: 'RTO-registered vehicle number — verified manually from GPS-stamped photos' },
-      { type: 'kv', k: 'Vehicle Owner', v: 'Auto-fetched from Surepass API using RC number lookup' },
-      { type: 'kv', k: 'Contact No.', v: 'Auto-fetched from Surepass API (RC-to-Mobile lookup)' },
+      { type: 'kv', k: 'Vehicle Owner', v: 'Auto-fetched from Verified Database using RC number lookup' },
+      { type: 'kv', k: 'Contact No.', v: 'Auto-fetched from Verified Database (RC-to-Mobile lookup)' },
       { type: 'kv', k: 'Location', v: 'GPS-derived city from reverse geocoding' },
       { type: 'kv', k: 'Photos', v: 'Number of photos captured (Hood = 3, Back Panel = 1)' },
       { type: 'kv', k: 'Status', v: 'Verification status (Verified after manual review)' },
@@ -4844,7 +4851,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // ─── Bulk Surepass Fetch ──────────────────────────────────────────────
   window.bulkFetchSurepass = async function() {
     var btn = document.querySelector('button[onclick="bulkFetchSurepass()"]');
-    var originalText = btn ? btn.innerHTML : '🔍 Bulk Fetch Surepass';
+    var originalText = btn ? btn.innerHTML : '🔍 Get Vehicle Owners';
     if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Loading...'; }
     
     try {
@@ -4875,9 +4882,9 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
       
-      var confirmMsg = '🔍 Fetch owner + contact details from Surepass?\n\n' +
+      var confirmMsg = '🔍 Fetch owner + contact details from Verified Database?\n\n' +
                        'Vehicles: ' + plates.length + '\n' +
-                       'Each fetch makes 2 API calls (Name + Contact)\n' +
+                       'Each fetch makes 2 lookups (Name + Contact)\n' +
                        'Cached results skip API call (free)\n\n' +
                        'Proceed?';
       if (!confirm(confirmMsg)) {
@@ -4923,7 +4930,7 @@ document.addEventListener('DOMContentLoaded', function() {
       
       if (btn) { btn.disabled = false; btn.innerHTML = originalText; }
       
-      var summary = '✅ Bulk Surepass Fetch Complete!\n\n' +
+      var summary = '✅ Vehicle Owners Fetch Complete!\n\n' +
         '📊 Results:\n' +
         '  Total: ' + plates.length + '\n' +
         '  Success: ' + success + ' (Cached: ' + cached + ', Fresh: ' + (success - cached) + ')\n' +

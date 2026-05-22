@@ -288,14 +288,14 @@ body {
     <div class="preview-header">
       <h2>Preview</h2>
       <div style="display:flex;gap:10px;align-items:center;">
-        <button class="btn btn-accent" id="fetchMissingBtn" onclick="fetchMissingFromSurepass()" style="display:none;background:#26d0ce;color:#0B1957;font-weight:700;">🔍 Fetch Missing from Surepass</button>
+        <button class="btn btn-accent" id="fetchMissingBtn" onclick="fetchMissingFromSurepass()" style="display:none;background:#26d0ce;color:#0B1957;font-weight:700;">🔍 Fetch Missing Owners</button>
         <button class="btn btn-accent" id="generateBtn" onclick="generatePPT()" disabled>📥 Generate PPT</button>
       </div>
     </div>
     
     <div id="missingWarning" style="display:none;background:#fef3c7;border:1px solid #fbbf24;border-radius:8px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#78350f;">
       ⚠️ <b id="missingCount">0</b> vehicles ka Owner/Contact data missing hai. PPT pe blank dikhega.
-      <span id="missingHint" style="color:#92400e;font-weight:600;"> · Click "Fetch Missing from Surepass" to auto-fill</span>
+      <span id="missingHint" style="color:#92400e;font-weight:600;"> · Click "Fetch Missing Owners" to auto-fill</span>
     </div>
     
     <div class="preview-stats">
@@ -823,7 +823,7 @@ function renderPreview() {
     if (fetchBtn && canFetchSurepass()) {
       fetchBtn.style.display = 'inline-block';
       fetchBtn.disabled = false;
-      fetchBtn.textContent = '🔍 Fetch ' + missingCount + ' Missing from Surepass';
+      fetchBtn.textContent = '🔍 Fetch ' + missingCount + ' Missing Owners';
     } else if (fetchBtn) {
       fetchBtn.style.display = 'none';
     }
@@ -865,7 +865,7 @@ function renderPreview() {
 // ═══════════════════════════════════════════════════════════════
 async function fetchMissingFromSurepass() {
   if (!canFetchSurepass()) {
-    showToast('Aap Surepass fetch nahi kar sakte', 'error');
+    showToast('Aap data fetch nahi kar sakte', 'error');
     return;
   }
   
@@ -877,9 +877,9 @@ async function fetchMissingFromSurepass() {
   
   // Confirm before spending API credits
   const confirmed = confirm(
-    'Surepass se ' + missing.length + ' vehicles ka data fetch karna hai?\n\n' +
+    missing.length + ' vehicles ka owner data fetch karna hai?\n\n' +
     'Cost estimate: ' + missing.length + ' × ~₹3 = ~₹' + (missing.length * 3) + '\n\n' +
-    'Yeh sirf ek baar charge hoga, baad mein cache se free milega.'
+    'Yeh sirf ek baar charge hoga, baad mein Verified Database se free milega.'
   );
   if (!confirmed) return;
   
