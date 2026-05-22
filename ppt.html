@@ -220,7 +220,10 @@ body {
       <h1>📊 PPT Report Generator</h1>
       <p>Professional vehicle branding photo report</p>
     </div>
-    <div class="lib-status loading" id="libStatus">⏳ Loading library...</div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <span id="roleBadge" style="display:none;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;letter-spacing:0.3px;">Loading...</span>
+      <div class="lib-status loading" id="libStatus">⏳ Loading library...</div>
+    </div>
   </div>
 
   <div class="filters">
@@ -304,11 +307,15 @@ body {
         <div class="label">Back Panel</div>
         <div class="value" id="statBackPanel">0</div>
       </div>
+      <div class="stat-card">
+        <div class="label">Owner Data</div>
+        <div class="value" id="statEnriched" style="color:#10b981;">0</div>
+      </div>
     </div>
 
     <div class="vehicle-list">
       <div class="vehicle-row header">
-        <div>Vehicle</div><div>Mode</div><div>Photos</div><div>Date</div><div>Member</div>
+        <div>Vehicle</div><div>Mode</div><div>Photos</div><div>Owner</div><div>Member</div>
       </div>
       <div id="vehicleListBody">
         <div class="empty-state">Filters select karke "Load Vehicles" dabao</div>
@@ -349,8 +356,61 @@ let state = {
   customLogo: null,
   customBrand: 'PRAJAPATI',
   customWebsite: 'prajapatiadvertising.co.in',
-  vehicles: []
+  vehicles: [],
+  userRole: 'guest',         // 'admin' | 'owner' | 'data_entry' | 'client' | 'guest'
+  clientToken: null,
+  tokenRow: null
 };
+
+// ═══════════════════════════════════════════════════════════════
+//  ROLE DETECTION & ACCESS HELPERS (22-May-2026)
+// ═══════════════════════════════════════════════════════════════
+async function detectUserRole() {
+  // Token present = client mode (highest priority)
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('t')) {
+    state.userRole = 'client';
+    return 'client';
+  }
+  
+  // Check for logged-in admin/DEO from localStorage
+  const phone = localStorage.getItem('prajapati_admin_phone');
+  if (!phone) {
+    state.userRole = 'guest';
+    return 'guest';
+  }
+  
+  // Lookup role from DB
+  try {
+    const members = await api('/rest/v1/trial_team_members?phone=eq.' + encodeURIComponent(phone) + '&active=eq.true&select=role,name');
+    if (members && members.length > 0) {
+      const role = (members[0].role || '').toLowerCase();
+      state.userRole = role;
+      console.log('[PPT] Detected role:', role, '·', members[0].name);
+      return role;
+    }
+  } catch (e) {
+    console.warn('[PPT] Role detection failed:', e);
+  }
+  
+  state.userRole = 'guest';
+  return 'guest';
+}
+
+function canSeeContact() {
+  // Admin/Owner/DEO can see contact in PPT; client and guest cannot
+  return ['admin', 'owner', 'data_entry'].includes(state.userRole);
+}
+
+function getRoleBadge() {
+  switch(state.userRole) {
+    case 'admin':
+    case 'owner':      return { text: '👤 Admin Access', color: '#10b981', bg: '#d1fae5' };
+    case 'data_entry': return { text: '📝 Data Entry Access', color: '#0B1957', bg: '#dbeafe' };
+    case 'client':     return { text: '🤝 Client Access', color: '#7c3aed', bg: '#ede9fe' };
+    default:           return { text: '🔓 Public View', color: '#6b7280', bg: '#f3f4f6' };
+  }
+}
 
 function showToast(msg, type) {
   const t = document.getElementById('toast');
@@ -411,6 +471,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const ms = document.getElementById('modeFilter');
     if (ms.querySelector('option[value="' + modeUrl + '"]')) ms.value = modeUrl;
   }
+
+  // ─── DETECT USER ROLE FIRST (for PPT field visibility) ───
+  detectUserRole().then(role => {
+    // Show role badge in UI
+    const badge = getRoleBadge();
+    const headerBadge = document.getElementById('roleBadge');
+    if (headerBadge) {
+      headerBadge.textContent = badge.text;
+      headerBadge.style.color = badge.color;
+      headerBadge.style.background = badge.bg;
+      headerBadge.style.display = 'inline-block';
+    }
+  });
 
   // If token present, validate it first (client access mode)
   if (token) {
@@ -632,6 +705,8 @@ async function loadVehicles() {
           vehicle_number: p.vehicle_number,
           mode: p.mode,
           owner_name: p.owner_name,
+          contact_number: p.contact_number,    // 22-May-2026: for PPT details
+          pincode: p.pincode || null,           // 22-May-2026: from trial_photos if present
           member_name: p.member_name,
           city: p.city,
           address: p.address,
@@ -645,10 +720,59 @@ async function loadVehicles() {
     state.vehicles = Object.values(grouped);
     state.vehicles.forEach(v => v.photos.sort((a, b) => (a.photo_number || 0) - (b.photo_number || 0)));
     
+    // ─── ENRICH FROM SUREPASS CACHE (22-May-2026) ───
+    // Pull owner_name + contact_number from prajapati_vehicle_lookup
+    // This auto-fills slide details with verified Surepass/manual data
+    await enrichWithSurepassCache(state.vehicles);
+    
     renderPreview();
   } catch (err) {
     console.error('Load error:', err);
     showToast('Load fail: ' + err.message, 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Surepass Cache Enrichment (22-May-2026)
+//  Reads owner_name + contact_number from prajapati_vehicle_lookup
+//  Falls back to whatever was already in trial_photos
+// ═══════════════════════════════════════════════════════════════
+async function enrichWithSurepassCache(vehicles) {
+  if (!vehicles || vehicles.length === 0) return;
+  
+  const plates = vehicles.map(v => v.vehicle_number).filter(Boolean);
+  if (plates.length === 0) return;
+  
+  try {
+    // PostgREST in() syntax with quoted strings
+    const inList = plates.map(p => '"' + p + '"').join(',');
+    const url = '/rest/v1/prajapati_vehicle_lookup?select=vehicle_number,owner_name,contact_number,pincode'
+              + '&vehicle_number=in.(' + inList + ')';
+    const cache = await api(url);
+    
+    if (!cache || cache.length === 0) {
+      console.log('[PPT] No Surepass cache hits for', plates.length, 'vehicles');
+      return;
+    }
+    
+    // Build lookup map
+    const map = {};
+    cache.forEach(c => { map[c.vehicle_number] = c; });
+    
+    let enrichedCount = 0;
+    vehicles.forEach(v => {
+      const c = map[v.vehicle_number];
+      if (c) {
+        // Surepass takes priority over manual entries
+        if (c.owner_name) { v.owner_name = c.owner_name; enrichedCount++; }
+        if (c.contact_number) { v.contact_number = c.contact_number; }
+        if (c.pincode) { v.pincode = c.pincode; }
+      }
+    });
+    
+    console.log('[PPT] Enriched', enrichedCount, 'of', vehicles.length, 'vehicles from Surepass cache');
+  } catch (e) {
+    console.warn('[PPT] Surepass cache enrichment failed (non-fatal):', e);
   }
 }
 
@@ -658,25 +782,32 @@ function renderPreview() {
   const totalPhotos = state.vehicles.reduce((s, v) => s + v.photos.length, 0);
   const hoodCount = state.vehicles.filter(v => v.mode === 'hood').length;
   const backPanelCount = state.vehicles.filter(v => v.mode === 'back_panel').length;
+  const enrichedCount = state.vehicles.filter(v => v.owner_name).length;
   
   document.getElementById('statVehicles').textContent = totalVehicles;
   document.getElementById('statPhotos').textContent = totalPhotos;
   document.getElementById('statHood').textContent = hoodCount;
   document.getElementById('statBackPanel').textContent = backPanelCount;
+  const enrichedEl = document.getElementById('statEnriched');
+  if (enrichedEl) {
+    enrichedEl.textContent = enrichedCount + '/' + totalVehicles;
+    enrichedEl.style.color = enrichedCount === totalVehicles ? '#10b981' : (enrichedCount > 0 ? '#f59e0b' : '#ef4444');
+  }
   document.getElementById('generateBtn').disabled = totalVehicles === 0 || !window.PPTX_LIB_LOADED;
   
   const body = document.getElementById('vehicleListBody');
   body.innerHTML = state.vehicles.map(v => {
-    const date = new Date(v.captured_at);
-    const dateStr = date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
     const modeClass = v.mode === 'hood' ? 'hood' : 'back_panel';
     const modeLabel = v.mode === 'hood' ? 'Hood' : 'Back Panel';
+    const ownerDisplay = v.owner_name 
+      ? escapeHtml(v.owner_name)
+      : '<span style="color:#9ca3af;font-style:italic;">—</span>';
     return `
       <div class="vehicle-row">
         <div class="vh-num">${escapeHtml(v.vehicle_number)}</div>
         <div><span class="mode-pill ${modeClass}">${modeLabel}</span></div>
         <div>${v.photos.length} / ${v.photos[0]?.total_expected || '?'}</div>
-        <div>${dateStr}</div>
+        <div>${ownerDisplay}</div>
         <div>${escapeHtml(v.member_name || '-')}</div>
       </div>
     `;
@@ -983,10 +1114,12 @@ function addHoodSlide(pptx, vehicle, photoData, campaign, brand) {
     align: 'right', valign: 'middle'
   });
   
-  // ─── DETAILS STRIP (clean, no fill bar) ───
-  const dateStr = formatDateFromTimestamp(vehicle.captured_at);
+  // ─── DETAILS STRIP (Role-aware: 22-May-2026) ───
+  // Admin/DEO: Vehicle Owner | Contact | Vehicle No | Location
+  // Client/Public: Vehicle Owner | Vehicle No | Location (no contact for privacy)
   const locationStr = vehicle.city || (vehicle.address ? vehicle.address.split(',')[0] : 'India');
-  const workerStr = vehicle.member_name || 'Field Team';
+  const ownerStr = vehicle.owner_name || '—';
+  const contactStr = vehicle.contact_number || '—';
   
   // Subtle divider line below header
   slide.addShape(pptx.ShapeType.line, {
@@ -994,14 +1127,20 @@ function addHoodSlide(pptx, vehicle, photoData, campaign, brand) {
     line: { color: 'E5E7EB', width: 0.5 }
   });
   
-  const colWidth = (W - 0.8) / 4;
+  // Build fields conditionally based on role
+  const detailsData = [];
+  detailsData.push({ label: 'VEHICLE OWNER', value: ownerStr });
+  
+  if (canSeeContact()) {
+    detailsData.push({ label: 'CONTACT', value: contactStr, mono: true });
+  }
+  
+  detailsData.push({ label: 'VEHICLE NO.', value: vehicle.vehicle_number, mono: true });
+  detailsData.push({ label: 'LOCATION', value: locationStr });
+  
+  const colCount = detailsData.length;  // 4 for admin/DEO, 3 for client
+  const colWidth = (W - 0.8) / colCount;
   const detailsY = 0.85;
-  const detailsData = [
-    { label: 'VEHICLE NO.', value: vehicle.vehicle_number, mono: true },
-    { label: 'CAPTURED BY', value: workerStr },
-    { label: 'DATE', value: dateStr },
-    { label: 'LOCATION', value: locationStr }
-  ];
   
   detailsData.forEach((item, idx) => {
     const x = 0.4 + idx * colWidth;
@@ -1130,24 +1269,32 @@ function addBackPanelSlide(pptx, vehicle, photoData, campaign, brand) {
     align: 'right', valign: 'middle'
   });
   
-  // Details strip
-  const dateStr = formatDateFromTimestamp(vehicle.captured_at);
+  // Details strip (Role-aware: 22-May-2026)
+  // Admin/DEO: Vehicle Owner | Contact | Vehicle No | Location
+  // Client/Public: Vehicle Owner | Vehicle No | Location
   const locationStr = vehicle.city || (vehicle.address ? vehicle.address.split(',')[0] : 'India');
-  const workerStr = vehicle.member_name || 'Field Team';
+  const ownerStr = vehicle.owner_name || '—';
+  const contactStr = vehicle.contact_number || '—';
   
   slide.addShape(pptx.ShapeType.line, {
     x: 0, y: 1.45, w: W, h: 0,
     line: { color: 'E5E7EB', width: 0.5 }
   });
   
-  const colWidth = (W - 0.8) / 4;
+  // Build fields conditionally based on role
+  const detailsData = [];
+  detailsData.push({ label: 'VEHICLE OWNER', value: ownerStr });
+  
+  if (canSeeContact()) {
+    detailsData.push({ label: 'CONTACT', value: contactStr, mono: true });
+  }
+  
+  detailsData.push({ label: 'VEHICLE NO.', value: vehicle.vehicle_number, mono: true });
+  detailsData.push({ label: 'LOCATION', value: locationStr });
+  
+  const colCount = detailsData.length;
+  const colWidth = (W - 0.8) / colCount;
   const detailsY = 0.85;
-  const detailsData = [
-    { label: 'VEHICLE NO.', value: vehicle.vehicle_number, mono: true },
-    { label: 'CAPTURED BY', value: workerStr },
-    { label: 'DATE', value: dateStr },
-    { label: 'LOCATION', value: locationStr }
-  ];
   
   detailsData.forEach((item, idx) => {
     const x = 0.4 + idx * colWidth;

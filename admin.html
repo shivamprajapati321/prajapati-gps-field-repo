@@ -545,7 +545,7 @@ function loginAdmin() {
       btn.disabled = false; btn.textContent = 'Login →';
       if (!members || members.length === 0) { showToast('Number registered nahi hai', 'error'); return; }
       var member = members[0];
-      if (member.role !== 'admin' && member.role !== 'owner') { showToast('Sirf admin/owner login kar sakte hain', 'error'); return; }
+      if (member.role !== 'admin' && member.role !== 'owner' && member.role !== 'data_entry') { showToast('Aapko admin panel ka access nahi hai', 'error'); return; }
       state.admin = member;
       localStorage.setItem('prajapati_admin_phone', phone);
       enterDashboard();
@@ -581,7 +581,53 @@ function enterDashboard() {
   document.getElementById('photoDate').value = weekAgo;
   document.getElementById('photoDateEnd').value = todayStr();
   document.getElementById('quickRangeLabel').textContent = '· Last 7 days';
+  // Apply role-based UI hiding (Settings tab, etc.)
+  applyRoleBasedUI();
   loadCampaigns();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RBAC: Role-Based Access Control Helpers
+// ═══════════════════════════════════════════════════════════════════════════
+// Roles: admin / owner (full access) | data_entry (DEO - restricted PIN code)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function isAdmin() {
+  if (!state.admin) return false;
+  var r = (state.admin.role || '').toLowerCase();
+  return r === 'admin' || r === 'owner';
+}
+
+function isDEO() {
+  if (!state.admin) return false;
+  return (state.admin.role || '').toLowerCase() === 'data_entry';
+}
+
+function canSeePinCode() {
+  // Only admin/owner can see PIN code in Excel reports
+  return isAdmin();
+}
+
+function applyRoleBasedUI() {
+  // Hide Settings/RBAC tab for DEO users
+  if (isDEO()) {
+    // Find and hide settings-related tabs/buttons (if any)
+    var settingsTab = document.querySelector('[data-tab="settings"]');
+    if (settingsTab) settingsTab.style.display = 'none';
+    
+    var rbacTab = document.querySelector('[data-tab="rbac"]');
+    if (rbacTab) rbacTab.style.display = 'none';
+    
+    // Add visual indicator that user is DEO (PIN restricted)
+    var badge = document.getElementById('userBadge');
+    if (badge) {
+      badge.style.background = '#fef3c7';
+      badge.style.color = '#92400e';
+      badge.title = 'Data Entry Operator - PIN code hidden in Excel reports';
+    }
+    
+    console.log('[RBAC] DEO role active - PIN code hidden in Excel exports');
+  }
 }
 
 function switchTab(tabName) {
@@ -4256,12 +4302,19 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
     
-    // Row 9: Table header (7 columns)
-    var headers = ['S.No.', 'Vehicle No.', 'Vehicle Owner', 'Contact No.', 'Location', 'Photos', 'Status'];
+    // Row 9: Table header — PIN code column visible only to Admin (DEO sees no PIN)
+    var showPin = (typeof canSeePinCode === 'function') ? canSeePinCode() : true;
+    var headers = showPin
+      ? ['S.No.', 'Vehicle No.', 'Vehicle Owner', 'Contact No.', 'PIN Code', 'Location', 'Photos', 'Status']
+      : ['S.No.', 'Vehicle No.', 'Vehicle Owner', 'Contact No.', 'Location', 'Photos', 'Status'];
     headers.forEach(function(h, i) {
       var cell = String.fromCharCode(65 + i) + '9';
       setCell(ws, cell, h, styleHeader());
     });
+    
+    // Total column count for merges and ranges
+    var totalCols = headers.length;
+    var lastColLetter = String.fromCharCode(65 + totalCols - 1);
     
     // Vehicle rows starting from row 10
     var dataStartRow = 10;
@@ -4273,35 +4326,60 @@ document.addEventListener('DOMContentLoaded', function() {
       setCell(ws, 'B' + excelRow, v.vehicleNumber, styleDataCell({ mono: true, bold: true, color: BRAND.NAVY, align: 'center', bg: bg }));
       setCell(ws, 'C' + excelRow, v.ownerName || '—', styleDataCell({ align: 'left', bg: bg }));
       setCell(ws, 'D' + excelRow, v.contactNumber || '—', styleDataCell({ mono: true, align: 'center', bg: bg }));
-      setCell(ws, 'E' + excelRow, v.location || '—', styleDataCell({ align: 'left', bg: bg }));
-      setCell(ws, 'F' + excelRow, v.photoCount, styleDataCell({ 
-        bold: true, 
-        align: 'center', 
-        color: v.photoCount >= v.expectedCount ? BRAND.TEAL : BRAND.WARNING, 
-        bg: bg 
-      }));
-      setCell(ws, 'G' + excelRow, v.status, styleDataCell({ 
-        bold: true, 
-        align: 'center', 
-        color: BRAND.SUCCESS, 
-        bg: BRAND.SUCCESS_BG 
-      }));
+      
+      if (showPin) {
+        // E: PIN Code (admin only)
+        setCell(ws, 'E' + excelRow, v.pincode || '—', styleDataCell({ mono: true, align: 'center', bg: bg, color: BRAND.NAVY }));
+        setCell(ws, 'F' + excelRow, v.location || '—', styleDataCell({ align: 'left', bg: bg }));
+        setCell(ws, 'G' + excelRow, v.photoCount, styleDataCell({ 
+          bold: true, 
+          align: 'center', 
+          color: v.photoCount >= v.expectedCount ? BRAND.TEAL : BRAND.WARNING, 
+          bg: bg 
+        }));
+        setCell(ws, 'H' + excelRow, v.status, styleDataCell({ 
+          bold: true, 
+          align: 'center', 
+          color: BRAND.SUCCESS, 
+          bg: BRAND.SUCCESS_BG 
+        }));
+      } else {
+        // DEO view: no PIN column, shift others
+        setCell(ws, 'E' + excelRow, v.location || '—', styleDataCell({ align: 'left', bg: bg }));
+        setCell(ws, 'F' + excelRow, v.photoCount, styleDataCell({ 
+          bold: true, 
+          align: 'center', 
+          color: v.photoCount >= v.expectedCount ? BRAND.TEAL : BRAND.WARNING, 
+          bg: bg 
+        }));
+        setCell(ws, 'G' + excelRow, v.status, styleDataCell({ 
+          bold: true, 
+          align: 'center', 
+          color: BRAND.SUCCESS, 
+          bg: BRAND.SUCCESS_BG 
+        }));
+      }
     });
     
-    // TOTAL row
+    // TOTAL row - dynamic based on column count
     var totalRow = dataStartRow + vehicles.length;
-    setCell(ws, 'A' + totalRow, 'TOTAL', styleTotalRow('right'));
-    merges.push({ s: { r: totalRow - 1, c: 0 }, e: { r: totalRow - 1, c: 4 } });
-    setCell(ws, 'F' + totalRow, '=SUM(F' + dataStartRow + ':F' + (totalRow - 1) + ')', styleTotalValue());
-    setCell(ws, 'G' + totalRow, vehicles.length + ' Vehicles', styleTotalValue());
+    var photoCol = showPin ? 'G' : 'F';  // Photos column position
+    var statusCol = showPin ? 'H' : 'G';  // Status column position
     
-    // Footer note
+    setCell(ws, 'A' + totalRow, 'TOTAL', styleTotalRow('right'));
+    // Merge TOTAL across S.No to column before Photos
+    var totalEndCol = showPin ? 5 : 4;  // E or F (before Photos)
+    merges.push({ s: { r: totalRow - 1, c: 0 }, e: { r: totalRow - 1, c: totalEndCol } });
+    setCell(ws, photoCol + totalRow, '=SUM(' + photoCol + dataStartRow + ':' + photoCol + (totalRow - 1) + ')', styleTotalValue());
+    setCell(ws, statusCol + totalRow, vehicles.length + ' Vehicles', styleTotalValue());
+    
+    // Footer note - full width
     var noteRow = totalRow + 2;
     setCell(ws, 'A' + noteRow, 
       'All vehicle owner details fetched automatically via Surepass API · Photos available in separate folder · GPS coordinates recorded for each capture', 
       styleNote()
     );
-    merges.push({ s: { r: noteRow - 1, c: 0 }, e: { r: noteRow - 1, c: 6 } });
+    merges.push({ s: { r: noteRow - 1, c: 0 }, e: { r: noteRow - 1, c: totalCols - 1 } });
     
     // Contact footer
     var contactRow = noteRow + 2;
@@ -4309,18 +4387,37 @@ document.addEventListener('DOMContentLoaded', function() {
       'Prajapati Advertising  ·  +91 9922138138  ·  www.prajapatiadvertising.com', 
       styleContact()
     );
-    merges.push({ s: { r: contactRow - 1, c: 0 }, e: { r: contactRow - 1, c: 6 } });
+    merges.push({ s: { r: contactRow - 1, c: 0 }, e: { r: contactRow - 1, c: totalCols - 1 } });
     
-    // Column widths
-    ws['!cols'] = [
-      { wch: 8 },   // S.No
-      { wch: 16 },  // Vehicle
-      { wch: 26 },  // Owner
-      { wch: 16 },  // Contact
-      { wch: 18 },  // Location
-      { wch: 11 },  // Photos
-      { wch: 14 }   // Status
-    ];
+    // Update top brand band, title, subtitle merges to span all columns
+    // Reset the first 3 merges that used hardcoded c:6
+    merges[0] = { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } };
+    merges[1] = { s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } };
+    merges[2] = { s: { r: 2, c: 0 }, e: { r: 2, c: totalCols - 1 } };
+    
+    // Column widths - dynamic based on role
+    if (showPin) {
+      ws['!cols'] = [
+        { wch: 8 },   // S.No
+        { wch: 16 },  // Vehicle
+        { wch: 26 },  // Owner
+        { wch: 16 },  // Contact
+        { wch: 10 },  // PIN Code
+        { wch: 18 },  // Location
+        { wch: 11 },  // Photos
+        { wch: 14 }   // Status
+      ];
+    } else {
+      ws['!cols'] = [
+        { wch: 8 },   // S.No
+        { wch: 16 },  // Vehicle
+        { wch: 26 },  // Owner
+        { wch: 16 },  // Contact
+        { wch: 18 },  // Location
+        { wch: 11 },  // Photos
+        { wch: 14 }   // Status
+      ];
+    }
     
     // Row heights
     ws['!rows'] = [];
@@ -4345,8 +4442,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Merges
     ws['!merges'] = merges;
     
-    // Freeze panes
-    ws['!ref'] = 'A1:G' + (contactRow + 1);
+    // Freeze panes - dynamic
+    ws['!ref'] = 'A1:' + lastColLetter + (contactRow + 1);
     ws['!freeze'] = { xSplit: 0, ySplit: 9 };
     
     return ws;
@@ -4654,6 +4751,7 @@ document.addEventListener('DOMContentLoaded', function() {
               if ((c.present_address || c.permanent_address) && !v.ownerAddress) {
                 v.ownerAddress = c.present_address || c.permanent_address;
               }
+              if (c.pincode && !v.pincode) v.pincode = c.pincode;
             }
           });
         } catch (e) {
