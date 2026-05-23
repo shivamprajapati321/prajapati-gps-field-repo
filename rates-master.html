@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Member Rates Master — Prajapati Execution</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  :root {
+    --primary: #0B1957;
+    --primary-light: #1a2d6e;
+    --accent: #26d0ce;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    --bg: #f8fafc;
+    --bg-card: #ffffff;
+    --border: #e5e7eb;
+    --text-dark: #0f172a;
+    --text-mid: #64748b;
+    --text-light: #94a3b8;
+  }
+  
+  body {
+    font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text-dark);
+    min-height: 100vh;
+    padding: 20px;
+    font-size: 14px;
+  }
+  
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  
+  .container { max-width: 1280px; margin: 0 auto; }
+  
+  /* ───────── LOGIN SCREEN ───────── */
+  .login-card {
+    background: white;
+    border-radius: 16px;
+    padding: 40px;
+    max-width: 440px;
+    margin: 100px auto;
+    box-shadow: 0 25px 60px rgba(11, 25, 87, 0.12);
+  }
+  .login-card h1 { color: var(--primary); font-size: 22px; margin-bottom: 6px; }
+  .login-card .sub { color: var(--text-mid); font-size: 13px; margin-bottom: 24px; }
+  .login-card input {
+    width: 100%; padding: 14px;
+    font-size: 16px; font-family: 'JetBrains Mono', monospace;
+    border: 2px solid var(--border); border-radius: 10px;
+    text-align: center; letter-spacing: 1px; margin-bottom: 14px;
+  }
+  .login-card input:focus {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 4px rgba(38,208,206,0.12);
+  }
+  .login-card button {
+    width: 100%; padding: 14px;
+    background: var(--primary); color: var(--accent);
+    border: none; border-radius: 10px;
+    font-weight: 800; font-size: 15px; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .login-card button:hover { background: var(--primary-light); transform: translateY(-1px); }
+  .login-card .err {
+    background: #fee2e2; color: #991b1b;
+    padding: 10px; border-radius: 8px;
+    font-size: 13px; margin-top: 12px; display: none;
+  }
+  
+  /* ───────── HEADER ───────── */
+  .header {
+    background: white; border-radius: 16px;
+    padding: 22px 28px; margin-bottom: 18px;
+    display: flex; justify-content: space-between; align-items: center;
+    box-shadow: 0 4px 12px rgba(11, 25, 87, 0.08);
+  }
+  .header h1 { 
+    color: var(--primary); font-size: 22px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .header .sub { color: var(--text-mid); font-size: 13px; margin-top: 3px; }
+  .header-actions { display: flex; gap: 10px; align-items: center; }
+  .badge {
+    background: #d1fae5; color: #047857;
+    padding: 6px 12px; border-radius: 20px;
+    font-size: 11px; font-weight: 700;
+  }
+  .btn-link {
+    background: transparent; color: var(--primary);
+    border: 1px solid var(--border);
+    padding: 8px 14px; border-radius: 8px;
+    font-size: 12px; font-weight: 700;
+    cursor: pointer; text-decoration: none;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .btn-link:hover { background: var(--bg); border-color: var(--accent); }
+  
+  /* ───────── STATS GRID ───────── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px; margin-bottom: 18px;
+  }
+  .stat-card {
+    background: white; border-radius: 12px;
+    padding: 18px 22px;
+    box-shadow: 0 2px 6px rgba(11, 25, 87, 0.05);
+    border-left: 4px solid var(--accent);
+  }
+  .stat-card .label {
+    font-size: 11px; font-weight: 700;
+    color: var(--text-mid);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin-bottom: 6px;
+  }
+  .stat-card .value {
+    font-size: 26px; font-weight: 800;
+    color: var(--primary);
+  }
+  .stat-card.green { border-color: var(--success); }
+  .stat-card.green .value { color: var(--success); }
+  .stat-card.orange { border-color: var(--warning); }
+  .stat-card.orange .value { color: var(--warning); }
+  
+  /* ───────── TOOLBAR ───────── */
+  .toolbar {
+    background: white; border-radius: 16px;
+    padding: 16px 22px; margin-bottom: 18px;
+    display: flex; gap: 12px; flex-wrap: wrap;
+    align-items: center;
+    box-shadow: 0 2px 6px rgba(11, 25, 87, 0.05);
+  }
+  .toolbar input, .toolbar select {
+    padding: 9px 14px;
+    font-size: 13px; font-family: inherit;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: white;
+  }
+  .toolbar input:focus, .toolbar select:focus {
+    outline: none; border-color: var(--accent);
+  }
+  .toolbar .search { flex: 1; min-width: 180px; }
+  
+  .btn {
+    padding: 9px 16px;
+    font-size: 13px; font-weight: 700;
+    border: none; border-radius: 8px;
+    cursor: pointer; font-family: inherit;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: all 0.15s;
+  }
+  .btn-primary {
+    background: var(--primary); color: var(--accent);
+  }
+  .btn-primary:hover { background: var(--primary-light); }
+  .btn-accent {
+    background: var(--accent); color: var(--primary);
+    font-weight: 800;
+  }
+  .btn-accent:hover { background: #1bb5b3; }
+  .btn-ghost {
+    background: white; color: var(--primary);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { background: var(--bg); border-color: var(--accent); }
+  .btn-danger {
+    background: var(--error); color: white;
+  }
+  
+  /* ───────── TABLE ───────── */
+  .table-card {
+    background: white; border-radius: 16px;
+    padding: 0; overflow: hidden;
+    box-shadow: 0 4px 12px rgba(11, 25, 87, 0.08);
+    margin-bottom: 18px;
+  }
+  .table-card .table-header {
+    padding: 18px 24px;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+    color: white;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .table-card .table-header h2 { font-size: 15px; font-weight: 700; }
+  .table-card .table-header .count {
+    background: rgba(255,255,255,0.15);
+    padding: 4px 10px; border-radius: 12px;
+    font-size: 11px; font-weight: 700;
+  }
+  
+  table { width: 100%; border-collapse: collapse; }
+  table th {
+    background: var(--bg);
+    padding: 12px 20px;
+    text-align: left;
+    font-size: 11px; font-weight: 700;
+    color: var(--text-mid);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+  }
+  table td {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  table tr:hover { background: #fafbfc; }
+  table tr:last-child td { border-bottom: none; }
+  
+  .pill {
+    display: inline-block;
+    padding: 3px 10px; border-radius: 10px;
+    font-size: 11px; font-weight: 700;
+  }
+  .pill.hood { background: #dbeafe; color: #1e40af; }
+  .pill.sticker { background: #fef3c7; color: #92400e; }
+  .pill.no_parking { background: #fce7f3; color: #9d174d; }
+  .pill.flex { background: #d1fae5; color: #047857; }
+  .pill.other { background: #f3f4f6; color: var(--text-mid); }
+  
+  .rate-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700; font-size: 14px;
+    color: var(--primary);
+  }
+  
+  .row-actions { display: flex; gap: 6px; }
+  .row-actions button {
+    padding: 5px 10px;
+    font-size: 11px; font-weight: 600;
+    border: 1px solid var(--border); background: white;
+    border-radius: 6px; cursor: pointer; font-family: inherit;
+  }
+  .row-actions button:hover { background: var(--bg); border-color: var(--accent); }
+  .row-actions .btn-history { color: var(--text-mid); }
+  .row-actions .btn-edit { color: var(--primary); }
+  .row-actions .btn-deactivate { color: var(--error); }
+  
+  /* ───────── MODAL ───────── */
+  .modal-bg {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(11, 25, 87, 0.45);
+    z-index: 1000;
+    align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .modal-bg.open { display: flex; }
+  .modal {
+    background: white; border-radius: 16px;
+    max-width: 520px; width: 100%;
+    max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.3);
+  }
+  .modal-header {
+    padding: 22px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .modal-header h2 {
+    color: var(--primary); font-size: 17px;
+  }
+  .modal-close {
+    background: var(--bg); border: none;
+    width: 30px; height: 30px; border-radius: 50%;
+    font-size: 18px; cursor: pointer; color: var(--text-mid);
+  }
+  .modal-body { padding: 24px 28px; }
+  .modal-footer {
+    padding: 18px 28px;
+    border-top: 1px solid var(--border);
+    display: flex; gap: 10px; justify-content: flex-end;
+  }
+  
+  .field-group { margin-bottom: 18px; }
+  .field-group label {
+    display: block;
+    font-size: 12px; font-weight: 700;
+    color: var(--text-mid);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin-bottom: 6px;
+  }
+  .field-group input,
+  .field-group select,
+  .field-group textarea {
+    width: 100%; padding: 11px 14px;
+    font-size: 14px; font-family: inherit;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: white;
+  }
+  .field-group input:focus,
+  .field-group select:focus,
+  .field-group textarea:focus {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(38,208,206,0.08);
+  }
+  .field-group .hint {
+    font-size: 11px; color: var(--text-mid);
+    margin-top: 4px;
+  }
+  
+  .radio-group {
+    display: flex; flex-wrap: wrap; gap: 8px;
+  }
+  .radio-group label {
+    flex: 1; min-width: 100px;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border); border-radius: 8px;
+    cursor: pointer; text-align: center;
+    font-size: 13px; font-weight: 600;
+    text-transform: none; letter-spacing: 0;
+    color: var(--text-dark);
+    transition: all 0.15s;
+    margin: 0;
+  }
+  .radio-group input[type="radio"] { display: none; }
+  .radio-group input[type="radio"]:checked + span { color: var(--primary); }
+  .radio-group label:has(input:checked) {
+    border-color: var(--accent);
+    background: rgba(38,208,206,0.08);
+    color: var(--primary);
+  }
+  
+  /* ───────── TOAST ───────── */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--primary); color: white;
+    padding: 14px 22px; border-radius: 10px;
+    font-size: 13px; font-weight: 600;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    opacity: 0; transform: translateY(20px);
+    transition: all 0.25s; z-index: 9999;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.error { background: var(--error); }
+  .toast.success { background: var(--success); }
+  
+  /* ───────── EMPTY STATE ───────── */
+  .empty {
+    text-align: center; padding: 50px 20px;
+    color: var(--text-mid);
+  }
+  .empty .icon { font-size: 36px; margin-bottom: 10px; }
+  
+  /* ───────── HISTORY VIEW ───────── */
+  .history-row {
+    display: flex; justify-content: space-between;
+    padding: 10px 14px;
+    border: 1px solid var(--border); border-radius: 8px;
+    margin-bottom: 8px; font-size: 13px;
+  }
+  .history-row.active {
+    border-color: var(--success);
+    background: rgba(16, 185, 129, 0.05);
+  }
+  .history-row .date {
+    color: var(--text-mid); font-size: 11px;
+  }
+  
+  @media (max-width: 768px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .header { flex-direction: column; gap: 10px; align-items: flex-start; }
+    table th, table td { padding: 10px 12px; font-size: 12px; }
+    .toolbar { flex-direction: column; align-items: stretch; }
+    .toolbar > * { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═════════════════════════════════════════════════════════════════ -->
+<!--  LOGIN SCREEN  -->
+<!-- ═════════════════════════════════════════════════════════════════ -->
+<div class="login-card" id="loginScreen">
+  <h1>💰 Member Rates Master</h1>
+  <div class="sub">Admin-only access</div>
+  <input type="tel" id="loginPhone" placeholder="10-digit admin phone" maxlength="10" pattern="[0-9]{10}">
+  <button onclick="doLogin()">Access Rates Master →</button>
+  <div class="err" id="loginErr"></div>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════════════ -->
+<!--  MAIN DASHBOARD  -->
+<!-- ═════════════════════════════════════════════════════════════════ -->
+<div class="container" id="mainView" style="display:none;">
+  
+  <div class="header">
+    <div>
+      <h1>💰 Member Rates Master</h1>
+      <div class="sub" id="welcomeText">Welcome</div>
+    </div>
+    <div class="header-actions">
+      <span class="badge" id="roleBadge">👤 Admin</span>
+      <a href="admin.html" class="btn-link">← Admin Panel</a>
+      <button class="btn-link" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+  
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="label">Active Members</div>
+      <div class="value" id="statMembers">—</div>
+    </div>
+    <div class="stat-card green">
+      <div class="label">Active Rates</div>
+      <div class="value" id="statRates">—</div>
+    </div>
+    <div class="stat-card orange">
+      <div class="label">Media Types</div>
+      <div class="value" id="statMedia">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Avg Hood Rate</div>
+      <div class="value" id="statAvgRate">—</div>
+    </div>
+  </div>
+  
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <input type="text" class="search" id="searchInput" placeholder="🔍 Search by member name...">
+    <select id="filterMedia">
+      <option value="">All Media Types</option>
+      <option value="auto_hood">Auto Hood</option>
+      <option value="sticker">Sticker</option>
+      <option value="no_parking">No Parking</option>
+      <option value="flex">Flex</option>
+      <option value="wall_wrap">Wall Wrap</option>
+      <option value="other">Other</option>
+    </select>
+    <select id="filterStatus">
+      <option value="active">Active Only</option>
+      <option value="all">All (incl. inactive)</option>
+    </select>
+    <button class="btn btn-accent" onclick="openAddModal()">+ Add Rate</button>
+    <button class="btn btn-ghost" onclick="downloadExcel()">📥 Excel</button>
+  </div>
+  
+  <!-- Rates Table -->
+  <div class="table-card">
+    <div class="table-header">
+      <h2>📋 Current Member Rates</h2>
+      <span class="count" id="resultCount">0 rows</span>
+    </div>
+    <div id="tableContainer">
+      <div class="empty">
+        <div class="icon">⏳</div>
+        <div>Loading rates...</div>
+      </div>
+    </div>
+  </div>
+  
+</div>
+
+<!-- ═════════════════════════════════════════════════════════════════ -->
+<!--  ADD/EDIT RATE MODAL  -->
+<!-- ═════════════════════════════════════════════════════════════════ -->
+<div class="modal-bg" id="rateModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">+ Add Member Rate</h2>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      
+      <div class="field-group">
+        <label>Member (select existing or type new)</label>
+        <input type="text" id="rateMember" placeholder="e.g. Mubarak Shaikh" list="memberSuggestions">
+        <datalist id="memberSuggestions"></datalist>
+        <div class="hint">If new member, also enter phone below</div>
+      </div>
+      
+      <div class="field-group">
+        <label>Member Phone (10 digit)</label>
+        <input type="tel" id="ratePhone" placeholder="9876543210" maxlength="10" class="mono">
+        <div class="hint">Phone used to identify member uniquely. Use 'hist_xxx' for historical entries.</div>
+      </div>
+      
+      <div class="field-group">
+        <label>Media Type</label>
+        <div class="radio-group">
+          <label><input type="radio" name="mediaType" value="auto_hood" checked><span>Auto Hood</span></label>
+          <label><input type="radio" name="mediaType" value="sticker"><span>Sticker</span></label>
+          <label><input type="radio" name="mediaType" value="no_parking"><span>No Parking</span></label>
+          <label><input type="radio" name="mediaType" value="flex"><span>Flex</span></label>
+          <label><input type="radio" name="mediaType" value="wall_wrap"><span>Wall Wrap</span></label>
+          <label><input type="radio" name="mediaType" value="other"><span>Other</span></label>
+        </div>
+      </div>
+      
+      <div class="field-group">
+        <label>Rate Per Unit (₹)</label>
+        <input type="number" id="rateAmount" placeholder="50" min="0" step="0.5" class="mono">
+        <div class="hint">Amount paid to member per piece/unit</div>
+      </div>
+      
+      <div class="field-group">
+        <label>Effective From</label>
+        <input type="date" id="rateFrom">
+        <div class="hint">Old rate (if exists) becomes inactive from this date</div>
+      </div>
+      
+      <div class="field-group">
+        <label>Reason / Notes (optional)</label>
+        <textarea id="rateNotes" rows="2" placeholder="e.g. Annual rate revision, senior member..."></textarea>
+      </div>
+      
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-accent" onclick="saveRate()" id="saveBtn">💾 Save Rate</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════════════ -->
+<!--  HISTORY MODAL  -->
+<!-- ═════════════════════════════════════════════════════════════════ -->
+<div class="modal-bg" id="historyModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="historyTitle">📜 Rate History</h2>
+      <button class="modal-close" onclick="closeHistoryModal()">×</button>
+    </div>
+    <div class="modal-body" id="historyBody">
+      Loading...
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeHistoryModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+const CONFIG = {
+  supabaseUrl: 'https://fpbktcgtspqsqpaytslv.supabase.co',
+  supabaseKey: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j'
+};
+
+let state = {
+  admin: null,
+  rates: [],          // All rates from DB
+  filteredRates: [],
+  members: [],        // All trial_team_members
+  editingId: null
+};
+
+// ─── API HELPER ───
+async function api(path, options) {
+  options = options || {};
+  options.headers = options.headers || {};
+  options.headers.apikey = CONFIG.supabaseKey;
+  options.headers.Authorization = 'Bearer ' + CONFIG.supabaseKey;
+  const res = await fetch(CONFIG.supabaseUrl + path, options);
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error('API ' + res.status + ': ' + txt);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (type || '');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function inr(n) {
+  if (n == null) return '—';
+  return '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+const MEDIA_LABELS = {
+  auto_hood: 'Auto Hood',
+  sticker: 'Sticker',
+  no_parking: 'No Parking',
+  flex: 'Flex',
+  wall_wrap: 'Wall Wrap',
+  other: 'Other'
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  LOGIN (Admin only — strict)
+// ═══════════════════════════════════════════════════════════════
+async function doLogin() {
+  const phone = document.getElementById('loginPhone').value.trim();
+  const errEl = document.getElementById('loginErr');
+  errEl.style.display = 'none';
+  
+  if (phone.length !== 10) {
+    errEl.style.display = 'block';
+    errEl.textContent = '10 digit number daalo';
+    return;
+  }
+  
+  try {
+    const members = await api('/rest/v1/trial_team_members?phone=eq.' + encodeURIComponent(phone) + '&active=eq.true&select=*');
+    
+    if (!members || members.length === 0) {
+      errEl.style.display = 'block';
+      errEl.textContent = 'Number registered nahi hai';
+      return;
+    }
+    
+    const member = members[0];
+    const role = (member.role || '').toLowerCase();
+    
+    if (role !== 'admin' && role !== 'owner') {
+      errEl.style.display = 'block';
+      errEl.textContent = 'Yeh page sirf Admin/Owner ke liye hai.';
+      return;
+    }
+    
+    state.admin = member;
+    localStorage.setItem('prajapati_admin_phone', phone);
+    
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainView').style.display = 'block';
+    document.getElementById('welcomeText').textContent = 'Welcome ' + member.name;
+    document.getElementById('rateFrom').value = new Date().toISOString().split('T')[0];
+    
+    await loadData();
+  } catch (err) {
+    errEl.style.display = 'block';
+    errEl.textContent = 'Login error: ' + err.message;
+  }
+}
+
+function doLogout() {
+  if (!confirm('Logout?')) return;
+  localStorage.removeItem('prajapati_admin_phone');
+  state.admin = null;
+  document.getElementById('mainView').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'block';
+  document.getElementById('loginPhone').value = '';
+}
+
+// Auto-login
+async function autoLogin() {
+  const phone = localStorage.getItem('prajapati_admin_phone');
+  if (!phone) return false;
+  try {
+    const members = await api('/rest/v1/trial_team_members?phone=eq.' + encodeURIComponent(phone) + '&active=eq.true&select=*');
+    if (!members || members.length === 0) return false;
+    const m = members[0];
+    const role = (m.role || '').toLowerCase();
+    if (role !== 'admin' && role !== 'owner') return false;
+    
+    state.admin = m;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainView').style.display = 'block';
+    document.getElementById('welcomeText').textContent = 'Welcome ' + m.name;
+    document.getElementById('rateFrom').value = new Date().toISOString().split('T')[0];
+    await loadData();
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LOAD DATA
+// ═══════════════════════════════════════════════════════════════
+async function loadData() {
+  try {
+    // Load all active rates + inactive (for history)
+    const rates = await api('/rest/v1/execution_member_rates?select=*&order=member_name.asc,media_type.asc,created_at.desc');
+    state.rates = rates || [];
+    
+    // Load all team members for suggestions
+    const members = await api('/rest/v1/trial_team_members?active=eq.true&select=phone,name,role&order=name.asc');
+    state.members = members || [];
+    
+    // Populate suggestions datalist
+    const dl = document.getElementById('memberSuggestions');
+    dl.innerHTML = state.members.map(m => `<option value="${esc(m.name)}" data-phone="${esc(m.phone)}"></option>`).join('');
+    
+    renderTable();
+    renderStats();
+  } catch (err) {
+    showToast('Load failed: ' + err.message, 'error');
+  }
+}
+
+function renderStats() {
+  const active = state.rates.filter(r => r.active);
+  
+  document.getElementById('statMembers').textContent = 
+    new Set(active.map(r => r.member_phone)).size;
+  document.getElementById('statRates').textContent = active.length;
+  document.getElementById('statMedia').textContent = 
+    new Set(active.map(r => r.media_type)).size;
+  
+  const hoodRates = active.filter(r => r.media_type === 'auto_hood').map(r => Number(r.rate_per_unit));
+  const avgHood = hoodRates.length 
+    ? (hoodRates.reduce((a, b) => a + b, 0) / hoodRates.length)
+    : 0;
+  document.getElementById('statAvgRate').textContent = '₹' + avgHood.toFixed(0);
+}
+
+function renderTable() {
+  const search = document.getElementById('searchInput').value.toLowerCase().trim();
+  const filterMedia = document.getElementById('filterMedia').value;
+  const filterStatus = document.getElementById('filterStatus').value;
+  
+  let filtered = state.rates;
+  
+  if (filterStatus === 'active') {
+    filtered = filtered.filter(r => r.active);
+  }
+  
+  if (filterMedia) {
+    filtered = filtered.filter(r => r.media_type === filterMedia);
+  }
+  
+  if (search) {
+    filtered = filtered.filter(r => 
+      (r.member_name || '').toLowerCase().includes(search) ||
+      (r.member_phone || '').toLowerCase().includes(search)
+    );
+  }
+  
+  state.filteredRates = filtered;
+  document.getElementById('resultCount').textContent = filtered.length + ' rows';
+  
+  const c = document.getElementById('tableContainer');
+  
+  if (filtered.length === 0) {
+    c.innerHTML = '<div class="empty"><div class="icon">📋</div><div>No rates found. Click <b>+ Add Rate</b> to create one.</div></div>';
+    return;
+  }
+  
+  c.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Member</th>
+          <th>Phone</th>
+          <th>Media Type</th>
+          <th style="text-align:right;">Rate</th>
+          <th>Effective</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${filtered.map(r => `
+          <tr>
+            <td><b>${esc(r.member_name)}</b></td>
+            <td class="mono" style="font-size:12px;color:var(--text-mid);">${esc(r.member_phone)}</td>
+            <td><span class="pill ${esc(r.media_type)}">${esc(MEDIA_LABELS[r.media_type] || r.media_type)}</span></td>
+            <td style="text-align:right;"><span class="rate-value">${inr(r.rate_per_unit)}</span></td>
+            <td style="font-size:12px;color:var(--text-mid);">${fmtDate(r.valid_from)}</td>
+            <td>
+              ${r.active 
+                ? '<span class="pill" style="background:#d1fae5;color:#047857;">✓ Active</span>' 
+                : '<span class="pill" style="background:#f3f4f6;color:#64748b;">Inactive</span>'}
+            </td>
+            <td>
+              <div class="row-actions">
+                <button class="btn-history" onclick="viewHistory('${esc(r.member_phone)}', '${esc(r.media_type)}', '${esc(r.member_name)}')" title="View history">📜</button>
+                ${r.active ? `<button class="btn-edit" onclick="editRate('${r.id}')" title="Edit">✏️</button>` : ''}
+                ${r.active ? `<button class="btn-deactivate" onclick="deactivateRate('${r.id}', '${esc(r.member_name)}')" title="Deactivate">🚫</button>` : ''}
+              </div>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ADD / EDIT RATE
+// ═══════════════════════════════════════════════════════════════
+function openAddModal() {
+  state.editingId = null;
+  document.getElementById('modalTitle').textContent = '+ Add Member Rate';
+  document.getElementById('rateMember').value = '';
+  document.getElementById('ratePhone').value = '';
+  document.getElementById('rateAmount').value = '';
+  document.getElementById('rateNotes').value = '';
+  document.getElementById('rateFrom').value = new Date().toISOString().split('T')[0];
+  document.querySelector('input[name="mediaType"][value="auto_hood"]').checked = true;
+  document.getElementById('rateModal').classList.add('open');
+}
+
+function editRate(id) {
+  const r = state.rates.find(x => x.id === id);
+  if (!r) return;
+  
+  state.editingId = id;
+  document.getElementById('modalTitle').textContent = '✏️ Edit Rate';
+  document.getElementById('rateMember').value = r.member_name || '';
+  document.getElementById('ratePhone').value = r.member_phone || '';
+  document.getElementById('rateAmount').value = r.rate_per_unit || '';
+  document.getElementById('rateNotes').value = r.notes || '';
+  document.getElementById('rateFrom').value = r.valid_from || '';
+  document.querySelector('input[name="mediaType"][value="' + r.media_type + '"]').checked = true;
+  document.getElementById('rateModal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('rateModal').classList.remove('open');
+}
+
+async function saveRate() {
+  const name = document.getElementById('rateMember').value.trim();
+  const phone = document.getElementById('ratePhone').value.trim();
+  const amount = parseFloat(document.getElementById('rateAmount').value);
+  const mediaType = document.querySelector('input[name="mediaType"]:checked').value;
+  const validFrom = document.getElementById('rateFrom').value;
+  const notes = document.getElementById('rateNotes').value.trim();
+  
+  if (!name) { showToast('Member name required', 'error'); return; }
+  if (!phone || phone.length < 5) { showToast('Phone required (min 5 chars)', 'error'); return; }
+  if (!amount || amount < 0) { showToast('Valid rate required', 'error'); return; }
+  if (!validFrom) { showToast('Effective date required', 'error'); return; }
+  
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Saving...';
+  
+  try {
+    // First: deactivate any existing active rate for this member + media combo
+    // (only if this is a new add, not edit)
+    if (!state.editingId) {
+      const existing = state.rates.find(r => 
+        r.member_phone === phone && 
+        r.media_type === mediaType && 
+        r.active
+      );
+      
+      if (existing) {
+        const confirmReplace = confirm(
+          'Already exists: ' + existing.member_name + ' - ' + MEDIA_LABELS[mediaType] + ' at ' + inr(existing.rate_per_unit) + '\n\n' +
+          'Old rate will be deactivated.\n' +
+          'New rate ' + inr(amount) + ' will become active.\n\n' +
+          'Continue?'
+        );
+        if (!confirmReplace) {
+          btn.disabled = false;
+          btn.textContent = '💾 Save Rate';
+          return;
+        }
+        
+        // Deactivate old
+        await api('/rest/v1/execution_member_rates?id=eq.' + existing.id, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            active: false,
+            valid_to: validFrom,
+            updated_at: new Date().toISOString()
+          })
+        });
+      }
+    }
+    
+    const payload = {
+      member_phone: phone,
+      member_name: name,
+      media_type: mediaType,
+      rate_per_unit: amount,
+      valid_from: validFrom,
+      active: true,
+      notes: notes || null,
+      created_by: state.admin.phone
+    };
+    
+    if (state.editingId) {
+      // UPDATE
+      await api('/rest/v1/execution_member_rates?id=eq.' + state.editingId, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          member_name: name,
+          rate_per_unit: amount,
+          notes: notes || null,
+          updated_at: new Date().toISOString()
+        })
+      });
+      showToast('✓ Rate updated', 'success');
+    } else {
+      // INSERT
+      await api('/rest/v1/execution_member_rates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify(payload)
+      });
+      showToast('✓ Rate saved', 'success');
+    }
+    
+    closeModal();
+    await loadData();
+  } catch (err) {
+    showToast('Save failed: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '💾 Save Rate';
+  }
+}
+
+async function deactivateRate(id, name) {
+  if (!confirm('Deactivate rate for ' + name + '?\n\nOld entries will keep their rate, but new entries will need a new rate.')) return;
+  
+  try {
+    await api('/rest/v1/execution_member_rates?id=eq.' + id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        active: false,
+        valid_to: new Date().toISOString().split('T')[0],
+        updated_at: new Date().toISOString()
+      })
+    });
+    showToast('✓ Rate deactivated', 'success');
+    await loadData();
+  } catch (err) {
+    showToast('Failed: ' + err.message, 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  HISTORY VIEW
+// ═══════════════════════════════════════════════════════════════
+async function viewHistory(phone, mediaType, memberName) {
+  document.getElementById('historyTitle').textContent = '📜 ' + memberName + ' — ' + MEDIA_LABELS[mediaType];
+  document.getElementById('historyBody').innerHTML = '⏳ Loading...';
+  document.getElementById('historyModal').classList.add('open');
+  
+  try {
+    const history = await api(
+      '/rest/v1/execution_member_rates?member_phone=eq.' + encodeURIComponent(phone) + 
+      '&media_type=eq.' + encodeURIComponent(mediaType) + 
+      '&order=valid_from.desc&select=*'
+    );
+    
+    if (!history || history.length === 0) {
+      document.getElementById('historyBody').innerHTML = '<div class="empty">No history</div>';
+      return;
+    }
+    
+    document.getElementById('historyBody').innerHTML = history.map(h => `
+      <div class="history-row ${h.active ? 'active' : ''}">
+        <div>
+          <div><b>${inr(h.rate_per_unit)}</b> ${h.active ? '<span class="pill" style="background:#d1fae5;color:#047857;margin-left:8px;">Active</span>' : ''}</div>
+          <div class="date">${fmtDate(h.valid_from)} ${h.valid_to ? '→ ' + fmtDate(h.valid_to) : '→ now'}</div>
+          ${h.notes ? '<div style="font-size:11px;color:var(--text-mid);margin-top:4px;">' + esc(h.notes) + '</div>' : ''}
+        </div>
+        <div style="text-align:right;font-size:11px;color:var(--text-mid);">
+          by ${esc(h.created_by)}
+        </div>
+      </div>
+    `).join('');
+  } catch (err) {
+    document.getElementById('historyBody').innerHTML = '<div class="empty error">Failed: ' + esc(err.message) + '</div>';
+  }
+}
+
+function closeHistoryModal() {
+  document.getElementById('historyModal').classList.remove('open');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  EXCEL EXPORT
+// ═══════════════════════════════════════════════════════════════
+function downloadExcel() {
+  try {
+    const wb = XLSX.utils.book_new();
+    
+    // Sheet 1: Active Rates
+    const active = state.rates.filter(r => r.active);
+    const sheet1Data = [
+      ['MEMBER RATES — ' + new Date().toLocaleDateString('en-IN')],
+      ['Generated by: ' + state.admin.name + ' · Prajapati Advertising'],
+      [],
+      ['#', 'Member Name', 'Phone', 'Media Type', 'Rate (₹)', 'Effective From', 'Notes'],
+      ...active.map((r, i) => [
+        i + 1, r.member_name, r.member_phone,
+        MEDIA_LABELS[r.media_type] || r.media_type,
+        r.rate_per_unit, r.valid_from, r.notes || ''
+      ])
+    ];
+    const ws1 = XLSX.utils.aoa_to_sheet(sheet1Data);
+    ws1['!cols'] = [{wch:5},{wch:25},{wch:15},{wch:14},{wch:10},{wch:14},{wch:30}];
+    ws1['!merges'] = [{s:{r:0,c:0},e:{r:0,c:6}},{s:{r:1,c:0},e:{r:1,c:6}}];
+    XLSX.utils.book_append_sheet(wb, ws1, 'Active Rates');
+    
+    // Sheet 2: All History
+    const sheet2Data = [
+      ['RATE HISTORY — All entries'],
+      [],
+      ['Member', 'Phone', 'Media', 'Rate', 'From', 'To', 'Active', 'Created By', 'Notes'],
+      ...state.rates.map(r => [
+        r.member_name, r.member_phone,
+        MEDIA_LABELS[r.media_type] || r.media_type,
+        r.rate_per_unit, r.valid_from, r.valid_to || '',
+        r.active ? 'YES' : 'no',
+        r.created_by, r.notes || ''
+      ])
+    ];
+    const ws2 = XLSX.utils.aoa_to_sheet(sheet2Data);
+    ws2['!cols'] = [{wch:25},{wch:15},{wch:14},{wch:10},{wch:12},{wch:12},{wch:8},{wch:18},{wch:30}];
+    XLSX.utils.book_append_sheet(wb, ws2, 'Full History');
+    
+    const filename = `MemberRates_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, filename);
+    showToast('✓ Downloaded: ' + filename, 'success');
+  } catch (err) {
+    showToast('Export failed: ' + err.message, 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  EVENT LISTENERS
+// ═══════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  autoLogin();
+  
+  document.getElementById('loginPhone').addEventListener('keypress', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+  
+  document.getElementById('searchInput').addEventListener('input', renderTable);
+  document.getElementById('filterMedia').addEventListener('change', renderTable);
+  document.getElementById('filterStatus').addEventListener('change', renderTable);
+  
+  // Auto-fill phone when member name selected from datalist
+  document.getElementById('rateMember').addEventListener('change', e => {
+    const name = e.target.value;
+    const m = state.members.find(x => x.name === name);
+    if (m && !document.getElementById('ratePhone').value) {
+      document.getElementById('ratePhone').value = m.phone;
+    }
+  });
+  
+  // Close modals on background click
+  document.getElementById('rateModal').addEventListener('click', e => {
+    if (e.target.id === 'rateModal') closeModal();
+  });
+  document.getElementById('historyModal').addEventListener('click', e => {
+    if (e.target.id === 'historyModal') closeHistoryModal();
+  });
+});
+</script>
+
+</body>
+</html>
