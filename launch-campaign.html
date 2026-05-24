@@ -1424,27 +1424,51 @@ function openClientSearch() {
 }
 
 function filterClients(q) {
-  const ql = (q || '').toLowerCase();
+  const ql = (q || '').toLowerCase().trim();
   const filtered = state.clients.filter(c => 
     !ql || (c.name || '').toLowerCase().includes(ql) || (c.brand || '').toLowerCase().includes(ql)
   );
   
   const dd = document.getElementById('clientDropdown');
-  if (filtered.length === 0) {
-    dd.innerHTML = `
-      <div class="dropdown-item" onclick="addNewClient()" style="color:var(--teal-dark);font-weight:700;">
-        + Add new client: "${esc(q)}"
+  let html = '';
+  
+  // Show matched clients
+  filtered.slice(0, 12).forEach(c => {
+    html += `
+      <div class="dropdown-item js-pick-client" data-client-id="${esc(c.id)}">
+        <strong>${esc(c.name)}${c.vip ? '<span class="vip-tag">VIP</span>' : ''}</strong>
+        <div class="sub">${esc(c.brand || c.city || '')}${c.client_type === 'agency' ? ' · Agency' : ''}</div>
       </div>
     `;
-    return;
+  });
+  
+  // Always show "Add new" option at the bottom (only if user typed something)
+  if (ql && !filtered.some(c => (c.name || '').toLowerCase() === ql)) {
+    const displayName = q.trim() || 'new client';
+    html += `
+      <div class="dropdown-item js-add-client" style="color:var(--teal-dark);font-weight:700;background:var(--canvas);border-top:2px solid var(--teal);">
+        + Add new client: "${esc(displayName)}"
+      </div>
+    `;
+  } else if (!ql && filtered.length === 0) {
+    html += `<div class="dropdown-item" style="color:var(--text-mid);text-align:center;">Type to search or add new...</div>`;
   }
   
-  dd.innerHTML = filtered.slice(0, 15).map(c => `
-    <div class="dropdown-item" onclick="selectClient('${esc(c.id)}', ${JSON.stringify(c.name).replace(/'/g, "&#39;")})">
-      <strong>${esc(c.name)}${c.vip ? '<span class="vip-tag">VIP</span>' : ''}</strong>
-      <div class="sub">${esc(c.brand || c.city || '')}${c.client_type === 'agency' ? ' · Agency' : ''}</div>
-    </div>
-  `).join('');
+  dd.innerHTML = html;
+  
+  // Wire up click handlers (event delegation - safer than inline)
+  dd.querySelectorAll('.js-pick-client').forEach(el => {
+    el.onclick = () => {
+      const id = el.dataset.clientId;
+      const client = state.clients.find(c => c.id === id);
+      if (client) selectClient(client.id, client.name);
+    };
+  });
+  
+  const addBtn = dd.querySelector('.js-add-client');
+  if (addBtn) {
+    addBtn.onclick = () => addNewClient();
+  }
 }
 
 function selectClient(id, name) {
@@ -1464,23 +1488,35 @@ function selectClient(id, name) {
 
 async function addNewClient() {
   const name = document.getElementById('fldClient').value.trim();
-  if (!name) return;
-  if (!confirm(`Add "${name}" as new client?`)) return;
+  if (!name) {
+    showToast('Type a client name first', 'error');
+    document.getElementById('fldClient').focus();
+    return;
+  }
+  if (!confirm(`Add "${name}" as a new client?`)) return;
   
   try {
     const result = await api('/rest/v1/prajapati_clients', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-      body: JSON.stringify({ name, active: true, created_by: state.admin.phone })
+      body: JSON.stringify({ 
+        name: name, 
+        active: true, 
+        client_type: 'direct',
+        created_by: state.admin.phone 
+      })
     });
     
     if (result && result[0]) {
       state.clients.push(result[0]);
       selectClient(result[0].id, result[0].name);
-      showToast('New client added', 'success');
+      showToast('✓ New client added: ' + result[0].name, 'success');
+    } else {
+      showToast('Client created but no response data', 'error');
     }
   } catch (err) {
     showToast('Add client failed: ' + err.message, 'error');
+    console.error('addNewClient error:', err);
   }
 }
 
@@ -2287,7 +2323,19 @@ async function launchCampaign() {
       }
     }, 1500);
   } catch (err) {
-    showToast('Launch failed: ' + err.message, 'error');
+    let errMsg = err.message || String(err);
+    // Friendly message for common errors
+    if (errMsg.includes('row-level security') || errMsg.includes('42501')) {
+      errMsg = 'Database RLS blocking save. Run 04_FIX_RLS.sql in Supabase, then retry.';
+      showToast(errMsg, 'error');
+      alert('🚨 DATABASE FIX NEEDED:\n\nRow-Level Security is blocking saves.\n\nFIX (1 minute):\n1. Open Supabase SQL Editor\n2. Run: 04_FIX_RLS.sql\n3. Retry launch\n\nFile is in your downloads.');
+    } else if (errMsg.includes('JSON.parse') || errMsg.includes('unexpected end')) {
+      errMsg = 'Schema not deployed. Run 03_LAUNCH_CAMPAIGN_SCHEMA.sql first.';
+      showToast(errMsg, 'error');
+    } else {
+      showToast('Launch failed: ' + errMsg, 'error');
+    }
+    console.error('Launch error:', err);
   } finally {
     btn.disabled = false;
     btn.innerHTML = '🚀 Launch';
