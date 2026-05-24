@@ -565,12 +565,13 @@ async function api(path, options) {
   options.headers.apikey = CONFIG.supabaseKey;
   options.headers.Authorization = 'Bearer ' + CONFIG.supabaseKey;
   const res = await fetch(CONFIG.supabaseUrl + path, options);
+  const txt = await res.text();
   if (!res.ok) {
-    const txt = await res.text();
     throw new Error('API ' + res.status + ': ' + txt);
   }
-  if (res.status === 204) return null;
-  return res.json();
+  if (!txt || txt.trim() === '') return null;
+  try { return JSON.parse(txt); }
+  catch (e) { return txt; }
 }
 
 function showToast(msg, type) {

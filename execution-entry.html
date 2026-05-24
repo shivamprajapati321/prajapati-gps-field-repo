@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Daily Execution Entry — Prajapati</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Daily Execution Entry v2.0 — Prajapati</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1222,12 +1225,18 @@ async function api(path, options) {
   options.headers.apikey = CONFIG.supabaseKey;
   options.headers.Authorization = 'Bearer ' + CONFIG.supabaseKey;
   const res = await fetch(CONFIG.supabaseUrl + path, options);
+  const txt = await res.text();
   if (!res.ok) {
-    const txt = await res.text();
     throw new Error('API ' + res.status + ': ' + txt);
   }
-  if (res.status === 204) return null;
-  return res.json();
+  // Handle empty responses (204, or POST with Prefer: return=minimal returns empty body)
+  if (!txt || txt.trim() === '') return null;
+  try {
+    return JSON.parse(txt);
+  } catch (e) {
+    // Body wasn't JSON — return raw text
+    return txt;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
