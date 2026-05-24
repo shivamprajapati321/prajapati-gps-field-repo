@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Daily Execution Entry v2.0 — Prajapati</title>
+<title>Daily Execution Entry v2.1 — Prajapati</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1029,7 +1029,7 @@
       <!-- Page Header -->
       <div class="page-header">
         <div>
-          <h1 class="page-title">Daily Execution Entry <span style="font-family:'JetBrains Mono',monospace;background:linear-gradient(135deg,var(--mint),#10b981);color:white;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:800;vertical-align:middle;margin-left:6px;letter-spacing:0.04em;">v2.0</span></h1>
+          <h1 class="page-title">Daily Execution Entry <span style="font-family:'JetBrains Mono',monospace;background:linear-gradient(135deg,var(--mint),#10b981);color:white;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:800;vertical-align:middle;margin-left:6px;letter-spacing:0.04em;">v2.1</span></h1>
           <p class="page-subtitle">Record team's daily work · Manual rates · Auto-calculated totals</p>
         </div>
         <div class="page-actions">
@@ -1212,11 +1212,23 @@ function todayStr() {
 }
 
 function showToast(msg, type) {
-  const t = document.getElementById('toast');
-  const icon = type === 'success' ? '✓' : type === 'error' ? '⚠' : '💡';
-  t.innerHTML = `<span>${icon}</span><span>${esc(msg)}</span>`;
-  t.className = 'toast show ' + (type || '');
-  setTimeout(() => t.classList.remove('show'), 3000);
+  try {
+    const t = document.getElementById('toast');
+    if (!t) {
+      console.log('Toast (' + (type || 'info') + '):', msg);
+      alert(msg);
+      return;
+    }
+    const icon = type === 'success' ? '✓' : type === 'error' ? '⚠' : '💡';
+    t.innerHTML = `<span>${icon}</span><span>${esc(msg)}</span>`;
+    t.className = 'toast show ' + (type || '');
+    setTimeout(() => {
+      if (t) t.classList.remove('show');
+    }, 3000);
+  } catch (e) {
+    console.error('Toast error:', e);
+    alert(msg);
+  }
 }
 
 async function api(path, options) {
@@ -1327,22 +1339,28 @@ function doLogout() {
 //  APP INIT
 // ═══════════════════════════════════════════════════════════════
 async function initApp() {
-  // Set user info
-  const initials = (state.admin.name || 'A').split(' ').map(n => n[0]).slice(0,2).join('').toUpperCase();
-  document.getElementById('userAvatar').textContent = initials;
-  document.getElementById('userName').textContent = state.admin.name;
-  document.getElementById('userRole').textContent = (state.admin.role || '').toUpperCase();
-  
-  // Set today's date
-  document.getElementById('entryDate').value = todayStr();
-  
-  // Load data
-  await loadData();
-  
-  // Try restore draft
-  loadDraft(true);
-  
-  renderTable();
+  try {
+    // Set user info
+    const initials = (state.admin.name || 'A').split(' ').map(n => n[0]).slice(0,2).join('').toUpperCase();
+    setText('userAvatar', initials);
+    setText('userName', state.admin.name);
+    setText('userRole', (state.admin.role || '').toUpperCase());
+    
+    // Set today's date
+    const entryDateEl = document.getElementById('entryDate');
+    if (entryDateEl) entryDateEl.value = todayStr();
+    
+    // Load data
+    await loadData();
+    
+    // Try restore draft
+    loadDraft(true);
+    
+    renderTable();
+  } catch (e) {
+    console.error('initApp error:', e);
+    showToast('Init error: ' + e.message, 'error');
+  }
 }
 
 async function loadData() {
@@ -1864,19 +1882,32 @@ document.addEventListener('keydown', e => {
 // ═══════════════════════════════════════════════════════════════
 //  STATS
 // ═══════════════════════════════════════════════════════════════
+function $(id) {
+  return document.getElementById(id);
+}
+
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+
 function updateStats() {
-  const totalRows = state.rows.length;
-  const totalQty = state.rows.reduce((s, r) => s + (parseFloat(r.qty) || 0), 0);
-  const totalAmt = state.rows.reduce((s, r) => s + ((parseFloat(r.qty) || 0) * (parseFloat(r.rate) || 0)), 0);
-  const uniqueMembers = new Set(state.rows.map(r => r.member).filter(Boolean)).size;
-  
-  document.getElementById('statRows').textContent = totalRows;
-  document.getElementById('statQty').textContent = totalQty;
-  document.getElementById('statAmount').textContent = inr(totalAmt);
-  document.getElementById('statMembers').textContent = uniqueMembers;
-  document.getElementById('rowCount').textContent = totalRows + (totalRows === 1 ? ' row' : ' rows');
-  document.getElementById('saveTopCount').textContent = totalRows;
-  document.getElementById('saveBtnText').textContent = totalRows > 0 ? `💾 Save All ${totalRows} Entries` : '💾 Save All Entries';
+  try {
+    const totalRows = state.rows.length;
+    const totalQty = state.rows.reduce((s, r) => s + (parseFloat(r.qty) || 0), 0);
+    const totalAmt = state.rows.reduce((s, r) => s + ((parseFloat(r.qty) || 0) * (parseFloat(r.rate) || 0)), 0);
+    const uniqueMembers = new Set(state.rows.map(r => r.member).filter(Boolean)).size;
+    
+    setText('statRows', totalRows);
+    setText('statQty', totalQty);
+    setText('statAmount', inr(totalAmt));
+    setText('statMembers', uniqueMembers);
+    setText('rowCount', totalRows + (totalRows === 1 ? ' row' : ' rows'));
+    setText('saveTopCount', totalRows);
+    setText('saveBtnText', totalRows > 0 ? `💾 Save All ${totalRows} Entries` : '💾 Save All Entries');
+  } catch (e) {
+    console.error('updateStats error:', e);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1958,9 +1989,15 @@ async function saveAll() {
     return;
   }
   
-  const logDate = document.getElementById('entryDate').value;
+  const entryDateEl = document.getElementById('entryDate');
+  const logDate = entryDateEl ? entryDateEl.value : '';
   if (!logDate) {
     showToast('Date select karo', 'error');
+    return;
+  }
+  
+  if (!state.admin || !state.admin.phone) {
+    showToast('Login session expired. Please refresh and login again.', 'error');
     return;
   }
   
@@ -1986,41 +2023,65 @@ async function saveAll() {
   const totalAmt = payload.reduce((s, p) => s + p.total_amount, 0);
   if (!confirm(`Save ${payload.length} entries?\n\nTotal Amount: ${inr(totalAmt)}\nDate: ${logDate}\n\nProceed?`)) return;
   
-  // Save
-  const btn = document.getElementById('saveBtn');
-  const topBtn = document.getElementById('saveTopBtn');
-  btn.disabled = true;
-  topBtn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Saving...';
-  topBtn.innerHTML = '<span class="spinner"></span> Saving...';
+  // Save — get button refs safely (renderTable may remove them)
+  const setBtnState = (disabled, text) => {
+    const btn = document.getElementById('saveBtn');
+    const topBtn = document.getElementById('saveTopBtn');
+    const btnTextEl = document.getElementById('saveBtnText');
+    if (btn) btn.disabled = disabled;
+    if (topBtn) topBtn.disabled = disabled;
+    if (text !== undefined) {
+      if (btnTextEl) btnTextEl.innerHTML = text;
+      if (topBtn) topBtn.innerHTML = text;
+    }
+  };
+  
+  setBtnState(true, '<span class="spinner"></span> Saving...');
   
   try {
+    console.log('[Save] Posting', payload.length, 'entries to execution_daily_log...');
+    
     await api('/rest/v1/execution_daily_log', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
       body: JSON.stringify(payload)
     });
     
+    console.log('[Save] Success!');
+    
     // Success!
     showToast(`✅ ${payload.length} entries saved · ${inr(totalAmt)} total`, 'success');
     
     // Clear
     state.rows = [];
-    localStorage.removeItem('exec_draft');
+    try { localStorage.removeItem('exec_draft'); } catch(e) {}
     renderTable();
     
     setTimeout(() => {
-      if (confirm('Saved! Add more entries?\n\nClick OK for new batch, Cancel to go to dashboard.')) {
+      if (confirm('Saved! Add more entries?\n\nClick OK for new batch, Cancel to go to admin.')) {
         // Stay on page
       } else {
         window.location.href = 'admin.html';
       }
     }, 500);
   } catch (err) {
-    showToast('Save failed: ' + err.message, 'error');
+    console.error('[Save] Failed:', err);
+    let errMsg = err.message || String(err);
+    
+    // Friendly error messages
+    if (errMsg.includes('row-level security') || errMsg.includes('42501')) {
+      errMsg = 'Database RLS blocking save. Run 08_EXECUTION_RLS_FIX.sql in Supabase.';
+    } else if (errMsg.includes('JSON.parse') || errMsg.includes('Unexpected end')) {
+      errMsg = 'Schema issue. Tables may not exist. Run 01_SCHEMA.sql first.';
+    } else if (errMsg.includes('null') && errMsg.includes('textContent')) {
+      errMsg = 'UI element missing. Hard refresh (Ctrl+Shift+R) and try again.';
+    } else if (errMsg.includes('NetworkError') || errMsg.includes('Failed to fetch')) {
+      errMsg = 'Network error. Check internet connection.';
+    }
+    
+    showToast('Save failed: ' + errMsg, 'error');
   } finally {
-    btn.disabled = false;
-    topBtn.disabled = false;
+    setBtnState(false);
     updateStats();
   }
 }
@@ -2032,8 +2093,8 @@ function comingSoon(feature) {
 // ═══════════════════════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════════════════════
-console.log('%c⚡ Daily Execution Entry v2.0 · Build 2026-05-24', 'background:#00D4D2;color:#050818;padding:6px 12px;border-radius:6px;font-weight:bold;font-size:13px;');
-console.log('%cFix: API empty-body handling, better button feedback', 'color:#888;font-size:11px;');
+console.log('%c⚡ Daily Execution Entry v2.1 · Build 2026-05-24', 'background:#00D4D2;color:#050818;padding:6px 12px;border-radius:6px;font-weight:bold;font-size:13px;');
+console.log('%cFix: Defensive null checks, better error handling, $/setText helpers', 'color:#888;font-size:11px;');
 
 document.addEventListener('DOMContentLoaded', () => {
   // Set today's date
