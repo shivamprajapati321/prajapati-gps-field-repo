@@ -762,6 +762,11 @@
     
     <div class="nav-section">
       <div class="nav-section-title">Operations</div>
+      <a class="nav-item" href="execution-plan.html">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        <span>Execution Plan</span>
+        <span class="new-pill">NEW</span>
+      </a>
       <a class="nav-item" href="#" onclick="comingSoon('Production')">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
         <span>Production</span>
@@ -1125,11 +1130,8 @@
       <button class="ab-btn ghost" onclick="shareWA()">
         📱 WhatsApp
       </button>
-      <button class="ab-btn gold" onclick="sendProduction()" id="prodBtn">
-        🏭 Production
-      </button>
       <button class="ab-btn primary" onclick="launchCampaign()" id="launchBtn">
-        🚀 Launch
+        🚀 Send to Operations
       </button>
     </div>
   </main>
@@ -1175,23 +1177,19 @@
       </div>
     </div>
     
-    <div class="right-section-title">Campaign Stages</div>
+    <div class="right-section-title">Workflow Stages</div>
     <div style="font-size:11.5px;color:var(--text-mid);margin-bottom:10px;line-height:1.5;">
-      Launch this campaign to enter the production pipeline. Track each stage in dashboard.
+      Send to Operations when ready. They'll assign teams and dates.
     </div>
     <div style="background: linear-gradient(135deg, var(--canvas), white); border: 1px solid var(--line); border-radius: 12px; padding: 14px;">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-        <span style="width:10px;height:10px;border-radius:50%;background:var(--mint);"></span>
-        <span style="font-size:12px;font-weight:700;">Draft</span>
-        <span style="font-size:11px;color:var(--text-mid);margin-left:auto;">Current</span>
+        <span style="width:10px;height:10px;border-radius:50%;background:var(--mint);box-shadow:0 0 8px var(--mint);"></span>
+        <span style="font-size:12px;font-weight:700;">Sales Draft</span>
+        <span style="font-size:10px;background:rgba(52,211,153,0.15);color:#047857;padding:1px 6px;border-radius:6px;margin-left:auto;font-weight:700;">YOU ARE HERE</span>
       </div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;opacity:0.5;">
-        <span style="width:10px;height:10px;border-radius:50%;background:var(--line-strong);"></span>
-        <span style="font-size:12px;font-weight:600;">Quotation Sent</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;opacity:0.5;">
-        <span style="width:10px;height:10px;border-radius:50%;background:var(--line-strong);"></span>
-        <span style="font-size:12px;font-weight:600;">Design Approval</span>
+        <span style="width:10px;height:10px;border-radius:50%;background:var(--violet);"></span>
+        <span style="font-size:12px;font-weight:600;">⚙️ Operations Plan</span>
       </div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;opacity:0.5;">
         <span style="width:10px;height:10px;border-radius:50%;background:var(--line-strong);"></span>
@@ -1208,6 +1206,17 @@
       <div style="display:flex;align-items:center;gap:10px;opacity:0.5;">
         <span style="width:10px;height:10px;border-radius:50%;background:var(--line-strong);"></span>
         <span style="font-size:12px;font-weight:600;">Completed</span>
+      </div>
+    </div>
+    
+    <!-- Operations Manager Note -->
+    <div style="margin-top:16px;background:linear-gradient(135deg, rgba(139,92,246,0.08), rgba(139,92,246,0.02));border:1px solid rgba(139,92,246,0.2);border-radius:12px;padding:14px;">
+      <div style="font-size:11px;font-weight:700;color:var(--violet);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">⚙️ Operations Step</div>
+      <div style="font-size:12px;color:var(--text);line-height:1.5;">
+        Operations Manager will see this campaign in their queue and assign:
+        <br>• Team leads per product
+        <br>• Execution dates per city
+        <br>• Production schedule
       </div>
     </div>
   </aside>
@@ -1587,9 +1596,6 @@ function addProduct(type) {
     cities: [],
     material_type: '',
     printing_type: '',
-    execution_date: '',
-    team_lead_phone: '',
-    team_lead_name: '',
     status: 'design',
     notes: ''
   };
@@ -1648,10 +1654,11 @@ function updateProductDisplay(id) {
   const metaEl = card.querySelector('.product-head .meta');
   if (metaEl) {
     const cities = (p.cities || []).join(', ') || 'No city';
+    const svcLabel = (p.service_type || 'printing_execution').replace('_', ' + ').replace('printing only', 'Print only').replace('execution only', 'Exec only');
     metaEl.innerHTML = `
       <span>📍 ${esc(cities)}</span>
       <span>📦 ${p.quantity || 0} ${p.product_type === 'flex' || p.product_type === 'wall_wrap' ? 'sqft' : 'pcs'}</span>
-      <span>👤 ${esc(p.team_lead_name || 'Unassigned')}</span>
+      <span>💼 ${esc(svcLabel)}</span>
     `;
   }
   
@@ -1694,7 +1701,7 @@ function renderProducts() {
             <div class="meta">
               <span>📍 ${esc(cities)}</span>
               <span>📦 ${p.quantity || 0} ${p.product_type === 'flex' || p.product_type === 'wall_wrap' ? 'sqft' : 'pcs'}</span>
-              <span>👤 ${esc(p.team_lead_name || 'Unassigned')}</span>
+              <span>💼 ${esc((p.service_type || 'printing_execution').replace('_', ' + ').replace('printing only', 'Print only').replace('execution only', 'Exec only'))}</span>
             </div>
           </div>
           <div class="right">
@@ -1751,35 +1758,47 @@ function renderProducts() {
               <label>Transportation / unit (₹)</label>
               <input type="number" class="input mono" value="${p.transportation_cost || ''}" placeholder="0" min="0" oninput="updateProductField('${p.id}', 'transportation_cost', this.value)">
             </div>
-            <div class="field">
-              <label>Execution Date</label>
-              <input type="date" class="input" value="${p.execution_date || ''}" oninput="updateProductField('${p.id}', 'execution_date', this.value)">
-            </div>
-            <div class="field">
-              <label>Team Lead Name</label>
-              <input type="text" class="input" value="${esc(p.team_lead_name || '')}" placeholder="e.g., Mubarak" oninput="updateProductField('${p.id}', 'team_lead_name', this.value)">
-            </div>
-            <div class="field">
-              <label>Team Lead Phone</label>
-              <input type="tel" class="input mono" value="${esc(p.team_lead_phone || '')}" placeholder="10-digit" maxlength="10" oninput="updateProductField('${p.id}', 'team_lead_phone', this.value)">
+            <div class="field full" style="background:var(--canvas);border:1px dashed var(--line-strong);border-radius:10px;padding:14px;">
+              <label style="color:var(--violet);">⚙️ Operations Manager will assign:</label>
+              <div style="font-size:12px;color:var(--text-mid);line-height:1.6;margin-top:4px;">
+                • Team Lead (Mubarak, Abbas, Nagesh, etc.)<br>
+                • Execution date per city<br>
+                • City-wise quantity allocation<br>
+                • Production schedule
+              </div>
             </div>
           </div>
           
-          <!-- Status Timeline -->
+          <!-- Sales Workflow Timeline -->
           <div class="timeline">
-            ${['design', 'printing', 'stitching', 'dispatch', 'execution', 'reporting', 'closed'].map((stage, i) => {
-              const stages = ['design', 'printing', 'stitching', 'dispatch', 'execution', 'reporting', 'closed'];
-              const currentIdx = stages.indexOf(p.status || 'design');
-              const isDone = i < currentIdx;
-              const isCurrent = i === currentIdx;
-              const cls = isDone ? 'done' : isCurrent ? 'current' : '';
-              return `
-                <div class="timeline-step ${cls}">
-                  <div class="timeline-dot">${isDone ? '✓' : isCurrent ? '●' : (i + 1)}</div>
-                  <div class="label">${stage.charAt(0).toUpperCase() + stage.slice(1)}</div>
-                </div>
-              `;
-            }).join('')}
+            <div class="timeline-step done">
+              <div class="timeline-dot">✓</div>
+              <div class="label">Quote Sent</div>
+            </div>
+            <div class="timeline-step current">
+              <div class="timeline-dot">●</div>
+              <div class="label">Pricing</div>
+            </div>
+            <div class="timeline-step">
+              <div class="timeline-dot">3</div>
+              <div class="label">Ops Plan</div>
+            </div>
+            <div class="timeline-step">
+              <div class="timeline-dot">4</div>
+              <div class="label">Production</div>
+            </div>
+            <div class="timeline-step">
+              <div class="timeline-dot">5</div>
+              <div class="label">Dispatch</div>
+            </div>
+            <div class="timeline-step">
+              <div class="timeline-dot">6</div>
+              <div class="label">Execution</div>
+            </div>
+            <div class="timeline-step">
+              <div class="timeline-dot">7</div>
+              <div class="label">Closed</div>
+            </div>
           </div>
           
           <!-- Live Calc -->
@@ -2134,38 +2153,43 @@ async function saveCampaignToDB(status) {
   const totals = calculateTotals();
   const payload = buildPayload();
   
+  // ─── BUILD CAMPAIGN PAYLOAD (only non-generated columns) ───
   const dbPayload = {
-    name: payload.name,
-    client_id: payload.client_id,
-    client_name: payload.client_name,
-    brand_name: payload.brand_name || null,
-    campaign_type: payload.campaign_type,
-    priority: payload.priority,
-    start_date: payload.start_date,
-    deadline: payload.deadline,
-    primary_city: payload.primary_city,
-    locations: payload.locations,
-    sales_team: payload.sales_team,
-    lead_phone: state.admin.phone,
-    lead_name: state.admin.name,
-    notes: payload.notes || null,
-    gst_percent: payload.gst_percent,
-    advance_required: payload.advance_required,
-    payment_method: payload.payment_method,
-    payment_due_date: payload.payment_due_date,
-    payment_terms: payload.payment_terms || null,
+    name: payload.name || 'Untitled',
+    client_name: payload.client_name || 'Unknown Client',
+    campaign_type: payload.campaign_type || 'brand_awareness',
+    priority: payload.priority || 'normal',
     status: status || 'draft',
+    gst_percent: payload.gst_percent || 18,
+    advance_required: payload.advance_required || 0,
     created_by: state.admin.phone
   };
   
-  if (status === 'in_production') {
+  // Optional fields - only add if value exists
+  if (payload.client_id) dbPayload.client_id = payload.client_id;
+  if (payload.brand_name) dbPayload.brand_name = payload.brand_name;
+  if (payload.start_date) dbPayload.start_date = payload.start_date;
+  if (payload.deadline) dbPayload.deadline = payload.deadline;
+  if (payload.primary_city) dbPayload.primary_city = payload.primary_city;
+  if (payload.locations && payload.locations.length > 0) dbPayload.locations = payload.locations;
+  if (payload.sales_team && payload.sales_team.length > 0) dbPayload.sales_team = payload.sales_team;
+  if (state.admin.phone) dbPayload.lead_phone = state.admin.phone;
+  if (state.admin.name) dbPayload.lead_name = state.admin.name;
+  if (payload.notes) dbPayload.notes = payload.notes;
+  if (payload.payment_method) dbPayload.payment_method = payload.payment_method;
+  if (payload.payment_due_date) dbPayload.payment_due_date = payload.payment_due_date;
+  if (payload.payment_terms) dbPayload.payment_terms = payload.payment_terms;
+  
+  if (status === 'in_production' || status === 'design_approval') {
     dbPayload.launched_at = new Date().toISOString();
   }
+  
+  console.log('[Launch] Saving campaign:', dbPayload);
   
   try {
     let campaign;
     if (state.campaignId) {
-      // Update
+      console.log('[Launch] Updating existing campaign:', state.campaignId);
       const updated = await api('/rest/v1/prajapati_campaigns_v2?id=eq.' + state.campaignId, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
@@ -2173,56 +2197,68 @@ async function saveCampaignToDB(status) {
       });
       campaign = updated && updated[0];
     } else {
-      // Insert
+      console.log('[Launch] Inserting new campaign...');
       const inserted = await api('/rest/v1/prajapati_campaigns_v2', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
         body: JSON.stringify(dbPayload)
       });
+      console.log('[Launch] Insert response:', inserted);
       campaign = inserted && inserted[0];
       if (campaign) state.campaignId = campaign.id;
     }
     
-    if (!campaign) throw new Error('No campaign returned');
+    if (!campaign) throw new Error('Campaign created but no data returned');
     
-    // Save/update products
-    // First delete existing products if updating
+    console.log('[Launch] Campaign saved! Code:', campaign.campaign_code, 'ID:', campaign.id);
+    
+    // ─── SAVE PRODUCTS ───
+    // Delete existing products first if updating
     if (state.campaignId) {
       try {
         await api('/rest/v1/prajapati_campaign_products?campaign_id=eq.' + state.campaignId, {
           method: 'DELETE'
         });
-      } catch (e) { /* ignore */ }
+      } catch (e) { 
+        console.warn('[Launch] Could not delete old products:', e.message);
+      }
     }
     
-    // Insert all products
+    // Insert products (only non-generated columns)
     if (state.products.length > 0) {
-      const productsPayload = state.products.map((p, idx) => ({
-        campaign_id: campaign.id,
-        product_type: p.product_type,
-        product_name: p.product_name,
-        quantity: p.quantity || 0,
-        rate_per_unit: p.rate_per_unit || 0,
-        production_cost: p.production_cost || 0,
-        fitting_cost: p.fitting_cost || 0,
-        transportation_cost: p.transportation_cost || 0,
-        service_type: p.service_type || 'printing_execution',
-        cities: p.cities || [],
-        material_type: p.material_type || null,
-        printing_type: p.printing_type || null,
-        execution_date: p.execution_date || null,
-        team_lead_phone: p.team_lead_phone || null,
-        team_lead_name: p.team_lead_name || null,
-        status: p.status || 'design',
-        notes: p.notes || null,
-        display_order: idx
-      }));
+      const productsPayload = state.products.map((p, idx) => {
+        const prod = {
+          campaign_id: campaign.id,
+          product_type: p.product_type,
+          product_name: p.product_name || PRODUCT_CONFIGS[p.product_type]?.name || 'Product',
+          quantity: parseInt(p.quantity) || 0,
+          rate_per_unit: parseFloat(p.rate_per_unit) || 0,
+          production_cost: parseFloat(p.production_cost) || 0,
+          fitting_cost: parseFloat(p.fitting_cost) || 0,
+          transportation_cost: parseFloat(p.transportation_cost) || 0,
+          service_type: p.service_type || 'printing_execution',
+          status: p.status || 'design',
+          display_order: idx
+        };
+        
+        // Optional fields (Operations will add team/execution later)
+        if (p.cities && p.cities.length > 0) prod.cities = p.cities;
+        if (p.material_type) prod.material_type = p.material_type;
+        if (p.printing_type) prod.printing_type = p.printing_type;
+        if (p.notes) prod.notes = p.notes;
+        
+        return prod;
+      });
+      
+      console.log('[Launch] Saving', productsPayload.length, 'products...');
       
       await api('/rest/v1/prajapati_campaign_products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
         body: JSON.stringify(productsPayload)
       });
+      
+      console.log('[Launch] Products saved!');
     }
     
     // Update campaign code display
@@ -2234,6 +2270,7 @@ async function saveCampaignToDB(status) {
     return campaign;
   } catch (err) {
     state.saving = false;
+    console.error('[Launch] Save failed:', err);
     throw err;
   }
 }
@@ -2298,69 +2335,48 @@ async function launchCampaign() {
   if (!validateBasics()) return;
   
   const totals = calculateTotals();
-  const msg = `🚀 Launch this campaign?\n\nValue: ${inr(totals.grandTotal)}\nProducts: ${state.products.length}\nQty: ${totals.totalQty}\n\nAll teams will be notified.\n\nProceed?`;
+  const msg = `🚀 Send this campaign to Operations team?\n\nValue: ${inr(totals.grandTotal)}\nProducts: ${state.products.length}\nQuantity: ${totals.totalQty}\n\nOperations Manager will:\n• Assign team leads per product\n• Set execution dates per city\n• Plan production schedule\n\nProceed?`;
   if (!confirm(msg)) return;
   
   const btn = document.getElementById('launchBtn');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Launching...';
+  btn.innerHTML = '<span class="spinner"></span> Sending...';
   
   try {
-    const campaign = await saveCampaignToDB('design_approval');
-    showToast(`🚀 Campaign launched! ${campaign.campaign_code}`, 'success');
+    const campaign = await saveCampaignToDB('pending_execution_plan');
+    showToast(`🚀 Sent to Operations · ${campaign.campaign_code}`, 'success');
     
     // Clear draft
     localStorage.removeItem('launch_campaign_draft');
     
     setTimeout(() => {
-      if (confirm(`✅ Campaign ${campaign.campaign_code} launched!\n\nGo to Dashboard now?`)) {
-        window.location.href = 'dashboard.html';
-      } else {
-        // Reset for new campaign
-        if (confirm('Create another campaign?')) {
-          window.location.reload();
-        }
+      const url = 'execution-plan.html?campaign=' + campaign.id;
+      if (confirm(`✅ Campaign ${campaign.campaign_code} sent to Operations!\n\nOperations Manager will assign teams + dates.\n\nView in Operations queue?`)) {
+        window.location.href = 'execution-plan.html';
+      } else if (confirm('Create another campaign?')) {
+        window.location.reload();
       }
     }, 1500);
   } catch (err) {
     let errMsg = err.message || String(err);
-    // Friendly message for common errors
     if (errMsg.includes('row-level security') || errMsg.includes('42501')) {
-      errMsg = 'Database RLS blocking save. Run 04_FIX_RLS.sql in Supabase, then retry.';
+      errMsg = 'RLS blocking. Run 06_STATUS_FLOW_UPDATE.sql in Supabase.';
       showToast(errMsg, 'error');
-      alert('🚨 DATABASE FIX NEEDED:\n\nRow-Level Security is blocking saves.\n\nFIX (1 minute):\n1. Open Supabase SQL Editor\n2. Run: 04_FIX_RLS.sql\n3. Retry launch\n\nFile is in your downloads.');
+      alert('🚨 DATABASE FIX NEEDED:\n\nRow-Level Security blocking saves.\n\nFIX:\n1. Open Supabase SQL Editor\n2. Run: 06_STATUS_FLOW_UPDATE.sql\n3. Retry');
     } else if (errMsg.includes('JSON.parse') || errMsg.includes('unexpected end')) {
       errMsg = 'Schema not deployed. Run 03_LAUNCH_CAMPAIGN_SCHEMA.sql first.';
       showToast(errMsg, 'error');
+    } else if (errMsg.includes('status_check') || errMsg.includes('check constraint')) {
+      errMsg = 'Status flow not updated. Run 06_STATUS_FLOW_UPDATE.sql in Supabase.';
+      showToast(errMsg, 'error');
+      alert('🚨 SCHEMA UPDATE NEEDED:\n\nNew status "pending_execution_plan" not in DB yet.\n\nFIX:\n1. Open Supabase SQL Editor\n2. Run: 06_STATUS_FLOW_UPDATE.sql\n3. Retry');
     } else {
-      showToast('Launch failed: ' + errMsg, 'error');
+      showToast('Send failed: ' + errMsg, 'error');
     }
     console.error('Launch error:', err);
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '🚀 Launch';
-  }
-}
-
-async function sendProduction() {
-  if (!validateBasics()) return;
-  if (!confirm('🏭 Send this campaign to production?\n\nDesign will be locked and production workflow starts.')) return;
-  
-  const btn = document.getElementById('prodBtn');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Sending...';
-  
-  try {
-    const campaign = await saveCampaignToDB('in_production');
-    showToast(`🏭 Sent to production · ${campaign.campaign_code}`, 'success');
-    localStorage.removeItem('launch_campaign_draft');
-    setTimeout(() => {
-      window.location.href = 'dashboard.html';
-    }, 1500);
-  } catch (err) {
-    showToast('Failed: ' + err.message, 'error');
-    btn.disabled = false;
-    btn.innerHTML = '🏭 Production';
+    btn.innerHTML = '🚀 Send to Operations';
   }
 }
 
