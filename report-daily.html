@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>Daily Report v1.0 — Prajapati</title>
+<title>Daily Report v1.1 — Prajapati</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
@@ -129,8 +129,32 @@
   .spinner{display:inline-block;width:32px;height:32px;border:3px solid rgba(59,130,246,0.2);border-top-color:var(--blue);border-radius:50%;animation:spin 0.7s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
   
-  .ab-btn{padding:7px 12px;border-radius:8px;font-size:12px;font-weight:700;border:1px solid var(--line);background:white;transition:all 0.15s;color:var(--text-mid)}
+  .ab-btn{padding:7px 12px;border-radius:8px;font-size:12px;font-weight:700;border:1px solid var(--line);background:white;transition:all 0.15s;color:var(--text-mid);cursor:pointer}
   .ab-btn:hover{background:var(--line-soft)}
+  .ab-btn.primary{background:linear-gradient(135deg,var(--blue),#60a5fa);color:white;border:none;box-shadow:0 2px 8px rgba(59,130,246,0.3)}
+  .ab-btn.primary:hover{box-shadow:0 4px 14px rgba(59,130,246,0.5);transform:translateY(-1px)}
+  .ab-btn:disabled{opacity:0.6;cursor:not-allowed}
+  
+  /* MODAL */
+  .modal{position:fixed;inset:0;background:rgba(5,8,24,0.6);backdrop-filter:blur(8px);display:none;align-items:flex-start;justify-content:center;z-index:200;padding:60px 20px;overflow-y:auto}
+  .modal.active{display:flex}
+  .modal-content{background:white;border-radius:18px;width:100%;max-width:560px;padding:28px;box-shadow:0 24px 80px rgba(0,0,0,0.3);animation:modalIn 0.3s cubic-bezier(0.16,1,0.3,1)}
+  @keyframes modalIn{from{opacity:0;transform:translateY(20px) scale(0.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+  .modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+  .modal-head h2{font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--ink-900);letter-spacing:-0.015em}
+  .modal-close{width:30px;height:30px;border-radius:8px;background:var(--line-soft);color:var(--text-mid);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;cursor:pointer;border:none}
+  .modal-close:hover{background:var(--line)}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+  .form-grid.full{grid-template-columns:1fr}
+  .form-field label{display:block;font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px}
+  .form-field label .req{color:var(--rose);font-size:13px}
+  .form-input{width:100%;padding:10px 12px;font-size:13.5px;border:1.5px solid var(--line);border-radius:9px;background:white;font-weight:500;transition:all 0.15s}
+  .form-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
+  .form-input.mono{font-family:'JetBrains Mono',monospace}
+  .select-wrap{position:relative}
+  .select-wrap::after{content:'▾';position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--text-dim);pointer-events:none}
+  .select-wrap select.form-input{appearance:none;padding-right:32px;cursor:pointer}
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
   
   .toast{position:fixed;bottom:24px;right:24px;background:var(--ink-900);color:white;padding:14px 20px;border-radius:12px;font-size:13px;font-weight:700;box-shadow:0 24px 60px rgba(0,0,0,0.2);z-index:9999;opacity:0;transform:translateY(20px);transition:all 0.3s;display:flex;gap:10px}
   .toast.show{opacity:1;transform:translateY(0)}
@@ -171,7 +195,7 @@
       <div class="brand-logo">📅</div>
       <div class="brand-text">
         <div class="name">Reports</div>
-        <div class="sub">v1.0 · Daily</div>
+        <div class="sub">v1.1 · Daily</div>
       </div>
     </div>
     <div class="nav-section">
@@ -284,13 +308,77 @@
   </main>
 </div>
 
+<!-- EDIT MODAL -->
+<div class="modal" id="editModal">
+  <div class="modal-content">
+    <div class="modal-head">
+      <h2>✎ Edit Entry</h2>
+      <button class="modal-close" onclick="closeEditModal()">✕</button>
+    </div>
+    
+    <div style="background:var(--canvas);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:16px;">
+      <div style="font-size:10.5px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Campaign</div>
+      <div style="font-size:14px;font-weight:800;color:var(--ink-900);" id="editCampaign">—</div>
+      <div style="font-size:10.5px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-top:10px;margin-bottom:4px;">Member</div>
+      <div style="font-size:13px;font-weight:700;color:var(--ink-900);" id="editMember">—</div>
+    </div>
+    
+    <div class="form-grid">
+      <div class="form-field">
+        <label>Media Type <span class="req">*</span></label>
+        <div class="select-wrap">
+          <select id="editMedia" class="form-input">
+            <option value="auto_hood">Auto Hood</option>
+            <option value="sticker">Sticker</option>
+            <option value="no_parking">No Parking</option>
+            <option value="flex">Flex</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-field">
+        <label>City</label>
+        <input type="text" id="editCity" class="form-input" placeholder="e.g., Pune">
+      </div>
+    </div>
+    
+    <div class="form-grid full">
+      <div class="form-field">
+        <label>Location <span class="req">*</span></label>
+        <input type="text" id="editLocation" class="form-input" placeholder="Full location address">
+      </div>
+    </div>
+    
+    <div class="form-grid">
+      <div class="form-field">
+        <label>Quantity <span class="req">*</span></label>
+        <input type="number" id="editQty" class="form-input mono" placeholder="0" min="0" step="0.01" oninput="recalcEditTotal()">
+      </div>
+      <div class="form-field">
+        <label>Rate / Unit (₹) <span class="req">*</span></label>
+        <input type="number" id="editRate" class="form-input mono" placeholder="0" min="0" step="0.01" oninput="recalcEditTotal()">
+      </div>
+    </div>
+    
+    <div style="background:linear-gradient(135deg,rgba(245,184,61,0.1),rgba(245,184,61,0.04));border:1px solid rgba(245,184,61,0.3);border-radius:10px;padding:14px 16px;margin-top:8px;display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;">Total</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:800;color:var(--gold-deep);" id="editTotal">₹0</div>
+    </div>
+    
+    <div class="modal-actions">
+      <button class="ab-btn" onclick="closeEditModal()">Cancel</button>
+      <button class="ab-btn primary" onclick="saveEdit()" id="saveEditBtn">💾 Save Changes</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
 "use strict";
 
 const CONFIG = { url: 'https://fpbktcgtspqsqpaytslv.supabase.co', key: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j' };
-const state = { admin: null, entries: [], date: '' };
+const state = { admin: null, entries: [], date: '', editing: null };
 
 function esc(s) { if (s == null) return ''; return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function inr(n) { if (!n || isNaN(n)) return '₹0'; return '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 }); }
@@ -404,6 +492,31 @@ async function loadData() {
   }
 }
 
+function detectDuplicates() {
+  // Group by member+campaign+location+media+qty+rate (potential dupes)
+  const groups = {};
+  state.entries.forEach((e, idx) => {
+    const key = [
+      e.member_phone,
+      e.campaign_key,
+      (e.location || '').toLowerCase().trim(),
+      e.media_type,
+      e.quantity,
+      e.rate_per_unit
+    ].join('|');
+    if (!groups[key]) groups[key] = [];
+    groups[key].push({ ...e, _idx: idx });
+  });
+  
+  const duplicates = new Set();
+  Object.values(groups).forEach(grp => {
+    if (grp.length > 1) {
+      grp.forEach(e => duplicates.add(e.id));
+    }
+  });
+  return duplicates;
+}
+
 function renderTable() {
   setText('rowCount', state.entries.length + ' entries');
   
@@ -417,14 +530,36 @@ function renderTable() {
     return;
   }
   
-  let html = '<div class="table-scroll"><table><thead><tr>';
+  const dupes = detectDuplicates();
+  const dupCount = dupes.size;
+  
+  let html = '';
+  
+  // Duplicate warning banner
+  if (dupCount > 0) {
+    html += `
+      <div style="margin:14px 22px 0;background:linear-gradient(135deg,rgba(245,184,61,0.15),rgba(249,115,22,0.1));border:1px solid rgba(249,115,22,0.3);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <div style="font-size:24px;">⚠️</div>
+        <div style="flex:1;min-width:200px;">
+          <div style="font-weight:800;color:#c2410c;font-size:13px;">${dupCount} possible duplicate${dupCount !== 1 ? 's' : ''} detected</div>
+          <div style="font-size:11.5px;color:var(--text-mid);margin-top:2px;">Same member · campaign · location · media · qty · rate — highlighted in orange below</div>
+        </div>
+        <button class="ab-btn" onclick="bulkDeleteDuplicates()" style="background:#fef3c7;color:#92400e;border-color:rgba(245,184,61,0.4);font-weight:700;">🗑 Review & Delete Dupes</button>
+      </div>`;
+  }
+  
+  html += '<div class="table-scroll"><table><thead><tr>';
   html += '<th>#</th><th>Campaign</th><th>Media</th><th>Member</th><th>Location</th>';
-  html += '<th class="num">Qty</th><th class="num">Rate</th><th class="num">Total</th></tr></thead><tbody>';
+  html += '<th class="num">Qty</th><th class="num">Rate</th><th class="num">Total</th><th>Actions</th></tr></thead><tbody>';
   
   state.entries.forEach((e, i) => {
+    const isDupe = dupes.has(e.id);
     html += `
-      <tr>
-        <td class="num">${i + 1}</td>
+      <tr ${isDupe ? 'style="background:rgba(249,115,22,0.06);"' : ''}>
+        <td class="num">
+          ${i + 1}
+          ${isDupe ? '<div style="font-size:9px;color:#c2410c;font-weight:800;margin-top:2px;">⚠ DUPE</div>' : ''}
+        </td>
         <td><strong>${esc(e.work_name || e.campaign_key)}</strong></td>
         <td><span class="media-pill ${esc(e.media_type)}">${esc(e.media_type)}</span></td>
         <td>${esc(e.member_name)}<br><span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--text-mid);">${esc(e.member_phone)}</span></td>
@@ -432,6 +567,12 @@ function renderTable() {
         <td class="num bold">${e.quantity}</td>
         <td class="num">${inr(e.rate_per_unit)}</td>
         <td class="num gold">${inr(e.total_amount)}</td>
+        <td>
+          <div style="display:flex;gap:4px;">
+            <button onclick="editEntry('${e.id}')" style="padding:5px 9px;border-radius:6px;font-size:11px;font-weight:700;background:white;color:var(--text-mid);border:1px solid var(--line);cursor:pointer;" title="Edit">✎ Edit</button>
+            <button onclick="deleteEntry('${e.id}', '${esc(e.member_name)}', ${e.total_amount})" style="padding:5px 9px;border-radius:6px;font-size:11px;font-weight:700;background:white;color:var(--rose);border:1px solid #fecaca;cursor:pointer;" title="Delete">🗑</button>
+          </div>
+        </td>
       </tr>`;
   });
   
@@ -472,12 +613,161 @@ function exportCSV() {
   showToast('✓ CSV downloaded', 'success');
 }
 
-console.log('%c📅 Daily Report v1.0', 'background:#3B82F6;color:white;padding:6px 12px;border-radius:6px;font-weight:bold;font-size:13px;');
+// ───────── EDIT / DELETE ─────────
+function editEntry(id) {
+  const e = state.entries.find(x => x.id === id);
+  if (!e) return;
+  state.editing = e;
+  
+  document.getElementById('editCampaign').textContent = e.work_name || e.campaign_key;
+  document.getElementById('editMember').textContent = e.member_name + ' · ' + e.member_phone;
+  document.getElementById('editMedia').value = e.media_type;
+  document.getElementById('editLocation').value = e.location || '';
+  document.getElementById('editCity').value = e.city || '';
+  document.getElementById('editQty').value = e.quantity;
+  document.getElementById('editRate').value = e.rate_per_unit;
+  recalcEditTotal();
+  document.getElementById('editModal').classList.add('active');
+}
+
+function recalcEditTotal() {
+  const qty = parseFloat(document.getElementById('editQty').value) || 0;
+  const rate = parseFloat(document.getElementById('editRate').value) || 0;
+  setText('editTotal', inr(qty * rate));
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').classList.remove('active');
+  state.editing = null;
+}
+
+async function saveEdit() {
+  if (!state.editing) return;
+  
+  const media = document.getElementById('editMedia').value;
+  const location = document.getElementById('editLocation').value.trim();
+  const city = document.getElementById('editCity').value.trim();
+  const qty = parseFloat(document.getElementById('editQty').value);
+  const rate = parseFloat(document.getElementById('editRate').value);
+  
+  if (!location) { showToast('Location daalo', 'error'); return; }
+  if (!qty || qty <= 0) { showToast('Valid quantity daalo', 'error'); return; }
+  if (!rate || rate <= 0) { showToast('Valid rate daalo', 'error'); return; }
+  
+  const btn = document.getElementById('saveEditBtn');
+  btn.disabled = true;
+  btn.innerHTML = 'Saving...';
+  
+  try {
+    await api('/rest/v1/execution_daily_log?id=eq.' + state.editing.id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        media_type: media,
+        location: location,
+        city: city || null,
+        quantity: qty,
+        rate_per_unit: rate,
+        total_amount: qty * rate
+      })
+    });
+    showToast('✓ Entry updated', 'success');
+    closeEditModal();
+    await loadData();
+  } catch (err) {
+    showToast('Update failed: ' + err.message, 'error');
+    btn.disabled = false;
+    btn.innerHTML = '💾 Save Changes';
+  }
+}
+
+async function deleteEntry(id, name, amount) {
+  if (!confirm(`Delete this entry?\n\nMember: ${name}\nAmount: ${inr(amount)}\n\nYeh action undo nahi ho sakta.`)) return;
+  
+  try {
+    await api('/rest/v1/execution_daily_log?id=eq.' + id, { method: 'DELETE' });
+    showToast('🗑 Entry deleted', 'success');
+    await loadData();
+  } catch (err) {
+    showToast('Delete failed: ' + err.message, 'error');
+  }
+}
+
+async function bulkDeleteDuplicates() {
+  const dupes = detectDuplicates();
+  if (dupes.size === 0) { showToast('No duplicates found', 'info'); return; }
+  
+  // Group duplicates by their signature
+  const groups = {};
+  state.entries.forEach(e => {
+    if (!dupes.has(e.id)) return;
+    const key = [e.member_phone, e.campaign_key, (e.location||'').toLowerCase().trim(), e.media_type, e.quantity, e.rate_per_unit].join('|');
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(e);
+  });
+  
+  // For each group, keep oldest (lowest created_at), delete rest
+  const toDelete = [];
+  let keepCount = 0;
+  Object.values(groups).forEach(grp => {
+    grp.sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+    keepCount++;
+    for (let i = 1; i < grp.length; i++) toDelete.push(grp[i]);
+  });
+  
+  if (toDelete.length === 0) { showToast('No duplicates to delete', 'info'); return; }
+  
+  // Build preview
+  let preview = `🗑 Delete ${toDelete.length} duplicate entries?\n\n`;
+  preview += `Strategy: keep oldest, delete newer copies.\n`;
+  preview += `Groups: ${keepCount}\n`;
+  preview += `Will keep: ${keepCount} entries\n`;
+  preview += `Will delete: ${toDelete.length} entries\n\n`;
+  preview += `Sample deletions:\n`;
+  toDelete.slice(0, 5).forEach(e => {
+    preview += `• ${e.member_name} · ${e.location} · ${e.quantity}×${e.rate_per_unit} = ${inr(e.total_amount)}\n`;
+  });
+  if (toDelete.length > 5) preview += `...and ${toDelete.length - 5} more\n`;
+  preview += `\nThis cannot be undone. Proceed?`;
+  
+  if (!confirm(preview)) return;
+  
+  // Delete in batches
+  let deleted = 0;
+  let failed = 0;
+  for (const e of toDelete) {
+    try {
+      await api('/rest/v1/execution_daily_log?id=eq.' + e.id, { method: 'DELETE' });
+      deleted++;
+    } catch (err) {
+      failed++;
+      console.error('Delete failed for', e.id, err);
+    }
+  }
+  
+  if (failed === 0) {
+    showToast(`✅ ${deleted} duplicates deleted`, 'success');
+  } else {
+    showToast(`${deleted} deleted, ${failed} failed`, 'error');
+  }
+  await loadData();
+}
+
+console.log('%c📅 Daily Report v1.1 · Edit + Delete + Duplicate Detection', 'background:#3B82F6;color:white;padding:6px 12px;border-radius:6px;font-weight:bold;font-size:13px;');
 
 document.addEventListener('DOMContentLoaded', () => {
   autoLogin();
   document.getElementById('loginPhone').addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
   document.getElementById('loginPhone').addEventListener('input', e => { e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10); });
+  
+  // Close modal on background click
+  document.getElementById('editModal').addEventListener('click', e => {
+    if (e.target.id === 'editModal') closeEditModal();
+  });
+  // Close on Escape
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && document.getElementById('editModal').classList.contains('active')) closeEditModal();
+  });
 });
 </script>
 </body>
