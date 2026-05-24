@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Stitching v1.0 — Prajapati Operations</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
+
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+  :root{
+    --ink-900:#050818;--ink-800:#0B1130;--ink-700:#131A3F;
+    --canvas:#FAFBFF;--paper:#FFFFFF;--line:#E8EAF4;--line-soft:#F0F2F8;--line-strong:#D4D8E8;
+    --text:#0F172A;--text-mid:#475569;--text-dim:#94A3B8;--text-faint:#CBD5E1;
+    --teal:#00D4D2;--teal-dark:#00A8A6;--gold:#F5B83D;--gold-deep:#B8860B;
+    --rose:#FF5470;--mint:#34D399;--violet:#8B5CF6;--blue:#3B82F6;--orange:#F97316;
+    --stitch:#F97316;--stitch-dark:#c2410c;
+    --shadow-md:0 4px 12px rgba(15,23,42,0.06);--shadow-lg:0 12px 32px rgba(15,23,42,0.08);
+  }
+  body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--canvas);color:var(--text);min-height:100vh}
+  button{font-family:inherit;cursor:pointer;border:none;background:none}
+  input,select,textarea{font-family:inherit;outline:none;border:none}
+  
+  .login-bg{min-height:100vh;background:linear-gradient(135deg,var(--ink-900),var(--ink-800),var(--stitch));display:flex;align-items:center;justify-content:center;padding:20px}
+  .login-card{background:white;border-radius:20px;padding:36px 32px;width:100%;max-width:420px;box-shadow:0 30px 80px rgba(0,0,0,0.4);animation:loginIn 0.6s cubic-bezier(0.16,1,0.3,1)}
+  @keyframes loginIn{from{opacity:0;transform:translateY(20px) scale(0.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+  .login-logo{width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,var(--stitch),#fb923c);color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:24px;margin-bottom:22px;box-shadow:0 8px 30px rgba(249,115,22,0.4)}
+  .login-card h1{font-family:'Fraunces',serif;font-size:26px;font-weight:600;color:var(--ink-900);margin-bottom:4px}
+  .login-card .sub{color:var(--text-mid);font-size:13px;margin-bottom:26px}
+  .field-group{margin-bottom:16px}
+  .field-group label{display:block;font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:7px}
+  .login-input{width:100%;padding:12px 14px;font-size:14px;border:1.5px solid var(--line);border-radius:10px;background:white;transition:all 0.15s}
+  .login-input:focus{border-color:var(--stitch);box-shadow:0 0 0 4px rgba(249,115,22,0.1)}
+  .login-input.mono{font-family:'JetBrains Mono',monospace;text-align:center;letter-spacing:0.05em;font-weight:600}
+  .err-banner{background:#fef2f2;color:#991b1b;padding:10px 12px;border-radius:8px;font-size:12px;font-weight:600;margin-top:12px;display:none}
+  .err-banner.show{display:block}
+  .login-btn{width:100%;padding:13px 18px;background:linear-gradient(135deg,var(--stitch),#fb923c);color:white;border-radius:10px;font-size:14px;font-weight:700;box-shadow:0 4px 14px rgba(249,115,22,0.3)}
+  .login-btn:hover{transform:translateY(-1px)}
+  .login-btn:disabled{opacity:0.6}
+  .app{display:none}.app.active{display:block}
+  
+  .sidebar{width:240px;background:linear-gradient(180deg,var(--ink-900) 0%,var(--ink-800) 60%,var(--ink-700) 100%);height:100vh;position:fixed;left:0;top:0;padding:24px 14px 20px;z-index:50;overflow-y:auto}
+  .sidebar::-webkit-scrollbar{width:4px}
+  .sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1)}
+  .brand{display:flex;align-items:center;gap:12px;padding:0 8px 24px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:20px}
+  .brand-logo{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--stitch),#fb923c);color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;box-shadow:0 4px 14px rgba(249,115,22,0.5)}
+  .brand-text{color:white}
+  .brand-text .name{font-weight:800;font-size:14px}
+  .brand-text .sub{color:#fdba74;font-size:9.5px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin-top:3px}
+  .nav-section{margin-bottom:18px}
+  .nav-section-title{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.3);padding:0 12px;margin-bottom:8px}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;color:rgba(255,255,255,0.65);font-size:12.5px;font-weight:600;border-radius:9px;margin-bottom:2px;text-decoration:none;transition:all 0.2s;position:relative}
+  .nav-item:hover{background:rgba(255,255,255,0.05);color:white;transform:translateX(2px)}
+  .nav-item.active{background:linear-gradient(90deg,rgba(249,115,22,0.2),rgba(249,115,22,0.04));color:#fdba74}
+  .nav-item.active::before{content:'';position:absolute;left:-14px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--stitch);box-shadow:0 0 12px rgba(249,115,22,0.6)}
+  .nav-icon{width:16px;height:16px;flex-shrink:0;opacity:0.9}
+  
+  .main{margin-left:240px;min-height:100vh}
+  .topbar{background:rgba(255,255,255,0.75);backdrop-filter:blur(20px);border-bottom:1px solid var(--line);padding:14px 28px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:40}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-mid);font-weight:600}
+  .breadcrumb .current{color:var(--ink-900);font-weight:700}
+  .breadcrumb .sep{color:var(--text-faint)}
+  .top-actions{display:flex;gap:10px;align-items:center;margin-left:auto;flex-wrap:wrap}
+  .user-chip{display:flex;align-items:center;gap:9px;padding:4px 10px 4px 4px;border-radius:999px;background:white;border:1px solid var(--line)}
+  .user-chip .avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
+  .user-chip .name{font-size:12px;font-weight:700;color:var(--ink-900)}
+  .ab-btn{padding:7px 12px;border-radius:8px;font-size:12px;font-weight:700;border:1px solid var(--line);background:white;color:var(--text-mid);transition:all 0.15s;cursor:pointer;white-space:nowrap}
+  .ab-btn:hover{background:var(--line-soft)}
+  .ab-btn.primary{background:linear-gradient(135deg,var(--stitch),#fb923c);color:white;border:none;box-shadow:0 2px 8px rgba(249,115,22,0.3)}
+  .ab-btn.primary:hover{box-shadow:0 4px 14px rgba(249,115,22,0.5);transform:translateY(-1px)}
+  .ab-btn:disabled{opacity:0.6;cursor:not-allowed}
+  
+  .content{padding:24px 28px 80px;max-width:1400px}
+  
+  .hero{background:linear-gradient(135deg,var(--ink-900) 0%,#7c2d12 50%,var(--stitch) 130%);border-radius:20px;padding:28px 32px;color:white;position:relative;overflow:hidden;margin-bottom:22px}
+  .hero::before{content:'';position:absolute;top:-50%;right:-10%;width:500px;height:500px;background:radial-gradient(circle,rgba(249,115,22,0.25),transparent 60%)}
+  .hero-content{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap}
+  .hero-eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);color:white;padding:5px 12px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:0.06em;margin-bottom:12px}
+  .hero-eyebrow .pulse{width:6px;height:6px;background:#fdba74;border-radius:50%;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(1.6)}}
+  .hero h1{font-family:'Fraunces',serif;font-size:32px;font-weight:600;letter-spacing:-0.035em;line-height:1.05;margin-bottom:8px}
+  .hero h1 .accent{color:#fdba74;font-style:italic;font-weight:500}
+  .hero-sub{color:rgba(255,255,255,0.75);font-size:14px;font-weight:500;max-width:520px;line-height:1.5}
+  .hero-stats{display:flex;gap:24px}
+  .hero-stat{text-align:right}
+  .hero-stat .l{color:rgba(255,255,255,0.6);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em}
+  .hero-stat .v{font-family:'JetBrains Mono',monospace;color:white;font-size:30px;font-weight:800;margin-top:4px;letter-spacing:-0.03em}
+  
+  .summary-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+  .summary-card{background:white;border:1px solid var(--line);border-radius:12px;padding:16px 18px;transition:all 0.2s}
+  .summary-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+  .summary-card .label{font-size:10.5px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px}
+  .summary-card .value{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:800;color:var(--ink-900);letter-spacing:-0.02em;line-height:1.1}
+  .summary-card .value.orange{color:var(--stitch-dark)}
+  .summary-card .value.gold{color:var(--gold-deep)}
+  .summary-card .value.mint{color:#047857}
+  .summary-card .value.red{color:var(--rose)}
+  .summary-card .delta{font-size:11px;font-weight:600;margin-top:4px;color:var(--text-mid)}
+  
+  .tabs{display:flex;gap:4px;margin-bottom:18px;background:white;padding:6px;border-radius:12px;border:1px solid var(--line);width:fit-content;flex-wrap:wrap}
+  .tab{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:700;color:var(--text-mid);cursor:pointer;transition:all 0.15s;background:transparent;border:none;white-space:nowrap}
+  .tab:hover{background:var(--canvas)}
+  .tab.active{background:linear-gradient(135deg,var(--stitch),#fb923c);color:white;box-shadow:0 2px 8px rgba(249,115,22,0.3)}
+  
+  .filter-bar{background:white;border:1px solid var(--line);border-radius:12px;padding:12px 16px;display:flex;gap:8px;align-items:center;margin-bottom:18px;flex-wrap:wrap}
+  .filter-bar label{font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase}
+  .filter-bar input,.filter-bar select{padding:7px 10px;border:1px solid var(--line);border-radius:7px;font-size:12px;font-weight:600;background:white}
+  .filter-bar .filter-btn{padding:7px 12px;border-radius:7px;font-size:12px;font-weight:700;color:var(--text-mid);background:transparent;border:1px solid var(--line);cursor:pointer}
+  .filter-bar .filter-btn:hover{background:var(--line-soft)}
+  .filter-bar .filter-btn.active{background:var(--ink-900);color:white;border-color:var(--ink-900)}
+  
+  .table-card{background:white;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow-md);margin-bottom:18px}
+  .table-header{padding:16px 22px;border-bottom:1px solid var(--line-soft);display:flex;justify-content:space-between;align-items:center;background:linear-gradient(180deg,white,var(--canvas));flex-wrap:wrap;gap:10px}
+  .table-header h2{font-size:15px;font-weight:800;color:var(--ink-900)}
+  .table-header .count{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-mid);font-weight:700}
+  .table-scroll{overflow-x:auto;max-height:600px;overflow-y:auto}
+  table{width:100%;border-collapse:collapse;min-width:900px}
+  thead th{background:var(--canvas);font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.04em;padding:11px 12px;text-align:left;border-bottom:2px solid var(--line);white-space:nowrap;position:sticky;top:0;z-index:10}
+  thead th.num{text-align:right}
+  tbody td{padding:12px;font-size:13px;border-bottom:1px solid var(--line-soft);color:var(--text)}
+  tbody tr:hover{background:var(--canvas)}
+  td.num{font-family:'JetBrains Mono',monospace;text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+  td.num.bold{font-weight:800;color:var(--ink-900)}
+  td.num.gold{color:var(--gold-deep);font-weight:800}
+  td.num.mint{color:#047857;font-weight:800}
+  td.num.red{color:var(--rose);font-weight:800}
+  
+  .master-cell{display:flex;align-items:center;gap:10px}
+  .master-cell .avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--stitch),#fb923c);color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0}
+  .master-cell .info .name{font-weight:700;color:var(--ink-900)}
+  .master-cell .info .phone{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-mid)}
+  
+  .shift-pill{display:inline-block;padding:3px 9px;border-radius:6px;font-size:10.5px;font-weight:800;letter-spacing:0.03em;text-transform:uppercase}
+  .shift-pill.regular{background:rgba(59,130,246,0.12);color:#1d4ed8}
+  .shift-pill.overtime{background:rgba(249,115,22,0.15);color:var(--stitch-dark)}
+  
+  .pay-type-pill{display:inline-block;padding:3px 9px;border-radius:6px;font-size:10.5px;font-weight:800;letter-spacing:0.03em;text-transform:uppercase}
+  .pay-type-pill.payment{background:rgba(52,211,153,0.12);color:#047857}
+  .pay-type-pill.advance_given{background:rgba(245,184,61,0.15);color:var(--gold-deep)}
+  .pay-type-pill.advance_recovered{background:rgba(139,92,246,0.12);color:#6d28d9}
+  .pay-type-pill.loan_given{background:rgba(255,84,112,0.12);color:#be123c}
+  .pay-type-pill.loan_recovered{background:rgba(139,92,246,0.12);color:#6d28d9}
+  .pay-type-pill.bonus{background:rgba(52,211,153,0.18);color:#047857}
+  .pay-type-pill.deduction{background:rgba(148,163,184,0.18);color:#475569}
+  
+  /* MODAL */
+  .modal{position:fixed;inset:0;background:rgba(5,8,24,0.6);backdrop-filter:blur(8px);display:none;align-items:flex-start;justify-content:center;z-index:200;padding:40px 20px;overflow-y:auto}
+  .modal.active{display:flex}
+  .modal-content{background:white;border-radius:18px;width:100%;max-width:640px;padding:28px;box-shadow:0 24px 80px rgba(0,0,0,0.3);animation:modalIn 0.3s cubic-bezier(0.16,1,0.3,1)}
+  @keyframes modalIn{from{opacity:0;transform:translateY(20px) scale(0.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+  .modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+  .modal-head h2{font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--ink-900);letter-spacing:-0.015em}
+  .modal-close{width:30px;height:30px;border-radius:8px;background:var(--line-soft);color:var(--text-mid);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;cursor:pointer;border:none}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+  .form-grid.full{grid-template-columns:1fr}
+  .form-grid.three{grid-template-columns:1fr 1fr 1fr}
+  .form-field label{display:block;font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px}
+  .form-field label .req{color:var(--rose);font-size:13px}
+  .form-input{width:100%;padding:10px 12px;font-size:13.5px;border:1.5px solid var(--line);border-radius:9px;background:white;font-weight:500;transition:all 0.15s}
+  .form-input:focus{border-color:var(--stitch);box-shadow:0 0 0 3px rgba(249,115,22,0.1)}
+  .form-input.mono{font-family:'JetBrains Mono',monospace}
+  textarea.form-input{resize:vertical;min-height:60px}
+  .select-wrap{position:relative}
+  .select-wrap::after{content:'▾';position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--text-dim);pointer-events:none}
+  .select-wrap select.form-input{appearance:none;padding-right:32px;cursor:pointer}
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+  
+  .total-display{background:linear-gradient(135deg,rgba(249,115,22,0.08),rgba(249,115,22,0.02));border:1px solid rgba(249,115,22,0.25);border-radius:10px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+  .total-display .l{font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em}
+  .total-display .v{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:800;color:var(--stitch-dark)}
+  
+  .row-actions{display:flex;gap:4px}
+  .row-btn{padding:5px 9px;border-radius:6px;font-size:11px;font-weight:700;background:white;color:var(--text-mid);border:1px solid var(--line);cursor:pointer;white-space:nowrap}
+  .row-btn:hover{background:var(--line-soft);color:var(--ink-900)}
+  .row-btn.pay{background:linear-gradient(135deg,var(--mint),#10b981);color:white;border:none}
+  .row-btn.danger{color:var(--rose);border-color:#fecaca}
+  
+  .perf-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-bottom:18px}
+  .perf-card{background:white;border:1px solid var(--line);border-radius:14px;padding:16px;transition:all 0.2s;cursor:pointer}
+  .perf-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);border-color:rgba(249,115,22,0.3)}
+  .perf-card .top{display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--line-soft)}
+  .perf-card .top .avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--stitch),#fb923c);color:white;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800}
+  .perf-card .top .info{flex:1;min-width:0}
+  .perf-card .top .name{font-family:'Fraunces',serif;font-size:16px;font-weight:600;color:var(--ink-900);letter-spacing:-0.01em}
+  .perf-card .top .phone{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-mid)}
+  .perf-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .perf-stat{background:var(--canvas);padding:10px 12px;border-radius:9px}
+  .perf-stat .l{font-size:10px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.04em}
+  .perf-stat .v{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:800;color:var(--ink-900);margin-top:2px}
+  .perf-stat .v.gold{color:var(--gold-deep)}
+  .perf-stat .v.red{color:var(--rose)}
+  .perf-meta{margin-top:12px;display:flex;justify-content:space-between;font-size:11px;color:var(--text-mid)}
+  .perf-meta strong{color:var(--ink-900);font-weight:700}
+  
+  .empty-state{text-align:center;padding:60px 20px;color:var(--text-mid)}
+  .empty-state .icon{font-size:48px;margin-bottom:12px;opacity:0.5}
+  .empty-state .title{font-size:18px;font-weight:700;color:var(--ink-900);margin-bottom:6px;font-family:'Fraunces',serif}
+  .empty-state .desc{font-size:12.5px;max-width:400px;margin:0 auto;line-height:1.5}
+  .loading{text-align:center;padding:60px 20px;color:var(--text-mid)}
+  .spinner{display:inline-block;width:32px;height:32px;border:3px solid rgba(249,115,22,0.2);border-top-color:var(--stitch);border-radius:50%;animation:spin 0.7s linear infinite}
+  .spinner.sm{width:14px;height:14px;border-width:2px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--ink-900);color:white;padding:14px 20px;border-radius:12px;font-size:13px;font-weight:700;box-shadow:0 24px 60px rgba(0,0,0,0.2);z-index:9999;opacity:0;transform:translateY(20px);transition:all 0.3s;display:flex;gap:10px}
+  .toast.show{opacity:1;transform:translateY(0)}
+  .toast.success{background:linear-gradient(135deg,var(--mint),#10b981)}
+  .toast.error{background:linear-gradient(135deg,var(--rose),#e11d48)}
+  
+  @media (max-width:1024px){.summary-cards{grid-template-columns:repeat(2,1fr)}.form-grid,.form-grid.three{grid-template-columns:1fr}}
+  @media (max-width:768px){
+    .sidebar{width:60px;padding:14px 6px}
+    .sidebar .brand-text,.sidebar .nav-section-title,.sidebar .nav-item span{display:none}
+    .main{margin-left:60px}
+    .content{padding:14px}
+    .topbar{padding:10px 14px}
+    .summary-cards{grid-template-columns:1fr}
+    .hero h1{font-size:22px}
+  }
+</style>
+</head>
+<body>
+
+<div class="login-bg" id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">✂️</div>
+    <h1>Stitching Operations</h1>
+    <p class="sub">Admin / Owner / Operations / Stitching access</p>
+    <div class="field-group">
+      <label>Phone Number</label>
+      <input type="tel" id="loginPhone" class="login-input mono" placeholder="10-digit phone" maxlength="10">
+    </div>
+    <button class="login-btn" onclick="doLogin()" id="loginBtn">Access Stitching →</button>
+    <div class="err-banner" id="loginErr"></div>
+  </div>
+</div>
+
+<div class="app" id="mainApp">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">✂️</div>
+      <div class="brand-text">
+        <div class="name">Stitching</div>
+        <div class="sub">v1.0 · Operations</div>
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Production</div>
+      <a class="nav-item" href="printing.html">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"/></svg>
+        <span>Printing</span>
+      </a>
+      <div class="nav-item active">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+        <span>Stitching</span>
+      </div>
+      <a class="nav-item" href="delivery.html">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        <span>Delivery</span>
+      </a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Operations</div>
+      <a class="nav-item" href="execution-plan.html">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        <span>Execution Plan</span>
+      </a>
+      <a class="nav-item" href="execution-entry.html">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/></svg>
+        <span>Daily Entry</span>
+      </a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Back</div>
+      <a class="nav-item" href="dashboard.html">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        <span>Dashboard</span>
+      </a>
+    </div>
+  </aside>
+  
+  <main class="main">
+    <header class="topbar">
+      <div class="breadcrumb"><span>Operations</span><span class="sep">/</span><span class="current">Stitching</span></div>
+      <div class="top-actions">
+        <button class="ab-btn" onclick="openMastersManager()">👥 Manage Masters</button>
+        <button class="ab-btn" onclick="openPayment()">💰 Payment / Advance</button>
+        <button class="ab-btn primary" onclick="openNewLog()">+ Add Work Entry</button>
+        <div class="user-chip">
+          <div class="avatar" id="userAvatar">?</div>
+          <span class="name" id="userName">—</span>
+        </div>
+      </div>
+    </header>
+    
+    <div class="content">
+      <section class="hero">
+        <div class="hero-content">
+          <div>
+            <div class="hero-eyebrow"><span class="pulse"></span>STITCHING OPERATIONS</div>
+            <h1>Track <span class="accent">masters</span>, work, & payments</h1>
+            <p class="hero-sub">Daily log with Regular/OT, per-piece rates, advances & loans, performance reports per master.</p>
+          </div>
+          <div class="hero-stats">
+            <div class="hero-stat"><div class="l">Pending Payout</div><div class="v" id="heroPending">—</div></div>
+            <div class="hero-stat"><div class="l">Active Masters</div><div class="v" id="heroMasters">—</div></div>
+          </div>
+        </div>
+      </section>
+      
+      <div class="summary-cards">
+        <div class="summary-card"><div class="label">Total Entries</div><div class="value orange" id="sumEntries">—</div><div class="delta" id="sumEntriesSub">—</div></div>
+        <div class="summary-card"><div class="label">Total Earned</div><div class="value gold" id="sumEarned">—</div><div class="delta" id="sumEarnedSub">work value</div></div>
+        <div class="summary-card"><div class="label">Total Paid</div><div class="value mint" id="sumPaid">—</div><div class="delta" id="sumPaidSub">all payments</div></div>
+        <div class="summary-card"><div class="label">Outstanding</div><div class="value red" id="sumOutstanding">—</div><div class="delta" id="sumOutstandingSub">to pay</div></div>
+      </div>
+      
+      <div class="tabs">
+        <button class="tab active" data-tab="log" onclick="setTab('log')">📋 Daily Log</button>
+        <button class="tab" data-tab="performance" onclick="setTab('performance')">🏆 Performance</button>
+        <button class="tab" data-tab="payments" onclick="setTab('payments')">💰 Payments</button>
+        <button class="tab" data-tab="advances" onclick="setTab('advances')">⏳ Advances / Loans</button>
+      </div>
+      
+      <!-- LOG TAB -->
+      <div id="logTab">
+        <div class="filter-bar">
+          <label>Date:</label>
+          <input type="date" id="logFrom" onchange="renderLog()">
+          <span style="color:var(--text-mid);">to</span>
+          <input type="date" id="logTo" onchange="renderLog()">
+          <button class="filter-btn" onclick="setDateRange('today')">Today</button>
+          <button class="filter-btn" onclick="setDateRange('7days')">7 days</button>
+          <button class="filter-btn" onclick="setDateRange('30days')">30 days</button>
+          <button class="filter-btn" onclick="setDateRange('month')">This Month</button>
+          <div class="select-wrap" style="margin-left:auto;">
+            <select id="logShift" class="form-input" onchange="renderLog()" style="padding:7px 28px 7px 12px;font-size:12px;">
+              <option value="all">All Shifts</option>
+              <option value="regular">Regular Only</option>
+              <option value="overtime">OT Only</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="table-card">
+          <div class="table-header"><h2>Daily Work Entries</h2><span class="count" id="logCount">—</span></div>
+          <div id="logBody"><div class="loading"><div class="spinner"></div></div></div>
+        </div>
+      </div>
+      
+      <!-- PERFORMANCE TAB -->
+      <div id="performanceTab" style="display:none;">
+        <div class="filter-bar">
+          <label>Period:</label>
+          <input type="date" id="perfFrom" onchange="renderPerformance()">
+          <span style="color:var(--text-mid);">to</span>
+          <input type="date" id="perfTo" onchange="renderPerformance()">
+          <button class="filter-btn" onclick="setPerfRange('7days')">7 days</button>
+          <button class="filter-btn" onclick="setPerfRange('30days')">30 days</button>
+          <button class="filter-btn" onclick="setPerfRange('month')">This Month</button>
+          <button class="filter-btn" onclick="setPerfRange('all')">All Time</button>
+        </div>
+        <div id="performanceBody"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+      
+      <!-- PAYMENTS TAB -->
+      <div id="paymentsTab" style="display:none;">
+        <div class="filter-bar">
+          <label>Filter:</label>
+          <button class="filter-btn active" data-pay="all" onclick="setPayFilter(this)">All</button>
+          <button class="filter-btn" data-pay="payment" onclick="setPayFilter(this)">Payments</button>
+          <button class="filter-btn" data-pay="advance_given" onclick="setPayFilter(this)">Advances Given</button>
+          <button class="filter-btn" data-pay="loan_given" onclick="setPayFilter(this)">Loans Given</button>
+        </div>
+        <div class="table-card">
+          <div class="table-header"><h2>Payment History</h2><span class="count" id="payCount">—</span></div>
+          <div id="payBody"><div class="loading"><div class="spinner"></div></div></div>
+        </div>
+      </div>
+      
+      <!-- ADVANCES TAB -->
+      <div id="advancesTab" style="display:none;">
+        <div class="table-card">
+          <div class="table-header"><h2>Master Advance & Loan Tracker</h2><span class="count" id="advCount">—</span></div>
+          <div id="advBody"><div class="loading"><div class="spinner"></div></div></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- WORK LOG MODAL -->
+<div class="modal" id="logModal">
+  <div class="modal-content">
+    <div class="modal-head">
+      <h2>✂️ Add Work Entry</h2>
+      <button class="modal-close" onclick="closeModal('logModal')">✕</button>
+    </div>
+    
+    <div class="form-grid">
+      <div class="form-field">
+        <label>Date <span class="req">*</span></label>
+        <input type="date" id="lgDate" class="form-input">
+      </div>
+      <div class="form-field">
+        <label>Shift Type <span class="req">*</span></label>
+        <div class="select-wrap">
+          <select id="lgShift" class="form-input" onchange="recalcLogTotal()">
+            <option value="regular">Regular</option>
+            <option value="overtime">Overtime (1.5x)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    
+    <div class="form-grid full">
+      <div class="form-field">
+        <label>Master <span class="req">*</span></label>
+        <div class="select-wrap">
+          <select id="lgMaster" class="form-input" onchange="updateMasterRate()">
+            <option value="">Select master...</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    
+    <div class="form-grid full">
+      <div class="form-field">
+        <label>Campaign (optional)</label>
+        <div class="select-wrap">
+          <select id="lgCampaign" class="form-input">
+            <option value="">No specific campaign</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    
+    <div class="form-grid three">
+      <div class="form-field">
+        <label>Quantity (pcs) <span class="req">*</span></label>
+        <input type="number" id="lgQty" class="form-input mono" placeholder="0" min="1" step="1" oninput="recalcLogTotal()">
+      </div>
+      <div class="form-field">
+        <label>Rate / Piece (₹) <span class="req">*</span></label>
+        <input type="number" id="lgRate" class="form-input mono" placeholder="15" min="1" step="0.01" oninput="recalcLogTotal()">
+      </div>
+      <div class="form-field">
+        <label>Hours (optional)</label>
+        <input type="number" id="lgHours" class="form-input mono" placeholder="0" min="0" step="0.5">
+      </div>
+    </div>
+    
+    <div class="form-grid full">
+      <div class="form-field">
+        <label>Notes</label>
+        <textarea id="lgNotes" class="form-input" placeholder="Optional..."></textarea>
+      </div>
+    </div>
+    
+    <div class="total-display">
+      <div>
+        <div class="l">Total <span id="otInd" style="color:var(--stitch);margin-left:4px;display:none;">(OT 1.5x applied)</span></div>
+      </div>
+      <div class="v" id="lgTotal">₹0</div>
+    </div>
+    
+    <div class="modal-actions">
+      <button class="ab-btn" onclick="closeModal('logModal')">Cancel</button>
+      <button class="ab-btn primary" onclick="saveLog()" id="saveLogBtn">💾 Save Entry</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAYMENT MODAL -->
+<div class="modal" id="payModal">
+  <div class="modal-content">
+    <div class="modal-head">
+      <h2 id="payModalTitle">💰 Record Payment / Advance / Loan</h2>
+      <button class="modal-close" onclick="closeModal('payModal')">✕</button>
+    </div>
+    
+    <div class="form-grid full">
+      <div class="form-field">
+        <label>Master <span class="req">*</span></label>
+        <div class="select-wrap">
+          <select id="pyMaster" class="form-input" onchange="showMasterStatus()">
+            <option value="">Select master...</option>
+          </select>
+        </div>
+        <div id="masterStatus" style="margin-top:6px;display:none;padding:8px 10px;background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.25);border-radius:8px;font-size:11.5px;font-weight:600;color:var(--stitch-dark);"></div>
+      </div>
+    </div>
+    
+    <div class="form-grid">
+      <div class="form-field">
+        <label>Type <span class="req">*</span></label>
+        <div class="select-wrap">
+          <select id="pyType" class="form-input">
+            <option value="payment">💰 Payment (work)</option>
+            <option value="advance_given">⏳ Advance Given</option>
+            <option value="advance_recovered">↩️ Advance Recovered</option>
+            <option value="loan_given">🏦 Loan Given</option>
+            <option value="loan_recovered">↩️ Loan Recovered</option>
+            <option value="bonus">🎁 Bonus</option>
+            <option value="deduction">➖ Deduction</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-field">
+        <label>Amount (₹) <span class="req">*</span></label>
+        <input type="number" id="pyAmount" class="form-input mono" placeholder="0" min="1" step="0.01">
+      </div>
+    </div>
+    
+    <div class="form-grid">
+      <div class="form-field">
+        <label>Date <span class="req">*</span></label>
+        <input type="date" id="pyDate" class="form-input">
+      </div>
+      <div class="form-field">
+        <label>Mode</label>
+        <div class="select-wrap">
+          <select id="pyMode" class="form-input">
+            <option value="cash">Cash</option>
+            <option value="upi">UPI</option>
+            <option value="bank_transfer">Bank Transfer</option>
+            <option value="cheque">Cheque</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    
+    <div class="form-grid full">
+      <div class="form-field">
+        <label>Reference / Notes</label>
+        <input type="text" id="pyRef" class="form-input" placeholder="txn ID, cheque no., or note">
+      </div>
+    </div>
+    
+    <div class="modal-actions">
+      <button class="ab-btn" onclick="closeModal('payModal')">Cancel</button>
+      <button class="ab-btn primary" onclick="savePayment()" id="savePayBtn">💾 Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- MASTERS MANAGER MODAL -->
+<div class="modal" id="mastersModal">
+  <div class="modal-content" style="max-width:780px;">
+    <div class="modal-head">
+      <h2>👥 Manage Stitching Masters</h2>
+      <button class="modal-close" onclick="closeModal('mastersModal')">✕</button>
+    </div>
+    
+    <div style="background:var(--canvas);border-radius:10px;padding:14px;margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;margin-bottom:10px;">Add New Master</div>
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Name <span class="req">*</span></label>
+          <input type="text" id="mName" class="form-input" placeholder="Master name">
+        </div>
+        <div class="form-field">
+          <label>Phone</label>
+          <input type="tel" id="mPhone" class="form-input mono" maxlength="10">
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Master Type</label>
+          <div class="select-wrap">
+            <select id="mType" class="form-input">
+              <option value="piece_rate">Piece Rate</option>
+              <option value="daily_wage">Daily Wage</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-field">
+          <label>Rate / Piece (₹)</label>
+          <input type="number" id="mRate" class="form-input mono" placeholder="15" value="15" min="1" step="0.01">
+        </div>
+      </div>
+      <button class="ab-btn primary" onclick="saveMaster()" style="margin-top:6px;">+ Add Master</button>
+    </div>
+    
+    <div id="mastersList"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const CONFIG = { url: 'https://fpbktcgtspqsqpaytslv.supabase.co', key: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j' };
+const state = { admin: null, masters: [], log: [], payments: [], campaigns: [], tab: 'log', payFilter: 'all' };
+
+function esc(s) { if (s == null) return ''; return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function inr(n) { if (!n || isNaN(n)) return '₹0'; return '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 }); }
+function inrShort(n) { if (!n || isNaN(n)) return '₹0'; const num = Number(n); if (num >= 100000) return '₹' + (num/100000).toFixed(2) + 'L'; if (num >= 1000) return '₹' + (num/1000).toFixed(1) + 'k'; return '₹' + num.toLocaleString('en-IN', { maximumFractionDigits: 0 }); }
+function getInitials(name) { if (!name) return '?'; return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase(); }
+function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
+function todayStr() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function daysAgoStr(n) { const d = new Date(); d.setDate(d.getDate() - n); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+
+function showToast(msg, type) {
+  try {
+    const t = document.getElementById('toast');
+    if (!t) return alert(msg);
+    const icon = type === 'success' ? '✓' : type === 'error' ? '⚠' : '💡';
+    t.innerHTML = `<span>${icon}</span><span>${esc(msg)}</span>`;
+    t.className = 'toast show ' + (type || '');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  } catch (e) { alert(msg); }
+}
+
+async function api(path, options) {
+  options = options || {};
+  options.headers = options.headers || {};
+  options.headers.apikey = CONFIG.key;
+  options.headers.Authorization = 'Bearer ' + CONFIG.key;
+  const res = await fetch(CONFIG.url + path, options);
+  const txt = await res.text();
+  if (!res.ok) throw new Error('API ' + res.status + ': ' + txt);
+  if (!txt || txt.trim() === '') return null;
+  try { return JSON.parse(txt); } catch { return txt; }
+}
+
+async function doLogin() {
+  const phone = document.getElementById('loginPhone').value.trim();
+  const errEl = document.getElementById('loginErr');
+  const btn = document.getElementById('loginBtn');
+  errEl.classList.remove('show');
+  if (phone.length !== 10) { errEl.textContent = '10 digit phone daalo'; errEl.classList.add('show'); return; }
+  btn.disabled = true; btn.innerHTML = 'Checking...';
+  try {
+    const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
+    if (!members || members.length === 0) { errEl.textContent = 'Number registered nahi'; errEl.classList.add('show'); btn.disabled = false; btn.innerHTML = 'Access Stitching →'; return; }
+    const m = members[0];
+    if (!['admin','owner','operations','operations_manager','stitching'].includes((m.role||'').toLowerCase())) {
+      errEl.textContent = 'Sirf Admin/Owner/Operations/Stitching ke liye';
+      errEl.classList.add('show'); btn.disabled = false; btn.innerHTML = 'Access Stitching →'; return;
+    }
+    state.admin = m;
+    localStorage.setItem('prajapati_admin_phone', phone);
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').classList.add('active');
+    initApp();
+  } catch (err) { errEl.textContent = 'Error: ' + err.message; errEl.classList.add('show'); btn.disabled = false; btn.innerHTML = 'Access Stitching →'; }
+}
+
+async function autoLogin() {
+  const phone = localStorage.getItem('prajapati_admin_phone');
+  if (!phone) return;
+  try {
+    const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
+    if (!members || members.length === 0) return;
+    const m = members[0];
+    if (!['admin','owner','operations','operations_manager','stitching'].includes((m.role||'').toLowerCase())) return;
+    state.admin = m;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').classList.add('active');
+    initApp();
+  } catch (e) {}
+}
+
+function initApp() {
+  setText('userAvatar', getInitials(state.admin.name));
+  setText('userName', state.admin.name.split(' ')[0]);
+  document.getElementById('logFrom').value = daysAgoStr(29);
+  document.getElementById('logTo').value = todayStr();
+  document.getElementById('perfFrom').value = daysAgoStr(29);
+  document.getElementById('perfTo').value = todayStr();
+  loadData();
+}
+
+async function loadData() {
+  try {
+    const [masters, log, payments, campaigns] = await Promise.all([
+      api('/rest/v1/prajapati_stitching_masters?active=eq.true&select=*&order=name.asc'),
+      api('/rest/v1/prajapati_stitching_log?select=*&order=log_date.desc,created_at.desc&limit=2000'),
+      api('/rest/v1/prajapati_stitching_payments?select=*&order=payment_date.desc,created_at.desc&limit=1000'),
+      api('/rest/v1/prajapati_campaigns_v2?deleted_at=is.null&select=id,campaign_code,name&order=created_at.desc&limit=200')
+    ]);
+    
+    state.masters = masters || [];
+    state.log = log || [];
+    state.payments = payments || [];
+    state.campaigns = campaigns || [];
+    
+    populateMasterSelects();
+    populateCampaignSelect();
+    renderLog();
+    updateSummary();
+  } catch (err) {
+    console.error('Load error:', err);
+    let msg = err.message;
+    if (msg.includes('does not exist')) msg = 'Tables nahi banayi. Run 09_PRINTING_STITCHING_DELIVERY_SCHEMA.sql first.';
+    document.getElementById('logBody').innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><div class="title">Cannot load data</div><div class="desc">${esc(msg)}</div></div>`;
+  }
+}
+
+function populateMasterSelects() {
+  const opts = '<option value="">Select master...</option>' + state.masters.map(m => 
+    `<option value="${m.id}" data-name="${esc(m.name)}" data-rate="${m.rate_per_piece}">${esc(m.name)}${m.phone ? ' · ' + esc(m.phone) : ''} (₹${m.rate_per_piece}/pcs)</option>`
+  ).join('');
+  document.getElementById('lgMaster').innerHTML = opts;
+  document.getElementById('pyMaster').innerHTML = opts;
+}
+
+function populateCampaignSelect() {
+  document.getElementById('lgCampaign').innerHTML = '<option value="">No specific campaign</option>' + state.campaigns.map(c => 
+    `<option value="${c.id}" data-name="${esc(c.name)}">${esc(c.campaign_code)} · ${esc(c.name)}</option>`
+  ).join('');
+}
+
+function setTab(tab) {
+  state.tab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  ['log','performance','payments','advances'].forEach(t => {
+    document.getElementById(t + 'Tab').style.display = t === tab ? 'block' : 'none';
+  });
+  if (tab === 'performance') renderPerformance();
+  if (tab === 'payments') renderPayments();
+  if (tab === 'advances') renderAdvances();
+}
+
+function setDateRange(key) {
+  if (key === 'today') { document.getElementById('logFrom').value = todayStr(); document.getElementById('logTo').value = todayStr(); }
+  else if (key === '7days') { document.getElementById('logFrom').value = daysAgoStr(6); document.getElementById('logTo').value = todayStr(); }
+  else if (key === '30days') { document.getElementById('logFrom').value = daysAgoStr(29); document.getElementById('logTo').value = todayStr(); }
+  else if (key === 'month') { const d = new Date(); document.getElementById('logFrom').value = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-01'; document.getElementById('logTo').value = todayStr(); }
+  renderLog();
+}
+
+function setPerfRange(key) {
+  if (key === '7days') { document.getElementById('perfFrom').value = daysAgoStr(6); document.getElementById('perfTo').value = todayStr(); }
+  else if (key === '30days') { document.getElementById('perfFrom').value = daysAgoStr(29); document.getElementById('perfTo').value = todayStr(); }
+  else if (key === 'month') { const d = new Date(); document.getElementById('perfFrom').value = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-01'; document.getElementById('perfTo').value = todayStr(); }
+  else if (key === 'all') { document.getElementById('perfFrom').value = '2020-01-01'; document.getElementById('perfTo').value = todayStr(); }
+  renderPerformance();
+}
+
+function getFilteredLog() {
+  const from = document.getElementById('logFrom').value;
+  const to = document.getElementById('logTo').value;
+  const shift = document.getElementById('logShift').value;
+  let rows = [...state.log];
+  if (from) rows = rows.filter(r => r.log_date >= from);
+  if (to) rows = rows.filter(r => r.log_date <= to);
+  if (shift !== 'all') rows = rows.filter(r => r.shift_type === shift);
+  return rows;
+}
+
+function renderLog() {
+  const rows = getFilteredLog();
+  setText('logCount', rows.length + ' entries');
+  
+  if (rows.length === 0) {
+    document.getElementById('logBody').innerHTML = `<div class="empty-state"><div class="icon">📭</div><div class="title">No entries</div><div class="desc">Click "+ Add Work Entry" to log work</div></div>`;
+    return;
+  }
+  
+  let html = '<div class="table-scroll"><table><thead><tr>';
+  html += '<th>Date</th><th>Master</th><th>Campaign</th><th>Shift</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Total</th><th></th>';
+  html += '</tr></thead><tbody>';
+  
+  rows.forEach(r => {
+    html += `
+      <tr>
+        <td><strong>${r.log_date}</strong></td>
+        <td><div class="master-cell"><div class="avatar">${getInitials(r.master_name)}</div><div class="info"><div class="name">${esc(r.master_name)}</div></div></div></td>
+        <td style="font-size:12px;color:var(--text-mid);">${esc(r.campaign_name || '—')}</td>
+        <td><span class="shift-pill ${esc(r.shift_type)}">${r.shift_type === 'overtime' ? 'OT 1.5x' : 'Regular'}</span></td>
+        <td class="num bold">${r.quantity}</td>
+        <td class="num">${inr(r.rate_per_piece)}</td>
+        <td class="num gold">${inr(r.total_amount)}</td>
+        <td><button class="row-btn danger" onclick="deleteLog('${r.id}', '${esc(r.master_name)}', ${r.total_amount})">🗑</button></td>
+      </tr>`;
+  });
+  
+  html += '</tbody></table></div>';
+  document.getElementById('logBody').innerHTML = html;
+}
+
+function renderPerformance() {
+  const from = document.getElementById('perfFrom').value;
+  const to = document.getElementById('perfTo').value;
+  
+  let entries = [...state.log];
+  if (from) entries = entries.filter(r => r.log_date >= from);
+  if (to) entries = entries.filter(r => r.log_date <= to);
+  
+  // Aggregate per master
+  const map = {};
+  entries.forEach(e => {
+    if (!map[e.master_id]) {
+      map[e.master_id] = { id: e.master_id, name: e.master_name, phone: '', regularQty: 0, regularAmt: 0, otQty: 0, otAmt: 0, totalQty: 0, totalAmt: 0, days: new Set(), entries: 0 };
+    }
+    const m = map[e.master_id];
+    m.entries++;
+    m.days.add(e.log_date);
+    if (e.shift_type === 'overtime') {
+      m.otQty += parseFloat(e.quantity) || 0;
+      m.otAmt += parseFloat(e.total_amount) || 0;
+    } else {
+      m.regularQty += parseFloat(e.quantity) || 0;
+      m.regularAmt += parseFloat(e.total_amount) || 0;
+    }
+    m.totalQty += parseFloat(e.quantity) || 0;
+    m.totalAmt += parseFloat(e.total_amount) || 0;
+  });
+  
+  // Fill in phone from masters
+  Object.values(map).forEach(m => {
+    const master = state.masters.find(x => x.id === m.id);
+    if (master) m.phone = master.phone || '';
+  });
+  
+  const list = Object.values(map).sort((a, b) => b.totalAmt - a.totalAmt);
+  
+  if (list.length === 0) {
+    document.getElementById('performanceBody').innerHTML = `<div class="empty-state"><div class="icon">📭</div><div class="title">No data in range</div></div>`;
+    return;
+  }
+  
+  let html = '<div class="perf-grid">';
+  list.forEach((m, i) => {
+    const otPct = m.totalQty > 0 ? Math.round(m.otQty / m.totalQty * 100) : 0;
+    html += `
+      <div class="perf-card">
+        <div class="top">
+          <div class="avatar">${getInitials(m.name)}</div>
+          <div class="info">
+            <div class="name">${esc(m.name)} ${i < 3 ? ['🥇','🥈','🥉'][i] : ''}</div>
+            <div class="phone">${esc(m.phone || '—')}</div>
+          </div>
+        </div>
+        <div class="perf-stats">
+          <div class="perf-stat"><div class="l">Regular</div><div class="v">${m.regularQty} <span style="font-size:10px;color:var(--text-mid);font-weight:600;">pcs</span></div></div>
+          <div class="perf-stat"><div class="l">OT (1.5x)</div><div class="v" style="color:var(--stitch-dark);">${m.otQty} <span style="font-size:10px;color:var(--text-mid);font-weight:600;">pcs</span></div></div>
+          <div class="perf-stat"><div class="l">Total Pcs</div><div class="v">${m.totalQty}</div></div>
+          <div class="perf-stat"><div class="l">Earned</div><div class="v gold">${inrShort(m.totalAmt)}</div></div>
+        </div>
+        <div class="perf-meta">
+          <span>${m.entries} entries · ${m.days.size} days</span>
+          <span><strong>OT: ${otPct}%</strong></span>
+        </div>
+      </div>`;
+  });
+  html += '</div>';
+  document.getElementById('performanceBody').innerHTML = html;
+}
+
+function setPayFilter(btn) {
+  document.querySelectorAll('.filter-btn[data-pay]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.payFilter = btn.dataset.pay;
+  renderPayments();
+}
+
+function renderPayments() {
+  let rows = [...state.payments];
+  if (state.payFilter !== 'all') rows = rows.filter(p => p.payment_type === state.payFilter);
+  setText('payCount', rows.length + ' transactions');
+  
+  if (rows.length === 0) {
+    document.getElementById('payBody').innerHTML = `<div class="empty-state"><div class="icon">📭</div><div class="title">No payments yet</div></div>`;
+    return;
+  }
+  
+  let html = '<div class="table-scroll"><table><thead><tr><th>Date</th><th>Master</th><th>Type</th><th class="num">Amount</th><th>Mode</th><th>Notes</th><th></th></tr></thead><tbody>';
+  rows.forEach(p => {
+    html += `
+      <tr>
+        <td><strong>${p.payment_date}</strong></td>
+        <td><strong>${esc(p.master_name)}</strong></td>
+        <td><span class="pay-type-pill ${esc(p.payment_type)}">${esc(p.payment_type.replace(/_/g,' '))}</span></td>
+        <td class="num bold">${inr(p.amount)}</td>
+        <td style="font-size:11.5px;text-transform:uppercase;font-weight:700;color:var(--text-mid);">${esc(p.payment_mode)}</td>
+        <td style="font-size:12px;color:var(--text-mid);max-width:200px;">${esc(p.notes || p.reference_number || '—')}</td>
+        <td><button class="row-btn danger" onclick="deletePayment('${p.id}')">🗑</button></td>
+      </tr>`;
+  });
+  html += '</tbody></table></div>';
+  document.getElementById('payBody').innerHTML = html;
+}
+
+function renderAdvances() {
+  // Calculate per master: total earned - payments - advances given + advances recovered
+  const map = {};
+  state.masters.forEach(m => {
+    map[m.id] = { id: m.id, name: m.name, phone: m.phone || '', earned: 0, paid: 0, advance: 0, loan: 0, bonus: 0, deduction: 0 };
+  });
+  
+  state.log.forEach(e => {
+    if (map[e.master_id]) map[e.master_id].earned += parseFloat(e.total_amount) || 0;
+  });
+  
+  state.payments.forEach(p => {
+    if (!map[p.master_id]) return;
+    const m = map[p.master_id];
+    const amt = parseFloat(p.amount) || 0;
+    if (p.payment_type === 'payment') m.paid += amt;
+    else if (p.payment_type === 'advance_given') m.advance += amt;
+    else if (p.payment_type === 'advance_recovered') m.advance -= amt;
+    else if (p.payment_type === 'loan_given') m.loan += amt;
+    else if (p.payment_type === 'loan_recovered') m.loan -= amt;
+    else if (p.payment_type === 'bonus') m.bonus += amt;
+    else if (p.payment_type === 'deduction') m.deduction += amt;
+  });
+  
+  const list = Object.values(map).map(m => ({
+    ...m,
+    net_payable: m.earned + m.bonus - m.paid - m.deduction
+  })).sort((a, b) => b.net_payable - a.net_payable);
+  
+  setText('advCount', list.length + ' masters');
+  
+  let html = '<div class="table-scroll"><table><thead><tr>';
+  html += '<th>Master</th><th class="num">Total Earned</th><th class="num">Paid</th><th class="num">Outstanding</th><th class="num">Advance</th><th class="num">Loan</th><th></th>';
+  html += '</tr></thead><tbody>';
+  
+  list.forEach(m => {
+    html += `
+      <tr>
+        <td><div class="master-cell"><div class="avatar">${getInitials(m.name)}</div><div class="info"><div class="name">${esc(m.name)}</div><div class="phone">${esc(m.phone)}</div></div></div></td>
+        <td class="num gold">${inr(m.earned)}</td>
+        <td class="num mint">${inr(m.paid)}</td>
+        <td class="num ${m.net_payable > 0 ? 'red' : ''}">${inr(m.net_payable)}</td>
+        <td class="num ${m.advance > 0 ? 'red' : 'mint'}">${inr(m.advance)}</td>
+        <td class="num ${m.loan > 0 ? 'red' : 'mint'}">${inr(m.loan)}</td>
+        <td>${m.net_payable > 0 ? `<button class="row-btn pay" onclick="quickPay('${m.id}', '${esc(m.name)}', ${m.net_payable})">💰 Pay</button>` : ''}</td>
+      </tr>`;
+  });
+  
+  html += '</tbody></table></div>';
+  document.getElementById('advBody').innerHTML = html;
+}
+
+function updateSummary() {
+  const totalEntries = state.log.length;
+  const totalEarned = state.log.reduce((s, l) => s + (parseFloat(l.total_amount) || 0), 0);
+  const totalPaid = state.payments.filter(p => p.payment_type === 'payment').reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+  const outstanding = totalEarned - totalPaid;
+  
+  setText('heroPending', inrShort(outstanding));
+  setText('heroMasters', state.masters.length);
+  setText('sumEntries', totalEntries);
+  setText('sumEntriesSub', new Set(state.log.map(l => l.master_id)).size + ' masters active');
+  setText('sumEarned', inrShort(totalEarned));
+  setText('sumEarnedSub', state.log.filter(l => l.shift_type === 'overtime').length + ' OT entries');
+  setText('sumPaid', inrShort(totalPaid));
+  setText('sumPaidSub', state.payments.length + ' transactions');
+  setText('sumOutstanding', inrShort(outstanding));
+  setText('sumOutstandingSub', totalEarned > 0 ? Math.round(outstanding/totalEarned*100) + '% pending' : '—');
+}
+
+// ─── NEW LOG ENTRY ───
+function openNewLog() {
+  document.getElementById('lgDate').value = todayStr();
+  document.getElementById('lgShift').value = 'regular';
+  document.getElementById('lgMaster').value = '';
+  document.getElementById('lgCampaign').value = '';
+  document.getElementById('lgQty').value = '';
+  document.getElementById('lgRate').value = '15';
+  document.getElementById('lgHours').value = '';
+  document.getElementById('lgNotes').value = '';
+  setText('lgTotal', '₹0');
+  document.getElementById('otInd').style.display = 'none';
+  document.getElementById('logModal').classList.add('active');
+}
+
+function updateMasterRate() {
+  const sel = document.getElementById('lgMaster');
+  const opt = sel.options[sel.selectedIndex];
+  const rate = opt && opt.dataset.rate ? opt.dataset.rate : '';
+  if (rate) {
+    document.getElementById('lgRate').value = rate;
+    recalcLogTotal();
+  }
+}
+
+function recalcLogTotal() {
+  const qty = parseFloat(document.getElementById('lgQty').value) || 0;
+  const rate = parseFloat(document.getElementById('lgRate').value) || 0;
+  const shift = document.getElementById('lgShift').value;
+  const multiplier = shift === 'overtime' ? 1.5 : 1;
+  const total = qty * rate * multiplier;
+  setText('lgTotal', inr(total));
+  document.getElementById('otInd').style.display = shift === 'overtime' ? 'inline' : 'none';
+}
+
+async function saveLog() {
+  const masterSel = document.getElementById('lgMaster');
+  const masterOpt = masterSel.options[masterSel.selectedIndex];
+  
+  if (!masterSel.value) { showToast('Master select karo', 'error'); return; }
+  const qty = parseFloat(document.getElementById('lgQty').value);
+  const rate = parseFloat(document.getElementById('lgRate').value);
+  if (!qty || qty <= 0) { showToast('Valid quantity daalo', 'error'); return; }
+  if (!rate || rate <= 0) { showToast('Valid rate daalo', 'error'); return; }
+  
+  const campaignSel = document.getElementById('lgCampaign');
+  const campaignOpt = campaignSel.options[campaignSel.selectedIndex];
+  const hours = parseFloat(document.getElementById('lgHours').value) || null;
+  
+  const payload = {
+    log_date: document.getElementById('lgDate').value,
+    master_id: masterSel.value,
+    master_name: masterOpt.dataset.name,
+    campaign_id: campaignSel.value || null,
+    campaign_name: campaignSel.value ? campaignOpt.dataset.name : null,
+    shift_type: document.getElementById('lgShift').value,
+    quantity: qty,
+    rate_per_piece: rate,
+    hours_worked: hours,
+    notes: document.getElementById('lgNotes').value.trim() || null,
+    recorded_by: state.admin.phone
+  };
+  
+  const btn = document.getElementById('saveLogBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner sm" style="border-color:rgba(255,255,255,0.3);border-top-color:white;"></span> Saving...';
+  
+  try {
+    await api('/rest/v1/prajapati_stitching_log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify(payload)
+    });
+    showToast('✓ Work entry saved', 'success');
+    closeModal('logModal');
+    await loadData();
+  } catch (err) {
+    showToast('Save failed: ' + err.message, 'error');
+    btn.disabled = false; btn.innerHTML = '💾 Save Entry';
+  }
+}
+
+async function deleteLog(id, name, amount) {
+  if (!confirm(`Delete work entry?\nMaster: ${name}\nAmount: ${inr(amount)}`)) return;
+  try {
+    await api('/rest/v1/prajapati_stitching_log?id=eq.' + id, { method: 'DELETE' });
+    showToast('🗑 Entry deleted', 'success');
+    await loadData();
+  } catch (err) { showToast('Delete failed: ' + err.message, 'error'); }
+}
+
+// ─── PAYMENT MODAL ───
+function openPayment() {
+  document.getElementById('pyMaster').value = '';
+  document.getElementById('pyType').value = 'payment';
+  document.getElementById('pyAmount').value = '';
+  document.getElementById('pyDate').value = todayStr();
+  document.getElementById('pyMode').value = 'cash';
+  document.getElementById('pyRef').value = '';
+  document.getElementById('masterStatus').style.display = 'none';
+  document.getElementById('payModal').classList.add('active');
+}
+
+function quickPay(masterId, name, amount) {
+  openPayment();
+  document.getElementById('pyMaster').value = masterId;
+  document.getElementById('pyType').value = 'payment';
+  document.getElementById('pyAmount').value = amount;
+  showMasterStatus();
+}
+
+function showMasterStatus() {
+  const masterId = document.getElementById('pyMaster').value;
+  const statusEl = document.getElementById('masterStatus');
+  if (!masterId) { statusEl.style.display = 'none'; return; }
+  
+  const earned = state.log.filter(l => l.master_id === masterId).reduce((s, l) => s + (parseFloat(l.total_amount) || 0), 0);
+  const paid = state.payments.filter(p => p.master_id === masterId && p.payment_type === 'payment').reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+  const advance = state.payments.filter(p => p.master_id === masterId && p.payment_type === 'advance_given').reduce((s, p) => s + (parseFloat(p.amount) || 0), 0) -
+                  state.payments.filter(p => p.master_id === masterId && p.payment_type === 'advance_recovered').reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+  const outstanding = earned - paid;
+  
+  statusEl.innerHTML = `Earned: <strong>${inr(earned)}</strong> · Paid: <strong>${inr(paid)}</strong> · Outstanding: <strong>${inr(outstanding)}</strong> · Advance: <strong>${inr(advance)}</strong>`;
+  statusEl.style.display = 'block';
+}
+
+async function savePayment() {
+  const masterSel = document.getElementById('pyMaster');
+  const masterOpt = masterSel.options[masterSel.selectedIndex];
+  if (!masterSel.value) { showToast('Master select karo', 'error'); return; }
+  
+  const amt = parseFloat(document.getElementById('pyAmount').value);
+  if (!amt || amt <= 0) { showToast('Valid amount daalo', 'error'); return; }
+  
+  const payload = {
+    master_id: masterSel.value,
+    master_name: masterOpt.dataset.name,
+    payment_date: document.getElementById('pyDate').value,
+    payment_type: document.getElementById('pyType').value,
+    amount: amt,
+    payment_mode: document.getElementById('pyMode').value,
+    reference_number: document.getElementById('pyRef').value.trim() || null,
+    recorded_by: state.admin.phone
+  };
+  
+  const btn = document.getElementById('savePayBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner sm" style="border-color:rgba(255,255,255,0.3);border-top-color:white;"></span> Saving...';
+  
+  try {
+    await api('/rest/v1/prajapati_stitching_payments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify(payload)
+    });
+    showToast(`✓ ${payload.payment_type.replace('_',' ')} recorded`, 'success');
+    closeModal('payModal');
+    await loadData();
+  } catch (err) {
+    showToast('Save failed: ' + err.message, 'error');
+    btn.disabled = false; btn.innerHTML = '💾 Save';
+  }
+}
+
+async function deletePayment(id) {
+  if (!confirm('Delete this payment record?')) return;
+  try {
+    await api('/rest/v1/prajapati_stitching_payments?id=eq.' + id, { method: 'DELETE' });
+    showToast('🗑 Payment deleted', 'success');
+    await loadData();
+  } catch (err) { showToast('Delete failed: ' + err.message, 'error'); }
+}
+
+// ─── MASTERS MANAGER ───
+function openMastersManager() {
+  renderMastersList();
+  document.getElementById('mastersModal').classList.add('active');
+}
+
+function renderMastersList() {
+  const html = state.masters.map(m => {
+    const earned = state.log.filter(l => l.master_id === m.id).reduce((s, l) => s + (parseFloat(l.total_amount) || 0), 0);
+    return `
+      <div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:9px;margin-bottom:6px;">
+        <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--stitch),#fb923c);color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;">${getInitials(m.name)}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;color:var(--ink-900);font-size:13px;">${esc(m.name)}</div>
+          <div style="font-size:11px;color:var(--text-mid);">${esc(m.master_type)} · ₹${m.rate_per_piece}/pcs ${m.phone ? '· ' + esc(m.phone) : ''}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:800;color:var(--gold-deep);">${inr(earned)}</div>
+          <div style="font-size:10px;color:var(--text-mid);">earned</div>
+        </div>
+      </div>`;
+  }).join('');
+  document.getElementById('mastersList').innerHTML = html || '<div style="text-align:center;padding:20px;color:var(--text-mid);font-size:12px;">No masters yet</div>';
+}
+
+async function saveMaster() {
+  const name = document.getElementById('mName').value.trim();
+  if (!name) { showToast('Name daalo', 'error'); return; }
+  
+  try {
+    await api('/rest/v1/prajapati_stitching_masters', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        name: name,
+        phone: document.getElementById('mPhone').value.trim() || null,
+        master_type: document.getElementById('mType').value,
+        rate_per_piece: parseFloat(document.getElementById('mRate').value) || 15
+      })
+    });
+    showToast('✓ Master added', 'success');
+    document.getElementById('mName').value = '';
+    document.getElementById('mPhone').value = '';
+    document.getElementById('mRate').value = '15';
+    await loadData();
+    renderMastersList();
+  } catch (err) { showToast('Add failed: ' + err.message, 'error'); }
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+console.log('%c✂️ Stitching Operations v1.0', 'background:#F97316;color:white;padding:6px 12px;border-radius:6px;font-weight:bold;font-size:13px;');
+
+document.addEventListener('DOMContentLoaded', () => {
+  autoLogin();
+  document.getElementById('loginPhone').addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
+  document.getElementById('loginPhone').addEventListener('input', e => { e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10); });
+  
+  ['logModal', 'payModal', 'mastersModal'].forEach(id => {
+    document.getElementById(id).addEventListener('click', e => { if (e.target.id === id) closeModal(id); });
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') ['logModal','payModal','mastersModal'].forEach(id => closeModal(id));
+  });
+});
+</script>
+</body>
+</html>

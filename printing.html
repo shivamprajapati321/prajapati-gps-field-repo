@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Printing v1.0 — Prajapati Operations</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
+
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+  :root{
+    --ink-900:#050818;--ink-800:#0B1130;--ink-700:#131A3F;
+    --canvas:#FAFBFF;--paper:#FFFFFF;--line:#E8EAF4;--line-soft:#F0F2F8;--line-strong:#D4D8E8;
+    --text:#0F172A;--text-mid:#475569;--text-dim:#94A3B8;--text-faint:#CBD5E1;
+    --teal:#00D4D2;--teal-dark:#00A8A6;--gold:#F5B83D;--gold-deep:#B8860B;
+    --rose:#FF5470;--mint:#34D399;--violet:#8B5CF6;--blue:#3B82F6;--orange:#F97316;
+    --print:#3B82F6;--print-dark:#1d4ed8;--print-soft:rgba(59,130,246,0.12);
+    --shadow-md:0 4px 12px rgba(15,23,42,0.06);--shadow-lg:0 12px 32px rgba(15,23,42,0.08);
+  }
+  body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--canvas);color:var(--text);min-height:100vh}
+  button{font-family:inherit;cursor:pointer;border:none;background:none}
+  input,select,textarea{font-family:inherit;outline:none;border:none}
+  
+  /* LOGIN */
+  .login-bg{min-height:100vh;background:linear-gradient(135deg,var(--ink-900),var(--ink-800),var(--print));display:flex;align-items:center;justify-content:center;padding:20px}
+  .login-card{background:white;border-radius:20px;padding:36px 32px;width:100%;max-width:420px;box-shadow:0 30px 80px rgba(0,0,0,0.4);animation:loginIn 0.6s cubic-bezier(0.16,1,0.3,1)}
+  @keyframes loginIn{from{opacity:0;transform:translateY(20px) scale(0.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+  .login-logo{width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,var(--print),#60a5fa);color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:24px;margin-bottom:22px;box-shadow:0 8px 30px rgba(59,130,246,0.4)}
+  .login-card h1{font-family:'Fraunces',serif;font-size:26px;font-weight:600;color:var(--ink-900);margin-bottom:4px}
+  .login-card .sub{color:var(--text-mid);font-size:13px;margin-bottom:26px}
+  .field-group{margin-bottom:16px}
+  .field-group label{display:block;font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:7px}
+  .login-input{width:100%;padding:12px 14px;font-size:14px;border:1.5px solid var(--line);border-radius:10px;background:white;transition:all 0.15s}
+  .login-input:focus{border-color:var(--print);box-shadow:0 0 0 4px rgba(59,130,246,0.1)}
+  .login-input.mono{font-family:'JetBrains Mono',monospace;text-align:center;letter-spacing:0.05em;font-weight:600}
+  .err-banner{background:#fef2f2;color:#991b1b;padding:10px 12px;border-radius:8px;font-size:12px;font-weight:600;margin-top:12px;display:none}
+  .err-banner.show{display:block}
+  .login-btn{width:100%;padding:13px 18px;background:linear-gradient(135deg,var(--print),#60a5fa);color:white;border-radius:10px;font-size:14px;font-weight:700;box-shadow:0 4px 14px rgba(59,130,246,0.3)}
+  .login-btn:hover{transform:translateY(-1px)}
+  .login-btn:disabled{opacity:0.6}
+  .app{display:none}.app.active{display:block}
+  
+  /* SIDEBAR */
+  .sidebar{width:240px;background:linear-gradient(180deg,var(--ink-900) 0%,var(--ink-800) 60%,var(--ink-700) 100%);height:100vh;position:fixed;left:0;top:0;padding:24px 14px 20px;z-index:50;overflow-y:auto}
+  .sidebar::-webkit-scrollbar{width:4px}
+  .sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px}
+  .brand{display:flex;align-items:center;gap:12px;padding:0 8px 24px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:20px}
+  .brand-logo{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--print),#60a5fa);color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;box-shadow:0 4px 14px rgba(59,130,246,0.5)}
+  .brand-text{color:white}
+  .brand-text .name{font-weight:800;font-size:14px}
+  .brand-text .sub{color:#93c5fd;font-size:9.5px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin-top:3px}
+  .nav-section{margin-bottom:18px}
+  .nav-section-title{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.3);padding:0 12px;margin-bottom:8px}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;color:rgba(255,255,255,0.65);font-size:12.5px;font-weight:600;border-radius:9px;margin-bottom:2px;text-decoration:none;transition:all 0.2s;position:relative}
+  .nav-item:hover{background:rgba(255,255,255,0.05);color:white;transform:translateX(2px)}
+  .nav-item.active{background:linear-gradient(90deg,rgba(59,130,246,0.2),rgba(59,130,246,0.04));color:#93c5fd}
+  .nav-item.active::before{content:'';position:absolute;left:-14px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--print);box-shadow:0 0 12px rgba(59,130,246,0.6)}
+  .nav-icon{width:16px;height:16px;flex-shrink:0;opacity:0.9}
+  
+  /* MAIN */
+  .main{margin-left:240px;min-height:100vh}
+  .topbar{background:rgba(255,255,255,0.75);backdrop-filter:blur(20px);border-bottom:1px solid var(--line);padding:14px 28px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:40}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-mid);font-weight:600}
+  .breadcrumb .current{color:var(--ink-900);font-weight:700}
+  .breadcrumb .sep{color:var(--text-faint)}
+  .top-actions{display:flex;gap:10px;align-items:center;margin-left:auto}
+  .user-chip{display:flex;align-items:center;gap:9px;padding:4px 10px 4px 4px;border-radius:999px;background:white;border:1px solid var(--line)}
+  .user-chip .avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
+  .user-chip .name{font-size:12px;font-weight:700;color:var(--ink-900)}
+  .ab-btn{padding:7px 12px;border-radius:8px;font-size:12px;font-weight:700;border:1px solid var(--line);background:white;color:var(--text-mid);transition:all 0.15s;cursor:pointer}
+  .ab-btn:hover{background:var(--line-soft)}
+  .ab-btn.primary{background:linear-gradient(135deg,var(--print),#60a5fa);color:white;border:none;box-shadow:0 2px 8px rgba(59,130,246,0.3)}
+  .ab-btn.primary:hover{box-shadow:0 4px 14px rgba(59,130,246,0.5);transform:translateY(-1px)}
+  .ab-btn:disabled{opacity:0.6;cursor:not-allowed}
+  
+  .content{padding:24px 28px 80px;max-width:1400px}
+  
+  /* HERO */
+  .hero{background:linear-gradient(135deg,var(--ink-900) 0%,var(--ink-700) 50%,var(--print) 130%);border-radius:20px;padding:28px 32px;color:white;position:relative;overflow:hidden;margin-bottom:22px}
+  .hero::before{content:'';position:absolute;top:-50%;right:-10%;width:500px;height:500px;background:radial-gradient(circle,rgba(59,130,246,0.25),transparent 60%)}
+  .hero-content{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap}
+  .hero-eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);color:white;padding:5px 12px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:0.06em;margin-bottom:12px}
+  .hero-eyebrow .pulse{width:6px;height:6px;background:#93c5fd;border-radius:50%;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(1.6)}}
+  .hero h1{font-family:'Fraunces',serif;font-size:32px;font-weight:600;letter-spacing:-0.035em;line-height:1.05;margin-bottom:8px}
+  .hero h1 .accent{color:#93c5fd;font-style:italic;font-weight:500}
+  .hero-sub{color:rgba(255,255,255,0.75);font-size:14px;font-weight:500;max-width:520px;line-height:1.5}
+  .hero-stats{display:flex;gap:24px}
+  .hero-stat{text-align:right}
+  .hero-stat .l{color:rgba(255,255,255,0.6);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em}
+  .hero-stat .v{font-family:'JetBrains Mono',monospace;color:white;font-size:30px;font-weight:800;margin-top:4px;letter-spacing:-0.03em}
+  .hero-stat .v.warn{color:#fde68a}
+  
+  /* SUMMARY CARDS */
+  .summary-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+  .summary-card{background:white;border:1px solid var(--line);border-radius:12px;padding:16px 18px;transition:all 0.2s}
+  .summary-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+  .summary-card .label{font-size:10.5px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px}
+  .summary-card .value{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:800;color:var(--ink-900);letter-spacing:-0.02em;line-height:1.1}
+  .summary-card .value.blue{color:var(--print-dark)}
+  .summary-card .value.gold{color:var(--gold-deep)}
+  .summary-card .value.mint{color:#047857}
+  .summary-card .value.red{color:var(--rose)}
+  .summary-card .delta{font-size:11px;font-weight:600;margin-top:4px;color:var(--text-mid)}
+  
+  /* FILTER BAR */
+  .filter-bar{background:white;border:1px solid var(--line);border-radius:12px;padding:12px 16px;display:flex;gap:8px;align-items:center;margin-bottom:18px;flex-wrap:wrap}
+  .filter-bar .filter-btn{padding:7px 12px;border-radius:7px;font-size:12px;font-weight:700;color:var(--text-mid);background:transparent;border:1px solid var(--line);transition:all 0.15s;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+  .filter-bar .filter-btn:hover{background:var(--line-soft)}
+  .filter-bar .filter-btn.active{background:var(--ink-900);color:white;border-color:var(--ink-900)}
+  .filter-bar .count{background:rgba(255,255,255,0.15);padding:1px 6px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:10px}
+  .filter-bar .filter-btn:not(.active) .count{background:var(--line-soft);color:var(--text-mid)}
+  .filter-bar input,.filter-bar select{padding:7px 10px;border:1px solid var(--line);border-radius:7px;font-size:12px;font-weight:600;background:white}
+  
+  /* TABLE */
+  .table-card{background:white;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow-md);margin-bottom:18px}
+  .table-header{padding:16px 22px;border-bottom:1px solid var(--line-soft);display:flex;justify-content:space-between;align-items:center;background:linear-gradient(180deg,white,var(--canvas));flex-wrap:wrap;gap:10px}
+  .table-header h2{font-size:15px;font-weight:800;color:var(--ink-900)}
+  .table-header .count{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-mid);font-weight:700}
+  .table-scroll{overflow-x:auto;max-height:600px;overflow-y:auto}
+  table{width:100%;border-collapse:collapse;min-width:1100px}
+  thead th{background:var(--canvas);font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.04em;padding:11px 12px;text-align:left;border-bottom:2px solid var(--line);white-space:nowrap;position:sticky;top:0;z-index:10}
+  thead th.num{text-align:right}
+  tbody td{padding:12px;font-size:13px;border-bottom:1px solid var(--line-soft);color:var(--text)}
+  tbody tr:hover{background:var(--canvas)}
+  td.num{font-family:'JetBrains Mono',monospace;text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+  td.num.bold{font-weight:800;color:var(--ink-900)}
+  td.num.gold{color:var(--gold-deep);font-weight:800}
+  td.num.red{color:var(--rose);font-weight:800}
+  td.num.mint{color:#047857;font-weight:800}
+  
+  /* STATUS BADGES */
+  .status-badge{display:inline-block;padding:3px 9px;border-radius:6px;font-size:10.5px;font-weight:800;letter-spacing:0.03em;text-transform:uppercase}
+  .status-badge.assigned{background:rgba(59,130,246,0.12);color:#1d4ed8}
+  .status-badge.in_progress{background:rgba(245,184,61,0.15);color:var(--gold-deep)}
+  .status-badge.ready{background:rgba(139,92,246,0.12);color:#6d28d9}
+  .status-badge.received{background:rgba(52,211,153,0.12);color:#047857}
+  .status-badge.cancelled{background:rgba(148,163,184,0.18);color:#475569}
+  
+  .pay-badge{display:inline-block;padding:3px 9px;border-radius:6px;font-size:10.5px;font-weight:800;letter-spacing:0.03em;text-transform:uppercase}
+  .pay-badge.unpaid{background:rgba(255,84,112,0.12);color:#be123c}
+  .pay-badge.partial{background:rgba(245,184,61,0.15);color:var(--gold-deep)}
+  .pay-badge.paid{background:rgba(52,211,153,0.12);color:#047857}
+  
+  /* MODAL */
+  .modal{position:fixed;inset:0;background:rgba(5,8,24,0.6);backdrop-filter:blur(8px);display:none;align-items:flex-start;justify-content:center;z-index:200;padding:40px 20px;overflow-y:auto}
+  .modal.active{display:flex}
+  .modal-content{background:white;border-radius:18px;width:100%;max-width:620px;padding:28px;box-shadow:0 24px 80px rgba(0,0,0,0.3);animation:modalIn 0.3s cubic-bezier(0.16,1,0.3,1)}
+  @keyframes modalIn{from{opacity:0;transform:translateY(20px) scale(0.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+  .modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+  .modal-head h2{font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--ink-900);letter-spacing:-0.015em}
+  .modal-close{width:30px;height:30px;border-radius:8px;background:var(--line-soft);color:var(--text-mid);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;cursor:pointer;border:none}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+  .form-grid.full{grid-template-columns:1fr}
+  .form-field label{display:block;font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px}
+  .form-field label .req{color:var(--rose);font-size:13px}
+  .form-input{width:100%;padding:10px 12px;font-size:13.5px;border:1.5px solid var(--line);border-radius:9px;background:white;font-weight:500;transition:all 0.15s}
+  .form-input:focus{border-color:var(--print);box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
+  .form-input.mono{font-family:'JetBrains Mono',monospace}
+  textarea.form-input{resize:vertical;min-height:60px}
+  .select-wrap{position:relative}
+  .select-wrap::after{content:'▾';position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--text-dim);pointer-events:none}
+  .select-wrap select.form-input{appearance:none;padding-right:32px;cursor:pointer}
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+  
+  .total-display{background:linear-gradient(135deg,rgba(59,130,246,0.08),rgba(59,130,246,0.02));border:1px solid rgba(59,130,246,0.25);border-radius:10px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+  .total-display .l{font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em}
+  .total-display .v{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:800;color:var(--print-dark)}
+  
+  /* Row actions */
+  .row-actions{display:flex;gap:4px}
+  .row-btn{padding:5px 9px;border-radius:6px;font-size:11px;font-weight:700;background:white;color:var(--text-mid);border:1px solid var(--line);cursor:pointer;white-space:nowrap}
+  .row-btn:hover{background:var(--line-soft);color:var(--ink-900)}
+  .row-btn.pay{background:linear-gradient(135deg,var(--mint),#10b981);color:white;border:none}
+  .row-btn.danger{color:var(--rose);border-color:#fecaca}
+  .row-btn.danger:hover{background:#fef2f2}
+  
+  /* TABS */
+  .tabs{display:flex;gap:4px;margin-bottom:18px;background:white;padding:6px;border-radius:12px;border:1px solid var(--line);width:fit-content}
+  .tab{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:700;color:var(--text-mid);cursor:pointer;transition:all 0.15s;background:transparent;border:none}
+  .tab:hover{background:var(--canvas)}
+  .tab.active{background:linear-gradient(135deg,var(--print),#60a5fa);color:white;box-shadow:0 2px 8px rgba(59,130,246,0.3)}
+  
+  .empty-state{text-align:center;padding:60px 20px;color:var(--text-mid)}
+  .empty-state .icon{font-size:48px;margin-bottom:12px;opacity:0.5}
+  .empty-state .title{font-size:18px;font-weight:700;color:var(--ink-900);margin-bottom:6px;font-family:'Fraunces',serif}
+  .empty-state .desc{font-size:12.5px;max-width:400px;margin:0 auto;line-height:1.5}
+  .loading{text-align:center;padding:60px 20px;color:var(--text-mid)}
+  .spinner{display:inline-block;width:32px;height:32px;border:3px solid rgba(59,130,246,0.2);border-top-color:var(--print);border-radius:50%;animation:spin 0.7s linear infinite}
+  .spinner.sm{width:14px;height:14px;border-width:2px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--ink-900);color:white;padding:14px 20px;border-radius:12px;font-size:13px;font-weight:700;box-shadow:0 24px 60px rgba(0,0,0,0.2);z-index:9999;opacity:0;transform:translateY(20px);transition:all 0.3s;display:flex;gap:10px}
+  .toast.show{opacity:1;transform:translateY(0)}
+  .toast.success{background:linear-gradient(135deg,var(--mint),#10b981)}
+  .toast.error{background:linear-gradient(135deg,var(--rose),#e11d48)}
+  
+  @media (max-width:1024px){.summary-cards{grid-template-columns:repeat(2,1fr)}.form-grid{grid-template-columns:1fr}}
+  @media (max-width:768px){
+    .sidebar{width:60px;padding:14px 6px}
+    .sidebar .brand-text,.sidebar .nav-section-title,.sidebar .nav-item span{display:none}
+    .main{margin-left:60px}
+    .content{padding:14px}
+    .topbar{padding:10px 14px}
+    .summary-cards{grid-template-columns:1fr}
+    .hero h1{font-size:22px}
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-bg" id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">🖨️</div>
+    <h1>Printing Operations</h1>
+    <p class="sub">Admin / Owner / Operations access</p>
+    <div class="field-group">
+      <label>Phone Number</label>
+      <input type="tel" id="loginPhone" class="login-input mono" placeholder="10-digit phone" maxlength="10">
+    </div>
+    <button class="login-btn" onclick="doLogin()" id="loginBtn">Access Printing →</button>
+    <div class="err-banner" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="mainApp">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">🖨️</div>
+      <div class="brand-text">
+        <div class="name">Printing</div>
+        <div class="sub">v1.0 · Operations</div>
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Production</div>
+      <div class="nav-item active">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"/></svg>
+        <span>Printing</span>
+      </div>
+      <a class="nav-item" href="stitching.html">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+        <span>Stitching</span>
+      </a>
+      <a class="nav-item" href="delivery.html">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        <span>Delivery</span>
+      </a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Operations</div>
+      <a class="nav-item" href="execution-plan.html">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        <span>Execution Plan</span>
+      </a>
+      <a class="nav-item" href="execution-entry.html">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/></svg>
+        <span>Daily Entry</span>
+      </a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Back</div>
+      <a class="nav-item" href="dashboard.html">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        <span>Dashboard</span>
+      </a>
+    </div>
+  </aside>
+  
+  <main class="main">
+    <header class="topbar">
+      <div class="breadcrumb"><span>Operations</span><span class="sep">/</span><span class="current">Printing</span></div>
+      <div class="top-actions">
+        <button class="ab-btn" onclick="openPrinterManager()">🏢 Manage Printers</button>
+        <button class="ab-btn primary" onclick="openNewJob()">+ Assign Job</button>
+        <div class="user-chip">
+          <div class="avatar" id="userAvatar">?</div>
+          <span class="name" id="userName">—</span>
+        </div>
+      </div>
+    </header>
+    
+    <div class="content">
+      <section class="hero">
+        <div class="hero-content">
+          <div>
+            <div class="hero-eyebrow"><span class="pulse"></span>PRINTING OPERATIONS</div>
+            <h1>Assign <span class="accent">print jobs</span> & track outstanding</h1>
+            <p class="hero-sub">Send jobs to vendors or in-house printers. Auto-calculated outstanding per job and per vendor.</p>
+          </div>
+          <div class="hero-stats">
+            <div class="hero-stat"><div class="l">Outstanding</div><div class="v warn" id="heroOutstanding">—</div></div>
+            <div class="hero-stat"><div class="l">Active Jobs</div><div class="v" id="heroActive">—</div></div>
+          </div>
+        </div>
+      </section>
+      
+      <div class="summary-cards">
+        <div class="summary-card"><div class="label">Total Jobs</div><div class="value blue" id="sumTotal">—</div><div class="delta" id="sumTotalSub">all time</div></div>
+        <div class="summary-card"><div class="label">Total Value</div><div class="value gold" id="sumValue">—</div><div class="delta" id="sumValueSub">—</div></div>
+        <div class="summary-card"><div class="label">Paid Out</div><div class="value mint" id="sumPaid">—</div><div class="delta" id="sumPaidSub">—</div></div>
+        <div class="summary-card"><div class="label">Outstanding</div><div class="value red" id="sumOutstanding">—</div><div class="delta" id="sumOutstandingSub">to vendors</div></div>
+      </div>
+      
+      <div class="tabs">
+        <button class="tab active" data-tab="jobs" onclick="setTab('jobs')">📋 Jobs</button>
+        <button class="tab" data-tab="outstanding" onclick="setTab('outstanding')">⚠️ Vendor Outstanding</button>
+      </div>
+      
+      <div id="jobsTab">
+        <div class="filter-bar">
+          <button class="filter-btn active" data-filter="all" onclick="setFilter(this)">All <span class="count" id="cntAll">0</span></button>
+          <button class="filter-btn" data-filter="assigned" onclick="setFilter(this)">Assigned <span class="count" id="cntAssigned">0</span></button>
+          <button class="filter-btn" data-filter="in_progress" onclick="setFilter(this)">In Progress <span class="count" id="cntInProgress">0</span></button>
+          <button class="filter-btn" data-filter="ready" onclick="setFilter(this)">Ready <span class="count" id="cntReady">0</span></button>
+          <button class="filter-btn" data-filter="received" onclick="setFilter(this)">Received <span class="count" id="cntReceived">0</span></button>
+          <input type="text" id="searchInput" placeholder="🔍 Search job, campaign, printer..." style="flex:1;min-width:200px;margin-left:auto;" oninput="renderJobs()">
+        </div>
+        
+        <div class="table-card">
+          <div class="table-header">
+            <h2>All Print Jobs</h2>
+            <span class="count" id="rowCount">—</span>
+          </div>
+          <div id="jobsBody"><div class="loading"><div class="spinner"></div></div></div>
+        </div>
+      </div>
+      
+      <div id="outstandingTab" style="display:none;">
+        <div class="table-card">
+          <div class="table-header">
+            <h2>Vendor-wise Outstanding</h2>
+            <span class="count" id="vendorCount">—</span>
+          </div>
+          <div id="vendorsBody"><div class="loading"><div class="spinner"></div></div></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- NEW JOB MODAL -->
+<div class="modal" id="jobModal">
+  <div class="modal-content">
+    <div class="modal-head">
+      <h2 id="jobModalTitle">🖨️ Assign Print Job</h2>
+      <button class="modal-close" onclick="closeModal('jobModal')">✕</button>
+    </div>
+    
+    <div class="form-grid full">
+      <div class="form-field">
+        <label>Campaign <span class="req">*</span></label>
+        <div class="select-wrap">
+          <select id="jobCampaign" class="form-input" onchange="updateCampaignName()">
+            <option value="">Select campaign...</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    
+    <div class="form-grid">
+      <div class="form-field">
+        <label>Printer <span class="req">*</span></label>
+        <div class="select-wrap">
+          <select id="jobPrinter" class="form-input" onchange="updatePrinterRate()">
+            <option value="">Select printer...</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-field">
+        <label>Product Type <span class="req">*</span></label>
+        <div class="select-wrap">
+          <select id="jobProduct" class="form-input">
+            <option value="auto_hood">Auto Hood</option>
+            <option value="back_panel">Back Panel</option>
+            <option value="flex">Flex</option>
+            <option value="no_parking">No Parking</option>
+            <option value="vinyl">Vinyl</option>
+            <option value="wall_wrap">Wall Wrap</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    
+    <div class="form-grid">
+      <div class="form-field">
+        <label>Quantity <span class="req">*</span></label>
+        <input type="number" id="jobQty" class="form-input mono" placeholder="0" min="1" step="0.01" oninput="recalcJobTotal()">
+      </div>
+      <div class="form-field">
+        <label>Unit</label>
+        <div class="select-wrap">
+          <select id="jobUnit" class="form-input">
+            <option value="pcs">pcs</option>
+            <option value="sqft">sqft</option>
+            <option value="sqm">sqm</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    
+    <div class="form-grid">
+      <div class="form-field">
+        <label>Rate per Unit (₹) <span class="req">*</span></label>
+        <input type="number" id="jobRate" class="form-input mono" placeholder="0" min="0" step="0.01" oninput="recalcJobTotal()">
+      </div>
+      <div class="form-field">
+        <label>Material Type</label>
+        <input type="text" id="jobMaterial" class="form-input" placeholder="e.g., Cotton Hood, Star Flex 510 GSM">
+      </div>
+    </div>
+    
+    <div class="form-grid">
+      <div class="form-field">
+        <label>Assigned Date</label>
+        <input type="date" id="jobAssignedDate" class="form-input">
+      </div>
+      <div class="form-field">
+        <label>Expected Date</label>
+        <input type="date" id="jobExpectedDate" class="form-input">
+      </div>
+    </div>
+    
+    <div class="form-grid full">
+      <div class="form-field">
+        <label>Notes</label>
+        <textarea id="jobNotes" class="form-input" placeholder="Special instructions..."></textarea>
+      </div>
+    </div>
+    
+    <div class="total-display">
+      <div class="l">Total Amount</div>
+      <div class="v" id="jobTotal">₹0</div>
+    </div>
+    
+    <div class="modal-actions">
+      <button class="ab-btn" onclick="closeModal('jobModal')">Cancel</button>
+      <button class="ab-btn primary" onclick="saveJob()" id="saveJobBtn">💾 Assign Job</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAY MODAL -->
+<div class="modal" id="payModal">
+  <div class="modal-content">
+    <div class="modal-head">
+      <h2>💰 Record Payment</h2>
+      <button class="modal-close" onclick="closeModal('payModal')">✕</button>
+    </div>
+    
+    <div style="background:var(--canvas);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:16px;">
+      <div style="font-size:10.5px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Printer</div>
+      <div style="font-size:14px;font-weight:800;color:var(--ink-900);" id="payPrinterName">—</div>
+      <div style="font-size:10.5px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-top:10px;margin-bottom:4px;">Outstanding</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:800;color:var(--rose);" id="payOutstanding">—</div>
+    </div>
+    
+    <div class="form-grid">
+      <div class="form-field">
+        <label>Amount (₹) <span class="req">*</span></label>
+        <input type="number" id="payAmount" class="form-input mono" placeholder="0" min="1" step="0.01">
+      </div>
+      <div class="form-field">
+        <label>Date <span class="req">*</span></label>
+        <input type="date" id="payDate" class="form-input">
+      </div>
+    </div>
+    
+    <div class="form-grid">
+      <div class="form-field">
+        <label>Payment Mode <span class="req">*</span></label>
+        <div class="select-wrap">
+          <select id="payMode" class="form-input">
+            <option value="upi">UPI</option>
+            <option value="cash">Cash</option>
+            <option value="bank_transfer">Bank Transfer</option>
+            <option value="cheque">Cheque</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-field">
+        <label>Reference</label>
+        <input type="text" id="payRef" class="form-input mono" placeholder="txn ID / cheque no.">
+      </div>
+    </div>
+    
+    <div class="form-grid full">
+      <div class="form-field">
+        <label>Notes</label>
+        <textarea id="payNotes" class="form-input" placeholder="Optional..."></textarea>
+      </div>
+    </div>
+    
+    <div class="modal-actions">
+      <button class="ab-btn" onclick="closeModal('payModal')">Cancel</button>
+      <button class="ab-btn primary" onclick="savePayment()" id="savePayBtn">💾 Save Payment</button>
+    </div>
+  </div>
+</div>
+
+<!-- PRINTER MANAGER MODAL -->
+<div class="modal" id="printerModal">
+  <div class="modal-content" style="max-width:760px;">
+    <div class="modal-head">
+      <h2>🏢 Manage Printers</h2>
+      <button class="modal-close" onclick="closeModal('printerModal')">✕</button>
+    </div>
+    
+    <div style="background:var(--canvas);border-radius:10px;padding:14px;margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;margin-bottom:10px;">Add New Printer</div>
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Name <span class="req">*</span></label>
+          <input type="text" id="prName" class="form-input" placeholder="Printer name">
+        </div>
+        <div class="form-field">
+          <label>Contact Person</label>
+          <input type="text" id="prContact" class="form-input">
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Phone</label>
+          <input type="tel" id="prPhone" class="form-input mono" maxlength="10">
+        </div>
+        <div class="form-field">
+          <label>Type</label>
+          <div class="select-wrap">
+            <select id="prType" class="form-input">
+              <option value="vendor">Vendor</option>
+              <option value="inhouse">In-house</option>
+              <option value="employee">Employee</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-field">
+          <label>City</label>
+          <input type="text" id="prCity" class="form-input">
+        </div>
+        <div class="form-field">
+          <label>Default Rate (₹/unit)</label>
+          <input type="number" id="prRate" class="form-input mono" placeholder="0" min="0" step="0.01">
+        </div>
+      </div>
+      <button class="ab-btn primary" onclick="savePrinter()" style="margin-top:6px;">+ Add Printer</button>
+    </div>
+    
+    <div id="printersList"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const CONFIG = { url: 'https://fpbktcgtspqsqpaytslv.supabase.co', key: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j' };
+const state = { admin: null, jobs: [], campaigns: [], printers: [], payments: [], filter: 'all', tab: 'jobs', editing: null, payingFor: null };
+
+function esc(s) { if (s == null) return ''; return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function inr(n) { if (!n || isNaN(n)) return '₹0'; return '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 }); }
+function inrShort(n) { if (!n || isNaN(n)) return '₹0'; const num = Number(n); if (num >= 100000) return '₹' + (num/100000).toFixed(2) + 'L'; if (num >= 1000) return '₹' + (num/1000).toFixed(1) + 'k'; return '₹' + num.toLocaleString('en-IN', { maximumFractionDigits: 0 }); }
+function getInitials(name) { if (!name) return '?'; return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase(); }
+function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
+function todayStr() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+
+function showToast(msg, type) {
+  try {
+    const t = document.getElementById('toast');
+    if (!t) return alert(msg);
+    const icon = type === 'success' ? '✓' : type === 'error' ? '⚠' : '💡';
+    t.innerHTML = `<span>${icon}</span><span>${esc(msg)}</span>`;
+    t.className = 'toast show ' + (type || '');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  } catch (e) { alert(msg); }
+}
+
+async function api(path, options) {
+  options = options || {};
+  options.headers = options.headers || {};
+  options.headers.apikey = CONFIG.key;
+  options.headers.Authorization = 'Bearer ' + CONFIG.key;
+  const res = await fetch(CONFIG.url + path, options);
+  const txt = await res.text();
+  if (!res.ok) throw new Error('API ' + res.status + ': ' + txt);
+  if (!txt || txt.trim() === '') return null;
+  try { return JSON.parse(txt); } catch { return txt; }
+}
+
+// ─── LOGIN ───
+async function doLogin() {
+  const phone = document.getElementById('loginPhone').value.trim();
+  const errEl = document.getElementById('loginErr');
+  const btn = document.getElementById('loginBtn');
+  errEl.classList.remove('show');
+  if (phone.length !== 10) { errEl.textContent = '10 digit phone daalo'; errEl.classList.add('show'); return; }
+  btn.disabled = true; btn.innerHTML = 'Checking...';
+  try {
+    const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
+    if (!members || members.length === 0) { errEl.textContent = 'Number registered nahi'; errEl.classList.add('show'); btn.disabled = false; btn.innerHTML = 'Access Printing →'; return; }
+    const m = members[0];
+    if (!['admin','owner','operations','operations_manager','printing'].includes((m.role||'').toLowerCase())) {
+      errEl.textContent = 'Sirf Admin/Owner/Operations/Printing ke liye';
+      errEl.classList.add('show'); btn.disabled = false; btn.innerHTML = 'Access Printing →'; return;
+    }
+    state.admin = m;
+    localStorage.setItem('prajapati_admin_phone', phone);
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').classList.add('active');
+    initApp();
+  } catch (err) { errEl.textContent = 'Error: ' + err.message; errEl.classList.add('show'); btn.disabled = false; btn.innerHTML = 'Access Printing →'; }
+}
+
+async function autoLogin() {
+  const phone = localStorage.getItem('prajapati_admin_phone');
+  if (!phone) return;
+  try {
+    const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
+    if (!members || members.length === 0) return;
+    const m = members[0];
+    if (!['admin','owner','operations','operations_manager','printing'].includes((m.role||'').toLowerCase())) return;
+    state.admin = m;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').classList.add('active');
+    initApp();
+  } catch (e) {}
+}
+
+function initApp() {
+  setText('userAvatar', getInitials(state.admin.name));
+  setText('userName', state.admin.name.split(' ')[0]);
+  loadData();
+}
+
+async function loadData() {
+  try {
+    const [jobs, campaigns, printers, payments] = await Promise.all([
+      api('/rest/v1/prajapati_printing_jobs?deleted_at=is.null&select=*&order=assigned_date.desc,created_at.desc'),
+      api('/rest/v1/prajapati_campaigns_v2?deleted_at=is.null&select=id,campaign_code,name,client_name&order=created_at.desc&limit=200'),
+      api('/rest/v1/prajapati_printers?active=eq.true&select=*&order=name.asc'),
+      api('/rest/v1/prajapati_printing_payments?select=*')
+    ]);
+    
+    state.jobs = jobs || [];
+    state.campaigns = campaigns || [];
+    state.printers = printers || [];
+    state.payments = payments || [];
+    
+    populateCampaignSelect();
+    populatePrinterSelect();
+    renderJobs();
+    renderVendorOutstanding();
+    updateSummary();
+  } catch (err) {
+    console.error('Load error:', err);
+    let msg = err.message;
+    if (msg.includes('does not exist')) msg = 'Tables not created. Run 09_PRINTING_STITCHING_DELIVERY_SCHEMA.sql first.';
+    document.getElementById('jobsBody').innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><div class="title">Cannot load data</div><div class="desc">${esc(msg)}</div></div>`;
+  }
+}
+
+function populateCampaignSelect() {
+  const sel = document.getElementById('jobCampaign');
+  sel.innerHTML = '<option value="">Select campaign...</option>' + state.campaigns.map(c => 
+    `<option value="${c.id}" data-name="${esc(c.name)}">${esc(c.campaign_code)} · ${esc(c.name)} (${esc(c.client_name)})</option>`
+  ).join('');
+}
+
+function populatePrinterSelect() {
+  const sel = document.getElementById('jobPrinter');
+  sel.innerHTML = '<option value="">Select printer...</option>' + state.printers.map(p => 
+    `<option value="${p.id}" data-name="${esc(p.name)}" data-rate="${p.default_rate_per_unit}">${esc(p.name)} (${esc(p.printer_type)}) · ₹${p.default_rate_per_unit}/unit</option>`
+  ).join('');
+}
+
+function updatePrinterRate() {
+  const sel = document.getElementById('jobPrinter');
+  const opt = sel.options[sel.selectedIndex];
+  const rate = opt ? opt.dataset.rate : '';
+  if (rate && !document.getElementById('jobRate').value) {
+    document.getElementById('jobRate').value = rate;
+    recalcJobTotal();
+  }
+}
+
+function updateCampaignName() { /* no-op, name fetched on save */ }
+
+function recalcJobTotal() {
+  const qty = parseFloat(document.getElementById('jobQty').value) || 0;
+  const rate = parseFloat(document.getElementById('jobRate').value) || 0;
+  setText('jobTotal', inr(qty * rate));
+}
+
+function setTab(tab) {
+  state.tab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.getElementById('jobsTab').style.display = tab === 'jobs' ? 'block' : 'none';
+  document.getElementById('outstandingTab').style.display = tab === 'outstanding' ? 'block' : 'none';
+}
+
+function setFilter(btn) {
+  document.querySelectorAll('.filter-btn[data-filter]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.filter = btn.dataset.filter;
+  renderJobs();
+}
+
+function getFilteredJobs() {
+  let jobs = [...state.jobs];
+  if (state.filter !== 'all') jobs = jobs.filter(j => j.status === state.filter);
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  if (q) jobs = jobs.filter(j => 
+    (j.job_code||'').toLowerCase().includes(q) ||
+    (j.campaign_name||'').toLowerCase().includes(q) ||
+    (j.printer_name||'').toLowerCase().includes(q)
+  );
+  return jobs;
+}
+
+function renderJobs() {
+  const jobs = getFilteredJobs();
+  setText('rowCount', jobs.length + ' jobs');
+  
+  // Update filter counts
+  setText('cntAll', state.jobs.length);
+  setText('cntAssigned', state.jobs.filter(j => j.status === 'assigned').length);
+  setText('cntInProgress', state.jobs.filter(j => j.status === 'in_progress').length);
+  setText('cntReady', state.jobs.filter(j => j.status === 'ready').length);
+  setText('cntReceived', state.jobs.filter(j => j.status === 'received').length);
+  
+  if (jobs.length === 0) {
+    document.getElementById('jobsBody').innerHTML = `<div class="empty-state"><div class="icon">📭</div><div class="title">No jobs</div><div class="desc">Click "+ Assign Job" to create first print job</div></div>`;
+    return;
+  }
+  
+  let html = '<div class="table-scroll"><table><thead><tr>';
+  html += '<th>Code</th><th>Campaign</th><th>Printer</th><th>Product</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Total</th><th class="num">Paid</th><th class="num">Outstanding</th><th>Status</th><th>Date</th><th></th>';
+  html += '</tr></thead><tbody>';
+  
+  jobs.forEach(j => {
+    html += `
+      <tr>
+        <td><strong style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--print-dark);">${esc(j.job_code)}</strong></td>
+        <td>${esc(j.campaign_name)}</td>
+        <td><strong>${esc(j.printer_name)}</strong></td>
+        <td><span style="background:var(--line-soft);padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;">${esc(j.product_type)}</span></td>
+        <td class="num bold">${j.quantity} <span style="color:var(--text-mid);font-weight:500;">${esc(j.unit)}</span></td>
+        <td class="num">${inr(j.rate_per_unit)}</td>
+        <td class="num gold">${inr(j.total_amount)}</td>
+        <td class="num mint">${inr(j.paid_amount || 0)}</td>
+        <td class="num ${j.outstanding > 0 ? 'red' : ''}">${inr(j.outstanding || 0)}</td>
+        <td>
+          <div style="display:flex;flex-direction:column;gap:3px;">
+            <span class="status-badge ${esc(j.status)}">${esc(j.status.replace('_',' '))}</span>
+            <span class="pay-badge ${esc(j.payment_status)}">${esc(j.payment_status)}</span>
+          </div>
+        </td>
+        <td style="font-size:11.5px;">${j.assigned_date}</td>
+        <td>
+          <div class="row-actions">
+            ${j.outstanding > 0 ? `<button class="row-btn pay" onclick="openPay('${j.id}')">💰 Pay</button>` : ''}
+            <button class="row-btn" onclick="changeStatus('${j.id}')">↻ Status</button>
+            <button class="row-btn danger" onclick="deleteJob('${j.id}', '${esc(j.job_code)}')">🗑</button>
+          </div>
+        </td>
+      </tr>`;
+  });
+  
+  html += '</tbody></table></div>';
+  document.getElementById('jobsBody').innerHTML = html;
+}
+
+function renderVendorOutstanding() {
+  // Group jobs by printer
+  const map = {};
+  state.jobs.forEach(j => {
+    if (!map[j.printer_id]) {
+      map[j.printer_id] = { id: j.printer_id, name: j.printer_name, jobs: 0, total: 0, paid: 0, outstanding: 0 };
+    }
+    map[j.printer_id].jobs++;
+    map[j.printer_id].total += parseFloat(j.total_amount) || 0;
+    map[j.printer_id].paid += parseFloat(j.paid_amount) || 0;
+    map[j.printer_id].outstanding += parseFloat(j.outstanding) || 0;
+  });
+  
+  const vendors = Object.values(map).sort((a, b) => b.outstanding - a.outstanding);
+  setText('vendorCount', vendors.length + ' vendors');
+  
+  if (vendors.length === 0) {
+    document.getElementById('vendorsBody').innerHTML = `<div class="empty-state"><div class="icon">📭</div><div class="title">No vendor data</div></div>`;
+    return;
+  }
+  
+  let html = '<div class="table-scroll"><table><thead><tr><th>Printer</th><th class="num">Jobs</th><th class="num">Total Billed</th><th class="num">Paid</th><th class="num">Outstanding</th><th></th></tr></thead><tbody>';
+  vendors.forEach(v => {
+    html += `
+      <tr>
+        <td><strong>${esc(v.name)}</strong></td>
+        <td class="num bold">${v.jobs}</td>
+        <td class="num gold">${inr(v.total)}</td>
+        <td class="num mint">${inr(v.paid)}</td>
+        <td class="num ${v.outstanding > 0 ? 'red' : ''}">${inr(v.outstanding)}</td>
+        <td>${v.outstanding > 0 ? `<button class="row-btn pay" onclick="openVendorPay('${v.id}', ${v.outstanding})">💰 Pay</button>` : ''}</td>
+      </tr>`;
+  });
+  html += '</tbody></table></div>';
+  document.getElementById('vendorsBody').innerHTML = html;
+}
+
+function updateSummary() {
+  const total = state.jobs.reduce((s, j) => s + (parseFloat(j.total_amount) || 0), 0);
+  const paid = state.jobs.reduce((s, j) => s + (parseFloat(j.paid_amount) || 0), 0);
+  const outstanding = total - paid;
+  const active = state.jobs.filter(j => j.status !== 'received' && j.status !== 'cancelled').length;
+  
+  setText('heroOutstanding', inrShort(outstanding));
+  setText('heroActive', active);
+  setText('sumTotal', state.jobs.length);
+  setText('sumTotalSub', active + ' active');
+  setText('sumValue', inrShort(total));
+  setText('sumValueSub', state.jobs.length + ' jobs');
+  setText('sumPaid', inrShort(paid));
+  setText('sumPaidSub', total > 0 ? Math.round(paid/total*100) + '% paid' : '—');
+  setText('sumOutstanding', inrShort(outstanding));
+  setText('sumOutstandingSub', state.jobs.filter(j => j.outstanding > 0).length + ' unpaid jobs');
+}
+
+// ─── NEW JOB ───
+function openNewJob() {
+  state.editing = null;
+  document.getElementById('jobModalTitle').textContent = '🖨️ Assign Print Job';
+  document.getElementById('jobCampaign').value = '';
+  document.getElementById('jobPrinter').value = '';
+  document.getElementById('jobProduct').value = 'auto_hood';
+  document.getElementById('jobQty').value = '';
+  document.getElementById('jobUnit').value = 'pcs';
+  document.getElementById('jobRate').value = '';
+  document.getElementById('jobMaterial').value = '';
+  document.getElementById('jobAssignedDate').value = todayStr();
+  document.getElementById('jobExpectedDate').value = '';
+  document.getElementById('jobNotes').value = '';
+  setText('jobTotal', '₹0');
+  document.getElementById('jobModal').classList.add('active');
+}
+
+async function saveJob() {
+  const campaignId = document.getElementById('jobCampaign').value;
+  const campaignOpt = document.getElementById('jobCampaign').options[document.getElementById('jobCampaign').selectedIndex];
+  const campaignName = campaignOpt ? campaignOpt.dataset.name : '';
+  
+  const printerId = document.getElementById('jobPrinter').value;
+  const printerOpt = document.getElementById('jobPrinter').options[document.getElementById('jobPrinter').selectedIndex];
+  const printerName = printerOpt ? printerOpt.dataset.name : '';
+  
+  const product = document.getElementById('jobProduct').value;
+  const qty = parseFloat(document.getElementById('jobQty').value);
+  const unit = document.getElementById('jobUnit').value;
+  const rate = parseFloat(document.getElementById('jobRate').value);
+  
+  if (!campaignId) { showToast('Campaign select karo', 'error'); return; }
+  if (!printerId) { showToast('Printer select karo', 'error'); return; }
+  if (!qty || qty <= 0) { showToast('Valid quantity daalo', 'error'); return; }
+  if (!rate || rate <= 0) { showToast('Valid rate daalo', 'error'); return; }
+  
+  const payload = {
+    campaign_id: campaignId,
+    campaign_name: campaignName,
+    printer_id: printerId,
+    printer_name: printerName,
+    product_type: product,
+    quantity: qty,
+    unit: unit,
+    rate_per_unit: rate,
+    material_type: document.getElementById('jobMaterial').value.trim() || null,
+    assigned_date: document.getElementById('jobAssignedDate').value || todayStr(),
+    expected_date: document.getElementById('jobExpectedDate').value || null,
+    notes: document.getElementById('jobNotes').value.trim() || null,
+    assigned_by: state.admin.phone
+  };
+  
+  const btn = document.getElementById('saveJobBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner sm" style="border-color:rgba(255,255,255,0.3);border-top-color:white;"></span> Saving...';
+  
+  try {
+    await api('/rest/v1/prajapati_printing_jobs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify(payload)
+    });
+    showToast('✓ Print job assigned', 'success');
+    closeModal('jobModal');
+    await loadData();
+  } catch (err) {
+    showToast('Save failed: ' + err.message, 'error');
+    btn.disabled = false; btn.innerHTML = '💾 Assign Job';
+  }
+}
+
+// ─── PAYMENTS ───
+function openPay(jobId) {
+  const job = state.jobs.find(j => j.id === jobId);
+  if (!job) return;
+  state.payingFor = { type: 'job', job };
+  setText('payPrinterName', job.printer_name + ' · ' + job.job_code);
+  setText('payOutstanding', inr(job.outstanding));
+  document.getElementById('payAmount').value = job.outstanding;
+  document.getElementById('payDate').value = todayStr();
+  document.getElementById('payMode').value = 'upi';
+  document.getElementById('payRef').value = '';
+  document.getElementById('payNotes').value = '';
+  document.getElementById('payModal').classList.add('active');
+}
+
+function openVendorPay(printerId, outstanding) {
+  const printer = state.printers.find(p => p.id === printerId) || state.jobs.find(j => j.printer_id === printerId);
+  state.payingFor = { type: 'vendor', printerId, name: printer.printer_name || printer.name };
+  setText('payPrinterName', printer.printer_name || printer.name);
+  setText('payOutstanding', inr(outstanding));
+  document.getElementById('payAmount').value = outstanding;
+  document.getElementById('payDate').value = todayStr();
+  document.getElementById('payMode').value = 'upi';
+  document.getElementById('payRef').value = '';
+  document.getElementById('payNotes').value = '';
+  document.getElementById('payModal').classList.add('active');
+}
+
+async function savePayment() {
+  const amt = parseFloat(document.getElementById('payAmount').value);
+  if (!amt || amt <= 0) { showToast('Valid amount daalo', 'error'); return; }
+  
+  const date = document.getElementById('payDate').value;
+  const mode = document.getElementById('payMode').value;
+  const ref = document.getElementById('payRef').value.trim();
+  const notes = document.getElementById('payNotes').value.trim();
+  
+  const btn = document.getElementById('savePayBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner sm" style="border-color:rgba(255,255,255,0.3);border-top-color:white;"></span> Saving...';
+  
+  try {
+    if (state.payingFor.type === 'job') {
+      const job = state.payingFor.job;
+      // 1. Insert payment record
+      await api('/rest/v1/prajapati_printing_payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify({
+          printer_id: job.printer_id,
+          printer_name: job.printer_name,
+          job_id: job.id,
+          payment_date: date,
+          amount: amt,
+          payment_mode: mode,
+          reference_number: ref || null,
+          notes: notes || null,
+          recorded_by: state.admin.phone
+        })
+      });
+      // 2. Update job paid_amount
+      await api('/rest/v1/prajapati_printing_jobs?id=eq.' + job.id, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ paid_amount: (parseFloat(job.paid_amount) || 0) + amt })
+      });
+    } else {
+      // Vendor-level payment: insert without job_id, then distribute oldest-first
+      await api('/rest/v1/prajapati_printing_payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify({
+          printer_id: state.payingFor.printerId,
+          printer_name: state.payingFor.name,
+          payment_date: date,
+          amount: amt,
+          payment_mode: mode,
+          reference_number: ref || null,
+          notes: (notes || '') + ' [vendor-level]',
+          recorded_by: state.admin.phone
+        })
+      });
+      // Distribute to outstanding jobs (oldest first)
+      const vendorJobs = state.jobs.filter(j => j.printer_id === state.payingFor.printerId && j.outstanding > 0)
+        .sort((a,b) => (a.assigned_date || '').localeCompare(b.assigned_date || ''));
+      let remaining = amt;
+      for (const job of vendorJobs) {
+        if (remaining <= 0) break;
+        const owe = parseFloat(job.outstanding) || 0;
+        const apply = Math.min(remaining, owe);
+        await api('/rest/v1/prajapati_printing_jobs?id=eq.' + job.id, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+          body: JSON.stringify({ paid_amount: (parseFloat(job.paid_amount) || 0) + apply })
+        });
+        remaining -= apply;
+      }
+    }
+    showToast(`✓ Paid ${inr(amt)}`, 'success');
+    closeModal('payModal');
+    await loadData();
+  } catch (err) {
+    showToast('Payment failed: ' + err.message, 'error');
+    btn.disabled = false; btn.innerHTML = '💾 Save Payment';
+  }
+}
+
+// ─── STATUS CHANGE ───
+async function changeStatus(jobId) {
+  const job = state.jobs.find(j => j.id === jobId);
+  if (!job) return;
+  const transitions = { assigned: 'in_progress', in_progress: 'ready', ready: 'received', received: 'received' };
+  const next = transitions[job.status];
+  if (!confirm(`Status: ${job.status} → ${next}?`)) return;
+  
+  const payload = { status: next };
+  if (next === 'received') payload.completed_date = todayStr();
+  
+  try {
+    await api('/rest/v1/prajapati_printing_jobs?id=eq.' + jobId, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify(payload)
+    });
+    showToast('✓ Status updated', 'success');
+    await loadData();
+  } catch (err) { showToast('Update failed: ' + err.message, 'error'); }
+}
+
+async function deleteJob(jobId, code) {
+  if (!confirm(`Delete print job ${code}?\n\nIs action ko undo nahi kar sakte.`)) return;
+  try {
+    await api('/rest/v1/prajapati_printing_jobs?id=eq.' + jobId, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ deleted_at: new Date().toISOString() })
+    });
+    showToast('🗑 Job deleted', 'success');
+    await loadData();
+  } catch (err) { showToast('Delete failed: ' + err.message, 'error'); }
+}
+
+// ─── PRINTER MANAGER ───
+function openPrinterManager() {
+  renderPrintersList();
+  document.getElementById('printerModal').classList.add('active');
+}
+
+function renderPrintersList() {
+  const html = state.printers.map(p => `
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;margin-bottom:6px;">
+      <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--print),#60a5fa);color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;">${getInitials(p.name)}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;color:var(--ink-900);font-size:13px;">${esc(p.name)}</div>
+        <div style="font-size:11px;color:var(--text-mid);">${esc(p.printer_type)} · ${esc(p.city || '—')} · ₹${p.default_rate_per_unit}/unit</div>
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-mid);">${esc(p.phone || '—')}</div>
+    </div>
+  `).join('');
+  document.getElementById('printersList').innerHTML = html || '<div style="text-align:center;padding:20px;color:var(--text-mid);font-size:12px;">No printers yet</div>';
+}
+
+async function savePrinter() {
+  const name = document.getElementById('prName').value.trim();
+  if (!name) { showToast('Name daalo', 'error'); return; }
+  
+  try {
+    await api('/rest/v1/prajapati_printers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        name: name,
+        contact_person: document.getElementById('prContact').value.trim() || null,
+        phone: document.getElementById('prPhone').value.trim() || null,
+        printer_type: document.getElementById('prType').value,
+        city: document.getElementById('prCity').value.trim() || null,
+        default_rate_per_unit: parseFloat(document.getElementById('prRate').value) || 0,
+        created_by: state.admin.phone
+      })
+    });
+    showToast('✓ Printer added', 'success');
+    document.getElementById('prName').value = '';
+    document.getElementById('prContact').value = '';
+    document.getElementById('prPhone').value = '';
+    document.getElementById('prCity').value = '';
+    document.getElementById('prRate').value = '';
+    await loadData();
+  } catch (err) { showToast('Add failed: ' + err.message, 'error'); }
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+console.log('%c🖨️ Printing Operations v1.0', 'background:#3B82F6;color:white;padding:6px 12px;border-radius:6px;font-weight:bold;font-size:13px;');
+
+document.addEventListener('DOMContentLoaded', () => {
+  autoLogin();
+  document.getElementById('loginPhone').addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
+  document.getElementById('loginPhone').addEventListener('input', e => { e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10); });
+  
+  ['jobModal', 'payModal', 'printerModal'].forEach(id => {
+    document.getElementById(id).addEventListener('click', e => { if (e.target.id === id) closeModal(id); });
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') ['jobModal','payModal','printerModal'].forEach(id => closeModal(id));
+  });
+});
+</script>
+</body>
+</html>
