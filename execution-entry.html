@@ -1029,7 +1029,7 @@
       <!-- Page Header -->
       <div class="page-header">
         <div>
-          <h1 class="page-title">Daily Execution Entry</h1>
+          <h1 class="page-title">Daily Execution Entry <span style="font-family:'JetBrains Mono',monospace;background:linear-gradient(135deg,var(--mint),#10b981);color:white;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:800;vertical-align:middle;margin-left:6px;letter-spacing:0.04em;">v2.0</span></h1>
           <p class="page-subtitle">Record team's daily work · Manual rates · Auto-calculated totals</p>
         </div>
         <div class="page-actions">
@@ -1527,18 +1527,26 @@ function deleteRow(idx) {
 }
 
 function clearAll() {
-  if (state.rows.length === 0) return;
-  if (!confirm('All rows clear karne hain? (Saved draft hata jayega bhi)')) return;
+  if (state.rows.length === 0) {
+    showToast('Already empty — no rows to clear', 'info');
+    return;
+  }
+  if (!confirm(`All ${state.rows.length} rows clear karne hain? (Saved draft hata jayega bhi)`)) return;
   state.rows = [];
   localStorage.removeItem('exec_draft');
   renderTable();
-  showToast('All rows cleared');
+  showToast('✓ All rows cleared', 'success');
 }
 
 function cancelAll() {
-  if (state.rows.length > 0 && !confirm('Discard all unsaved entries?')) return;
+  if (state.rows.length === 0) {
+    showToast('Already empty — nothing to cancel', 'info');
+    return;
+  }
+  if (!confirm(`Discard ${state.rows.length} unsaved entries?`)) return;
   state.rows = [];
   renderTable();
+  showToast('✓ Entries cleared', 'success');
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1885,15 +1893,19 @@ function saveDraftSilent() {
 }
 
 function saveDraft() {
+  if (state.rows.length === 0) {
+    showToast('Pehle entries add karo — nothing to save as draft', 'info');
+    return;
+  }
   saveDraftSilent();
-  showToast('💾 Draft saved (auto-restores on reload)', 'success');
+  showToast(`💾 Draft saved · ${state.rows.length} entries (auto-restores on reload)`, 'success');
 }
 
 function loadDraft(silent) {
   try {
     const draft = JSON.parse(localStorage.getItem('exec_draft') || 'null');
     if (!draft || !draft.rows || draft.rows.length === 0) {
-      if (!silent) showToast('No saved draft found');
+      if (!silent) showToast('No saved draft found', 'info');
       return;
     }
     
@@ -1904,18 +1916,21 @@ function loadDraft(silent) {
     }
     
     if (!silent && state.rows.length > 0) {
-      if (!confirm('Current entries replace with saved draft?')) return;
+      if (!confirm(`You have ${state.rows.length} entries. Replace with ${draft.rows.length} saved draft entries?`)) return;
     }
     
     state.rows = draft.rows;
     if (draft.date) document.getElementById('entryDate').value = draft.date;
     renderTable();
     
-    if (!silent || draft.rows.length > 0) {
-      showToast(`Loaded ${draft.rows.length} entries from draft`, 'success');
+    if (!silent) {
+      showToast(`✓ Loaded ${draft.rows.length} entries from draft`, 'success');
+    } else if (draft.rows.length > 0) {
+      showToast(`💾 Restored ${draft.rows.length} entries from draft`, 'success');
     }
   } catch (e) {
     console.error('Draft load error:', e);
+    if (!silent) showToast('Failed to load draft: ' + e.message, 'error');
   }
 }
 
@@ -2017,6 +2032,9 @@ function comingSoon(feature) {
 // ═══════════════════════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════════════════════
+console.log('%c⚡ Daily Execution Entry v2.0 · Build 2026-05-24', 'background:#00D4D2;color:#050818;padding:6px 12px;border-radius:6px;font-weight:bold;font-size:13px;');
+console.log('%cFix: API empty-body handling, better button feedback', 'color:#888;font-size:11px;');
+
 document.addEventListener('DOMContentLoaded', () => {
   // Set today's date
   document.getElementById('entryDate').value = todayStr();
