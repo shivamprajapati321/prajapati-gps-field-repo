@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Outstanding Report v1.0 — Prajapati</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
+
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+  :root{
+    --ink-900:#050818;--ink-800:#0B1130;--ink-700:#131A3F;--ink-600:#1c2654;
+    --canvas:#FAFBFF;--paper:#FFFFFF;--line:#E8EAF4;--line-soft:#F0F2F8;--line-strong:#D4D8E8;
+    --text:#0F172A;--text-mid:#475569;--text-dim:#94A3B8;--text-faint:#CBD5E1;
+    --teal:#00D4D2;--teal-glow:#5EEAE8;--teal-dark:#00A8A6;
+    --gold:#F5B83D;--gold-warm:#FFC857;--gold-deep:#B8860B;
+    --rose:#FF5470;--mint:#34D399;--mint-glow:#6EE7B7;
+    --violet:#8B5CF6;--blue:#3B82F6;--orange:#F97316;
+    --shadow-sm:0 1px 2px rgba(15,23,42,0.04);
+    --shadow-md:0 4px 12px rgba(15,23,42,0.06);
+    --shadow-lg:0 12px 32px rgba(15,23,42,0.08);
+    --shadow-xl:0 24px 60px rgba(15,23,42,0.12);
+  }
+  body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--canvas);color:var(--text);min-height:100vh;overflow-x:hidden}
+  .mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
+  .serif{font-family:'Fraunces',serif}
+  button{font-family:inherit;cursor:pointer;border:none;background:none}
+  input,select{font-family:inherit;outline:none;border:none}
+  
+  /* LOGIN */
+  .login-bg{min-height:100vh;background:linear-gradient(135deg,var(--ink-900),var(--ink-800),#7c2d12);display:flex;align-items:center;justify-content:center;padding:20px;position:relative;overflow:hidden}
+  .login-bg::before{content:'';position:absolute;top:-200px;right:-200px;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(255,84,112,0.15),transparent 70%)}
+  .login-card{background:rgba(255,255,255,0.98);border-radius:20px;padding:36px 32px;width:100%;max-width:420px;box-shadow:0 30px 80px rgba(0,0,0,0.4);position:relative;animation:loginIn 0.6s cubic-bezier(0.16,1,0.3,1)}
+  @keyframes loginIn{from{opacity:0;transform:translateY(20px) scale(0.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+  .login-logo{width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,var(--rose),#dc2626);display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:24px;margin-bottom:22px;box-shadow:0 8px 30px rgba(255,84,112,0.4)}
+  .login-card h1{font-family:'Fraunces',serif;font-size:26px;font-weight:600;color:var(--ink-900);letter-spacing:-0.02em;margin-bottom:4px}
+  .login-card .sub{color:var(--text-mid);font-size:13px;margin-bottom:26px}
+  .field-group{margin-bottom:16px}
+  .field-group label{display:block;font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:7px}
+  .login-input{width:100%;padding:12px 14px;font-size:14px;font-family:inherit;border:1.5px solid var(--line);border-radius:10px;background:var(--paper);transition:all 0.15s}
+  .login-input:focus{border-color:var(--rose);box-shadow:0 0 0 4px rgba(255,84,112,0.1)}
+  .login-input.mono{font-family:'JetBrains Mono',monospace;text-align:center;letter-spacing:0.05em;font-weight:600}
+  .err-banner{background:#fef2f2;color:#991b1b;padding:10px 12px;border-radius:8px;font-size:12px;font-weight:600;margin-top:12px;display:none}
+  .err-banner.show{display:block}
+  .login-btn{width:100%;padding:13px 18px;background:linear-gradient(135deg,var(--rose),#dc2626);color:white;border-radius:10px;font-size:14px;font-weight:700;box-shadow:0 4px 14px rgba(255,84,112,0.3);transition:all 0.15s}
+  .login-btn:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(255,84,112,0.5)}
+  .login-btn:disabled{opacity:0.6;cursor:not-allowed}
+  
+  .app{display:none}.app.active{display:block}
+  
+  /* SIDEBAR (compact) */
+  .sidebar{width:240px;background:linear-gradient(180deg,var(--ink-900) 0%,var(--ink-800) 60%,var(--ink-700) 100%);height:100vh;position:fixed;left:0;top:0;padding:24px 14px 20px;z-index:50;overflow-y:auto}
+  .sidebar::-webkit-scrollbar{width:4px}
+  .sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px}
+  .brand{display:flex;align-items:center;gap:12px;padding:0 8px 24px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:20px}
+  .brand-logo{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--rose),#dc2626);display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:16px;box-shadow:0 4px 14px rgba(255,84,112,0.4)}
+  .brand-text{color:white}
+  .brand-text .name{font-weight:800;font-size:14px;letter-spacing:-0.015em;line-height:1.1}
+  .brand-text .sub{color:#fda4af;font-size:9.5px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin-top:3px}
+  .nav-section{margin-bottom:18px}
+  .nav-section-title{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.3);padding:0 12px;margin-bottom:8px}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;color:rgba(255,255,255,0.65);font-size:12.5px;font-weight:600;border-radius:9px;cursor:pointer;margin-bottom:2px;text-decoration:none;transition:all 0.2s cubic-bezier(0.16,1,0.3,1);position:relative}
+  .nav-item:hover{background:rgba(255,255,255,0.05);color:white;transform:translateX(2px)}
+  .nav-item.active{background:linear-gradient(90deg,rgba(255,84,112,0.2),rgba(255,84,112,0.04));color:#fda4af}
+  .nav-item.active::before{content:'';position:absolute;left:-14px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--rose);box-shadow:0 0 12px rgba(255,84,112,0.6)}
+  .nav-icon{width:16px;height:16px;flex-shrink:0;opacity:0.9}
+  
+  /* MAIN */
+  .main{margin-left:240px;min-height:100vh}
+  .topbar{background:rgba(255,255,255,0.75);backdrop-filter:blur(20px) saturate(180%);border-bottom:1px solid var(--line);padding:14px 28px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:40}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-mid);font-weight:600}
+  .breadcrumb .current{color:var(--ink-900);font-weight:700}
+  .breadcrumb .sep{color:var(--text-faint)}
+  .top-actions{display:flex;gap:10px;align-items:center;margin-left:auto}
+  .user-chip{display:flex;align-items:center;gap:9px;padding:4px 10px 4px 4px;border-radius:999px;background:var(--paper);border:1px solid var(--line)}
+  .user-chip .avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
+  .user-chip .name{font-size:12px;font-weight:700;color:var(--ink-900)}
+  
+  .content{padding:24px 28px 80px;max-width:1400px}
+  
+  /* HERO */
+  .hero{background:linear-gradient(135deg,#7c2d12 0%,#991b1b 50%,#dc2626 100%);border-radius:20px;padding:28px 32px;color:white;position:relative;overflow:hidden;margin-bottom:22px}
+  .hero::before{content:'';position:absolute;top:-50%;right:-10%;width:500px;height:500px;background:radial-gradient(circle,rgba(255,84,112,0.25),transparent 60%)}
+  .hero-content{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap}
+  .hero-eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);color:white;padding:5px 12px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:0.06em;margin-bottom:12px}
+  .hero-eyebrow .pulse{width:6px;height:6px;background:#fda4af;border-radius:50%;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(1.6)}}
+  .hero h1{font-family:'Fraunces',serif;font-size:32px;font-weight:600;letter-spacing:-0.035em;line-height:1.05;margin-bottom:8px}
+  .hero h1 .accent{color:#fda4af;font-style:italic;font-weight:500}
+  .hero-sub{color:rgba(255,255,255,0.75);font-size:14px;font-weight:500;max-width:520px;line-height:1.5}
+  .hero-stats{display:flex;gap:24px}
+  .hero-stat{text-align:right}
+  .hero-stat .l{color:rgba(255,255,255,0.6);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em}
+  .hero-stat .v{font-family:'JetBrains Mono',monospace;color:white;font-size:30px;font-weight:800;margin-top:4px;letter-spacing:-0.03em}
+  .hero-stat .v.warn{color:#fde68a}
+  
+  /* FILTER BAR */
+  .filter-bar{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 14px;display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;align-items:center}
+  .filter-bar label{font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.04em}
+  .filter-bar select,.filter-bar input{padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--paper);font-size:12.5px;font-weight:600}
+  .filter-bar .filter-btn{padding:7px 12px;border-radius:7px;font-size:12px;font-weight:700;color:var(--text-mid);background:transparent;border:1px solid var(--line);transition:all 0.15s}
+  .filter-bar .filter-btn:hover{background:var(--line-soft)}
+  .filter-bar .filter-btn.active{background:var(--ink-900);color:white;border-color:var(--ink-900)}
+  
+  /* TABLE */
+  .table-card{background:var(--paper);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow-md)}
+  .table-header{padding:16px 22px;border-bottom:1px solid var(--line-soft);display:flex;justify-content:space-between;align-items:center;background:linear-gradient(180deg,var(--paper),var(--canvas))}
+  .table-header h2{font-size:15px;font-weight:800;color:var(--ink-900);letter-spacing:-0.015em}
+  .table-header .count{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-mid);font-weight:700}
+  .table-scroll{overflow-x:auto}
+  table{width:100%;border-collapse:collapse}
+  thead th{background:var(--canvas);font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.04em;padding:11px 14px;text-align:left;border-bottom:2px solid var(--line);white-space:nowrap}
+  thead th.num{text-align:right}
+  tbody td{padding:13px 14px;font-size:13px;border-bottom:1px solid var(--line-soft);color:var(--text)}
+  tbody tr:hover{background:var(--canvas)}
+  tbody tr:last-child td{border-bottom:none}
+  td.num{font-family:'JetBrains Mono',monospace;text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+  td.num.big{font-weight:800;color:var(--ink-900);font-size:14px}
+  td.num.red{color:var(--rose);font-weight:800}
+  td.num.green{color:var(--mint);font-weight:800}
+  td.num.gold{color:var(--gold-deep);font-weight:800}
+  
+  /* MEMBER CELL */
+  .member-cell{display:flex;align-items:center;gap:10px}
+  .member-cell .avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--violet),var(--blue));color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0}
+  .member-cell .info .name{font-weight:700;color:var(--ink-900)}
+  .member-cell .info .phone{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-mid)}
+  
+  /* AMOUNT BAR */
+  .amt-bar{position:relative;background:var(--line-soft);border-radius:6px;height:6px;width:80px;overflow:hidden;margin-top:3px}
+  .amt-bar-fill{position:absolute;left:0;top:0;height:100%;background:linear-gradient(90deg,var(--rose),var(--orange));border-radius:6px;transition:width 0.5s ease-out}
+  
+  /* ACTION BTNS */
+  .row-actions{display:flex;gap:5px}
+  .row-btn{padding:5px 10px;border-radius:6px;font-size:11px;font-weight:700;border:1px solid var(--line);background:var(--paper);transition:all 0.12s;color:var(--text-mid);white-space:nowrap}
+  .row-btn:hover{background:var(--line-soft);color:var(--ink-900)}
+  .row-btn.pay{background:linear-gradient(135deg,var(--mint),#10b981);color:white;border:none;box-shadow:0 2px 8px rgba(52,211,153,0.3)}
+  .row-btn.pay:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(52,211,153,0.5)}
+  
+  /* EMPTY */
+  .empty-state{text-align:center;padding:80px 20px;color:var(--text-mid)}
+  .empty-state .icon{font-size:56px;margin-bottom:16px;opacity:0.5}
+  .empty-state .title{font-size:20px;font-weight:700;color:var(--ink-900);margin-bottom:6px;font-family:'Fraunces',serif}
+  .empty-state .desc{font-size:13px;max-width:400px;margin:0 auto;line-height:1.5}
+  
+  .loading{text-align:center;padding:60px 20px;color:var(--text-mid)}
+  .spinner{display:inline-block;width:32px;height:32px;border:3px solid rgba(255,84,112,0.2);border-top-color:var(--rose);border-radius:50%;animation:spin 0.7s linear infinite}
+  .spinner.sm{width:14px;height:14px;border-width:2px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  
+  /* SUMMARY CARDS */
+  .summary-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+  .summary-card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px 18px;position:relative;overflow:hidden;transition:all 0.2s}
+  .summary-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+  .summary-card .label{font-size:10.5px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px}
+  .summary-card .value{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:800;color:var(--ink-900);letter-spacing:-0.02em;line-height:1.1}
+  .summary-card .value.red{color:var(--rose)}
+  .summary-card .value.gold{color:var(--gold-deep)}
+  .summary-card .value.green{color:var(--mint)}
+  .summary-card .delta{font-size:11px;font-weight:600;margin-top:4px;color:var(--text-mid)}
+  
+  /* TOAST */
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--ink-900);color:white;padding:14px 20px;border-radius:12px;font-size:13px;font-weight:700;box-shadow:var(--shadow-xl);z-index:9999;opacity:0;transform:translateY(20px);transition:all 0.3s;display:flex;align-items:center;gap:10px;max-width:400px}
+  .toast.show{opacity:1;transform:translateY(0)}
+  .toast.success{background:linear-gradient(135deg,var(--mint),#10b981)}
+  .toast.error{background:linear-gradient(135deg,var(--rose),#e11d48)}
+  
+  @media (max-width:1024px){.summary-cards{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:768px){
+    .sidebar{width:60px;padding:14px 6px}
+    .sidebar .brand-text,.sidebar .nav-section-title,.sidebar .nav-item span{display:none}
+    .main{margin-left:60px}
+    .content{padding:14px}
+    .topbar{padding:10px 14px}
+    .summary-cards{grid-template-columns:1fr}
+    .hero h1{font-size:22px}
+    .hero-content{flex-direction:column}
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-bg" id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">⚠</div>
+    <h1>Outstanding Report</h1>
+    <p class="sub">Admin / Owner / Accounts access</p>
+    <div class="field-group">
+      <label>Phone Number</label>
+      <input type="tel" id="loginPhone" class="login-input mono" placeholder="10-digit phone" maxlength="10">
+    </div>
+    <button class="login-btn" onclick="doLogin()" id="loginBtn">View Outstanding →</button>
+    <div class="err-banner" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="mainApp">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">⚠</div>
+      <div class="brand-text">
+        <div class="name">Reports</div>
+        <div class="sub">v1.0 · Outstanding</div>
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Reports</div>
+      <a class="nav-item" href="report-daily.html">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span>Daily Report</span>
+      </a>
+      <a class="nav-item" href="report-team.html">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        <span>Team Wise</span>
+      </a>
+      <a class="nav-item" href="report-campaign.html">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4l3 14M19 4l-3 14M3 8h18M3 16h18"/></svg>
+        <span>Campaign Wise</span>
+      </a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Finance</div>
+      <a class="nav-item" href="payments.html">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+        <span>Payments</span>
+      </a>
+      <div class="nav-item active">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span>Outstanding</span>
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Back</div>
+      <a class="nav-item" href="dashboard.html">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        <span>Dashboard</span>
+      </a>
+    </div>
+  </aside>
+  
+  <main class="main">
+    <header class="topbar">
+      <div class="breadcrumb"><span>Reports</span><span class="sep">/</span><span class="current">Outstanding</span></div>
+      <div class="top-actions">
+        <button class="filter-btn" onclick="loadData()" style="border:1px solid var(--line);padding:7px 12px;border-radius:8px;font-weight:700;font-size:12px;background:var(--paper);">🔄 Refresh</button>
+        <button class="filter-btn" onclick="exportCSV()" style="border:1px solid var(--line);padding:7px 12px;border-radius:8px;font-weight:700;font-size:12px;background:var(--paper);">📥 Export CSV</button>
+        <div class="user-chip">
+          <div class="avatar" id="userAvatar">?</div>
+          <span class="name" id="userName">—</span>
+        </div>
+      </div>
+    </header>
+    
+    <div class="content">
+      <section class="hero">
+        <div class="hero-content">
+          <div>
+            <div class="hero-eyebrow"><span class="pulse"></span>OUTSTANDING TRACKER</div>
+            <h1>Who do we <span class="accent">owe</span> and how much?</h1>
+            <p class="hero-sub">Real-time outstanding amounts. Earned from execution work − Already paid out = Pending.</p>
+          </div>
+          <div class="hero-stats">
+            <div class="hero-stat">
+              <div class="l">Total Outstanding</div>
+              <div class="v warn" id="heroOutstanding">—</div>
+            </div>
+            <div class="hero-stat">
+              <div class="l">Members</div>
+              <div class="v" id="heroMembers">—</div>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <div class="summary-cards">
+        <div class="summary-card">
+          <div class="label">Total Earned</div>
+          <div class="value gold" id="totalEarned">₹0</div>
+          <div class="delta" id="totalEarnedSub">All time</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">Total Paid</div>
+          <div class="value green" id="totalPaid">₹0</div>
+          <div class="delta" id="totalPaidSub">All time</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">Outstanding</div>
+          <div class="value red" id="totalPending">₹0</div>
+          <div class="delta" id="totalPendingSub">Pending payout</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">Last Payment</div>
+          <div class="value" id="lastPayment">—</div>
+          <div class="delta" id="lastPaymentSub">—</div>
+        </div>
+      </div>
+      
+      <div class="filter-bar">
+        <label>Filter:</label>
+        <button class="filter-btn active" data-filter="all" onclick="setFilter(this)">All Members</button>
+        <button class="filter-btn" data-filter="pending" onclick="setFilter(this)">With Pending</button>
+        <button class="filter-btn" data-filter="critical" onclick="setFilter(this)">Critical (>₹10k)</button>
+        <button class="filter-btn" data-filter="settled" onclick="setFilter(this)">Settled</button>
+        
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+          <label>Sort:</label>
+          <select id="sortBy" onchange="renderRows()" style="cursor:pointer;">
+            <option value="pending_desc">Outstanding (High → Low)</option>
+            <option value="pending_asc">Outstanding (Low → High)</option>
+            <option value="earned_desc">Earned (High → Low)</option>
+            <option value="name_asc">Name (A → Z)</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="table-card">
+        <div class="table-header">
+          <h2>Member-wise Outstanding</h2>
+          <span class="count" id="rowCount">— members</span>
+        </div>
+        <div id="tableBody">
+          <div class="loading"><div class="spinner"></div><div style="margin-top:14px;font-weight:600;">Loading...</div></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+const CONFIG = {
+  url: 'https://fpbktcgtspqsqpaytslv.supabase.co',
+  key: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j'
+};
+
+const state = {
+  admin: null,
+  members: [],   // From trial_team_members
+  earnings: [],  // From execution_daily_log
+  payments: [],  // From execution_payments
+  rows: [],      // Computed
+  filter: 'all'
+};
+
+// ─── UTILS ───
+function esc(s) { if (s == null) return ''; return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function inr(n) { if (!n || isNaN(n)) return '₹0'; return '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 }); }
+function inrShort(n) { if (!n || isNaN(n)) return '₹0'; const num = Number(n); if (num >= 100000) return '₹' + (num/100000).toFixed(2) + 'L'; if (num >= 1000) return '₹' + (num/1000).toFixed(1) + 'k'; return '₹' + num.toLocaleString('en-IN', { maximumFractionDigits: 0 }); }
+function getInitials(name) { if (!name) return '?'; return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase(); }
+function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
+
+function showToast(msg, type) {
+  try {
+    const t = document.getElementById('toast');
+    if (!t) return alert(msg);
+    const icon = type === 'success' ? '✓' : type === 'error' ? '⚠' : '💡';
+    t.innerHTML = `<span>${icon}</span><span>${esc(msg)}</span>`;
+    t.className = 'toast show ' + (type || '');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  } catch (e) { alert(msg); }
+}
+
+async function api(path, options) {
+  options = options || {};
+  options.headers = options.headers || {};
+  options.headers.apikey = CONFIG.key;
+  options.headers.Authorization = 'Bearer ' + CONFIG.key;
+  const res = await fetch(CONFIG.url + path, options);
+  const txt = await res.text();
+  if (!res.ok) throw new Error('API ' + res.status + ': ' + txt);
+  if (!txt || txt.trim() === '') return null;
+  try { return JSON.parse(txt); } catch { return txt; }
+}
+
+// ─── LOGIN ───
+async function doLogin() {
+  const phone = document.getElementById('loginPhone').value.trim();
+  const errEl = document.getElementById('loginErr');
+  const btn = document.getElementById('loginBtn');
+  errEl.classList.remove('show');
+  if (phone.length !== 10) { errEl.textContent = '10 digit phone daalo'; errEl.classList.add('show'); return; }
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner sm" style="border-color:rgba(255,255,255,0.3);border-top-color:white;"></span> Checking...';
+  try {
+    const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
+    if (!members || members.length === 0) {
+      errEl.textContent = 'Number registered nahi';
+      errEl.classList.add('show');
+      btn.disabled = false; btn.innerHTML = 'View Outstanding →';
+      return;
+    }
+    const m = members[0];
+    const role = (m.role || '').toLowerCase();
+    if (!['admin', 'owner', 'accounts'].includes(role)) {
+      errEl.textContent = 'Sirf Admin/Owner/Accounts ke liye';
+      errEl.classList.add('show');
+      btn.disabled = false; btn.innerHTML = 'View Outstanding →';
+      return;
+    }
+    state.admin = m;
+    localStorage.setItem('prajapati_admin_phone', phone);
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').classList.add('active');
+    initApp();
+  } catch (err) {
+    errEl.textContent = 'Error: ' + err.message;
+    errEl.classList.add('show');
+    btn.disabled = false; btn.innerHTML = 'View Outstanding →';
+  }
+}
+
+async function autoLogin() {
+  const phone = localStorage.getItem('prajapati_admin_phone');
+  if (!phone) return false;
+  try {
+    const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
+    if (!members || members.length === 0) return false;
+    const m = members[0];
+    if (!['admin', 'owner', 'accounts'].includes((m.role || '').toLowerCase())) return false;
+    state.admin = m;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').classList.add('active');
+    initApp();
+    return true;
+  } catch (e) { return false; }
+}
+
+function initApp() {
+  setText('userAvatar', getInitials(state.admin.name));
+  setText('userName', state.admin.name.split(' ')[0]);
+  loadData();
+}
+
+// ─── DATA LOAD ───
+async function loadData() {
+  document.getElementById('tableBody').innerHTML = '<div class="loading"><div class="spinner"></div><div style="margin-top:14px;font-weight:600;">Loading outstanding...</div></div>';
+  
+  try {
+    // Load all team members
+    const members = await api('/rest/v1/trial_team_members?active=eq.true&select=phone,name,role&order=name.asc');
+    state.members = members || [];
+    
+    // Load all earnings (aggregated by member)
+    const earnings = await api('/rest/v1/execution_daily_log?select=member_phone,member_name,total_amount,log_date&order=log_date.desc');
+    state.earnings = earnings || [];
+    
+    // Load all payments
+    const payments = await api('/rest/v1/execution_payments?select=member_phone,amount,payment_date&order=payment_date.desc');
+    state.payments = payments || [];
+    
+    computeRows();
+    renderRows();
+    updateSummary();
+  } catch (err) {
+    console.error('Load error:', err);
+    document.getElementById('tableBody').innerHTML = `
+      <div class="empty-state">
+        <div class="icon">⚠️</div>
+        <div class="title">Cannot load data</div>
+        <div class="desc">${esc(err.message)}</div>
+      </div>
+    `;
+    showToast('Load failed: ' + err.message, 'error');
+  }
+}
+
+function computeRows() {
+  // Aggregate earnings per member
+  const earnMap = {};
+  state.earnings.forEach(e => {
+    const phone = e.member_phone;
+    if (!earnMap[phone]) {
+      earnMap[phone] = { phone, name: e.member_name, earned: 0, entries: 0, lastWork: null };
+    }
+    earnMap[phone].earned += parseFloat(e.total_amount) || 0;
+    earnMap[phone].entries++;
+    if (!earnMap[phone].lastWork || e.log_date > earnMap[phone].lastWork) {
+      earnMap[phone].lastWork = e.log_date;
+    }
+  });
+  
+  // Aggregate payments per member
+  const payMap = {};
+  state.payments.forEach(p => {
+    const phone = p.member_phone;
+    if (!payMap[phone]) {
+      payMap[phone] = { paid: 0, lastPaid: null, payments: 0 };
+    }
+    payMap[phone].paid += parseFloat(p.amount) || 0;
+    payMap[phone].payments++;
+    if (!payMap[phone].lastPaid || p.payment_date > payMap[phone].lastPaid) {
+      payMap[phone].lastPaid = p.payment_date;
+    }
+  });
+  
+  // Build rows - include all members who have either earnings or payments
+  const allPhones = new Set([...Object.keys(earnMap), ...Object.keys(payMap)]);
+  const rows = [];
+  allPhones.forEach(phone => {
+    const earn = earnMap[phone] || { earned: 0, entries: 0, lastWork: null };
+    const pay = payMap[phone] || { paid: 0, lastPaid: null, payments: 0 };
+    const member = state.members.find(m => m.phone === phone);
+    
+    rows.push({
+      phone,
+      name: earn.name || (member ? member.name : 'Unknown'),
+      role: member ? member.role : 'unknown',
+      earned: earn.earned,
+      paid: pay.paid,
+      pending: earn.earned - pay.paid,
+      entries: earn.entries,
+      payments: pay.payments,
+      lastWork: earn.lastWork,
+      lastPaid: pay.lastPaid
+    });
+  });
+  
+  state.rows = rows;
+}
+
+function setFilter(btn) {
+  document.querySelectorAll('.filter-btn[data-filter]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.filter = btn.dataset.filter;
+  renderRows();
+}
+
+function getFilteredRows() {
+  let rows = [...state.rows];
+  if (state.filter === 'pending') rows = rows.filter(r => r.pending > 0);
+  else if (state.filter === 'critical') rows = rows.filter(r => r.pending > 10000);
+  else if (state.filter === 'settled') rows = rows.filter(r => r.pending <= 0 && r.earned > 0);
+  
+  const sortBy = document.getElementById('sortBy').value;
+  if (sortBy === 'pending_desc') rows.sort((a, b) => b.pending - a.pending);
+  else if (sortBy === 'pending_asc') rows.sort((a, b) => a.pending - b.pending);
+  else if (sortBy === 'earned_desc') rows.sort((a, b) => b.earned - a.earned);
+  else if (sortBy === 'name_asc') rows.sort((a, b) => a.name.localeCompare(b.name));
+  
+  return rows;
+}
+
+function renderRows() {
+  const rows = getFilteredRows();
+  setText('rowCount', rows.length + ' member' + (rows.length !== 1 ? 's' : ''));
+  
+  if (rows.length === 0) {
+    document.getElementById('tableBody').innerHTML = `
+      <div class="empty-state">
+        <div class="icon">📭</div>
+        <div class="title">No members in this view</div>
+        <div class="desc">Switch filters above or check if data is imported.</div>
+      </div>
+    `;
+    return;
+  }
+  
+  // Find max pending for bar calculation
+  const maxPending = Math.max(...state.rows.map(r => Math.abs(r.pending)), 1);
+  
+  let html = `
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Member</th>
+            <th class="num">Entries</th>
+            <th class="num">Earned</th>
+            <th class="num">Paid</th>
+            <th class="num">Outstanding</th>
+            <th class="num">Last Work</th>
+            <th class="num">Last Paid</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+  
+  rows.forEach(r => {
+    const barPct = Math.min(100, Math.abs(r.pending) / maxPending * 100);
+    const pendingClass = r.pending > 0 ? 'red' : r.pending < 0 ? 'green' : '';
+    const pendingLabel = r.pending > 0 ? inr(r.pending) : r.pending < 0 ? inr(Math.abs(r.pending)) + ' OVER' : '₹0';
+    
+    html += `
+      <tr>
+        <td>
+          <div class="member-cell">
+            <div class="avatar">${getInitials(r.name)}</div>
+            <div class="info">
+              <div class="name">${esc(r.name)}</div>
+              <div class="phone">${esc(r.phone)}</div>
+            </div>
+          </div>
+        </td>
+        <td class="num">${r.entries}</td>
+        <td class="num gold">${inr(r.earned)}</td>
+        <td class="num green">${inr(r.paid)}</td>
+        <td class="num">
+          <div class="${pendingClass} big" style="font-weight:800;${r.pending > 0 ? 'color:var(--rose)' : r.pending < 0 ? 'color:var(--mint)' : ''}">${pendingLabel}</div>
+          ${r.pending > 0 ? `<div class="amt-bar"><div class="amt-bar-fill" style="width:${barPct}%;"></div></div>` : ''}
+        </td>
+        <td class="num">${r.lastWork ? new Date(r.lastWork).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) : '—'}</td>
+        <td class="num">${r.lastPaid ? new Date(r.lastPaid).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) : '—'}</td>
+        <td>
+          <div class="row-actions">
+            ${r.pending > 0 ? `<button class="row-btn pay" onclick="payNow('${esc(r.phone)}', '${esc(r.name)}', ${r.pending})">💰 Pay</button>` : ''}
+            <button class="row-btn" onclick="viewHistory('${esc(r.phone)}', '${esc(r.name)}')">📋 History</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  });
+  
+  html += '</tbody></table></div>';
+  document.getElementById('tableBody').innerHTML = html;
+}
+
+function updateSummary() {
+  const totalEarned = state.rows.reduce((s, r) => s + r.earned, 0);
+  const totalPaid = state.rows.reduce((s, r) => s + r.paid, 0);
+  const totalPending = totalEarned - totalPaid;
+  const membersWithPending = state.rows.filter(r => r.pending > 0).length;
+  
+  setText('heroOutstanding', inrShort(totalPending));
+  setText('heroMembers', membersWithPending + '/' + state.rows.length);
+  
+  setText('totalEarned', inr(totalEarned));
+  setText('totalEarnedSub', state.rows.reduce((s, r) => s + r.entries, 0).toLocaleString('en-IN') + ' entries');
+  setText('totalPaid', inr(totalPaid));
+  setText('totalPaidSub', state.rows.reduce((s, r) => s + r.payments, 0) + ' payments');
+  setText('totalPending', inr(totalPending));
+  setText('totalPendingSub', membersWithPending + ' members pending');
+  
+  // Last payment overall
+  const lastPay = state.payments[0];
+  if (lastPay) {
+    setText('lastPayment', inr(lastPay.amount));
+    setText('lastPaymentSub', new Date(lastPay.payment_date).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}));
+  } else {
+    setText('lastPayment', '—');
+    setText('lastPaymentSub', 'No payments yet');
+  }
+}
+
+async function payNow(phone, name, suggested) {
+  const amt = prompt(`Pay to ${name} (${phone})\n\nOutstanding: ${inr(suggested)}\n\nEnter amount to pay:`, suggested);
+  if (!amt || isNaN(parseFloat(amt)) || parseFloat(amt) <= 0) {
+    if (amt !== null) showToast('Valid amount daalo', 'error');
+    return;
+  }
+  
+  const method = prompt('Payment mode? (cash/upi/bank_transfer/cheque)', 'upi');
+  if (!method) return;
+  if (!['cash','upi','bank_transfer','cheque','other'].includes(method)) {
+    showToast('Mode: cash/upi/bank_transfer/cheque/other', 'error');
+    return;
+  }
+  
+  const note = prompt('Reference / Note (optional):', '');
+  
+  try {
+    await api('/rest/v1/execution_payments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        payment_date: new Date().toISOString().split('T')[0],
+        member_phone: phone,
+        member_name: name,
+        amount: parseFloat(amt),
+        payment_mode: method,
+        notes: note || null,
+        recorded_by: state.admin.phone
+      })
+    });
+    showToast(`✅ Paid ${inr(parseFloat(amt))} to ${name}`, 'success');
+    loadData();
+  } catch (err) {
+    showToast('Payment failed: ' + err.message, 'error');
+  }
+}
+
+async function viewHistory(phone, name) {
+  try {
+    const earnings = await api(`/rest/v1/execution_daily_log?member_phone=eq.${encodeURIComponent(phone)}&select=log_date,work_name,location,quantity,rate_per_unit,total_amount&order=log_date.desc&limit=20`);
+    const payments = await api(`/rest/v1/execution_payments?member_phone=eq.${encodeURIComponent(phone)}&select=payment_date,amount,payment_mode,notes&order=payment_date.desc&limit=20`);
+    
+    let msg = `📋 ${name} (${phone})\n\n`;
+    msg += `═══ LAST 20 EARNINGS ═══\n`;
+    (earnings || []).forEach(e => {
+      msg += `${e.log_date}: ${e.work_name} · ${e.quantity}×₹${e.rate_per_unit} = ${inr(e.total_amount)}\n`;
+    });
+    msg += `\n═══ LAST 20 PAYMENTS ═══\n`;
+    (payments || []).forEach(p => {
+      msg += `${p.payment_date}: ${inr(p.amount)} via ${p.payment_mode}${p.notes ? ' · ' + p.notes : ''}\n`;
+    });
+    
+    alert(msg);
+  } catch (err) {
+    showToast('History fetch failed: ' + err.message, 'error');
+  }
+}
+
+function exportCSV() {
+  const rows = getFilteredRows();
+  if (rows.length === 0) { showToast('Nothing to export', 'error'); return; }
+  
+  const csv = [
+    ['Member', 'Phone', 'Entries', 'Earned', 'Paid', 'Outstanding', 'Last Work', 'Last Paid'].join(',')
+  ];
+  rows.forEach(r => {
+    csv.push([
+      `"${r.name}"`,
+      r.phone,
+      r.entries,
+      r.earned,
+      r.paid,
+      r.pending,
+      r.lastWork || '',
+      r.lastPaid || ''
+    ].join(','));
+  });
+  
+  const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `outstanding_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✓ CSV downloaded', 'success');
+}
+
+// INIT
+console.log('%c⚠️ Outstanding Report v1.0', 'background:#FF5470;color:white;padding:6px 12px;border-radius:6px;font-weight:bold;font-size:13px;');
+
+document.addEventListener('DOMContentLoaded', () => {
+  autoLogin();
+  document.getElementById('loginPhone').addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
+  document.getElementById('loginPhone').addEventListener('input', e => { e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10); });
+});
+</script>
+</body>
+</html>

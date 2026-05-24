@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Team Wise Report v1.0 — Prajapati</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
+
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+  :root{
+    --ink-900:#050818;--ink-800:#0B1130;--ink-700:#131A3F;
+    --canvas:#FAFBFF;--paper:#FFFFFF;--line:#E8EAF4;--line-soft:#F0F2F8;
+    --text:#0F172A;--text-mid:#475569;--text-dim:#94A3B8;
+    --teal:#00D4D2;--teal-dark:#00A8A6;--gold:#F5B83D;--gold-deep:#B8860B;
+    --rose:#FF5470;--mint:#34D399;--violet:#8B5CF6;--blue:#3B82F6;--orange:#F97316;
+    --shadow-md:0 4px 12px rgba(15,23,42,0.06);--shadow-lg:0 12px 32px rgba(15,23,42,0.08);
+  }
+  body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--canvas);color:var(--text);min-height:100vh}
+  button{font-family:inherit;cursor:pointer;border:none;background:none}
+  input,select{font-family:inherit;outline:none;border:none}
+  
+  .login-bg{min-height:100vh;background:linear-gradient(135deg,var(--ink-900),var(--ink-800),var(--violet));display:flex;align-items:center;justify-content:center;padding:20px}
+  .login-card{background:white;border-radius:20px;padding:36px 32px;width:100%;max-width:420px;box-shadow:0 30px 80px rgba(0,0,0,0.4)}
+  .login-logo{width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,var(--violet),#a78bfa);color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;margin-bottom:22px;box-shadow:0 8px 30px rgba(139,92,246,0.4)}
+  .login-card h1{font-family:'Fraunces',serif;font-size:26px;font-weight:600;color:var(--ink-900);margin-bottom:4px}
+  .login-card .sub{color:var(--text-mid);font-size:13px;margin-bottom:26px}
+  .field-group{margin-bottom:16px}
+  .field-group label{display:block;font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:7px}
+  .login-input{width:100%;padding:12px 14px;font-size:14px;border:1.5px solid var(--line);border-radius:10px;background:white;transition:all 0.15s}
+  .login-input:focus{border-color:var(--violet);box-shadow:0 0 0 4px rgba(139,92,246,0.1)}
+  .login-input.mono{font-family:'JetBrains Mono',monospace;text-align:center;letter-spacing:0.05em;font-weight:600}
+  .err-banner{background:#fef2f2;color:#991b1b;padding:10px 12px;border-radius:8px;font-size:12px;font-weight:600;margin-top:12px;display:none}
+  .err-banner.show{display:block}
+  .login-btn{width:100%;padding:13px 18px;background:linear-gradient(135deg,var(--violet),#a78bfa);color:white;border-radius:10px;font-size:14px;font-weight:700;box-shadow:0 4px 14px rgba(139,92,246,0.3)}
+  .login-btn:hover{transform:translateY(-1px)}
+  .login-btn:disabled{opacity:0.6}
+  .app{display:none}.app.active{display:block}
+  
+  .sidebar{width:240px;background:linear-gradient(180deg,var(--ink-900) 0%,var(--ink-800) 60%,var(--ink-700) 100%);height:100vh;position:fixed;left:0;top:0;padding:24px 14px 20px;z-index:50;overflow-y:auto}
+  .brand{display:flex;align-items:center;gap:12px;padding:0 8px 24px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:20px}
+  .brand-logo{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--violet),#a78bfa);color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;box-shadow:0 4px 14px rgba(139,92,246,0.5)}
+  .brand-text{color:white}
+  .brand-text .name{font-weight:800;font-size:14px}
+  .brand-text .sub{color:#c4b5fd;font-size:9.5px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin-top:3px}
+  .nav-section{margin-bottom:18px}
+  .nav-section-title{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.3);padding:0 12px;margin-bottom:8px}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;color:rgba(255,255,255,0.65);font-size:12.5px;font-weight:600;border-radius:9px;margin-bottom:2px;text-decoration:none;transition:all 0.2s;position:relative}
+  .nav-item:hover{background:rgba(255,255,255,0.05);color:white;transform:translateX(2px)}
+  .nav-item.active{background:linear-gradient(90deg,rgba(139,92,246,0.2),rgba(139,92,246,0.04));color:#c4b5fd}
+  .nav-item.active::before{content:'';position:absolute;left:-14px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--violet);box-shadow:0 0 12px rgba(139,92,246,0.6)}
+  .nav-icon{width:16px;height:16px;flex-shrink:0;opacity:0.9}
+  
+  .main{margin-left:240px;min-height:100vh}
+  .topbar{background:rgba(255,255,255,0.75);backdrop-filter:blur(20px);border-bottom:1px solid var(--line);padding:14px 28px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:40}
+  .breadcrumb{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-mid);font-weight:600}
+  .breadcrumb .current{color:var(--ink-900);font-weight:700}
+  .breadcrumb .sep{color:#cbd5e1}
+  .top-actions{display:flex;gap:10px;align-items:center;margin-left:auto}
+  .user-chip{display:flex;align-items:center;gap:9px;padding:4px 10px 4px 4px;border-radius:999px;background:white;border:1px solid var(--line)}
+  .user-chip .avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
+  .user-chip .name{font-size:12px;font-weight:700;color:var(--ink-900)}
+  .ab-btn{padding:7px 12px;border-radius:8px;font-size:12px;font-weight:700;border:1px solid var(--line);background:white;color:var(--text-mid);transition:all 0.15s}
+  .ab-btn:hover{background:var(--line-soft)}
+  
+  .content{padding:24px 28px 80px;max-width:1400px}
+  .hero{background:linear-gradient(135deg,var(--ink-900) 0%,#2d1b4e 50%,var(--violet) 130%);border-radius:20px;padding:28px 32px;color:white;position:relative;overflow:hidden;margin-bottom:22px}
+  .hero::before{content:'';position:absolute;top:-50%;right:-10%;width:500px;height:500px;background:radial-gradient(circle,rgba(139,92,246,0.3),transparent 60%)}
+  .hero-content{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap}
+  .hero-eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);color:white;padding:5px 12px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:0.06em;margin-bottom:12px}
+  .hero-eyebrow .pulse{width:6px;height:6px;background:#c4b5fd;border-radius:50%;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(1.6)}}
+  .hero h1{font-family:'Fraunces',serif;font-size:32px;font-weight:600;letter-spacing:-0.035em;line-height:1.05;margin-bottom:8px}
+  .hero h1 .accent{color:#c4b5fd;font-style:italic;font-weight:500}
+  .hero-sub{color:rgba(255,255,255,0.75);font-size:14px;font-weight:500;max-width:520px;line-height:1.5}
+  .hero-stat{text-align:right}
+  .hero-stat .l{color:rgba(255,255,255,0.6);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em}
+  .hero-stat .v{font-family:'JetBrains Mono',monospace;color:white;font-size:30px;font-weight:800;margin-top:4px;letter-spacing:-0.03em}
+  
+  .range-bar{background:white;border:1px solid var(--line);border-radius:12px;padding:14px 18px;display:flex;gap:14px;align-items:center;margin-bottom:18px;flex-wrap:wrap}
+  .range-bar label{font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase}
+  .range-bar input[type="date"]{padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
+  .range-bar select{padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:white}
+  .range-shortcuts{display:flex;gap:6px;flex-wrap:wrap}
+  .range-shortcut{padding:7px 12px;border:1px solid var(--line);border-radius:8px;font-size:12px;font-weight:700;color:var(--text-mid);background:white;transition:all 0.12s}
+  .range-shortcut:hover{background:var(--line-soft)}
+  .range-shortcut.active{background:var(--ink-900);color:white;border-color:var(--ink-900)}
+  
+  .leaderboard{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px}
+  .podium-card{position:relative;background:linear-gradient(135deg,white,var(--canvas));border:2px solid var(--line);border-radius:16px;padding:20px;text-align:center;transition:all 0.3s}
+  .podium-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg)}
+  .podium-card.rank-1{border-color:var(--gold);background:linear-gradient(135deg,#fffbeb,#fef3c7);transform:scale(1.02)}
+  .podium-card.rank-2{border-color:#d4d4d8;background:linear-gradient(135deg,#fafafa,#f4f4f5)}
+  .podium-card.rank-3{border-color:#fcd34d;background:linear-gradient(135deg,#fffbeb,#fef3c7)}
+  .podium-rank{position:absolute;top:-14px;left:50%;transform:translateX(-50%);width:36px;height:36px;border-radius:50%;background:white;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace}
+  .podium-card.rank-1 .podium-rank{background:linear-gradient(135deg,var(--gold),#fbbf24);color:white;border-color:var(--gold);box-shadow:0 4px 14px rgba(245,184,61,0.5)}
+  .podium-card.rank-2 .podium-rank{background:linear-gradient(135deg,#a1a1aa,#d4d4d8);color:white;border-color:#d4d4d8}
+  .podium-card.rank-3 .podium-rank{background:linear-gradient(135deg,#b45309,#d97706);color:white;border-color:#d97706}
+  .podium-avatar{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,var(--violet),#a78bfa);color:white;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;margin:14px auto 10px}
+  .podium-name{font-family:'Fraunces',serif;font-size:18px;font-weight:600;color:var(--ink-900);letter-spacing:-0.01em;margin-bottom:2px}
+  .podium-phone{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-mid);margin-bottom:14px}
+  .podium-stat{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:800;color:var(--gold-deep);letter-spacing:-0.02em;line-height:1}
+  .podium-label{font-size:10px;color:var(--text-mid);font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-top:4px}
+  .podium-meta{display:flex;justify-content:center;gap:14px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+  .podium-meta .item{text-align:center}
+  .podium-meta .item .v{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:800;color:var(--ink-900)}
+  .podium-meta .item .l{font-size:10px;color:var(--text-mid);font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin-top:2px}
+  
+  .table-card{background:white;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow-md)}
+  .table-header{padding:16px 22px;border-bottom:1px solid var(--line-soft);display:flex;justify-content:space-between;align-items:center;background:linear-gradient(180deg,white,var(--canvas))}
+  .table-header h2{font-size:15px;font-weight:800;color:var(--ink-900)}
+  .table-header .count{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-mid);font-weight:700}
+  .table-scroll{overflow-x:auto}
+  table{width:100%;border-collapse:collapse}
+  thead th{background:var(--canvas);font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.04em;padding:11px 14px;text-align:left;border-bottom:2px solid var(--line);white-space:nowrap}
+  thead th.num{text-align:right}
+  tbody td{padding:13px 14px;font-size:13px;border-bottom:1px solid var(--line-soft);color:var(--text)}
+  tbody tr:hover{background:var(--canvas)}
+  td.num{font-family:'JetBrains Mono',monospace;text-align:right;font-weight:600}
+  td.num.bold{font-weight:800;color:var(--ink-900)}
+  td.num.gold{color:var(--gold-deep);font-weight:800}
+  
+  .rank-cell{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:800;background:var(--line-soft);color:var(--text-mid)}
+  .rank-cell.top{background:linear-gradient(135deg,var(--gold),#fbbf24);color:white;box-shadow:0 2px 8px rgba(245,184,61,0.4)}
+  
+  .member-cell{display:flex;align-items:center;gap:10px}
+  .member-cell .avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--violet),#a78bfa);color:white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0}
+  .member-cell .info .name{font-weight:700;color:var(--ink-900)}
+  .member-cell .info .phone{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-mid)}
+  
+  .perf-bar{position:relative;background:var(--line-soft);border-radius:6px;height:6px;width:100%;overflow:hidden;margin-top:4px}
+  .perf-bar-fill{position:absolute;left:0;top:0;height:100%;background:linear-gradient(90deg,var(--violet),#a78bfa);border-radius:6px}
+  
+  .empty-state{text-align:center;padding:60px 20px;color:var(--text-mid)}
+  .empty-state .icon{font-size:48px;margin-bottom:12px;opacity:0.5}
+  .empty-state .title{font-size:18px;font-weight:700;color:var(--ink-900);margin-bottom:6px;font-family:'Fraunces',serif}
+  .empty-state .desc{font-size:12.5px;max-width:400px;margin:0 auto;line-height:1.5}
+  .loading{text-align:center;padding:60px 20px;color:var(--text-mid)}
+  .spinner{display:inline-block;width:32px;height:32px;border:3px solid rgba(139,92,246,0.2);border-top-color:var(--violet);border-radius:50%;animation:spin 0.7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--ink-900);color:white;padding:14px 20px;border-radius:12px;font-size:13px;font-weight:700;box-shadow:0 24px 60px rgba(0,0,0,0.2);z-index:9999;opacity:0;transform:translateY(20px);transition:all 0.3s;display:flex;gap:10px}
+  .toast.show{opacity:1;transform:translateY(0)}
+  .toast.success{background:linear-gradient(135deg,var(--mint),#10b981)}
+  .toast.error{background:linear-gradient(135deg,var(--rose),#e11d48)}
+  
+  @media (max-width:1024px){.leaderboard{grid-template-columns:1fr}}
+  @media (max-width:768px){
+    .sidebar{width:60px;padding:14px 6px}
+    .sidebar .brand-text,.sidebar .nav-section-title,.sidebar .nav-item span{display:none}
+    .main{margin-left:60px}
+    .content{padding:14px}
+    .topbar{padding:10px 14px}
+    .hero h1{font-size:22px}
+  }
+</style>
+</head>
+<body>
+
+<div class="login-bg" id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">🏆</div>
+    <h1>Team Wise Report</h1>
+    <p class="sub">Admin / Owner / Operations access</p>
+    <div class="field-group">
+      <label>Phone Number</label>
+      <input type="tel" id="loginPhone" class="login-input mono" placeholder="10-digit phone" maxlength="10">
+    </div>
+    <button class="login-btn" onclick="doLogin()" id="loginBtn">View Leaderboard →</button>
+    <div class="err-banner" id="loginErr"></div>
+  </div>
+</div>
+
+<div class="app" id="mainApp">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">🏆</div>
+      <div class="brand-text">
+        <div class="name">Reports</div>
+        <div class="sub">v1.0 · Team</div>
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Reports</div>
+      <a class="nav-item" href="report-daily.html">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span>Daily Report</span>
+      </a>
+      <div class="nav-item active">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        <span>Team Wise</span>
+      </div>
+      <a class="nav-item" href="report-campaign.html">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4l3 14M19 4l-3 14M3 8h18M3 16h18"/></svg>
+        <span>Campaign Wise</span>
+      </a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Finance</div>
+      <a class="nav-item" href="payments.html">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/></svg>
+        <span>Payments</span>
+      </a>
+      <a class="nav-item" href="outstanding.html">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span>Outstanding</span>
+      </a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Back</div>
+      <a class="nav-item" href="dashboard.html">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        <span>Dashboard</span>
+      </a>
+    </div>
+  </aside>
+  
+  <main class="main">
+    <header class="topbar">
+      <div class="breadcrumb"><span>Reports</span><span class="sep">/</span><span class="current">Team Wise</span></div>
+      <div class="top-actions">
+        <button class="ab-btn" onclick="exportCSV()">📥 Export CSV</button>
+        <div class="user-chip">
+          <div class="avatar" id="userAvatar">?</div>
+          <span class="name" id="userName">—</span>
+        </div>
+      </div>
+    </header>
+    
+    <div class="content">
+      <section class="hero">
+        <div class="hero-content">
+          <div>
+            <div class="hero-eyebrow"><span class="pulse"></span>TEAM LEADERBOARD</div>
+            <h1>Who's <span class="accent">crushing</span> it this period?</h1>
+            <p class="hero-sub">Per-member earnings, quantity, and activity. Use date range to compare periods.</p>
+          </div>
+          <div class="hero-stat">
+            <div class="l">Total Earnings</div>
+            <div class="v" id="heroTotal">—</div>
+          </div>
+        </div>
+      </section>
+      
+      <div class="range-bar">
+        <label>Range:</label>
+        <input type="date" id="dateFrom" onchange="loadData()">
+        <span style="color:var(--text-mid);">to</span>
+        <input type="date" id="dateTo" onchange="loadData()">
+        <div class="range-shortcuts">
+          <button class="range-shortcut" data-r="today" onclick="setRange('today')">Today</button>
+          <button class="range-shortcut" data-r="7days" onclick="setRange('7days')">7 days</button>
+          <button class="range-shortcut active" data-r="30days" onclick="setRange('30days')">30 days</button>
+          <button class="range-shortcut" data-r="month" onclick="setRange('month')">This Month</button>
+          <button class="range-shortcut" data-r="all" onclick="setRange('all')">All Time</button>
+        </div>
+      </div>
+      
+      <!-- TOP 3 PODIUM -->
+      <div id="podium" style="display:none;">
+        <div class="leaderboard" id="podiumContent"></div>
+      </div>
+      
+      <div class="table-card">
+        <div class="table-header">
+          <h2>Full Leaderboard</h2>
+          <span class="count" id="rowCount">— members</span>
+        </div>
+        <div id="tableBody">
+          <div class="loading"><div class="spinner"></div><div style="margin-top:14px;font-weight:600;">Loading team stats...</div></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const CONFIG = { url: 'https://fpbktcgtspqsqpaytslv.supabase.co', key: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j' };
+const state = { admin: null, entries: [], rows: [], dateFrom: '', dateTo: '' };
+
+function esc(s) { if (s == null) return ''; return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function inr(n) { if (!n || isNaN(n)) return '₹0'; return '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 }); }
+function inrShort(n) { if (!n || isNaN(n)) return '₹0'; const num = Number(n); if (num >= 100000) return '₹' + (num/100000).toFixed(2) + 'L'; if (num >= 1000) return '₹' + (num/1000).toFixed(1) + 'k'; return '₹' + num.toLocaleString('en-IN', { maximumFractionDigits: 0 }); }
+function getInitials(name) { if (!name) return '?'; return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase(); }
+function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
+function todayStr() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function daysAgoStr(n) { const d = new Date(); d.setDate(d.getDate() - n); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+
+function showToast(msg, type) {
+  try {
+    const t = document.getElementById('toast');
+    if (!t) return alert(msg);
+    const icon = type === 'success' ? '✓' : type === 'error' ? '⚠' : '💡';
+    t.innerHTML = `<span>${icon}</span><span>${esc(msg)}</span>`;
+    t.className = 'toast show ' + (type || '');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  } catch (e) { alert(msg); }
+}
+
+async function api(path, options) {
+  options = options || {};
+  options.headers = options.headers || {};
+  options.headers.apikey = CONFIG.key;
+  options.headers.Authorization = 'Bearer ' + CONFIG.key;
+  const res = await fetch(CONFIG.url + path, options);
+  const txt = await res.text();
+  if (!res.ok) throw new Error('API ' + res.status + ': ' + txt);
+  if (!txt || txt.trim() === '') return null;
+  try { return JSON.parse(txt); } catch { return txt; }
+}
+
+async function doLogin() {
+  const phone = document.getElementById('loginPhone').value.trim();
+  const errEl = document.getElementById('loginErr');
+  const btn = document.getElementById('loginBtn');
+  errEl.classList.remove('show');
+  if (phone.length !== 10) { errEl.textContent = '10 digit phone daalo'; errEl.classList.add('show'); return; }
+  btn.disabled = true; btn.innerHTML = 'Checking...';
+  try {
+    const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
+    if (!members || members.length === 0) { errEl.textContent = 'Number registered nahi'; errEl.classList.add('show'); btn.disabled = false; btn.innerHTML = 'View Leaderboard →'; return; }
+    const m = members[0];
+    if (!['admin','owner','operations','data_entry','accounts'].includes((m.role||'').toLowerCase())) {
+      errEl.textContent = 'Sirf Admin/Owner/Operations ke liye';
+      errEl.classList.add('show'); btn.disabled = false; btn.innerHTML = 'View Leaderboard →'; return;
+    }
+    state.admin = m;
+    localStorage.setItem('prajapati_admin_phone', phone);
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').classList.add('active');
+    initApp();
+  } catch (err) { errEl.textContent = 'Error: ' + err.message; errEl.classList.add('show'); btn.disabled = false; btn.innerHTML = 'View Leaderboard →'; }
+}
+
+async function autoLogin() {
+  const phone = localStorage.getItem('prajapati_admin_phone');
+  if (!phone) return;
+  try {
+    const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
+    if (!members || members.length === 0) return;
+    const m = members[0];
+    if (!['admin','owner','operations','data_entry','accounts'].includes((m.role||'').toLowerCase())) return;
+    state.admin = m;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').classList.add('active');
+    initApp();
+  } catch (e) {}
+}
+
+function initApp() {
+  setText('userAvatar', getInitials(state.admin.name));
+  setText('userName', state.admin.name.split(' ')[0]);
+  setRange('30days');
+}
+
+function setRange(key) {
+  document.querySelectorAll('.range-shortcut').forEach(b => b.classList.remove('active'));
+  const btn = document.querySelector(`.range-shortcut[data-r="${key}"]`);
+  if (btn) btn.classList.add('active');
+  
+  let from, to;
+  to = todayStr();
+  if (key === 'today') from = todayStr();
+  else if (key === '7days') from = daysAgoStr(6);
+  else if (key === '30days') from = daysAgoStr(29);
+  else if (key === 'month') {
+    const d = new Date();
+    from = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-01';
+  }
+  else if (key === 'all') { from = '2020-01-01'; }
+  
+  document.getElementById('dateFrom').value = from;
+  document.getElementById('dateTo').value = to;
+  loadData();
+}
+
+async function loadData() {
+  const from = document.getElementById('dateFrom').value;
+  const to = document.getElementById('dateTo').value;
+  if (!from || !to) return;
+  state.dateFrom = from; state.dateTo = to;
+  
+  document.getElementById('tableBody').innerHTML = '<div class="loading"><div class="spinner"></div><div style="margin-top:14px;font-weight:600;">Loading...</div></div>';
+  document.getElementById('podium').style.display = 'none';
+  
+  try {
+    // Fetch all entries in range (paginate if needed)
+    let allEntries = [];
+    let offset = 0;
+    const pageSize = 1000;
+    while (true) {
+      const batch = await api(`/rest/v1/execution_daily_log?log_date=gte.${from}&log_date=lte.${to}&select=member_phone,member_name,quantity,total_amount,log_date,media_type&order=log_date.desc&limit=${pageSize}&offset=${offset}`);
+      if (!batch || batch.length === 0) break;
+      allEntries = allEntries.concat(batch);
+      if (batch.length < pageSize) break;
+      offset += pageSize;
+      if (offset > 10000) break; // safety
+    }
+    state.entries = allEntries;
+    computeRows();
+    renderTable();
+    renderPodium();
+  } catch (err) {
+    console.error('Load error:', err);
+    document.getElementById('tableBody').innerHTML = `
+      <div class="empty-state">
+        <div class="icon">⚠️</div>
+        <div class="title">Cannot load data</div>
+        <div class="desc">${esc(err.message)}</div>
+      </div>`;
+  }
+}
+
+function computeRows() {
+  const map = {};
+  state.entries.forEach(e => {
+    const key = e.member_phone;
+    if (!map[key]) {
+      map[key] = { phone: key, name: e.member_name, entries: 0, qty: 0, amount: 0, days: new Set(), media: {} };
+    }
+    map[key].entries++;
+    map[key].qty += parseFloat(e.quantity) || 0;
+    map[key].amount += parseFloat(e.total_amount) || 0;
+    map[key].days.add(e.log_date);
+    map[key].media[e.media_type] = (map[key].media[e.media_type] || 0) + 1;
+  });
+  
+  const rows = Object.values(map).map(r => ({
+    ...r,
+    activeDays: r.days.size,
+    topMedia: Object.entries(r.media).sort((a, b) => b[1] - a[1])[0]?.[0] || '—'
+  }));
+  
+  rows.sort((a, b) => b.amount - a.amount);
+  state.rows = rows;
+  
+  setText('heroTotal', inrShort(rows.reduce((s, r) => s + r.amount, 0)));
+}
+
+function renderPodium() {
+  if (state.rows.length < 1) return;
+  const top3 = state.rows.slice(0, 3);
+  document.getElementById('podium').style.display = 'block';
+  
+  // Reorder for podium: 2nd, 1st, 3rd
+  const podiumOrder = [];
+  if (top3[1]) podiumOrder.push({ ...top3[1], rank: 2 });
+  if (top3[0]) podiumOrder.push({ ...top3[0], rank: 1 });
+  if (top3[2]) podiumOrder.push({ ...top3[2], rank: 3 });
+  
+  document.getElementById('podiumContent').innerHTML = podiumOrder.map(r => `
+    <div class="podium-card rank-${r.rank}">
+      <div class="podium-rank">${r.rank}</div>
+      <div class="podium-avatar">${getInitials(r.name)}</div>
+      <div class="podium-name">${esc(r.name)}</div>
+      <div class="podium-phone">${esc(r.phone)}</div>
+      <div class="podium-stat">${inr(r.amount)}</div>
+      <div class="podium-label">Total Earned</div>
+      <div class="podium-meta">
+        <div class="item"><div class="v">${r.entries}</div><div class="l">Entries</div></div>
+        <div class="item"><div class="v">${r.qty}</div><div class="l">Qty</div></div>
+        <div class="item"><div class="v">${r.activeDays}</div><div class="l">Days</div></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderTable() {
+  setText('rowCount', state.rows.length + ' members');
+  
+  if (state.rows.length === 0) {
+    document.getElementById('tableBody').innerHTML = `
+      <div class="empty-state">
+        <div class="icon">📭</div>
+        <div class="title">No data in this range</div>
+        <div class="desc">Try a different date range or check if entries exist.</div>
+      </div>`;
+    return;
+  }
+  
+  const maxAmt = Math.max(...state.rows.map(r => r.amount), 1);
+  
+  let html = '<div class="table-scroll"><table><thead><tr>';
+  html += '<th>Rank</th><th>Member</th><th class="num">Entries</th><th class="num">Quantity</th><th class="num">Active Days</th><th>Top Media</th><th class="num" style="min-width:180px;">Total Earned</th></tr></thead><tbody>';
+  
+  state.rows.forEach((r, i) => {
+    const rank = i + 1;
+    const barPct = (r.amount / maxAmt) * 100;
+    html += `
+      <tr>
+        <td><span class="rank-cell ${rank <= 3 ? 'top' : ''}">${rank}</span></td>
+        <td>
+          <div class="member-cell">
+            <div class="avatar">${getInitials(r.name)}</div>
+            <div class="info">
+              <div class="name">${esc(r.name)}</div>
+              <div class="phone">${esc(r.phone)}</div>
+            </div>
+          </div>
+        </td>
+        <td class="num bold">${r.entries}</td>
+        <td class="num bold">${r.qty}</td>
+        <td class="num">${r.activeDays}</td>
+        <td><span style="background:var(--line-soft);padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;">${esc(r.topMedia)}</span></td>
+        <td class="num gold">
+          <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
+            <div>${inr(r.amount)}</div>
+            <div class="perf-bar"><div class="perf-bar-fill" style="width:${barPct}%;"></div></div>
+          </div>
+        </td>
+      </tr>`;
+  });
+  
+  html += '</tbody></table></div>';
+  document.getElementById('tableBody').innerHTML = html;
+}
+
+function exportCSV() {
+  if (state.rows.length === 0) { showToast('Nothing to export', 'error'); return; }
+  const csv = [['Rank','Name','Phone','Entries','Quantity','Active Days','Top Media','Total Earned'].join(',')];
+  state.rows.forEach((r, i) => {
+    csv.push([i+1, `"${r.name}"`, r.phone, r.entries, r.qty, r.activeDays, r.topMedia, r.amount].join(','));
+  });
+  const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `team_${state.dateFrom}_to_${state.dateTo}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✓ CSV downloaded', 'success');
+}
+
+console.log('%c🏆 Team Wise Report v1.0', 'background:#8B5CF6;color:white;padding:6px 12px;border-radius:6px;font-weight:bold;font-size:13px;');
+
+document.addEventListener('DOMContentLoaded', () => {
+  autoLogin();
+  document.getElementById('loginPhone').addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
+  document.getElementById('loginPhone').addEventListener('input', e => { e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10); });
+});
+</script>
+</body>
+</html>
