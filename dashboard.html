@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Execution Dashboard — Prajapati</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+  * { -webkit-font-smoothing: antialiased; margin: 0; padding: 0; box-sizing: border-box; }
+  
+  :root {
+    --ink-900: #050818;
+    --ink-800: #0B1130;
+    --ink-700: #131A3F;
+    --ink-600: #1c2654;
+    --canvas: #FAFBFF;
+    --paper: #FFFFFF;
+    --line: #E8EAF4;
+    --line-soft: #F0F2F8;
+    --text: #0F172A;
+    --text-mid: #475569;
+    --text-dim: #94A3B8;
+    --teal: #00D4D2;
+    --teal-glow: #5EEAE8;
+    --gold: #F5B83D;
+    --rose: #FF5470;
+    --mint: #34D399;
+    --violet: #8B5CF6;
+    --blue: #3B82F6;
+  }
+  
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    background: var(--canvas);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  
+  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+  
+  /* ════ LOGIN ════ */
+  .login-bg {
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--ink-900), var(--ink-800), var(--ink-700));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .login-bg::before {
+    content: '';
+    position: absolute;
+    top: -200px; right: -200px;
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0, 212, 210, 0.15), transparent 70%);
+  }
+  .login-card {
+    background: rgba(255,255,255,0.98);
+    border-radius: 20px;
+    padding: 36px 32px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+    position: relative;
+    animation: loginIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes loginIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .login-logo {
+    width: 56px; height: 56px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--teal), var(--teal-glow));
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ink-900);
+    font-weight: 800;
+    font-size: 24px;
+    margin-bottom: 22px;
+    box-shadow: 0 8px 30px rgba(0, 212, 210, 0.4);
+  }
+  .login-card h1 { font-size: 22px; font-weight: 800; color: var(--ink-900); letter-spacing: -0.02em; margin-bottom: 4px; }
+  .login-card .sub { color: var(--text-mid); font-size: 13px; margin-bottom: 26px; }
+  .field-group { margin-bottom: 16px; }
+  .field-group label { display: block; font-size: 11px; font-weight: 700; color: var(--text-mid); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 7px; }
+  .input {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 14px;
+    font-family: inherit;
+    border: 1.5px solid var(--line);
+    border-radius: 10px;
+    background: var(--paper);
+    transition: all 0.15s;
+  }
+  .input:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 4px rgba(0, 212, 210, 0.12); }
+  .input.mono { font-family: 'JetBrains Mono', monospace; text-align: center; letter-spacing: 0.05em; font-weight: 600; }
+  .err-banner { background: #fef2f2; color: #991b1b; padding: 10px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; margin-top: 12px; display: none; }
+  .err-banner.show { display: block; }
+  
+  /* ════ BUTTONS ════ */
+  .btn {
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: inherit;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    transition: all 0.15s;
+  }
+  .btn-primary { background: var(--ink-900); color: white; }
+  .btn-primary:hover { background: var(--ink-800); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(5, 8, 24, 0.3); }
+  .btn-teal { background: linear-gradient(135deg, var(--teal), var(--teal-glow)); color: var(--ink-900); box-shadow: 0 4px 14px rgba(0, 212, 210, 0.3); }
+  .btn-teal:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(0, 212, 210, 0.5); }
+  .btn-ghost { background: var(--paper); color: var(--ink-700); border: 1px solid var(--line); }
+  .btn-ghost:hover { background: var(--line-soft); }
+  .btn-full { width: 100%; padding: 13px 18px; font-size: 14px; }
+  
+  /* ════ APP LAYOUT ════ */
+  .app { display: none; }
+  .app.active { display: block; }
+  
+  /* Sidebar */
+  .sidebar {
+    width: 252px;
+    background: linear-gradient(180deg, var(--ink-900), var(--ink-800));
+    height: 100vh;
+    position: fixed;
+    left: 0; top: 0;
+    padding: 22px 16px;
+    z-index: 50;
+    border-right: 1px solid rgba(255,255,255,0.04);
+  }
+  .brand { display: flex; align-items: center; gap: 11px; padding: 0 8px 22px; border-bottom: 1px solid rgba(255,255,255,0.06); margin-bottom: 18px; }
+  .brand-logo {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--teal), var(--teal-glow));
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ink-900);
+    font-weight: 800;
+    font-size: 16px;
+    box-shadow: 0 4px 20px rgba(0, 212, 210, 0.4);
+  }
+  .brand-text { color: white; }
+  .brand-text .name { font-weight: 800; font-size: 14px; letter-spacing: -0.01em; }
+  .brand-text .sub { color: var(--text-dim); font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; margin-top: 2px; }
+  
+  .nav-section { margin-bottom: 18px; }
+  .nav-section-title { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.35); padding: 0 12px; margin-bottom: 6px; }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 9px 12px;
+    color: rgba(255,255,255,0.7);
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-bottom: 2px;
+    position: relative;
+    text-decoration: none;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.05); color: white; }
+  .nav-item.active { background: linear-gradient(90deg, rgba(0,212,210,0.18), rgba(0,212,210,0.05)); color: var(--teal); }
+  .nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: -16px; top: 8px; bottom: 8px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--teal);
+    box-shadow: 0 0 12px var(--teal);
+  }
+  .nav-item .icon-svg { width: 18px; height: 18px; flex-shrink: 0; opacity: 0.85; }
+  
+  .sidebar-footer { position: absolute; bottom: 16px; left: 16px; right: 16px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 12px; }
+  .sidebar-footer .user { display: flex; align-items: center; gap: 10px; }
+  .sidebar-footer .avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--gold), #ff9a00); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; color: var(--ink-900); }
+  .sidebar-footer .info { flex: 1; min-width: 0; }
+  .sidebar-footer .name { color: white; font-size: 12.5px; font-weight: 700; }
+  .sidebar-footer .role { color: var(--text-dim); font-size: 10.5px; }
+  .sidebar-footer button { background: transparent; border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); width: 28px; height: 28px; border-radius: 7px; cursor: pointer; font-size: 13px; }
+  .sidebar-footer button:hover { color: white; border-color: rgba(255,255,255,0.2); }
+  
+  /* Main */
+  .main { margin-left: 252px; min-height: 100vh; }
+  
+  /* Topbar */
+  .topbar {
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--line);
+    padding: 14px 32px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+  }
+  .topbar-title { font-size: 16px; font-weight: 800; color: var(--ink-900); letter-spacing: -0.01em; }
+  .topbar-actions { display: flex; gap: 10px; align-items: center; margin-left: auto; }
+  .live-pill { display: inline-flex; align-items: center; gap: 6px; background: rgba(52, 211, 153, 0.1); color: var(--mint); padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+  .live-pill .dot { width: 6px; height: 6px; background: var(--mint); border-radius: 50%; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:0.5;transform:scale(1.4);} }
+  
+  /* Content */
+  .content { padding: 28px 32px; max-width: 1640px; }
+  
+  /* Page header */
+  .page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; animation: slideDown 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+  @keyframes slideDown { from{opacity:0;transform:translateY(-12px);} to{opacity:1;transform:translateY(0);} }
+  .page-title { font-size: 28px; font-weight: 800; letter-spacing: -0.025em; color: var(--ink-900); display: flex; align-items: center; gap: 12px; }
+  .page-subtitle { color: var(--text-mid); font-size: 13.5px; margin-top: 4px; font-weight: 500; }
+  .page-actions { display: flex; gap: 10px; align-items: center; }
+  
+  /* Stats Grid */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .stat-card {
+    background: var(--paper);
+    border-radius: 16px;
+    padding: 20px 22px;
+    border: 1px solid var(--line);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+  .stat-card:nth-child(1) { animation-delay: 0.05s; }
+  .stat-card:nth-child(2) { animation-delay: 0.1s; }
+  .stat-card:nth-child(3) { animation-delay: 0.15s; }
+  .stat-card:nth-child(4) { animation-delay: 0.2s; }
+  @keyframes slideUp { from{opacity:0;transform:translateY(16px);} to{opacity:1;transform:translateY(0);} }
+  .stat-card:hover { transform: translateY(-2px); box-shadow: 0 12px 36px rgba(15, 23, 42, 0.08); border-color: rgba(0, 212, 210, 0.3); }
+  .stat-card::after { content: ''; position: absolute; top: -50%; right: -50%; width: 200%; height: 200%; background: radial-gradient(circle at center, rgba(0, 212, 210, 0.04), transparent 50%); pointer-events: none; }
+  
+  .stat-card .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .stat-card .label { font-size: 11px; font-weight: 700; color: var(--text-mid); text-transform: uppercase; letter-spacing: 0.06em; }
+  .stat-card .icon-box { width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .stat-card.green .icon-box { background: rgba(52, 211, 153, 0.12); color: var(--mint); }
+  .stat-card.teal .icon-box { background: rgba(0, 212, 210, 0.12); color: var(--teal); }
+  .stat-card.gold .icon-box { background: rgba(245, 184, 61, 0.15); color: var(--gold); }
+  .stat-card.rose .icon-box { background: rgba(255, 84, 112, 0.12); color: var(--rose); }
+  
+  .stat-card .value {
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--ink-900);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-card .delta { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; margin-top: 8px; }
+  .stat-card .delta.up { color: var(--mint); }
+  .stat-card .delta.down { color: var(--rose); }
+  .stat-card .delta.dim { color: var(--text-dim); }
+  
+  /* Charts Row */
+  .charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 24px; }
+  
+  .panel {
+    background: var(--paper);
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    overflow: hidden;
+    animation: slideUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.25s backwards;
+  }
+  .panel-header { padding: 18px 22px; border-bottom: 1px solid var(--line-soft); display: flex; justify-content: space-between; align-items: center; }
+  .panel-title { font-size: 14.5px; font-weight: 700; color: var(--ink-900); letter-spacing: -0.01em; }
+  .panel-subtitle { font-size: 11.5px; color: var(--text-mid); margin-top: 2px; font-weight: 500; }
+  .panel-actions { display: flex; gap: 6px; align-items: center; }
+  .filter-tabs { display: flex; background: var(--line-soft); border-radius: 8px; padding: 3px; gap: 2px; }
+  .filter-tab { padding: 5px 11px; font-size: 11.5px; font-weight: 700; color: var(--text-mid); border-radius: 6px; cursor: pointer; border: none; background: transparent; transition: all 0.15s; font-family: inherit; }
+  .filter-tab.active { background: var(--paper); color: var(--ink-900); box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .panel-body { padding: 22px; }
+  
+  /* Performers */
+  .performer { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line-soft); }
+  .performer:last-child { border-bottom: none; }
+  .performer-rank { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; color: var(--ink-900); background: var(--line-soft); }
+  .performer-rank.gold { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: white; }
+  .performer-rank.silver { background: linear-gradient(135deg, #d4d4d8, #a1a1aa); color: white; }
+  .performer-rank.bronze { background: linear-gradient(135deg, #f59e0b, #b45309); color: white; }
+  .performer-info { flex: 1; min-width: 0; }
+  .performer-name { font-weight: 700; font-size: 13.5px; color: var(--ink-900); }
+  .performer-sub { font-size: 11px; color: var(--text-mid); margin-top: 1px; }
+  .performer-value { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 14px; color: var(--ink-900); font-variant-numeric: tabular-nums; text-align: right; }
+  .performer-value .small { display: block; font-size: 10px; color: var(--text-mid); font-weight: 500; margin-top: 1px; }
+  
+  /* Payment row */
+  .payment-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; margin-bottom: 24px; }
+  
+  .receipt-card {
+    background: linear-gradient(135deg, var(--ink-900), var(--ink-700));
+    border-radius: 16px;
+    padding: 24px;
+    color: white;
+    position: relative;
+    overflow: hidden;
+    animation: slideUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.45s backwards;
+  }
+  .receipt-card::before { content: ''; position: absolute; top: -100px; right: -100px; width: 300px; height: 300px; background: radial-gradient(circle, rgba(0, 212, 210, 0.15), transparent 60%); pointer-events: none; }
+  .receipt-card .head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; position: relative; }
+  .receipt-card .title { font-size: 11px; color: rgba(255,255,255,0.6); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+  .receipt-card .big { font-size: 40px; font-weight: 800; letter-spacing: -0.03em; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .receipt-card .sub { color: rgba(255,255,255,0.55); font-size: 12.5px; margin-top: 4px; font-weight: 500; }
+  .receipt-card .ring { width: 60px; height: 60px; border-radius: 50%; background: rgba(0, 212, 210, 0.15); border: 1px solid rgba(0, 212, 210, 0.3); display: flex; align-items: center; justify-content: center; color: var(--teal); font-size: 22px; }
+  .receipt-card .progress { height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; margin-top: 18px; position: relative; }
+  .receipt-card .progress-fill { height: 100%; background: linear-gradient(90deg, var(--teal), var(--teal-glow)); border-radius: 4px; box-shadow: 0 0 12px rgba(0, 212, 210, 0.6); transition: width 1.5s cubic-bezier(0.16, 1, 0.3, 1); }
+  .receipt-card .progress-labels { display: flex; justify-content: space-between; margin-top: 10px; font-size: 11.5px; color: rgba(255,255,255,0.7); font-weight: 500; }
+  .receipt-card .progress-labels .strong { color: white; font-weight: 700; }
+  .receipt-card .actions { display: flex; gap: 8px; margin-top: 20px; position: relative; }
+  .receipt-card .actions button { flex: 1; padding: 10px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: white; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+  .receipt-card .actions button:hover { background: rgba(255,255,255,0.12); border-color: rgba(0, 212, 210, 0.4); }
+  .receipt-card .actions button.primary { background: var(--teal); color: var(--ink-900); border-color: var(--teal); }
+  
+  /* Activity Feed */
+  .activity-feed { padding: 4px 22px 22px; max-height: 380px; overflow-y: auto; }
+  .activity-item { display: flex; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line-soft); }
+  .activity-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .activity-icon { width: 30px; height: 30px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; }
+  .activity-icon.green { background: rgba(52, 211, 153, 0.12); color: var(--mint); }
+  .activity-icon.teal { background: rgba(0, 212, 210, 0.12); color: var(--teal); }
+  .activity-icon.gold { background: rgba(245, 184, 61, 0.15); color: var(--gold); }
+  .activity-icon.rose { background: rgba(255, 84, 112, 0.12); color: var(--rose); }
+  .activity-content { flex: 1; min-width: 0; }
+  .activity-title { font-size: 13px; color: var(--ink-900); line-height: 1.4; }
+  .activity-title strong { font-weight: 700; }
+  .activity-time { font-size: 11px; color: var(--text-dim); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+  
+  /* Data Table */
+  .data-panel { margin-bottom: 24px; animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.35s backwards; }
+  
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    background: var(--line-soft);
+    padding: 11px 18px;
+    text-align: left;
+    font-size: 10.5px;
+    font-weight: 800;
+    color: var(--text-mid);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  thead th:first-child { padding-left: 22px; }
+  thead th:last-child { padding-right: 22px; }
+  thead th.right { text-align: right; }
+  
+  tbody td { padding: 14px 18px; border-bottom: 1px solid var(--line-soft); font-size: 13px; color: var(--text); vertical-align: middle; }
+  tbody td:first-child { padding-left: 22px; }
+  tbody td:last-child { padding-right: 22px; }
+  tbody td.right { text-align: right; }
+  tbody tr { transition: background 0.15s; }
+  tbody tr:hover { background: rgba(0, 212, 210, 0.03); }
+  tbody tr:last-child td { border-bottom: none; }
+  
+  .cell-strong { font-weight: 700; color: var(--ink-900); }
+  .cell-money { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--ink-900); font-variant-numeric: tabular-nums; }
+  
+  .tag { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 16px; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; }
+  .tag-hood { background: rgba(59, 130, 246, 0.1); color: var(--blue); }
+  .tag-sticker { background: rgba(245, 184, 61, 0.15); color: #b45309; }
+  .tag-noparking { background: rgba(139, 92, 246, 0.1); color: var(--violet); }
+  .tag-flex { background: rgba(52, 211, 153, 0.12); color: var(--mint); }
+  
+  .avatar-mini { display: inline-flex; align-items: center; gap: 9px; }
+  .avatar-mini .ball { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, var(--ink-700), var(--ink-600)); display: flex; align-items: center; justify-content: center; color: white; font-weight: 800; font-size: 11px; text-transform: uppercase; }
+  
+  /* Empty / Loading states */
+  .empty {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--text-mid);
+  }
+  .empty .icon-big { width: 64px; height: 64px; border-radius: 16px; background: linear-gradient(135deg, rgba(0,212,210,0.1), rgba(0,212,210,0.02)); color: var(--teal); display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 16px; }
+  
+  .skeleton {
+    background: linear-gradient(90deg, var(--line-soft) 0%, var(--line) 50%, var(--line-soft) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 6px;
+  }
+  @keyframes shimmer { 0%{background-position:200% 0;} 100%{background-position:-200% 0;} }
+  
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--ink-900); color: white; padding: 14px 20px; border-radius: 11px; font-size: 13px; font-weight: 700; box-shadow: 0 16px 40px rgba(0,0,0,0.3); z-index: 9999; opacity: 0; transform: translateY(20px); transition: all 0.3s; display: flex; align-items: center; gap: 10px; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.success { background: var(--mint); }
+  .toast.error { background: var(--rose); }
+  
+  @media (max-width: 1200px) { .stats-row { grid-template-columns: repeat(2, 1fr); } .charts-row { grid-template-columns: 1fr; } .payment-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 768px) { .sidebar { display: none; } .main { margin-left: 0; } .content { padding: 16px; } }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-bg" id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">P</div>
+    <h1>Execution Dashboard</h1>
+    <p class="sub">Admin/Owner access</p>
+    
+    <div class="field-group">
+      <label>Admin Phone</label>
+      <input type="tel" id="loginPhone" class="input mono" placeholder="10-digit phone" maxlength="10" pattern="[0-9]{10}">
+    </div>
+    
+    <button class="btn btn-teal btn-full" onclick="doLogin()" id="loginBtn">
+      Access Dashboard →
+    </button>
+    
+    <div class="err-banner" id="loginErr"></div>
+    
+    <div style="margin-top:24px; padding-top:20px; border-top:1px solid var(--line); text-align:center; font-size:11px; color:var(--text-dim);">
+      Prajapati Advertising · Execution Management Suite
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="mainApp">
+  
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">P</div>
+      <div class="brand-text">
+        <div class="name">Prajapati</div>
+        <div class="sub">Execution Suite</div>
+      </div>
+    </div>
+    
+    <div class="nav-section">
+      <div class="nav-section-title">Workspace</div>
+      <div class="nav-item active">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Dashboard
+      </div>
+      <a class="nav-item" href="execution-entry.html">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        Daily Entry
+      </a>
+      <a class="nav-item" href="rates-master.html">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 100 4h4a2 2 0 110 4H8M12 18V6"/></svg>
+        Rates Master
+      </a>
+    </div>
+    
+    <div class="nav-section">
+      <div class="nav-section-title">Reports</div>
+      <a class="nav-item" href="#" onclick="comingSoon('Daily Report')">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/></svg>
+        Daily Report
+      </a>
+      <a class="nav-item" href="#" onclick="comingSoon('Team Report')">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        Team-wise
+      </a>
+      <a class="nav-item" href="#" onclick="comingSoon('Campaign Report')">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+        Campaign-wise
+      </a>
+    </div>
+    
+    <div class="nav-section">
+      <div class="nav-section-title">Finance</div>
+      <a class="nav-item" href="#" onclick="comingSoon('Payments')">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/></svg>
+        Payments
+      </a>
+      <a class="nav-item" href="#" onclick="comingSoon('Outstanding')">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Outstanding
+      </a>
+    </div>
+    
+    <div class="sidebar-footer">
+      <div class="user">
+        <div class="avatar" id="userAvatar">?</div>
+        <div class="info">
+          <div class="name" id="userName">—</div>
+          <div class="role" id="userRole">—</div>
+        </div>
+        <button onclick="doLogout()" title="Logout">↩</button>
+      </div>
+    </div>
+  </aside>
+  
+  <main class="main">
+    
+    <header class="topbar">
+      <div class="topbar-title">Execution Dashboard</div>
+      <span class="live-pill"><span class="dot"></span>LIVE</span>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost" onclick="window.location.reload()">↻ Refresh</button>
+        <button class="btn btn-teal" onclick="window.location.href='execution-entry.html'">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M5 12h14"/></svg>
+          New Entry
+        </button>
+      </div>
+    </header>
+    
+    <div class="content">
+      
+      <!-- Page Header -->
+      <div class="page-header">
+        <div>
+          <h1 class="page-title" id="welcomeText">Dashboard</h1>
+          <p class="page-subtitle" id="dateSubtitle">Loading...</p>
+        </div>
+      </div>
+      
+      <!-- Stats Row -->
+      <div class="stats-row">
+        <div class="stat-card teal">
+          <div class="header">
+            <span class="label">Today's Quantity</span>
+            <div class="icon-box">📦</div>
+          </div>
+          <div class="value" id="statQty">—</div>
+          <div class="delta dim" id="statQtyDelta">vs yesterday</div>
+        </div>
+        
+        <div class="stat-card green">
+          <div class="header">
+            <span class="label">Today's Earnings</span>
+            <div class="icon-box">💰</div>
+          </div>
+          <div class="value" id="statEarnings">—</div>
+          <div class="delta dim" id="statEarningsDelta">vs yesterday</div>
+        </div>
+        
+        <div class="stat-card gold">
+          <div class="header">
+            <span class="label">Active Members</span>
+            <div class="icon-box">👥</div>
+          </div>
+          <div class="value" id="statMembers">—</div>
+          <div class="delta dim" id="statMembersDelta">working today</div>
+        </div>
+        
+        <div class="stat-card rose">
+          <div class="header">
+            <span class="label">Outstanding Payments</span>
+            <div class="icon-box">⚠️</div>
+          </div>
+          <div class="value" id="statOutstanding">—</div>
+          <div class="delta dim" id="statOutstandingDelta">pending</div>
+        </div>
+      </div>
+      
+      <!-- Charts Row -->
+      <div class="charts-row">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Performance Trend</div>
+              <div class="panel-subtitle">Quantity captured · Last 7 days</div>
+            </div>
+            <div class="filter-tabs">
+              <button class="filter-tab active" onclick="setTrendRange('7d')">7D</button>
+              <button class="filter-tab" onclick="setTrendRange('30d')">30D</button>
+              <button class="filter-tab" onclick="setTrendRange('90d')">90D</button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <canvas id="mainChart" height="240"></canvas>
+          </div>
+        </div>
+        
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Top Performers</div>
+              <div class="panel-subtitle" id="performersSubtitle">May 2026</div>
+            </div>
+            <button class="filter-tab active">By Qty</button>
+          </div>
+          <div class="panel-body" style="padding-top: 12px;" id="performersList">
+            <div class="empty">
+              <div class="skeleton" style="height:60px;margin-bottom:8px;"></div>
+              <div class="skeleton" style="height:60px;margin-bottom:8px;"></div>
+              <div class="skeleton" style="height:60px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Payment Row -->
+      <div class="payment-grid">
+        <div class="receipt-card">
+          <div class="head">
+            <div>
+              <div class="title">Total Outstanding</div>
+              <div class="big" id="receiptOutstanding">—</div>
+              <div class="sub" id="receiptSub">Loading...</div>
+            </div>
+            <div class="ring">⚠</div>
+          </div>
+          
+          <div class="progress">
+            <div class="progress-fill" id="progressFill" style="width: 0%;"></div>
+          </div>
+          <div class="progress-labels">
+            <span>Paid <span class="strong" id="receiptPaid">—</span></span>
+            <span>Earned <span class="strong" id="receiptEarned">—</span></span>
+          </div>
+          
+          <div class="actions">
+            <button onclick="comingSoon('Outstanding View')">View Outstanding</button>
+            <button class="primary" onclick="comingSoon('Pay Member')">💸 Pay Member</button>
+          </div>
+        </div>
+        
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Recent Activity</div>
+              <div class="panel-subtitle">Last entries logged</div>
+            </div>
+          </div>
+          <div class="activity-feed" id="activityFeed">
+            <div class="empty"><div class="skeleton" style="height:50px;margin-bottom:8px;"></div></div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Recent Entries Table -->
+      <div class="panel data-panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">Recent Entries</div>
+            <div class="panel-subtitle">Last 10 execution logs</div>
+          </div>
+        </div>
+        
+        <div id="entriesTable">
+          <div class="empty">
+            <div class="skeleton" style="height:50px;margin-bottom:6px;"></div>
+            <div class="skeleton" style="height:50px;margin-bottom:6px;"></div>
+            <div class="skeleton" style="height:50px;"></div>
+          </div>
+        </div>
+      </div>
+      
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+// ═══════════════════════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════════════════════
+const CONFIG = {
+  supabaseUrl: 'https://fpbktcgtspqsqpaytslv.supabase.co',
+  supabaseKey: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j'
+};
+
+const MEDIA_LABELS = {
+  auto_hood: 'Hood',
+  sticker: 'Sticker',
+  no_parking: 'No Park',
+  flex: 'Flex',
+  wall_wrap: 'Wall Wrap',
+  other: 'Other'
+};
+
+const MEDIA_TAG_CLASS = {
+  auto_hood: 'tag-hood',
+  sticker: 'tag-sticker',
+  no_parking: 'tag-noparking',
+  flex: 'tag-flex',
+  wall_wrap: 'tag-flex',
+  other: 'tag-flex'
+};
+
+const state = {
+  admin: null,
+  chart: null
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════════════════════
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function inr(n) {
+  if (!n || isNaN(n)) return '₹0';
+  const num = Number(n);
+  if (num >= 100000) return '₹' + (num / 100000).toFixed(2) + 'L';
+  return '₹' + num.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+}
+
+function inrFull(n) {
+  if (!n || isNaN(n)) return '₹0';
+  return '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+}
+
+function relativeTime(date) {
+  const d = new Date(date);
+  const diff = Date.now() - d.getTime();
+  const sec = Math.floor(diff / 1000);
+  const min = Math.floor(sec / 60);
+  const hr = Math.floor(min / 60);
+  const day = Math.floor(hr / 24);
+  
+  if (sec < 60) return 'just now';
+  if (min < 60) return min + ' min ago';
+  if (hr < 24) return hr + ' hour' + (hr === 1 ? '' : 's') + ' ago';
+  if (day < 7) return day + ' day' + (day === 1 ? '' : 's') + ' ago';
+  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+}
+
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function yesterdayStr() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function getInitials(name) {
+  if (!name) return '?';
+  return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+}
+
+function getMemberColor(name) {
+  if (!name) return '';
+  const colors = ['', 'teal', 'gold', 'violet', 'rose'];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = ((hash << 5) - hash) + name.charCodeAt(i);
+  return colors[Math.abs(hash) % colors.length];
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  const icon = type === 'success' ? '✓' : type === 'error' ? '⚠' : '💡';
+  t.innerHTML = '<span>' + icon + '</span><span>' + esc(msg) + '</span>';
+  t.className = 'toast show ' + (type || '');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+async function api(path, options) {
+  options = options || {};
+  options.headers = options.headers || {};
+  options.headers.apikey = CONFIG.supabaseKey;
+  options.headers.Authorization = 'Bearer ' + CONFIG.supabaseKey;
+  const res = await fetch(CONFIG.supabaseUrl + path, options);
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error('API ' + res.status + ': ' + txt);
+  }
+  return res.json();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LOGIN
+// ═══════════════════════════════════════════════════════════════
+async function doLogin() {
+  const phone = document.getElementById('loginPhone').value.trim();
+  const errEl = document.getElementById('loginErr');
+  const btn = document.getElementById('loginBtn');
+  errEl.classList.remove('show');
+  
+  if (phone.length !== 10 || !/^[0-9]{10}$/.test(phone)) {
+    errEl.textContent = 'Sahi 10 digit phone daalo';
+    errEl.classList.add('show');
+    return;
+  }
+  
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Checking...';
+  
+  try {
+    const members = await api('/rest/v1/trial_team_members?phone=eq.' + encodeURIComponent(phone) + '&active=eq.true&select=*');
+    if (!members || members.length === 0) {
+      errEl.textContent = 'Number registered nahi';
+      errEl.classList.add('show');
+      btn.disabled = false;
+      btn.innerHTML = 'Access Dashboard →';
+      return;
+    }
+    const m = members[0];
+    const role = (m.role || '').toLowerCase();
+    if (role !== 'admin' && role !== 'owner') {
+      errEl.textContent = 'Sirf Admin/Owner ke liye';
+      errEl.classList.add('show');
+      btn.disabled = false;
+      btn.innerHTML = 'Access Dashboard →';
+      return;
+    }
+    
+    state.admin = m;
+    localStorage.setItem('prajapati_admin_phone', phone);
+    
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').classList.add('active');
+    initApp();
+  } catch (err) {
+    errEl.textContent = 'Login error: ' + err.message;
+    errEl.classList.add('show');
+    btn.disabled = false;
+    btn.innerHTML = 'Access Dashboard →';
+  }
+}
+
+async function autoLogin() {
+  const phone = localStorage.getItem('prajapati_admin_phone');
+  if (!phone) return false;
+  try {
+    const members = await api('/rest/v1/trial_team_members?phone=eq.' + encodeURIComponent(phone) + '&active=eq.true&select=*');
+    if (!members || members.length === 0) return false;
+    const m = members[0];
+    if (!['admin', 'owner'].includes((m.role || '').toLowerCase())) return false;
+    state.admin = m;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').classList.add('active');
+    initApp();
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function doLogout() {
+  if (!confirm('Logout?')) return;
+  localStorage.removeItem('prajapati_admin_phone');
+  state.admin = null;
+  document.getElementById('mainApp').classList.remove('active');
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginPhone').value = '';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  APP INIT
+// ═══════════════════════════════════════════════════════════════
+async function initApp() {
+  // Set user
+  document.getElementById('userAvatar').textContent = getInitials(state.admin.name);
+  document.getElementById('userName').textContent = state.admin.name;
+  document.getElementById('userRole').textContent = (state.admin.role || '').toUpperCase();
+  
+  // Welcome message
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  document.getElementById('welcomeText').innerHTML = greeting + ', ' + esc(state.admin.name.split(' ')[0]) + ' <span class="live-pill" style="font-size:12px;"><span class="dot"></span>LIVE</span>';
+  document.getElementById('dateSubtitle').textContent = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  
+  // Load all data in parallel
+  await Promise.all([
+    loadStats(),
+    loadTrendChart('7d'),
+    loadTopPerformers(),
+    loadOutstanding(),
+    loadRecentActivity(),
+    loadRecentEntries()
+  ]);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LOAD: STATS
+// ═══════════════════════════════════════════════════════════════
+async function loadStats() {
+  try {
+    const today = todayStr();
+    const yesterday = yesterdayStr();
+    
+    // Today's totals
+    const todayLogs = await api('/rest/v1/execution_daily_log?log_date=eq.' + today + '&deleted_at=is.null&select=quantity,total_amount,member_phone');
+    
+    const todayQty = todayLogs.reduce((s, l) => s + (Number(l.quantity) || 0), 0);
+    const todayAmt = todayLogs.reduce((s, l) => s + (Number(l.total_amount) || 0), 0);
+    const todayMembers = new Set(todayLogs.map(l => l.member_phone)).size;
+    
+    // Yesterday's totals
+    const yestLogs = await api('/rest/v1/execution_daily_log?log_date=eq.' + yesterday + '&deleted_at=is.null&select=quantity,total_amount');
+    const yestQty = yestLogs.reduce((s, l) => s + (Number(l.quantity) || 0), 0);
+    const yestAmt = yestLogs.reduce((s, l) => s + (Number(l.total_amount) || 0), 0);
+    
+    // Update UI
+    document.getElementById('statQty').textContent = todayQty.toLocaleString('en-IN');
+    document.getElementById('statEarnings').textContent = inrFull(todayAmt);
+    document.getElementById('statMembers').textContent = todayMembers;
+    
+    // Delta calculations
+    const qtyDelta = yestQty > 0 ? ((todayQty - yestQty) / yestQty * 100).toFixed(1) : 0;
+    const amtDelta = yestAmt > 0 ? ((todayAmt - yestAmt) / yestAmt * 100).toFixed(1) : 0;
+    
+    setDelta('statQtyDelta', qtyDelta, 'vs yesterday');
+    setDelta('statEarningsDelta', amtDelta, 'vs yesterday');
+    
+    document.getElementById('statMembersDelta').textContent = todayMembers > 0 ? 'working today' : 'no work today';
+  } catch (err) {
+    console.error('Stats load error:', err);
+    document.getElementById('statQty').textContent = '0';
+    document.getElementById('statEarnings').textContent = '₹0';
+    document.getElementById('statMembers').textContent = '0';
+  }
+}
+
+function setDelta(id, percent, label) {
+  const el = document.getElementById(id);
+  const p = parseFloat(percent);
+  if (isNaN(p) || p === 0) {
+    el.className = 'delta dim';
+    el.innerHTML = label;
+    return;
+  }
+  if (p > 0) {
+    el.className = 'delta up';
+    el.innerHTML = `↑ +${p}% <span style="color:var(--text-dim);font-weight:500;margin-left:4px;">${label}</span>`;
+  } else {
+    el.className = 'delta down';
+    el.innerHTML = `↓ ${p}% <span style="color:var(--text-dim);font-weight:500;margin-left:4px;">${label}</span>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LOAD: TREND CHART
+// ═══════════════════════════════════════════════════════════════
+async function loadTrendChart(range) {
+  try {
+    const days = range === '30d' ? 30 : range === '90d' ? 90 : 7;
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - (days - 1));
+    const startStr = startDate.toISOString().split('T')[0];
+    
+    const logs = await api('/rest/v1/execution_daily_log?log_date=gte.' + startStr + '&deleted_at=is.null&select=log_date,quantity,total_amount&order=log_date.asc');
+    
+    // Group by date
+    const byDate = {};
+    for (let i = 0; i < days; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - (days - 1 - i));
+      const key = d.toISOString().split('T')[0];
+      byDate[key] = { qty: 0, amt: 0 };
+    }
+    
+    logs.forEach(l => {
+      if (byDate[l.log_date]) {
+        byDate[l.log_date].qty += Number(l.quantity) || 0;
+        byDate[l.log_date].amt += Number(l.total_amount) || 0;
+      }
+    });
+    
+    const labels = Object.keys(byDate).map(d => {
+      const dt = new Date(d);
+      return days <= 7 ? dt.toLocaleDateString('en', { weekday: 'short' }) : dt.toLocaleDateString('en', { day: 'numeric', month: 'short' });
+    });
+    const dataQty = Object.values(byDate).map(v => v.qty);
+    
+    if (state.chart) state.chart.destroy();
+    
+    const ctx = document.getElementById('mainChart').getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, 240);
+    gradient.addColorStop(0, 'rgba(0, 212, 210, 0.25)');
+    gradient.addColorStop(1, 'rgba(0, 212, 210, 0)');
+    
+    state.chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Quantity',
+          data: dataQty,
+          borderColor: '#00D4D2',
+          backgroundColor: gradient,
+          fill: true,
+          tension: 0.4,
+          borderWidth: 2.5,
+          pointBackgroundColor: '#00D4D2',
+          pointBorderColor: 'white',
+          pointBorderWidth: 2,
+          pointRadius: 4,
+          pointHoverRadius: 7
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#0B1130',
+            padding: 12,
+            titleFont: { family: 'Plus Jakarta Sans', size: 12, weight: '700' },
+            bodyFont: { family: 'JetBrains Mono', size: 12 },
+            cornerRadius: 8,
+            displayColors: false,
+            callbacks: { label: ctx => ' ' + ctx.parsed.y + ' pcs' }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { family: 'Plus Jakarta Sans', size: 11, weight: '600' }, color: '#94A3B8' } },
+          y: { grid: { color: '#F0F2F8' }, ticks: { font: { family: 'JetBrains Mono', size: 11 }, color: '#94A3B8' }, beginAtZero: true }
+        },
+        interaction: { mode: 'index', intersect: false },
+        animation: { duration: 1200, easing: 'easeOutQuart' }
+      }
+    });
+  } catch (err) {
+    console.error('Chart load error:', err);
+  }
+}
+
+function setTrendRange(range) {
+  document.querySelectorAll('.charts-row .filter-tab').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  loadTrendChart(range);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LOAD: TOP PERFORMERS (Last 30 days)
+// ═══════════════════════════════════════════════════════════════
+async function loadTopPerformers() {
+  try {
+    const start = new Date();
+    start.setDate(start.getDate() - 30);
+    const startStr = start.toISOString().split('T')[0];
+    
+    const logs = await api('/rest/v1/execution_daily_log?log_date=gte.' + startStr + '&deleted_at=is.null&select=member_phone,member_name,quantity,total_amount,log_date');
+    
+    // Group by member
+    const byMember = {};
+    logs.forEach(l => {
+      const key = l.member_phone;
+      if (!byMember[key]) {
+        byMember[key] = { name: l.member_name, qty: 0, amt: 0, days: new Set() };
+      }
+      byMember[key].qty += Number(l.quantity) || 0;
+      byMember[key].amt += Number(l.total_amount) || 0;
+      byMember[key].days.add(l.log_date);
+    });
+    
+    const sorted = Object.values(byMember).sort((a, b) => b.qty - a.qty).slice(0, 5);
+    
+    const container = document.getElementById('performersList');
+    if (sorted.length === 0) {
+      container.innerHTML = '<div class="empty"><div class="icon-big">👥</div><p>No performance data yet</p></div>';
+      return;
+    }
+    
+    container.innerHTML = sorted.map((p, i) => {
+      const rank = i + 1;
+      const rankClass = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : '';
+      const avgRate = p.qty > 0 ? (p.amt / p.qty).toFixed(0) : 0;
+      return `
+        <div class="performer">
+          <div class="performer-rank ${rankClass}">${rank}</div>
+          <div class="performer-info">
+            <div class="performer-name">${esc(p.name)}</div>
+            <div class="performer-sub">${p.days.size} days · Avg ₹${avgRate}/pc</div>
+          </div>
+          <div class="performer-value">
+            ${p.qty.toLocaleString('en-IN')}
+            <span class="small">${inr(p.amt)}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+    
+    document.getElementById('performersSubtitle').textContent = 'Last 30 days · ' + sorted.length + ' active';
+  } catch (err) {
+    console.error('Performers error:', err);
+    document.getElementById('performersList').innerHTML = '<div class="empty">Failed to load</div>';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LOAD: OUTSTANDING
+// ═══════════════════════════════════════════════════════════════
+async function loadOutstanding() {
+  try {
+    const outstanding = await api('/rest/v1/execution_member_outstanding?select=*');
+    
+    let totalEarned = 0, totalPaid = 0, pendingCount = 0;
+    outstanding.forEach(m => {
+      totalEarned += Number(m.total_earned) || 0;
+      totalPaid += Number(m.total_paid) || 0;
+      if ((Number(m.pending_amount) || 0) > 0) pendingCount++;
+    });
+    
+    const pending = totalEarned - totalPaid;
+    const paidPercent = totalEarned > 0 ? (totalPaid / totalEarned * 100) : 0;
+    
+    document.getElementById('receiptOutstanding').textContent = inrFull(pending);
+    document.getElementById('receiptSub').textContent = pendingCount + ' members pending · ' + new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    document.getElementById('receiptPaid').textContent = inr(totalPaid) + ' (' + paidPercent.toFixed(0) + '%)';
+    document.getElementById('receiptEarned').textContent = inr(totalEarned);
+    
+    setTimeout(() => {
+      document.getElementById('progressFill').style.width = paidPercent + '%';
+    }, 300);
+    
+    document.getElementById('statOutstanding').textContent = inr(pending);
+    document.getElementById('statOutstandingDelta').textContent = pendingCount + ' members';
+  } catch (err) {
+    console.error('Outstanding error:', err);
+    document.getElementById('receiptOutstanding').textContent = '₹0';
+    document.getElementById('statOutstanding').textContent = '₹0';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LOAD: RECENT ACTIVITY
+// ═══════════════════════════════════════════════════════════════
+async function loadRecentActivity() {
+  try {
+    const recent = await api('/rest/v1/execution_daily_log?deleted_at=is.null&select=*&order=created_at.desc&limit=8');
+    
+    const container = document.getElementById('activityFeed');
+    if (!recent || recent.length === 0) {
+      container.innerHTML = '<div class="empty"><div class="icon-big">📝</div><p>No recent activity</p></div>';
+      return;
+    }
+    
+    container.innerHTML = recent.map(r => {
+      const icon = r.media_type === 'sticker' ? '🏷️' : '📷';
+      const iconClass = r.media_type === 'sticker' ? 'gold' : 'teal';
+      return `
+        <div class="activity-item">
+          <div class="activity-icon ${iconClass}">${icon}</div>
+          <div class="activity-content">
+            <div class="activity-title">
+              <strong>${esc(r.member_name)}</strong> · ${esc(r.work_name || 'Campaign')} · ${esc(MEDIA_LABELS[r.media_type] || r.media_type)} · 
+              <strong>${r.quantity} pcs</strong> · ${inrFull(r.total_amount)}
+            </div>
+            <div class="activity-time">${esc(r.location || '')} · ${relativeTime(r.created_at)}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Activity error:', err);
+    document.getElementById('activityFeed').innerHTML = '<div class="empty">Failed to load</div>';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LOAD: RECENT ENTRIES TABLE
+// ═══════════════════════════════════════════════════════════════
+async function loadRecentEntries() {
+  try {
+    const recent = await api('/rest/v1/execution_daily_log?deleted_at=is.null&select=*&order=created_at.desc&limit=10');
+    
+    const container = document.getElementById('entriesTable');
+    if (!recent || recent.length === 0) {
+      container.innerHTML = '<div class="empty"><div class="icon-big">📋</div><h3 style="font-size:16px;font-weight:700;color:var(--ink-900);margin-bottom:6px;">No entries yet</h3><p style="font-size:13px;margin-bottom:18px;">Start logging daily work</p><a href="execution-entry.html" class="btn btn-teal" style="text-decoration:none;display:inline-flex;">+ Add First Entry</a></div>';
+      return;
+    }
+    
+    container.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Campaign</th>
+            <th>Media</th>
+            <th>Team Member</th>
+            <th>Location</th>
+            <th class="right">Qty</th>
+            <th class="right">Rate</th>
+            <th class="right">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${recent.map(r => `
+            <tr>
+              <td class="cell-strong">${formatDate(r.log_date)}</td>
+              <td><div class="cell-strong">${esc(r.work_name || '—')}</div></td>
+              <td><span class="tag ${MEDIA_TAG_CLASS[r.media_type] || 'tag-flex'}">●  ${esc(MEDIA_LABELS[r.media_type] || r.media_type)}</span></td>
+              <td>
+                <div class="avatar-mini">
+                  <div class="ball" style="background:linear-gradient(135deg,${getColorForName(r.member_name)});">${getInitials(r.member_name)}</div>
+                  <div>
+                    <div style="font-weight:700;">${esc(r.member_name)}</div>
+                    <div style="font-size:11px;color:var(--text-mid);">${esc(r.member_phone)}</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div style="font-weight:600;">${esc(r.location || '—')}</div>
+                ${r.city ? `<div style="font-size:11px;color:var(--text-mid);">📍 ${esc(r.city)}</div>` : ''}
+              </td>
+              <td class="right cell-money">${r.quantity}</td>
+              <td class="right cell-money">₹${r.rate_per_unit}</td>
+              <td class="right cell-money">${inrFull(r.total_amount)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  } catch (err) {
+    console.error('Entries error:', err);
+    document.getElementById('entriesTable').innerHTML = '<div class="empty">Failed to load entries</div>';
+  }
+}
+
+function formatDate(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  return dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+}
+
+function getColorForName(name) {
+  const colors = [
+    '#0B1130, #131A3F',
+    '#00D4D2, #5EEAE8',
+    '#F5B83D, #d97706',
+    '#8B5CF6, #7c3aed',
+    '#FF5470, #e11d48',
+    '#34D399, #10b981'
+  ];
+  let hash = 0;
+  for (let i = 0; i < (name || '').length; i++) hash = ((hash << 5) - hash) + name.charCodeAt(i);
+  return colors[Math.abs(hash) % colors.length];
+}
+
+function comingSoon(feature) {
+  showToast(feature + ' — Coming in next phase', 'info');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  autoLogin();
+  document.getElementById('loginPhone').addEventListener('keypress', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+  document.getElementById('loginPhone').addEventListener('input', e => {
+    e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
+  });
+});
+
+// Auto-refresh every 60 seconds
+setInterval(() => {
+  if (state.admin) {
+    loadStats();
+    loadRecentActivity();
+  }
+}, 60000);
+</script>
+
+</body>
+</html>
