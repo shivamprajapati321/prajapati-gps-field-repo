@@ -139,10 +139,10 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--txt);min-
   </div>
   <div class="container">
     <div class="stats-bar">
-      <div class="stat-card hood"><div class="stat-label">🛺 Hood Pending</div><div class="stat-value" id="statHoodPending">—</div></div>
-      <div class="stat-card back"><div class="stat-label">📋 Back Panel Pending</div><div class="stat-value" id="statBackPending">—</div></div>
-      <div class="stat-card verified"><div class="stat-label">✅ Verified Today</div><div class="stat-value" id="statVerified">—</div></div>
-      <div class="stat-card pending"><div class="stat-label">📊 Total Today</div><div class="stat-value" id="statTotal">—</div></div>
+      <div class="stat-card hood"><div class="stat-label">🛺 Hood Photos Pending</div><div class="stat-value" id="statHoodPending">—</div></div>
+      <div class="stat-card back"><div class="stat-label">📋 Back Photos Pending</div><div class="stat-value" id="statBackPending">—</div></div>
+      <div class="stat-card verified"><div class="stat-label">✅ Verified Photos</div><div class="stat-value" id="statVerified">—</div></div>
+      <div class="stat-card pending"><div class="stat-label">📊 Total Photos</div><div class="stat-value" id="statTotal">—</div></div>
     </div>
     
     <div class="mode-tabs">
@@ -332,12 +332,20 @@ function checkSession() {
     }
   } catch(e){}
 }
+function todayIST() {
+  // Get today's date in IST (not UTC)
+  var now = new Date();
+  var istOffset = 5.5 * 60 * 60 * 1000;
+  var istNow = new Date(now.getTime() + istOffset - (now.getTimezoneOffset() * 60 * 1000));
+  return istNow.toISOString().split('T')[0];
+}
+
 function init() {
-  $('filterDate').value = new Date().toISOString().split('T')[0];
+  $('filterDate').value = todayIST();
   loadFilters(); loadQueue();
 }
 function resetFilters() {
-  $('filterDate').value = new Date().toISOString().split('T')[0];
+  $('filterDate').value = todayIST();
   $('filterCampaign').value = ''; $('filterMember').value = ''; loadQueue();
 }
 function loadFilters() {
@@ -355,7 +363,8 @@ function loadQueue() {
   var date = $('filterDate').value, campaign = $('filterCampaign').value, member = $('filterMember').value;
   $('vehicleList').innerHTML = '<div class="loading"><div class="spinner"></div><div style="margin-top:12px;">Loading...</div></div>';
   // Filter out deleted_at (soft-deleted records)
-  var qs = '/rest/v1/trial_photos?select=*&deleted_at=is.null&order=captured_at.desc&limit=500';
+  // limit=5000 matches admin-v2.html reports
+  var qs = '/rest/v1/trial_photos?select=*&deleted_at=is.null&order=captured_at.desc&limit=5000';
   if (date) {
     qs += '&captured_at=gte.' + new Date(date + 'T00:00:00+05:30').toISOString();
     qs += '&captured_at=lte.' + new Date(date + 'T23:59:59+05:30').toISOString();
@@ -399,17 +408,29 @@ function buildVehicles() {
         campaign: p.campaign_key, member: p.member_name || p.member_phone, memberPhone: p.member_phone,
         captured: p.captured_at, date: p.captured_at ? p.captured_at.slice(0, 10) : '',
         address: p.address, city: extractCity(p.address),
-        ocrPlates: [], verified: false, verifiedPlate: null, rejected: false
+        ocrPlates: [], verified: false, verifiedPlate: null, rejected: false,
+        verifiedCount: 0, totalCount: 0  // ← NEW: track per-photo
       };
     }
     var g = groups[groupKey];
     g.photos.push(p);
+    g.totalCount++;
+    if (p.is_verified === true) {
+      g.verifiedCount++;
+      g.verifiedPlate = p.verified_plate || p.vehicle_number || g.verifiedPlate;
+    }
     if (p.vehicle_number && p.vehicle_number.length >= 4 && !p.is_verified) {
       if (g.ocrPlates.indexOf(p.vehicle_number) === -1) g.ocrPlates.push(p.vehicle_number);
     }
-    if (p.is_verified === true) { g.verified = true; g.verifiedPlate = p.verified_plate || p.vehicle_number || g.verifiedPlate; }
     if (p.rejected === true) g.rejected = true;
   });
+  
+  // After grouping: vehicle is "verified" ONLY if ALL its photos are verified
+  Object.values(groups).forEach(function(g){
+    g.verified = (g.totalCount > 0 && g.verifiedCount === g.totalCount);
+    g.partiallyVerified = (g.verifiedCount > 0 && g.verifiedCount < g.totalCount);
+  });
+  
   state.vehicles = Object.values(groups);
 }
 
@@ -560,27 +581,63 @@ function updateTabCounts(pending, verified, rejected, all) {
 }
 function refreshStats() {
   var photos = state.allPhotos;
+  
+  // ═══ PHOTO-LEVEL counts (matches Admin Reports) ═══
+  var totalPhotos = 0;
+  var verifiedPhotos = 0;
+  var pendingPhotos = 0;
+  var hoodPendingPhotos = 0;
+  var backPendingPhotos = 0;
+  
+  // ═══ VEHICLE-LEVEL counts (for verification queue UI) ═══
   var hoodGroups = {}, backGroups = {};
+  
   photos.forEach(function(p){
     if (p.rejected || p.deleted_at) return;
+    
+    // Photo-level counting
+    totalPhotos++;
+    if (p.is_verified) {
+      verifiedPhotos++;
+    } else {
+      pendingPhotos++;
+      var mode = detectMode(p);
+      if (mode === 'hood') hoodPendingPhotos++;
+      else backPendingPhotos++;
+    }
+    
+    // Vehicle-level grouping (for "fully verified" status)
     var m = detectMode(p);
     var slug = (p.public_url || '').split('/').slice(-2, -1)[0] || '';
     if (m === 'hood') {
       var k = p.member_phone + '_' + slug;
-      if (!hoodGroups[k]) hoodGroups[k] = { verified: false };
-      if (p.is_verified) hoodGroups[k].verified = true;
+      if (!hoodGroups[k]) hoodGroups[k] = { total: 0, verified: 0 };
+      hoodGroups[k].total++;
+      if (p.is_verified) hoodGroups[k].verified++;
     } else {
-      if (!backGroups[p.id]) backGroups[p.id] = { verified: false };
-      if (p.is_verified) backGroups[p.id].verified = true;
+      if (!backGroups[p.id]) backGroups[p.id] = { total: 0, verified: 0 };
+      backGroups[p.id].total++;
+      if (p.is_verified) backGroups[p.id].verified++;
     }
   });
-  var hoodPending = 0, backPending = 0;
-  Object.values(hoodGroups).forEach(function(g){ if (!g.verified) hoodPending++; });
-  Object.values(backGroups).forEach(function(g){ if (!g.verified) backPending++; });
-  $('statHoodPending').textContent = hoodPending;
-  $('statBackPending').textContent = backPending;
-  $('statVerified').textContent = Object.keys(hoodGroups).filter(function(k){return hoodGroups[k].verified;}).length + Object.keys(backGroups).filter(function(k){return backGroups[k].verified;}).length;
-  $('statTotal').textContent = Object.keys(hoodGroups).length + Object.keys(backGroups).length;
+  
+  // Count VEHICLES with at least 1 pending photo (= not fully verified)
+  var hoodVehiclesPending = 0;
+  Object.values(hoodGroups).forEach(function(g){ if (g.verified < g.total) hoodVehiclesPending++; });
+  var backVehiclesPending = 0;
+  Object.values(backGroups).forEach(function(g){ if (g.verified < g.total) backVehiclesPending++; });
+  
+  // ═══ DISPLAY: Show PHOTO counts (matches admin) ═══
+  $('statHoodPending').textContent = hoodPendingPhotos;
+  $('statBackPending').textContent = backPendingPhotos;
+  $('statVerified').textContent = verifiedPhotos;
+  $('statTotal').textContent = totalPhotos;
+  
+  // Debug log
+  console.log('[Verifier Stats]', {
+    photos: { total: totalPhotos, verified: verifiedPhotos, pending: pendingPhotos, hoodPending: hoodPendingPhotos, backPending: backPendingPhotos },
+    vehicles: { hoodGroups: Object.keys(hoodGroups).length, backGroups: Object.keys(backGroups).length, hoodVehiclesPending: hoodVehiclesPending, backVehiclesPending: backVehiclesPending }
+  });
 }
 
 function usePlate(idx, plate) {
