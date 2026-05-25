@@ -149,6 +149,38 @@
   .loading{text-align:center;padding:60px 20px;color:var(--text-mid)}
   .spinner{display:inline-block;width:32px;height:32px;border:3px solid rgba(255,84,112,0.2);border-top-color:var(--rose);border-radius:50%;animation:spin 0.7s linear infinite}
   .spinner.sm{width:14px;height:14px;border-width:2px}
+  
+  /* PAY MODAL */
+  .pay-modal{position:fixed;inset:0;background:rgba(5,8,24,0.6);backdrop-filter:blur(8px);display:none;align-items:flex-start;justify-content:center;z-index:200;padding:40px 20px;overflow-y:auto}
+  .pay-modal.active{display:flex}
+  .pay-modal-content{background:white;border-radius:18px;width:100%;max-width:560px;padding:26px;box-shadow:0 24px 80px rgba(0,0,0,0.3)}
+  .pay-modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+  .pay-modal-head h2{font-size:20px;font-weight:700;color:var(--ink-900)}
+  .pay-modal-close{width:30px;height:30px;border-radius:8px;background:#F0F2F8;color:#475569;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;cursor:pointer;border:none}
+  .pay-recipient{background:linear-gradient(135deg,rgba(255,84,112,0.08),rgba(255,84,112,0.02));border:1px solid rgba(255,84,112,0.25);border-radius:10px;padding:14px 16px;margin-bottom:16px}
+  .pay-recipient .label{font-size:10.5px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px}
+  .pay-recipient .name{font-size:16px;font-weight:800;color:var(--ink-900);margin-bottom:4px}
+  .pay-recipient .phone{font-family:'JetBrains Mono',monospace;font-size:12px;color:#475569}
+  .pay-recipient .outstanding{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,84,112,0.15)}
+  .pay-recipient .outstanding .l{font-size:10.5px;font-weight:700;color:#475569;text-transform:uppercase}
+  .pay-recipient .outstanding .v{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:800;color:var(--rose);margin-top:2px}
+  .pay-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+  .pay-form-grid.full{grid-template-columns:1fr}
+  .pay-form-field label{display:block;font-size:10.5px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px}
+  .pay-form-field label .req{color:var(--rose);font-size:13px}
+  .pay-form-input{width:100%;padding:10px 12px;font-size:13.5px;border:1.5px solid #E8EAF4;border-radius:9px;background:white;font-weight:500;outline:none}
+  .pay-form-input:focus{border-color:var(--rose);box-shadow:0 0 0 3px rgba(255,84,112,0.1)}
+  .pay-form-input.mono{font-family:'JetBrains Mono',monospace}
+  textarea.pay-form-input{resize:vertical;min-height:50px;font-family:inherit}
+  .pay-select-wrap{position:relative}
+  .pay-select-wrap::after{content:'▾';position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#94A3B8;pointer-events:none}
+  .pay-select-wrap select.pay-form-input{appearance:none;padding-right:32px;cursor:pointer}
+  .pay-receipt-preview{display:none;margin-top:8px;padding:8px 12px;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.3);border-radius:8px;font-size:12px;font-weight:600;color:#047857}
+  .pay-modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid #E8EAF4}
+  .pay-btn{padding:10px 18px;border-radius:9px;font-size:13px;font-weight:700;border:1px solid #E8EAF4;background:white;color:#475569;cursor:pointer;font-family:inherit}
+  .pay-btn:hover{background:#F0F2F8}
+  .pay-btn.primary{background:linear-gradient(135deg,var(--rose),#e11d48);color:white;border:none;box-shadow:0 2px 8px rgba(255,84,112,0.3)}
+  .pay-btn:disabled{opacity:0.6;cursor:not-allowed}
   @keyframes spin{to{transform:rotate(360deg)}}
   
   /* SUMMARY CARDS */
@@ -332,6 +364,77 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- PAY MODAL -->
+<div class="pay-modal" id="payModal">
+  <div class="pay-modal-content">
+    <div class="pay-modal-head">
+      <h2>💰 Record Payment</h2>
+      <button class="pay-modal-close" onclick="closePayModal()">✕</button>
+    </div>
+    
+    <div class="pay-recipient">
+      <div class="label">Pay To</div>
+      <div class="name" id="payRecipientName">—</div>
+      <div class="phone" id="payRecipientPhone">—</div>
+      <div class="outstanding">
+        <div class="l">Outstanding</div>
+        <div class="v" id="payOutstandingAmt">—</div>
+      </div>
+    </div>
+    
+    <div class="pay-form-grid">
+      <div class="pay-form-field">
+        <label>Amount (₹) <span class="req">*</span></label>
+        <input type="number" id="payAmount" class="pay-form-input mono" placeholder="0" min="1" step="0.01">
+      </div>
+      <div class="pay-form-field">
+        <label>Date <span class="req">*</span></label>
+        <input type="date" id="payDate" class="pay-form-input">
+      </div>
+    </div>
+    
+    <div class="pay-form-grid">
+      <div class="pay-form-field">
+        <label>Mode <span class="req">*</span></label>
+        <div class="pay-select-wrap">
+          <select id="payMode" class="pay-form-input">
+            <option value="upi">UPI</option>
+            <option value="cash">Cash</option>
+            <option value="bank_transfer">Bank Transfer</option>
+            <option value="cheque">Cheque</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="pay-form-field">
+        <label>Reference</label>
+        <input type="text" id="payRef" class="pay-form-input mono" placeholder="txn ID / cheque no.">
+      </div>
+    </div>
+    
+    <div class="pay-form-grid full">
+      <div class="pay-form-field">
+        <label>Notes</label>
+        <textarea id="payNotes" class="pay-form-input" placeholder="Optional..."></textarea>
+      </div>
+    </div>
+    
+    <div class="pay-form-grid full">
+      <div class="pay-form-field">
+        <label>📎 Receipt Upload (HIGHLY RECOMMENDED for history)</label>
+        <input type="file" id="payReceipt" class="pay-form-input" accept="image/*,application/pdf" style="padding:8px 12px;">
+        <div style="font-size:10.5px;color:#475569;margin-top:4px;">📸 Payment screenshot / UPI confirmation / receipt photo · JPG/PNG/PDF · Max 5 MB</div>
+        <div id="payReceiptPreview" class="pay-receipt-preview"></div>
+      </div>
+    </div>
+    
+    <div class="pay-modal-actions">
+      <button class="pay-btn" onclick="closePayModal()">Cancel</button>
+      <button class="pay-btn primary" onclick="submitPayment()" id="payModalSaveBtn">💾 Save Payment</button>
+    </div>
+  </div>
+</div>
 
 <script>
 "use strict";
@@ -650,63 +753,206 @@ function updateSummary() {
   }
 }
 
-async function payNow(phone, name, suggested) {
-  const amt = prompt(`Pay to ${name} (${phone})\n\nOutstanding: ${inr(suggested)}\n\nEnter amount to pay:`, suggested);
-  if (!amt || isNaN(parseFloat(amt)) || parseFloat(amt) <= 0) {
-    if (amt !== null) showToast('Valid amount daalo', 'error');
-    return;
+// Pay modal state
+const payState = { phone: null, name: null, suggested: 0 };
+
+function payNow(phone, name, suggested) {
+  payState.phone = phone;
+  payState.name = name;
+  payState.suggested = suggested;
+  
+  // Populate modal
+  document.getElementById('payRecipientName').textContent = name;
+  document.getElementById('payRecipientPhone').textContent = phone;
+  document.getElementById('payOutstandingAmt').textContent = inr(suggested);
+  document.getElementById('payAmount').value = suggested;
+  document.getElementById('payDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('payMode').value = 'upi';
+  document.getElementById('payRef').value = '';
+  document.getElementById('payNotes').value = '';
+  document.getElementById('payReceipt').value = '';
+  document.getElementById('payReceiptPreview').style.display = 'none';
+  
+  document.getElementById('payModal').classList.add('active');
+}
+
+function closePayModal() {
+  document.getElementById('payModal').classList.remove('active');
+}
+
+async function submitPayment() {
+  const amt = parseFloat(document.getElementById('payAmount').value);
+  if (!amt || amt <= 0) { showToast('Valid amount daalo', 'error'); return; }
+  
+  const date = document.getElementById('payDate').value;
+  const mode = document.getElementById('payMode').value;
+  const ref = document.getElementById('payRef').value.trim();
+  const notes = document.getElementById('payNotes').value.trim();
+  
+  const btn = document.getElementById('payModalSaveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner sm" style="border-color:rgba(255,255,255,0.3);border-top-color:white;"></span> Saving...';
+  
+  // Step 1: Upload receipt if provided
+  let receiptPath = null;
+  let receiptName = null;
+  const receiptFile = document.getElementById('payReceipt').files[0];
+  
+  if (receiptFile) {
+    if (receiptFile.size > 5 * 1024 * 1024) {
+      showToast('Receipt 5MB se chhoti honi chahiye', 'error');
+      btn.disabled = false; btn.innerHTML = '💾 Save Payment';
+      return;
+    }
+    
+    try {
+      btn.innerHTML = '<span class="spinner sm" style="border-color:rgba(255,255,255,0.3);border-top-color:white;"></span> Uploading receipt...';
+      const ext = receiptFile.name.split('.').pop();
+      const fileName = 'exec_' + payState.phone + '_' + Date.now() + '.' + ext;
+      const filePath = 'execution/' + fileName;
+      
+      const uploadRes = await fetch(CONFIG.url + '/storage/v1/object/payment-receipts/' + filePath, {
+        method: 'POST',
+        headers: {
+          'apikey': CONFIG.key,
+          'Authorization': 'Bearer ' + CONFIG.key,
+          'x-upsert': 'true'
+        },
+        body: receiptFile
+      });
+      
+      if (!uploadRes.ok) {
+        const errTxt = await uploadRes.text();
+        throw new Error('Upload failed: ' + errTxt);
+      }
+      
+      receiptPath = filePath;
+      receiptName = receiptFile.name;
+    } catch (uploadErr) {
+      console.error('Receipt upload error:', uploadErr);
+      const proceed = confirm('Receipt upload failed: ' + uploadErr.message + '\n\nPayment save kare without receipt?');
+      if (!proceed) {
+        btn.disabled = false; btn.innerHTML = '💾 Save Payment';
+        return;
+      }
+    }
   }
   
-  const method = prompt('Payment mode? (cash/upi/bank_transfer/cheque)', 'upi');
-  if (!method) return;
-  if (!['cash','upi','bank_transfer','cheque','other'].includes(method)) {
-    showToast('Mode: cash/upi/bank_transfer/cheque/other', 'error');
-    return;
-  }
-  
-  const note = prompt('Reference / Note (optional):', '');
+  // Step 2: Save payment record
+  btn.innerHTML = '<span class="spinner sm" style="border-color:rgba(255,255,255,0.3);border-top-color:white;"></span> Saving payment...';
   
   try {
     await api('/rest/v1/execution_payments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
       body: JSON.stringify({
-        payment_date: new Date().toISOString().split('T')[0],
-        member_phone: phone,
-        member_name: name,
-        amount: parseFloat(amt),
-        payment_mode: method,
-        notes: note || null,
+        payment_date: date,
+        member_phone: payState.phone,
+        member_name: payState.name,
+        amount: amt,
+        payment_mode: mode,
+        reference_number: ref || null,
+        notes: notes || null,
+        receipt_storage_path: receiptPath,
+        receipt_file_name: receiptName,
         recorded_by: state.admin.phone,
         created_by: state.admin.phone
       })
     });
-    showToast(`✅ Paid ${inr(parseFloat(amt))} to ${name}`, 'success');
+    showToast('✅ Paid ' + inr(amt) + ' to ' + payState.name + (receiptPath ? ' (with receipt)' : ''), 'success');
+    closePayModal();
     loadData();
   } catch (err) {
     showToast('Payment failed: ' + err.message, 'error');
+    btn.disabled = false; btn.innerHTML = '💾 Save Payment';
   }
 }
 
 async function viewHistory(phone, name) {
   try {
     const earnings = await api(`/rest/v1/execution_daily_log?member_phone=eq.${encodeURIComponent(phone)}&select=log_date,work_name,location,quantity,rate_per_unit,total_amount&order=log_date.desc&limit=20`);
-    const payments = await api(`/rest/v1/execution_payments?member_phone=eq.${encodeURIComponent(phone)}&select=payment_date,amount,payment_mode,notes&order=payment_date.desc&limit=20`);
+    const payments = await api(`/rest/v1/execution_payments?member_phone=eq.${encodeURIComponent(phone)}&select=payment_date,amount,payment_mode,notes,reference_number,receipt_storage_path,receipt_file_name&order=payment_date.desc&limit=20`);
     
-    let msg = `📋 ${name} (${phone})\n\n`;
-    msg += `═══ LAST 20 EARNINGS ═══\n`;
-    (earnings || []).forEach(e => {
-      msg += `${e.log_date}: ${e.work_name} · ${e.quantity}×₹${e.rate_per_unit} = ${inr(e.total_amount)}\n`;
-    });
-    msg += `\n═══ LAST 20 PAYMENTS ═══\n`;
-    (payments || []).forEach(p => {
-      msg += `${p.payment_date}: ${inr(p.amount)} via ${p.payment_mode}${p.notes ? ' · ' + p.notes : ''}\n`;
-    });
+    let html = '<div style="background:white;border-radius:18px;padding:24px;max-width:760px;width:100%;max-height:85vh;overflow-y:auto;">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid #E8EAF4;">';
+    html += '<div><div style="font-size:18px;font-weight:800;color:#0F172A;">📋 ' + name + '</div>';
+    html += '<div style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:#475569;margin-top:2px;">' + phone + '</div></div>';
+    html += '<button onclick="closeHistoryModal()" style="width:30px;height:30px;border-radius:8px;background:#F0F2F8;color:#475569;border:none;font-size:16px;font-weight:700;cursor:pointer;">✕</button>';
+    html += '</div>';
     
-    alert(msg);
+    // PAYMENTS SECTION (with receipts!)
+    html += '<div style="margin-bottom:20px;">';
+    html += '<div style="font-size:13px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;display:flex;align-items:center;gap:6px;">💰 Payment History <span style="font-family:\'JetBrains Mono\',monospace;background:#F0F2F8;padding:2px 8px;border-radius:6px;font-size:11px;color:#475569;">' + (payments?.length || 0) + '</span></div>';
+    
+    if (payments && payments.length > 0) {
+      html += '<div style="border:1px solid #E8EAF4;border-radius:10px;overflow:hidden;">';
+      html += '<table style="width:100%;border-collapse:collapse;">';
+      html += '<thead><tr style="background:#FAFBFF;"><th style="padding:8px 10px;text-align:left;font-size:10.5px;font-weight:700;color:#475569;text-transform:uppercase;border-bottom:1px solid #E8EAF4;">Date</th><th style="padding:8px 10px;text-align:right;font-size:10.5px;font-weight:700;color:#475569;text-transform:uppercase;border-bottom:1px solid #E8EAF4;">Amount</th><th style="padding:8px 10px;text-align:left;font-size:10.5px;font-weight:700;color:#475569;text-transform:uppercase;border-bottom:1px solid #E8EAF4;">Mode</th><th style="padding:8px 10px;text-align:left;font-size:10.5px;font-weight:700;color:#475569;text-transform:uppercase;border-bottom:1px solid #E8EAF4;">Note / Ref</th><th style="padding:8px 10px;text-align:center;font-size:10.5px;font-weight:700;color:#475569;text-transform:uppercase;border-bottom:1px solid #E8EAF4;">Receipt</th></tr></thead><tbody>';
+      payments.forEach(p => {
+        const receiptBtn = p.receipt_storage_path 
+          ? '<button onclick="viewReceipt(\'' + p.receipt_storage_path + '\')" style="padding:4px 10px;border-radius:6px;background:rgba(52,211,153,0.1);color:#047857;border:1px solid rgba(52,211,153,0.3);font-size:11px;font-weight:700;cursor:pointer;">📎 View</button>'
+          : '<span style="color:#CBD5E1;font-size:11px;">—</span>';
+        html += '<tr style="border-bottom:1px solid #F0F2F8;">';
+        html += '<td style="padding:9px 10px;font-size:12.5px;font-weight:600;">' + p.payment_date + '</td>';
+        html += '<td style="padding:9px 10px;font-family:\'JetBrains Mono\',monospace;font-weight:800;text-align:right;color:#047857;">' + inr(p.amount) + '</td>';
+        html += '<td style="padding:9px 10px;font-size:11px;font-weight:700;text-transform:uppercase;color:#475569;">' + (p.payment_mode || '—') + '</td>';
+        html += '<td style="padding:9px 10px;font-size:11.5px;color:#475569;max-width:200px;">' + (p.notes || p.reference_number || '—') + '</td>';
+        html += '<td style="padding:9px 10px;text-align:center;">' + receiptBtn + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+    } else {
+      html += '<div style="padding:20px;text-align:center;color:#475569;font-size:13px;background:#FAFBFF;border-radius:10px;">No payments yet</div>';
+    }
+    html += '</div>';
+    
+    // EARNINGS SECTION
+    html += '<div>';
+    html += '<div style="font-size:13px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;display:flex;align-items:center;gap:6px;">💼 Last 20 Earnings <span style="font-family:\'JetBrains Mono\',monospace;background:#F0F2F8;padding:2px 8px;border-radius:6px;font-size:11px;color:#475569;">' + (earnings?.length || 0) + '</span></div>';
+    
+    if (earnings && earnings.length > 0) {
+      html += '<div style="border:1px solid #E8EAF4;border-radius:10px;overflow:hidden;">';
+      html += '<table style="width:100%;border-collapse:collapse;">';
+      html += '<thead><tr style="background:#FAFBFF;"><th style="padding:8px 10px;text-align:left;font-size:10.5px;font-weight:700;color:#475569;text-transform:uppercase;">Date</th><th style="padding:8px 10px;text-align:left;font-size:10.5px;font-weight:700;color:#475569;text-transform:uppercase;">Work</th><th style="padding:8px 10px;text-align:right;font-size:10.5px;font-weight:700;color:#475569;text-transform:uppercase;">Qty × Rate</th><th style="padding:8px 10px;text-align:right;font-size:10.5px;font-weight:700;color:#475569;text-transform:uppercase;">Total</th></tr></thead><tbody>';
+      earnings.forEach(e => {
+        html += '<tr style="border-bottom:1px solid #F0F2F8;">';
+        html += '<td style="padding:9px 10px;font-size:12.5px;font-weight:600;">' + e.log_date + '</td>';
+        html += '<td style="padding:9px 10px;font-size:12px;">' + (e.work_name || '—') + (e.location ? '<br><span style="font-size:10.5px;color:#475569;">' + e.location + '</span>' : '') + '</td>';
+        html += '<td style="padding:9px 10px;font-family:\'JetBrains Mono\',monospace;font-size:11.5px;text-align:right;color:#475569;">' + e.quantity + ' × ₹' + e.rate_per_unit + '</td>';
+        html += '<td style="padding:9px 10px;font-family:\'JetBrains Mono\',monospace;font-weight:800;text-align:right;color:#B8860B;">' + inr(e.total_amount) + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+    } else {
+      html += '<div style="padding:20px;text-align:center;color:#475569;font-size:13px;background:#FAFBFF;border-radius:10px;">No work entries yet</div>';
+    }
+    html += '</div>';
+    html += '</div>';
+    
+    // Show modal overlay
+    let overlay = document.getElementById('historyModalOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'historyModalOverlay';
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(5,8,24,0.6);backdrop-filter:blur(8px);display:flex;align-items:flex-start;justify-content:center;z-index:300;padding:40px 20px;overflow-y:auto;';
+      overlay.addEventListener('click', e => { if (e.target === overlay) closeHistoryModal(); });
+      document.body.appendChild(overlay);
+    }
+    overlay.innerHTML = html;
+    overlay.style.display = 'flex';
   } catch (err) {
     showToast('History fetch failed: ' + err.message, 'error');
   }
+}
+
+function closeHistoryModal() {
+  const overlay = document.getElementById('historyModalOverlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+function viewReceipt(path) {
+  const url = CONFIG.url + '/storage/v1/object/public/payment-receipts/' + path;
+  window.open(url, '_blank');
 }
 
 function exportCSV() {
@@ -746,6 +992,32 @@ document.addEventListener('DOMContentLoaded', () => {
   autoLogin();
   document.getElementById('loginPhone').addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
   document.getElementById('loginPhone').addEventListener('input', e => { e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10); });
+  
+  // Receipt preview
+  const receiptInput = document.getElementById('payReceipt');
+  if (receiptInput) {
+    receiptInput.addEventListener('change', e => {
+      const file = e.target.files[0];
+      const preview = document.getElementById('payReceiptPreview');
+      if (file) {
+        const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+        preview.innerHTML = '✓ ' + file.name + ' (' + sizeMB + ' MB)';
+        preview.style.display = 'block';
+      } else {
+        preview.style.display = 'none';
+      }
+    });
+  }
+  
+  // Close modal on backdrop click
+  document.getElementById('payModal').addEventListener('click', e => {
+    if (e.target.id === 'payModal') closePayModal();
+  });
+  
+  // Escape to close
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closePayModal();
+  });
 });
 </script>
 </body>

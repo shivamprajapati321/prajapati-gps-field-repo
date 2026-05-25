@@ -512,6 +512,15 @@
       </div>
     </div>
     
+    <div class="form-grid full">
+      <div class="form-field">
+        <label>📎 Receipt Upload (recommended)</label>
+        <input type="file" id="payReceipt" class="form-input" accept="image/*,application/pdf" style="padding:8px 12px;">
+        <div style="font-size:10.5px;color:var(--text-mid);margin-top:4px;">JPG, PNG, or PDF · Max 5 MB</div>
+        <div id="payReceiptPreview" style="display:none;margin-top:8px;padding:8px 12px;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.3);border-radius:8px;font-size:12px;font-weight:600;color:#047857;"></div>
+      </div>
+    </div>
+    
     <div class="modal-actions">
       <button class="ab-btn" onclick="closeModal('payModal')">Cancel</button>
       <button class="ab-btn primary" onclick="savePayment()" id="savePayBtn">💾 Save Payment</button>
@@ -1018,6 +1027,38 @@ async function savePayment() {
   const btn = document.getElementById('savePayBtn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner sm" style="border-color:rgba(255,255,255,0.3);border-top-color:white;"></span> Saving...';
   
+  // Upload receipt if provided
+  let receiptPath = null;
+  let receiptName = null;
+  const receiptFile = document.getElementById('payReceipt') ? document.getElementById('payReceipt').files[0] : null;
+  
+  if (receiptFile) {
+    if (receiptFile.size > 5 * 1024 * 1024) {
+      showToast('Receipt 5MB se chhoti honi chahiye', 'error');
+      btn.disabled = false; btn.innerHTML = '💾 Save Payment';
+      return;
+    }
+    try {
+      btn.innerHTML = '<span class="spinner sm" style="border-color:rgba(255,255,255,0.3);border-top-color:white;"></span> Uploading receipt...';
+      const ext = receiptFile.name.split('.').pop();
+      const fileName = 'delivery_' + Date.now() + '.' + ext;
+      const filePath = 'delivery/' + fileName;
+      const uploadRes = await fetch(CONFIG.url + '/storage/v1/object/payment-receipts/' + filePath, {
+        method: 'POST',
+        headers: { 'apikey': CONFIG.key, 'Authorization': 'Bearer ' + CONFIG.key, 'x-upsert': 'true' },
+        body: receiptFile
+      });
+      if (!uploadRes.ok) throw new Error(await uploadRes.text());
+      receiptPath = filePath;
+      receiptName = receiptFile.name;
+    } catch (uploadErr) {
+      const proceed = confirm('Receipt upload failed. Save payment without receipt?');
+      if (!proceed) { btn.disabled = false; btn.innerHTML = '💾 Save Payment'; return; }
+    }
+  }
+  
+  btn.innerHTML = '<span class="spinner sm" style="border-color:rgba(255,255,255,0.3);border-top-color:white;"></span> Saving payment...';
+  
   try {
     if (state.payingFor.type === 'dispatch') {
       const d = state.payingFor.dispatch;
@@ -1033,6 +1074,8 @@ async function savePayment() {
           payment_mode: mode,
           reference_number: ref || null,
           notes: notes || null,
+          receipt_storage_path: receiptPath,
+          receipt_file_name: receiptName,
           recorded_by: state.admin.phone
         })
       });
@@ -1042,7 +1085,6 @@ async function savePayment() {
         body: JSON.stringify({ paid_amount: (parseFloat(d.paid_amount) || 0) + amt })
       });
     } else {
-      // Vendor-level payment - distribute to oldest dispatches
       await api('/rest/v1/prajapati_delivery_payments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
@@ -1054,6 +1096,8 @@ async function savePayment() {
           payment_mode: mode,
           reference_number: ref || null,
           notes: (notes || '') + ' [vendor-level]',
+          receipt_storage_path: receiptPath,
+          receipt_file_name: receiptName,
           recorded_by: state.admin.phone
         })
       });
@@ -1072,8 +1116,10 @@ async function savePayment() {
         remaining -= apply;
       }
     }
-    showToast(`✓ Paid ${inr(amt)}`, 'success');
+    showToast('✓ Paid ' + inr(amt) + (receiptPath ? ' (with receipt)' : ''), 'success');
     closeModal('payModal');
+    document.getElementById('payReceipt').value = '';
+    document.getElementById('payReceiptPreview').style.display = 'none';
     await loadData();
   } catch (err) {
     showToast('Payment failed: ' + err.message, 'error');
@@ -1167,10 +1213,31 @@ function closeModal(id) { document.getElementById(id).classList.remove('active')
 
 console.log('%c🚚 Delivery Operations v1.0', 'background:#EC4899;color:white;padding:6px 12px;border-radius:6px;font-weight:bold;font-size:13px;');
 
+function viewReceipt(path) {
+  const url = CONFIG.url + '/storage/v1/object/public/payment-receipts/' + path;
+  window.open(url, '_blank');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   autoLogin();
   document.getElementById('loginPhone').addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
   document.getElementById('loginPhone').addEventListener('input', e => { e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10); });
+  
+  // Receipt preview
+  const receiptInput = document.getElementById('payReceipt');
+  if (receiptInput) {
+    receiptInput.addEventListener('change', e => {
+      const file = e.target.files[0];
+      const preview = document.getElementById('payReceiptPreview');
+      if (file) {
+        const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+        preview.innerHTML = '✓ ' + file.name + ' (' + sizeMB + ' MB)';
+        preview.style.display = 'block';
+      } else {
+        preview.style.display = 'none';
+      }
+    });
+  }
   
   ['dispatchModal', 'payModal', 'vendorModal'].forEach(id => {
     document.getElementById(id).addEventListener('click', e => { if (e.target.id === id) closeModal(id); });
