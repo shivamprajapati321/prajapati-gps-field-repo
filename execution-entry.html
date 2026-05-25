@@ -526,7 +526,7 @@
     background: var(--paper);
   }
   
-  /* Bulk Entry Table */
+  /* Bulk Entry - Card Layout (Professional, no horizontal scroll) */
   .table-card {
     background: var(--paper);
     border-radius: 16px;
@@ -563,55 +563,267 @@
     font-family: 'JetBrains Mono', monospace;
   }
   
-  .table-scroll { overflow-x: auto; }
-  
-  .bulk-table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 1100px;
+  .entries-list {
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
   }
-  .bulk-table th {
+  
+  /* Each entry as a card */
+  .entry-card {
+    background: var(--paper);
+    border: 1.5px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 16px;
+    position: relative;
+    transition: all 0.2s;
+  }
+  .entry-card:hover {
+    border-color: var(--line-strong, #D4D8E8);
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+  }
+  .entry-card.focused {
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(0, 212, 210, 0.1);
+  }
+  
+  .entry-row-num {
+    position: absolute;
+    top: 12px;
+    left: 14px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
     background: var(--canvas);
-    padding: 11px 12px;
-    text-align: left;
-    font-size: 10.5px;
+    color: var(--text-mid);
+    font-size: 11px;
+    font-weight: 800;
+    font-family: 'JetBrains Mono', monospace;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--line);
+  }
+  
+  .entry-delete-btn {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 14px;
+    font-weight: 700;
+    border: 1px solid var(--line);
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .entry-delete-btn:hover {
+    background: #fef2f2;
+    color: var(--rose, #FF5470);
+    border-color: #fecaca;
+  }
+  
+  /* Top row: Campaign | Member | Location (3 cols) */
+  .entry-top-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.2fr;
+    gap: 12px;
+    margin-top: 8px;
+    margin-bottom: 12px;
+    padding-left: 36px;
+    padding-right: 40px;
+  }
+  
+  /* Bottom row: Media chips | Qty | Rate | Total (4 cols) */
+  .entry-bottom-row {
+    display: grid;
+    grid-template-columns: 1.8fr 90px 100px 120px;
+    gap: 12px;
+    padding-left: 36px;
+    padding-right: 40px;
+    align-items: end;
+  }
+  
+  .entry-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+  }
+  .entry-field label {
+    font-size: 10px;
     font-weight: 800;
     color: var(--text-mid);
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    gap: 4px;
   }
-  .bulk-table th.num { width: 36px; text-align: center; padding: 11px 8px; }
-  .bulk-table th.act { width: 50px; text-align: center; padding: 11px 8px; }
-  .bulk-table td {
-    padding: 8px 8px;
-    vertical-align: top;
-    border-bottom: 1px solid var(--line-soft);
-  }
-  .bulk-table td.num {
-    text-align: center;
-    color: var(--text-dim);
-    font-weight: 700;
+  .entry-field label .req {
+    color: var(--rose, #FF5470);
     font-size: 12px;
-    padding-top: 16px;
   }
-  .bulk-table tr:last-child td { border-bottom: none; }
   
-  /* Inputs in table */
+  /* Make searchable dropdowns work properly */
+  .entry-field .searchable {
+    position: relative;
+  }
+  .entry-field .loc-field {
+    position: relative;
+  }
+  .entry-field .pin-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    font-size: 13px;
+    z-index: 2;
+  }
+  .entry-field .loc-field input {
+    padding-left: 30px;
+  }
+  
+  /* Inputs in cards */
   .row-input {
     width: 100%;
     padding: 9px 12px;
-    font-size: 12.5px;
+    font-size: 13px;
     font-family: inherit;
     border: 1px solid var(--line);
     border-radius: 8px;
     background: var(--paper);
     transition: all 0.15s;
+    color: var(--text, #0F172A);
+    font-weight: 500;
   }
   .row-input:focus {
     outline: none;
     border-color: var(--teal);
     box-shadow: 0 0 0 3px rgba(0, 212, 210, 0.12);
+  }
+  .row-input.mono { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+  .row-input.total {
+    background: linear-gradient(135deg, rgba(245, 184, 0, 0.08), rgba(245, 184, 0, 0.04));
+    border-color: rgba(245, 184, 0, 0.3);
+    color: var(--gold-deep, #B8860B);
+    font-weight: 800;
+    font-size: 14px;
+    text-align: right;
+  }
+  
+  /* Media chips - horizontal scroll allowed in narrow cells */
+  .media-chips {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+  }
+  .media-chip {
+    padding: 7px 13px;
+    border-radius: 7px;
+    font-size: 11.5px;
+    font-weight: 700;
+    border: 1.5px solid var(--line);
+    background: var(--paper);
+    color: var(--text-mid);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    font-family: inherit;
+  }
+  .media-chip:hover { 
+    background: var(--canvas); 
+    border-color: var(--line-strong, #D4D8E8); 
+  }
+  .media-chip.active {
+    background: linear-gradient(135deg, var(--ink-900), var(--ink-700));
+    color: white;
+    border-color: var(--ink-900);
+    box-shadow: 0 2px 8px rgba(11, 25, 87, 0.2);
+  }
+  
+  /* Dropdown for searchables */
+  .dropdown, .suggest {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+    max-height: 260px;
+    overflow-y: auto;
+    z-index: 50;
+    display: none;
+  }
+  .dropdown.show, .suggest.show { display: block; }
+  .dropdown-item, .suggest-item {
+    padding: 9px 12px;
+    font-size: 12.5px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--line-soft);
+    transition: background 0.1s;
+  }
+  .dropdown-item:hover, .suggest-item:hover { background: var(--canvas); }
+  .dropdown-item:last-child, .suggest-item:last-child { border-bottom: none; }
+  .dropdown-item .name, .suggest-item .name { font-weight: 700; color: var(--ink-900); }
+  .dropdown-item .meta, .suggest-item .meta { font-size: 10.5px; color: var(--text-mid); margin-top: 2px; }
+  
+  /* Hint below field */
+  .hint {
+    font-size: 10.5px;
+    color: var(--text-mid);
+    margin-top: 3px;
+    font-weight: 500;
+    line-height: 1.3;
+  }
+  .hint .strong {
+    color: var(--gold-deep, #B8860B);
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  
+  .loading-msg, .no-results {
+    padding: 14px;
+    text-align: center;
+    color: var(--text-mid);
+    font-size: 12px;
+    font-style: italic;
+  }
+  
+  /* Responsive: Stack to single column on small screens */
+  @media (max-width: 1100px) {
+    .entry-top-row {
+      grid-template-columns: 1fr 1fr;
+      padding-left: 32px;
+      padding-right: 36px;
+    }
+    .entry-bottom-row {
+      grid-template-columns: 1fr 80px 90px 100px;
+      padding-left: 32px;
+      padding-right: 36px;
+    }
+  }
+  @media (max-width: 768px) {
+    .entry-top-row,
+    .entry-bottom-row {
+      grid-template-columns: 1fr;
+      padding-left: 14px;
+      padding-right: 14px;
+    }
+    .entry-row-num { top: 14px; left: 14px; }
+    .entry-delete-btn { top: 12px; right: 14px; }
+    .entry-card { padding: 50px 14px 16px; }
+    .entries-list { padding: 10px; }
   }
   .row-input.mono {
     font-family: 'JetBrains Mono', monospace;
@@ -974,22 +1186,6 @@
     </div>
     
     <div class="nav-section">
-      <div class="nav-section-title">Production</div>
-      <a class="nav-item" href="printing.html">
-        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"/></svg>
-        Printing
-      </a>
-      <a class="nav-item" href="stitching.html">
-        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/></svg>
-        Stitching
-      </a>
-      <a class="nav-item" href="delivery.html">
-        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-        Delivery
-      </a>
-    </div>
-    
-    <div class="nav-section">
       <div class="nav-section-title">Reports</div>
       <a class="nav-item" href="report-daily.html">
         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -1106,7 +1302,7 @@
         <button class="btn btn-danger" onclick="clearAll()">🗑 Clear All</button>
       </div>
       
-      <!-- Bulk Entry Table -->
+      <!-- Bulk Entry Cards (Professional Layout) -->
       <div class="table-card">
         <div class="table-header">
           <h2>
@@ -1116,30 +1312,13 @@
           <span class="count" id="rowCount">0 rows</span>
         </div>
         
-        <div class="table-scroll">
-          <table class="bulk-table" id="bulkTable" style="display:none;">
-            <thead>
-              <tr>
-                <th class="num">#</th>
-                <th style="min-width:160px;">Campaign</th>
-                <th style="min-width:240px;">Media Type</th>
-                <th style="min-width:180px;">Team Member</th>
-                <th style="min-width:220px;">📍 Location</th>
-                <th style="width:80px;">Qty</th>
-                <th style="width:90px;">Rate (₹)</th>
-                <th style="width:110px;">Total</th>
-                <th class="act"></th>
-              </tr>
-            </thead>
-            <tbody id="bulkBody"></tbody>
-          </table>
-          
-          <div class="empty-state" id="emptyState">
-            <div class="icon-big">📝</div>
-            <h3 style="font-size:16px;font-weight:700;color:var(--ink-900);margin-bottom:6px;">No entries yet</h3>
-            <p style="font-size:13px;margin-bottom:18px;">Add your first row to record today's work</p>
-            <button class="btn btn-teal" onclick="addRow()">+ Add First Row</button>
-          </div>
+        <div class="entries-list" id="bulkBody" style="display:none;"></div>
+        
+        <div class="empty-state" id="emptyState">
+          <div class="icon-big">📝</div>
+          <h3 style="font-size:16px;font-weight:700;color:var(--ink-900);margin-bottom:6px;">No entries yet</h3>
+          <p style="font-size:13px;margin-bottom:18px;">Add your first row to record today's work</p>
+          <button class="btn btn-teal" onclick="addRow()">+ Add First Row</button>
         </div>
         
         <div class="add-row-bar" id="addRowBar" style="display:none;">
@@ -1588,16 +1767,15 @@ function cancelAll() {
 // ═══════════════════════════════════════════════════════════════
 function renderTable() {
   const tbody = document.getElementById('bulkBody');
-  const table = document.getElementById('bulkTable');
   const empty = document.getElementById('emptyState');
   const addBar = document.getElementById('addRowBar');
   
   if (state.rows.length === 0) {
-    table.style.display = 'none';
+    tbody.style.display = 'none';
     empty.style.display = 'block';
     addBar.style.display = 'none';
   } else {
-    table.style.display = 'table';
+    tbody.style.display = 'flex';
     empty.style.display = 'none';
     addBar.style.display = 'flex';
     
@@ -1612,93 +1790,103 @@ function renderRow(r, i) {
   const lastRate = getLastRate(r.member, r.media);
   
   return `
-    <tr data-idx="${i}">
-      <td class="num">${i + 1}</td>
+    <div class="entry-card" data-idx="${i}">
+      <div class="entry-row-num">${i + 1}</div>
+      <button class="entry-delete-btn" onclick="deleteRow(${i})" title="Delete row">×</button>
       
-      <td>
-        <div class="searchable" data-field="campaign" data-idx="${i}">
-          <input class="row-input" 
-                 value="${esc(r.campaignName)}" 
-                 placeholder="Search campaign..."
-                 onfocus="openSearch(${i}, 'campaign')"
-                 onclick="openSearch(${i}, 'campaign')"
-                 oninput="filterCampaign(${i}, this.value)">
-          <div class="dropdown" id="dd_campaign_${i}">
-            ${renderCampaignOptions(i, '')}
+      <!-- TOP ROW: Campaign | Member | Location -->
+      <div class="entry-top-row">
+        <div class="entry-field">
+          <label>🎯 Campaign <span class="req">*</span></label>
+          <div class="searchable" data-field="campaign" data-idx="${i}">
+            <input class="row-input" 
+                   value="${esc(r.campaignName)}" 
+                   placeholder="Search campaign..."
+                   onfocus="openSearch(${i}, 'campaign')"
+                   onclick="openSearch(${i}, 'campaign')"
+                   oninput="filterCampaign(${i}, this.value)">
+            <div class="dropdown" id="dd_campaign_${i}">
+              ${renderCampaignOptions(i, '')}
+            </div>
           </div>
         </div>
-      </td>
-      
-      <td>
-        <div class="media-chips">
-          ${MEDIA_TYPES.map(m => `
-            <button class="media-chip ${r.media === m.key ? 'active' : ''}" 
-                    onclick="setMedia(${i}, '${m.key}')">
-              ${esc(m.label)}
-            </button>
-          `).join('')}
+        
+        <div class="entry-field">
+          <label>👤 Team Member <span class="req">*</span></label>
+          <div class="searchable" data-field="member" data-idx="${i}">
+            <input class="row-input" 
+                   value="${esc(r.memberName)}" 
+                   placeholder="Search team..."
+                   onfocus="openSearch(${i}, 'member')"
+                   onclick="openSearch(${i}, 'member')"
+                   oninput="filterMember(${i}, this.value)">
+            <div class="dropdown" id="dd_member_${i}">
+              ${renderMemberOptions(i, '')}
+            </div>
+          </div>
+          ${lastRate ? `<div class="hint">💡 Last rate: <span class="strong">₹${lastRate}</span></div>` : ''}
         </div>
-      </td>
+        
+        <div class="entry-field">
+          <label>📍 Location <span class="req">*</span></label>
+          <div class="loc-field" data-idx="${i}">
+            <span class="pin-icon">📍</span>
+            <input class="row-input" 
+                   value="${esc(r.location)}" 
+                   placeholder="Search address..."
+                   onfocus="openLocationDropdown(${i})"
+                   oninput="searchLocationDebounced(${i}, this.value)">
+            <div class="suggest" id="loc_suggest_${i}">
+              <div class="loading-msg">Type at least 3 characters to search...</div>
+            </div>
+          </div>
+          ${r.locationData ? `<div class="hint">📌 ${esc(r.locationData.city)}${r.locationData.state ? ', ' + esc(r.locationData.state) : ''}</div>` : ''}
+        </div>
+      </div>
       
-      <td>
-        <div class="searchable" data-field="member" data-idx="${i}">
-          <input class="row-input" 
-                 value="${esc(r.memberName)}" 
-                 placeholder="Search team..."
-                 onfocus="openSearch(${i}, 'member')"
-                 onclick="openSearch(${i}, 'member')"
-                 oninput="filterMember(${i}, this.value)">
-          <div class="dropdown" id="dd_member_${i}">
-            ${renderMemberOptions(i, '')}
+      <!-- BOTTOM ROW: Media Type | Qty | Rate | Total -->
+      <div class="entry-bottom-row">
+        <div class="entry-field">
+          <label>🎨 Media Type</label>
+          <div class="media-chips">
+            ${MEDIA_TYPES.map(m => `
+              <button class="media-chip ${r.media === m.key ? 'active' : ''}" 
+                      onclick="setMedia(${i}, '${m.key}')">
+                ${esc(m.label)}
+              </button>
+            `).join('')}
           </div>
         </div>
-        ${lastRate ? `<div class="hint">💡 Last rate: <span class="strong">₹${lastRate}</span></div>` : ''}
-      </td>
-      
-      <td>
-        <div class="loc-field" data-idx="${i}">
-          <span class="pin-icon">📍</span>
-          <input class="row-input" 
-                 value="${esc(r.location)}" 
-                 placeholder="Search address..."
-                 onfocus="openLocationDropdown(${i})"
-                 oninput="searchLocationDebounced(${i}, this.value)">
-          <div class="suggest" id="loc_suggest_${i}">
-            <div class="loading-msg">Type at least 3 characters to search...</div>
-          </div>
+        
+        <div class="entry-field">
+          <label>📦 Qty <span class="req">*</span></label>
+          <input class="row-input mono" type="number" 
+                 value="${r.qty}" 
+                 placeholder="0"
+                 min="0"
+                 oninput="updateNumber(${i}, 'qty', this.value)">
         </div>
-        ${r.locationData ? `<div class="hint">📌 ${esc(r.locationData.city)}${r.locationData.state ? ', ' + esc(r.locationData.state) : ''}</div>` : ''}
-      </td>
-      
-      <td>
-        <input class="row-input mono" type="number" 
-               value="${r.qty}" 
-               placeholder="0"
-               min="0"
-               oninput="updateNumber(${i}, 'qty', this.value)">
-      </td>
-      
-      <td>
-        <input class="row-input mono" type="number" 
-               value="${r.rate}" 
-               placeholder="0"
-               min="0"
-               step="0.5"
-               oninput="updateNumber(${i}, 'rate', this.value)"
-               onkeydown="handleKey(event, ${i})">
-      </td>
-      
-      <td>
-        <input class="row-input mono total" type="text" 
-               value="${inr(total)}" 
-               readonly
-               id="total_${i}">
-      </td>
-      
-      <td>
-        <button class="icon-btn danger" onclick="deleteRow(${i})" title="Delete row">×</button>
-      </td>
-    </tr>
+        
+        <div class="entry-field">
+          <label>💰 Rate (₹)</label>
+          <input class="row-input mono" type="number" 
+                 value="${r.rate}" 
+                 placeholder="0"
+                 min="0"
+                 step="0.5"
+                 oninput="updateNumber(${i}, 'rate', this.value)"
+                 onkeydown="handleKey(event, ${i})">
+        </div>
+        
+        <div class="entry-field">
+          <label>💵 Total</label>
+          <input class="row-input mono total" type="text" 
+                 value="${inr(total)}" 
+                 readonly
+                 id="total_${i}">
+        </div>
+      </div>
+    </div>
   `;
 }
 
