@@ -565,6 +565,14 @@
         <input type="text" id="pyRef" class="form-input" placeholder="Optional">
       </div>
     </div>
+    <div class="form-grid full">
+      <div class="form-field">
+        <label>📎 Receipt Upload (optional)</label>
+        <input type="file" id="pyReceipt" class="form-input" accept="image/*,application/pdf" style="padding:8px 12px;">
+        <div style="font-size:10.5px;color:var(--text-mid);margin-top:4px;">JPG, PNG, or PDF · Max 5 MB</div>
+        <div id="receiptPreview" style="display:none;margin-top:8px;padding:8px 12px;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.3);border-radius:8px;font-size:12px;font-weight:600;color:#047857;"></div>
+      </div>
+    </div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('payModal')">Cancel</button>
       <button class="btn btn-orange" onclick="savePayment()" id="savePayBtn">💾 Save</button>
@@ -583,9 +591,15 @@
       <div style="font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;margin-bottom:10px;">Add New Master</div>
       <div class="form-grid">
         <div class="form-field">
+          <label>Master Code</label>
+          <input type="text" id="mCode" class="form-input mono" placeholder="MN008 (auto)" maxlength="10">
+        </div>
+        <div class="form-field">
           <label>Name <span class="req">*</span></label>
           <input type="text" id="mName" class="form-input" placeholder="Master name">
         </div>
+      </div>
+      <div class="form-grid">
         <div class="form-field">
           <label>Phone</label>
           <input type="tel" id="mPhone" class="form-input mono" maxlength="10">
@@ -736,7 +750,7 @@ function populateCampaignSelect() {
 
 function populateMasterSelectsModal() {
   document.getElementById('pyMaster').innerHTML = '<option value="">Select master...</option>' + state.masters.map(m => 
-    '<option value="' + m.id + '" data-name="' + esc(m.name) + '">' + esc(m.name) + ' (₹' + m.rate_per_piece + '/pcs)</option>'
+    '<option value="' + m.id + '" data-name="' + esc(m.name) + '">' + (m.master_code ? esc(m.master_code) + ' · ' : '') + esc(m.name) + ' (₹' + m.rate_per_piece + '/pcs)</option>'
   ).join('');
 }
 
@@ -904,7 +918,7 @@ function renderTable() {
     let masterOpts = '<option value="">Select master...</option>';
     state.masters.forEach(m => {
       const sel = m.id === row.master_id ? ' selected' : '';
-      masterOpts += '<option value="' + m.id + '"' + sel + '>' + esc(m.name) + ' (₹' + m.rate_per_piece + '/pcs)</option>';
+      masterOpts += '<option value="' + m.id + '"' + sel + '>' + (m.master_code ? esc(m.master_code) + ' · ' : '') + esc(m.name) + ' (₹' + m.rate_per_piece + '/pcs)</option>';
     });
     
     html += '<tr>';
@@ -1121,9 +1135,12 @@ function renderPayments() {
   }
   
   let html = '<div class="table-scroll"><table class="ht"><thead><tr>';
-  html += '<th>Date</th><th>Master</th><th>Type</th><th class="num">Amount</th><th>Mode</th><th>Reference</th><th></th>';
+  html += '<th>Date</th><th>Master</th><th>Type</th><th class="num">Amount</th><th>Mode</th><th>Reference</th><th>Receipt</th><th></th>';
   html += '</tr></thead><tbody>';
   rows.forEach(p => {
+    const receiptBtn = p.receipt_storage_path 
+      ? '<button class="row-btn" onclick="viewReceipt(\'' + esc(p.receipt_storage_path) + '\', \'' + esc(p.receipt_file_name || '') + '\')" style="background:rgba(52,211,153,0.1);color:#047857;border-color:rgba(52,211,153,0.3);">📎 View</button>'
+      : '<span style="color:var(--text-faint);font-size:11px;">—</span>';
     html += '<tr>';
     html += '<td><strong>' + p.payment_date + '</strong></td>';
     html += '<td><strong>' + esc(p.master_name) + '</strong></td>';
@@ -1131,6 +1148,7 @@ function renderPayments() {
     html += '<td class="num bold">' + inr(p.amount) + '</td>';
     html += '<td style="font-size:11.5px;text-transform:uppercase;font-weight:700;color:var(--text-mid);">' + esc(p.payment_mode) + '</td>';
     html += '<td style="font-size:12px;color:var(--text-mid);">' + esc(p.reference_number || '—') + '</td>';
+    html += '<td>' + receiptBtn + '</td>';
     html += '<td><button class="row-btn danger" onclick="deletePayment(\'' + p.id + '\')">🗑</button></td>';
     html += '</tr>';
   });
@@ -1206,6 +1224,8 @@ function openPayment() {
   document.getElementById('pyDate').value = todayStr();
   document.getElementById('pyMode').value = 'cash';
   document.getElementById('pyRef').value = '';
+  document.getElementById('pyReceipt').value = '';
+  document.getElementById('receiptPreview').style.display = 'none';
   document.getElementById('masterStatus').style.display = 'none';
   document.getElementById('payModal').classList.add('active');
 }
@@ -1240,6 +1260,58 @@ async function savePayment() {
   const amt = parseFloat(document.getElementById('pyAmount').value);
   if (!amt || amt <= 0) { showToast('Valid amount daalo', 'error'); return; }
   
+  const btn = document.getElementById('savePayBtn');
+  btn.disabled = true; btn.innerHTML = 'Saving...';
+  
+  // Step 1: Upload receipt if provided
+  let receiptPath = null;
+  let receiptName = null;
+  const receiptFile = document.getElementById('pyReceipt').files[0];
+  
+  if (receiptFile) {
+    if (receiptFile.size > 5 * 1024 * 1024) {
+      showToast('Receipt 5MB se chhoti honi chahiye', 'error');
+      btn.disabled = false; btn.innerHTML = '💾 Save';
+      return;
+    }
+    
+    try {
+      btn.innerHTML = 'Uploading receipt...';
+      const ext = receiptFile.name.split('.').pop();
+      const fileName = 'stitching_' + masterSel.value + '_' + Date.now() + '.' + ext;
+      const filePath = 'stitching/' + fileName;
+      
+      const formData = new FormData();
+      formData.append('file', receiptFile);
+      
+      const uploadRes = await fetch(CONFIG.url + '/storage/v1/object/payment-receipts/' + filePath, {
+        method: 'POST',
+        headers: {
+          'apikey': CONFIG.key,
+          'Authorization': 'Bearer ' + CONFIG.key,
+          'x-upsert': 'true'
+        },
+        body: receiptFile
+      });
+      
+      if (!uploadRes.ok) {
+        const errTxt = await uploadRes.text();
+        throw new Error('Receipt upload failed: ' + errTxt);
+      }
+      
+      receiptPath = filePath;
+      receiptName = receiptFile.name;
+    } catch (uploadErr) {
+      console.error('Receipt upload error:', uploadErr);
+      const proceed = confirm('Receipt upload failed: ' + uploadErr.message + '\n\nPayment save kare without receipt?');
+      if (!proceed) {
+        btn.disabled = false; btn.innerHTML = '💾 Save';
+        return;
+      }
+    }
+  }
+  
+  // Step 2: Save payment record
   const payload = {
     master_id: masterSel.value,
     master_name: masterOpt.dataset.name,
@@ -1248,11 +1320,12 @@ async function savePayment() {
     amount: amt,
     payment_mode: document.getElementById('pyMode').value,
     reference_number: document.getElementById('pyRef').value.trim() || null,
+    receipt_storage_path: receiptPath,
+    receipt_file_name: receiptName,
     recorded_by: state.admin.phone
   };
   
-  const btn = document.getElementById('savePayBtn');
-  btn.disabled = true; btn.innerHTML = 'Saving...';
+  btn.innerHTML = 'Saving payment...';
   
   try {
     await api('/rest/v1/prajapati_stitching_payments', {
@@ -1260,8 +1333,10 @@ async function savePayment() {
       headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
       body: JSON.stringify(payload)
     });
-    showToast('✓ ' + payload.payment_type.replace('_', ' ') + ' recorded', 'success');
+    showToast('✓ ' + payload.payment_type.replace('_', ' ') + ' recorded' + (receiptPath ? ' with receipt' : ''), 'success');
     closeModal('payModal');
+    document.getElementById('pyReceipt').value = '';
+    document.getElementById('receiptPreview').style.display = 'none';
     await loadData();
     if (state.tab === 'payments') renderPayments();
     if (state.tab === 'advances') renderAdvances();
@@ -1282,7 +1357,7 @@ function renderMastersList() {
     const earned = state.log.filter(l => l.master_id === m.id).reduce((s, l) => s + (parseFloat(l.total_amount) || 0), 0);
     return '<div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:9px;margin-bottom:6px;">' +
       '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--stitch),#fb923c);color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;">' + getInitials(m.name) + '</div>' +
-      '<div style="flex:1;min-width:0;"><div style="font-weight:700;color:var(--ink-900);font-size:13px;">' + esc(m.name) + '</div><div style="font-size:11px;color:var(--text-mid);">' + esc(m.master_type) + ' · ₹' + m.rate_per_piece + '/pcs ' + (m.phone ? '· ' + esc(m.phone) : '') + '</div></div>' +
+      '<div style="flex:1;min-width:0;"><div style="font-weight:700;color:var(--ink-900);font-size:13px;">' + (m.master_code ? '<span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--stitch-dark);background:rgba(249,115,22,0.1);padding:2px 6px;border-radius:5px;margin-right:6px;">' + esc(m.master_code) + '</span>' : '') + esc(m.name) + '</div><div style="font-size:11px;color:var(--text-mid);">' + esc(m.master_type) + ' · ₹' + m.rate_per_piece + '/pcs ' + (m.phone ? '· ' + esc(m.phone) : '') + '</div></div>' +
       '<div style="text-align:right;"><div style="font-family:\'JetBrains Mono\',monospace;font-size:13px;font-weight:800;color:var(--gold-deep);">' + inr(earned) + '</div><div style="font-size:10px;color:var(--text-mid);">earned</div></div>' +
       '</div>';
   }).join('');
@@ -1292,27 +1367,49 @@ function renderMastersList() {
 async function saveMaster() {
   const name = document.getElementById('mName').value.trim();
   if (!name) { showToast('Name daalo', 'error'); return; }
+  
+  // Auto-generate master_code if not provided
+  let code = document.getElementById('mCode').value.trim().toUpperCase();
+  if (!code) {
+    // Find next MN number
+    const existing = state.masters.map(m => m.master_code || '').filter(c => c.startsWith('MN'));
+    const nums = existing.map(c => parseInt(c.replace('MN', '')) || 0);
+    const next = nums.length > 0 ? Math.max(...nums) + 1 : 1;
+    code = 'MN' + String(next).padStart(3, '0');
+  }
+  
   try {
     await api('/rest/v1/prajapati_stitching_masters', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
       body: JSON.stringify({
+        master_code: code,
         name: name,
         phone: document.getElementById('mPhone').value.trim() || null,
         master_type: document.getElementById('mType').value,
         rate_per_piece: parseFloat(document.getElementById('mRate').value) || 15
       })
     });
-    showToast('✓ Master added', 'success');
+    showToast('✓ Master added: ' + code + ' · ' + name, 'success');
+    document.getElementById('mCode').value = '';
     document.getElementById('mName').value = '';
     document.getElementById('mPhone').value = '';
     document.getElementById('mRate').value = '15';
     await loadData();
     renderMastersList();
-  } catch (err) { showToast('Add failed: ' + err.message, 'error'); }
+  } catch (err) { 
+    let msg = err.message;
+    if (msg.includes('master_code')) msg = 'Code already exists. Try a different code.';
+    showToast('Add failed: ' + msg, 'error'); 
+  }
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+function viewReceipt(path, filename) {
+  const url = CONFIG.url + '/storage/v1/object/public/payment-receipts/' + path;
+  window.open(url, '_blank');
+}
 
 console.log('%c✂️ Stitching Daily Entry v2.0', 'background:#F97316;color:white;padding:6px 12px;border-radius:6px;font-weight:bold;font-size:13px;');
 
@@ -1320,6 +1417,22 @@ document.addEventListener('DOMContentLoaded', () => {
   autoLogin();
   document.getElementById('loginPhone').addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
   document.getElementById('loginPhone').addEventListener('input', e => { e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10); });
+  
+  // Receipt preview
+  const receiptInput = document.getElementById('pyReceipt');
+  if (receiptInput) {
+    receiptInput.addEventListener('change', e => {
+      const file = e.target.files[0];
+      const preview = document.getElementById('receiptPreview');
+      if (file) {
+        const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+        preview.innerHTML = '✓ ' + esc(file.name) + ' (' + sizeMB + ' MB)';
+        preview.style.display = 'block';
+      } else {
+        preview.style.display = 'none';
+      }
+    });
+  }
   
   ['payModal', 'mastersModal'].forEach(id => {
     document.getElementById(id).addEventListener('click', e => { if (e.target.id === id) closeModal(id); });
