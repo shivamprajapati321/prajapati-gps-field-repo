@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Owner Dashboard — Prajapati Advertising</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
+
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+  :root{
+    --ink-900:#050818;--ink-800:#0B1130;--ink-700:#131A3F;
+    --canvas:#FAFBFF;--paper:#FFFFFF;--line:#E8EAF4;--line-soft:#F0F2F8;
+    --text:#0F172A;--text-mid:#475569;--text-dim:#94A3B8;
+    --gold:#F5B83D;--gold-deep:#B8860B;--mint:#34D399;--rose:#FF5470;
+    --violet:#8B5CF6;--blue:#3B82F6;--orange:#F97316;--pink:#EC4899;--teal:#00D4D2;
+  }
+  body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--canvas);color:var(--text);min-height:100vh}
+  button{font-family:inherit;cursor:pointer;border:none}
+  input{font-family:inherit;outline:none}
+  
+  /* LOGIN */
+  .login-bg{min-height:100vh;background:linear-gradient(135deg,var(--ink-900),var(--ink-800),var(--gold));display:flex;align-items:center;justify-content:center;padding:20px}
+  .login-card{background:white;border-radius:20px;padding:36px 32px;width:100%;max-width:420px;box-shadow:0 30px 80px rgba(0,0,0,0.4)}
+  .login-logo{width:64px;height:64px;border-radius:16px;background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:28px;margin-bottom:22px;box-shadow:0 8px 30px rgba(245,184,61,0.4)}
+  .login-card h1{font-family:'Fraunces',serif;font-size:28px;font-weight:600;color:var(--ink-900);margin-bottom:4px}
+  .login-card .sub{color:var(--text-mid);font-size:13px;margin-bottom:26px}
+  .field-group{margin-bottom:16px}
+  .field-group label{display:block;font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:7px}
+  .login-input{width:100%;padding:12px 14px;font-size:14px;border:1.5px solid var(--line);border-radius:10px;background:white;font-family:'JetBrains Mono',monospace;text-align:center;letter-spacing:0.05em;font-weight:600}
+  .login-input:focus{border-color:var(--gold);box-shadow:0 0 0 4px rgba(245,184,61,0.12)}
+  .err-banner{background:#fef2f2;color:#991b1b;padding:10px 12px;border-radius:8px;font-size:12px;font-weight:600;margin-top:12px;display:none}
+  .err-banner.show{display:block}
+  .login-btn{width:100%;padding:13px 18px;background:linear-gradient(135deg,var(--ink-900),var(--ink-700));color:white;border-radius:10px;font-size:14px;font-weight:700;box-shadow:0 4px 14px rgba(5,8,24,0.3)}
+  .login-btn:disabled{opacity:0.6}
+  .app{display:none}.app.active{display:block}
+  
+  /* MAIN */
+  .topbar{background:white;border-bottom:1px solid var(--line);padding:18px 32px;display:flex;align-items:center;gap:20px;position:sticky;top:0;z-index:40}
+  .brand{display:flex;align-items:center;gap:14px}
+  .brand-logo{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,var(--ink-900),var(--ink-700));color:var(--gold);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;box-shadow:0 4px 14px rgba(5,8,24,0.3)}
+  .brand-text .name{font-family:'Fraunces',serif;font-size:20px;font-weight:700;color:var(--ink-900);letter-spacing:-0.02em}
+  .brand-text .sub{font-size:10.5px;font-weight:700;color:var(--gold-deep);letter-spacing:0.1em;text-transform:uppercase}
+  .topbar .right{margin-left:auto;display:flex;gap:10px;align-items:center}
+  .user-chip{display:flex;align-items:center;gap:9px;padding:5px 12px 5px 5px;border-radius:999px;background:var(--canvas);border:1px solid var(--line)}
+  .user-chip .avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
+  .user-chip .name{font-size:12.5px;font-weight:700;color:var(--ink-900)}
+  .logout{padding:7px 12px;border-radius:8px;background:var(--canvas);color:var(--text-mid);font-size:12px;font-weight:700;border:1px solid var(--line)}
+  .logout:hover{background:#fef2f2;color:var(--rose);border-color:#fecaca}
+  
+  /* HERO */
+  .hero{background:linear-gradient(135deg,var(--ink-900) 0%,var(--ink-800) 60%,#7c2d12 130%);padding:32px 40px;color:white;position:relative;overflow:hidden}
+  .hero::before{content:'';position:absolute;top:-50%;right:-10%;width:600px;height:600px;background:radial-gradient(circle,rgba(245,184,61,0.25),transparent 60%);pointer-events:none}
+  .hero-content{position:relative;z-index:2}
+  .hero-eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(245,184,61,0.18);border:1px solid rgba(245,184,61,0.3);color:#fbbf24;padding:5px 12px;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px}
+  .hero-eyebrow .pulse{width:6px;height:6px;background:#fbbf24;border-radius:50%;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(1.6)}}
+  .hero h1{font-family:'Fraunces',serif;font-size:32px;font-weight:600;line-height:1.15;margin-bottom:6px;letter-spacing:-0.03em}
+  .hero h1 .accent{color:#fbbf24;font-style:italic;font-weight:500}
+  .hero-sub{color:rgba(255,255,255,0.7);font-size:14px;font-weight:500;line-height:1.45;max-width:520px}
+  .hero-time{position:absolute;top:32px;right:40px;text-align:right;z-index:2}
+  .hero-time .date{font-family:'JetBrains Mono',monospace;font-size:13px;color:rgba(255,255,255,0.7);font-weight:600}
+  .hero-time .time{font-family:'JetBrains Mono',monospace;font-size:22px;color:white;font-weight:800;margin-top:2px}
+  
+  .content{padding:24px 40px 60px;max-width:1500px;margin:0 auto}
+  
+  /* SECTION TITLE */
+  .section-title{font-size:13px;font-weight:800;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.08em;margin:32px 0 12px;display:flex;align-items:center;gap:10px}
+  .section-title:first-child{margin-top:0}
+  .section-title::before{content:'';width:24px;height:2px;background:linear-gradient(90deg,var(--gold),transparent);border-radius:2px}
+  .section-title .count{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);font-weight:700;background:var(--paper);border:1px solid var(--line);padding:3px 10px;border-radius:999px;text-transform:none;letter-spacing:0.02em}
+  
+  /* DEPT GRID */
+  .dept-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+  .dept-card{background:white;border:1px solid var(--line);border-radius:14px;padding:20px;cursor:pointer;text-decoration:none;color:inherit;transition:all 0.2s;position:relative;overflow:hidden}
+  .dept-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent-color);opacity:0;transition:opacity 0.2s}
+  .dept-card:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(15,23,42,0.1);border-color:var(--accent-color)}
+  .dept-card:hover::before{opacity:1}
+  .dept-card .icon-box{width:48px;height:48px;border-radius:12px;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:14px}
+  .dept-card h3{font-family:'Fraunces',serif;font-size:18px;font-weight:600;color:var(--ink-900);margin-bottom:4px;letter-spacing:-0.01em}
+  .dept-card p{font-size:12.5px;color:var(--text-mid);line-height:1.5;margin-bottom:10px;min-height:36px}
+  .dept-card .meta{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:0.04em}
+  .dept-card .meta .arrow{margin-left:auto;width:24px;height:24px;border-radius:50%;background:var(--canvas);display:flex;align-items:center;justify-content:center;color:var(--accent-color);font-weight:800;transition:all 0.2s}
+  .dept-card:hover .meta .arrow{background:var(--accent-color);color:white;transform:translateX(2px)}
+  
+  /* Theme colors per card */
+  .dept-card.gold{--accent-color:var(--gold-deep);--accent-bg:rgba(245,184,61,0.12)}
+  .dept-card.teal{--accent-color:var(--teal);--accent-bg:rgba(0,212,210,0.12)}
+  .dept-card.violet{--accent-color:var(--violet);--accent-bg:rgba(139,92,246,0.12)}
+  .dept-card.blue{--accent-color:var(--blue);--accent-bg:rgba(59,130,246,0.12)}
+  .dept-card.orange{--accent-color:var(--orange);--accent-bg:rgba(249,115,22,0.12)}
+  .dept-card.mint{--accent-color:#10b981;--accent-bg:rgba(52,211,153,0.12)}
+  .dept-card.rose{--accent-color:var(--rose);--accent-bg:rgba(255,84,112,0.12)}
+  .dept-card.pink{--accent-color:var(--pink);--accent-bg:rgba(236,72,153,0.12)}
+  .dept-card.indigo{--accent-color:#6366f1;--accent-bg:rgba(99,102,241,0.12)}
+  .dept-card.amber{--accent-color:#d97706;--accent-bg:rgba(217,119,6,0.12)}
+  
+  /* Quick stats */
+  .quick-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+  .stat-card{background:white;border:1px solid var(--line);border-radius:14px;padding:18px 20px;transition:all 0.2s}
+  .stat-card:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(15,23,42,0.08)}
+  .stat-card .label{font-size:10.5px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px}
+  .stat-card .value{font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:800;color:var(--ink-900);letter-spacing:-0.02em;line-height:1.1}
+  .stat-card .meta{font-size:11px;color:var(--text-mid);font-weight:600;margin-top:4px}
+  
+  @media (max-width:768px){
+    .topbar{padding:14px 18px}
+    .brand-text .name{font-size:16px}
+    .hero{padding:24px 20px}
+    .hero h1{font-size:22px}
+    .hero-time{display:none}
+    .content{padding:16px}
+    .dept-grid{grid-template-columns:1fr}
+    .quick-stats{grid-template-columns:repeat(2,1fr)}
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-bg" id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">👑</div>
+    <h1>Owner Dashboard</h1>
+    <p class="sub">Centralized control for Admin / Owner / Senior staff</p>
+    <div class="field-group">
+      <label>Phone Number</label>
+      <input type="tel" id="loginPhone" class="login-input" placeholder="10-digit phone" maxlength="10">
+    </div>
+    <button class="login-btn" onclick="doLogin()" id="loginBtn">Access Dashboard →</button>
+    <div class="err-banner" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="mainApp">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-logo">P</div>
+      <div class="brand-text">
+        <div class="name">Prajapati Advertising</div>
+        <div class="sub">Owner Console</div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="user-chip">
+        <div class="avatar" id="userAvatar">?</div>
+        <span class="name" id="userName">—</span>
+      </div>
+      <button class="logout" onclick="logout()">Logout</button>
+    </div>
+  </header>
+  
+  <section class="hero">
+    <div class="hero-content">
+      <div class="hero-eyebrow"><span class="pulse"></span>Owner Console</div>
+      <h1>Good <span class="accent" id="greetTime">evening</span>, <span id="greetName">Owner</span></h1>
+      <p class="hero-sub">Centralized access to all departments. Click any tile to open that module — sab kuch ek hi jagah.</p>
+    </div>
+    <div class="hero-time">
+      <div class="date" id="todayDate">—</div>
+      <div class="time" id="currentTime">—</div>
+    </div>
+  </section>
+  
+  <main class="content">
+    <!-- QUICK STATS -->
+    <div class="quick-stats">
+      <div class="stat-card">
+        <div class="label">📸 Today's Photos</div>
+        <div class="value" id="statPhotos">—</div>
+        <div class="meta" id="statPhotosMeta">loading...</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">👥 Active Members</div>
+        <div class="value" id="statMembers">—</div>
+        <div class="meta">team strength</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">🎯 Active Campaigns</div>
+        <div class="value" id="statCampaigns">—</div>
+        <div class="meta">in production</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">⏳ Pending Verification</div>
+        <div class="value" id="statPending">—</div>
+        <div class="meta">awaiting review</div>
+      </div>
+    </div>
+    
+    <!-- ADMIN -->
+    <div class="section-title">👑 Admin & Verification <span class="count">4 modules</span></div>
+    <div class="dept-grid">
+      <a href="admin-v2.html" target="_blank" class="dept-card gold">
+        <div class="icon-box">🛡️</div>
+        <h3>V2 Admin Console</h3>
+        <p>Complete admin: campaigns, members, photos, reports, client links</p>
+        <div class="meta">PRIMARY <span class="arrow">→</span></div>
+      </a>
+      <a href="verifier.html" target="_blank" class="dept-card mint">
+        <div class="icon-box">✅</div>
+        <h3>Verifier Portal</h3>
+        <p>Review photos, verify plates, mark hood/back panel verified</p>
+        <div class="meta">QUALITY <span class="arrow">→</span></div>
+      </a>
+      <a href="master-cache.html" target="_blank" class="dept-card amber">
+        <div class="icon-box">🗂️</div>
+        <h3>Master Database</h3>
+        <p>46,624 vehicles, cost saving tracker, campaign-wise Excel export</p>
+        <div class="meta">DATA <span class="arrow">→</span></div>
+      </a>
+      <a href="ppt.html" target="_blank" class="dept-card indigo">
+        <div class="icon-box">📊</div>
+        <h3>PPT Generator</h3>
+        <p>Auto-generate campaign presentations with verified photos</p>
+        <div class="meta">REPORTS <span class="arrow">→</span></div>
+      </a>
+    </div>
+    
+    <!-- OPERATIONS -->
+    <div class="section-title">⚙️ Operations <span class="count">5 modules</span></div>
+    <div class="dept-grid">
+      <a href="launch-campaign.html" target="_blank" class="dept-card teal">
+        <div class="icon-box">🚀</div>
+        <h3>Launch Campaign</h3>
+        <p>Sales team launches new campaigns with pricing & quotation</p>
+        <div class="meta">SALES <span class="arrow">→</span></div>
+      </a>
+      <a href="execution-plan.html" target="_blank" class="dept-card violet">
+        <div class="icon-box">📋</div>
+        <h3>Execution Plan</h3>
+        <p>Operations assigns teams, dates, cities for production</p>
+        <div class="meta">OPS <span class="arrow">→</span></div>
+      </a>
+      <a href="execution-entry.html" target="_blank" class="dept-card teal">
+        <div class="icon-box">✏️</div>
+        <h3>Daily Entry</h3>
+        <p>Daily execution log: media type, member, qty, rate, location</p>
+        <div class="meta">DAILY <span class="arrow">→</span></div>
+      </a>
+      <a href="rates-master.html" target="_blank" class="dept-card amber">
+        <div class="icon-box">💰</div>
+        <h3>Rates Master</h3>
+        <p>Set per-member rates per media type (Hood, Sticker, etc)</p>
+        <div class="meta">CONFIG <span class="arrow">→</span></div>
+      </a>
+      <a href="dashboard.html" target="_blank" class="dept-card blue">
+        <div class="icon-box">📈</div>
+        <h3>Ops Dashboard</h3>
+        <p>Live operations metrics, daily activity, performance</p>
+        <div class="meta">MONITOR <span class="arrow">→</span></div>
+      </a>
+    </div>
+    
+    <!-- PRODUCTION -->
+    <div class="section-title">🏭 Production <span class="count">3 modules</span></div>
+    <div class="dept-grid">
+      <a href="printing.html" target="_blank" class="dept-card blue">
+        <div class="icon-box">🖨️</div>
+        <h3>Printing</h3>
+        <p>Assign jobs to print vendors, track payments, generate WO</p>
+        <div class="meta">VENDOR <span class="arrow">→</span></div>
+      </a>
+      <a href="stitching.html" target="_blank" class="dept-card orange">
+        <div class="icon-box">✂️</div>
+        <h3>Stitching</h3>
+        <p>Daily stitching log: 7 masters, regular/OT, advance/loan ledger</p>
+        <div class="meta">IN-HOUSE <span class="arrow">→</span></div>
+      </a>
+      <a href="delivery.html" target="_blank" class="dept-card pink">
+        <div class="icon-box">🚚</div>
+        <h3>Delivery</h3>
+        <p>Dispatch tracking, transport vendors, parcel deliveries</p>
+        <div class="meta">LOGISTICS <span class="arrow">→</span></div>
+      </a>
+    </div>
+    
+    <!-- FINANCE -->
+    <div class="section-title">💰 Finance <span class="count">2 modules</span></div>
+    <div class="dept-grid">
+      <a href="payments.html" target="_blank" class="dept-card gold">
+        <div class="icon-box">💸</div>
+        <h3>Payments</h3>
+        <p>Record payments to team members, attach UPI receipts</p>
+        <div class="meta">RECORD <span class="arrow">→</span></div>
+      </a>
+      <a href="outstanding.html" target="_blank" class="dept-card rose">
+        <div class="icon-box">💳</div>
+        <h3>Outstanding</h3>
+        <p>Who owes what — quick pay with receipt upload & history</p>
+        <div class="meta">DUES <span class="arrow">→</span></div>
+      </a>
+    </div>
+    
+    <!-- REPORTS -->
+    <div class="section-title">📈 Reports Suite <span class="count">3 modules</span></div>
+    <div class="dept-grid">
+      <a href="report-daily.html" target="_blank" class="dept-card blue">
+        <div class="icon-box">📅</div>
+        <h3>Daily Report</h3>
+        <p>Day-by-day photo count, verification, duplicate detection</p>
+        <div class="meta">DAILY <span class="arrow">→</span></div>
+      </a>
+      <a href="report-team.html" target="_blank" class="dept-card violet">
+        <div class="icon-box">🏆</div>
+        <h3>Team Report</h3>
+        <p>Team performance: podium, leaderboard, members ranking</p>
+        <div class="meta">TEAM <span class="arrow">→</span></div>
+      </a>
+      <a href="report-campaign.html" target="_blank" class="dept-card mint">
+        <div class="icon-box">🎯</div>
+        <h3>Campaign Report</h3>
+        <p>Per-campaign analytics, completion %, cities, members</p>
+        <div class="meta">CAMPAIGN <span class="arrow">→</span></div>
+      </a>
+    </div>
+    
+    <!-- SALES CRM -->
+    <div class="section-title">💼 Sales CRM <span class="count">6 modules</span></div>
+    <div class="dept-grid">
+      <a href="crm.html" target="_blank" class="dept-card indigo">
+        <div class="icon-box">📊</div>
+        <h3>CRM Dashboard</h3>
+        <p>Sales pipeline overview, lead activity, conversion metrics</p>
+        <div class="meta">PIPELINE <span class="arrow">→</span></div>
+      </a>
+      <a href="leads.html" target="_blank" class="dept-card teal">
+        <div class="icon-box">🎯</div>
+        <h3>Leads</h3>
+        <p>9 sources: IndiaMART, Justdial, Meta, manual, Excel, etc.</p>
+        <div class="meta">LEADS <span class="arrow">→</span></div>
+      </a>
+      <a href="quotations.html" target="_blank" class="dept-card violet">
+        <div class="icon-box">📝</div>
+        <h3>Quotations</h3>
+        <p>Create & send quotes to leads, version tracking</p>
+        <div class="meta">QUOTES <span class="arrow">→</span></div>
+      </a>
+      <a href="pi.html" target="_blank" class="dept-card amber">
+        <div class="icon-box">🧾</div>
+        <h3>Proforma Invoice</h3>
+        <p>PI generation with GST, advance receipt tracking</p>
+        <div class="meta">PI <span class="arrow">→</span></div>
+      </a>
+      <a href="invoices.html" target="_blank" class="dept-card gold">
+        <div class="icon-box">💼</div>
+        <h3>Invoices</h3>
+        <p>Final invoices, payment status, GST compliance</p>
+        <div class="meta">INVOICE <span class="arrow">→</span></div>
+      </a>
+      <a href="clients.html" target="_blank" class="dept-card pink">
+        <div class="icon-box">👥</div>
+        <h3>Clients</h3>
+        <p>Client master: contacts, history, GST details</p>
+        <div class="meta">MASTER <span class="arrow">→</span></div>
+      </a>
+    </div>
+    
+    <!-- FIELD APPS -->
+    <div class="section-title">📱 Field Apps <span class="count">2 modules</span></div>
+    <div class="dept-grid">
+      <a href="field.html" target="_blank" class="dept-card teal">
+        <div class="icon-box">📸</div>
+        <h3>Field App (Workers)</h3>
+        <p>Photo capture with GPS stamp — workers ke liye PWA</p>
+        <div class="meta">PWA <span class="arrow">→</span></div>
+      </a>
+      <a href="app.html" target="_blank" class="dept-card indigo">
+        <div class="icon-box">🏠</div>
+        <h3>Admin Hub</h3>
+        <p>V2 + V1 admin tabs in one URL — backup access</p>
+        <div class="meta">HUB <span class="arrow">→</span></div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<script>
+"use strict";
+const CONFIG = { url: 'https://fpbktcgtspqsqpaytslv.supabase.co', key: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j' };
+const state = { admin: null };
+
+function getInitials(name) { if (!name) return '?'; return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase(); }
+function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
+function escHtml(s) { if (s == null) return ''; return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function todayIST() {
+  const now = new Date();
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const istNow = new Date(now.getTime() + istOffset - (now.getTimezoneOffset() * 60 * 1000));
+  return istNow.toISOString().split('T')[0];
+}
+
+async function api(path, options) {
+  options = options || {};
+  options.headers = options.headers || {};
+  options.headers.apikey = CONFIG.key;
+  options.headers.Authorization = 'Bearer ' + CONFIG.key;
+  const res = await fetch(CONFIG.url + path, options);
+  if (!res.ok) throw new Error('API ' + res.status);
+  const txt = await res.text();
+  if (!txt) return null;
+  return JSON.parse(txt);
+}
+
+async function doLogin() {
+  const phone = document.getElementById('loginPhone').value.trim();
+  const errEl = document.getElementById('loginErr');
+  const btn = document.getElementById('loginBtn');
+  errEl.classList.remove('show');
+  if (phone.length !== 10) { errEl.textContent = '10 digit phone daalo'; errEl.classList.add('show'); return; }
+  btn.disabled = true; btn.innerHTML = 'Checking...';
+  try {
+    const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
+    if (!members || members.length === 0) { 
+      errEl.textContent = 'Number registered nahi'; errEl.classList.add('show'); 
+      btn.disabled = false; btn.innerHTML = 'Access Dashboard →'; return; 
+    }
+    const m = members[0];
+    if (!['admin','owner','senior'].includes((m.role||'').toLowerCase())) {
+      errEl.textContent = 'Sirf Admin/Owner ke liye';
+      errEl.classList.add('show'); btn.disabled = false; btn.innerHTML = 'Access Dashboard →'; return;
+    }
+    state.admin = m;
+    localStorage.setItem('prajapati_admin_phone', phone);
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').classList.add('active');
+    initApp();
+  } catch (err) { 
+    errEl.textContent = 'Error: ' + err.message; errEl.classList.add('show'); 
+    btn.disabled = false; btn.innerHTML = 'Access Dashboard →'; 
+  }
+}
+
+async function autoLogin() {
+  const phone = localStorage.getItem('prajapati_admin_phone');
+  if (!phone) return;
+  try {
+    const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
+    if (!members || members.length === 0) return;
+    const m = members[0];
+    if (!['admin','owner','senior'].includes((m.role||'').toLowerCase())) return;
+    state.admin = m;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').classList.add('active');
+    initApp();
+  } catch (e) {}
+}
+
+function logout() {
+  if (!confirm('Logout?')) return;
+  localStorage.removeItem('prajapati_admin_phone');
+  location.reload();
+}
+
+function initApp() {
+  setText('userAvatar', getInitials(state.admin.name));
+  setText('userName', state.admin.name.split(' ')[0]);
+  setText('greetName', state.admin.name.split(' ')[0]);
+  
+  // Greeting based on hour
+  const hr = new Date().getHours();
+  let greet = 'morning';
+  if (hr >= 12 && hr < 17) greet = 'afternoon';
+  else if (hr >= 17) greet = 'evening';
+  setText('greetTime', greet);
+  
+  updateClock();
+  setInterval(updateClock, 60000);
+  
+  loadStats();
+}
+
+function updateClock() {
+  const now = new Date();
+  const date = now.toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+  const time = now.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true });
+  setText('todayDate', date);
+  setText('currentTime', time);
+}
+
+async function loadStats() {
+  try {
+    const today = todayIST();
+    const startUtc = new Date(today + 'T00:00:00+05:30').toISOString();
+    const endUtc = new Date(today + 'T23:59:59+05:30').toISOString();
+    
+    const [photos, members, campaigns] = await Promise.all([
+      api('/rest/v1/trial_photos?select=id,is_verified,rejected&captured_at=gte.' + startUtc + '&captured_at=lte.' + endUtc + '&deleted_at=is.null&limit=5000'),
+      api('/rest/v1/trial_team_members?active=eq.true&select=id'),
+      api('/rest/v1/trial_campaigns?active=eq.true&select=key')
+    ]);
+    
+    const photosArr = photos || [];
+    const verified = photosArr.filter(p => p.is_verified).length;
+    const pending = photosArr.filter(p => !p.is_verified && !p.rejected).length;
+    
+    setText('statPhotos', photosArr.length.toLocaleString('en-IN'));
+    setText('statPhotosMeta', verified + ' verified · ' + pending + ' pending');
+    setText('statMembers', (members || []).length);
+    setText('statCampaigns', (campaigns || []).length);
+    setText('statPending', pending.toLocaleString('en-IN'));
+  } catch (err) {
+    console.error('Stats load error:', err);
+  }
+}
+
+console.log('%c👑 Owner Dashboard v1.0', 'background:#F5B83D;color:#050818;padding:6px 12px;border-radius:6px;font-weight:bold;font-size:13px;');
+
+document.addEventListener('DOMContentLoaded', () => {
+  autoLogin();
+  document.getElementById('loginPhone').addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
+  document.getElementById('loginPhone').addEventListener('input', e => { e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10); });
+});
+</script>
+</body>
+</html>
