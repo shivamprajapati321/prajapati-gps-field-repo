@@ -148,7 +148,10 @@
     <div class="right">
       <div class="user-chip">
         <div class="avatar" id="userAvatar">?</div>
-        <span class="name" id="userName">—</span>
+        <div style="display:flex;flex-direction:column;gap:1px;">
+          <span class="name" id="userName">—</span>
+          <span id="userRoleBadge" style="font-size:9px;font-weight:800;color:var(--gold-deep);text-transform:uppercase;letter-spacing:0.06em;line-height:1;">—</span>
+        </div>
       </div>
       <button class="logout" onclick="logout()">Logout</button>
     </div>
@@ -375,8 +378,194 @@
         <div class="meta">HUB <span class="arrow">→</span></div>
       </a>
     </div>
+    
+    <!-- ═══ USER & ACCESS MANAGEMENT (Owner-only) ═══ -->
+    <div class="section-title">👥 Team Access Management <span class="count" id="teamCount">— users</span></div>
+    
+    <div style="background:white;border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:30px;">
+      <!-- Filter bar -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--line);">
+        <input type="text" id="userSearch" placeholder="🔍 Search by name or phone..." 
+               style="flex:1;min-width:200px;padding:10px 14px;border:1.5px solid var(--line);border-radius:9px;font-size:13px;font-family:inherit;outline:none;"
+               oninput="filterUsers()">
+        <select id="filterDept" onchange="filterUsers()" 
+                style="padding:10px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:13px;font-family:inherit;font-weight:600;outline:none;cursor:pointer;">
+          <option value="">All Departments</option>
+        </select>
+        <select id="filterOTP" onchange="filterUsers()" 
+                style="padding:10px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:13px;font-family:inherit;font-weight:600;outline:none;cursor:pointer;">
+          <option value="">All Users</option>
+          <option value="otp">🔐 OTP Required</option>
+          <option value="no-otp">⚡ No OTP</option>
+        </select>
+        <button onclick="loadUsers()" 
+                style="padding:10px 14px;background:var(--canvas);border:1px solid var(--line);border-radius:9px;font-size:12.5px;font-weight:700;cursor:pointer;color:var(--text-mid);">
+          🔄 Refresh
+        </button>
+      </div>
+      
+      <!-- Bulk actions -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;font-size:11.5px;color:var(--text-mid);">
+        💡 <strong>Click on any user to edit their access</strong> · Toggle OTP requirement · Assign departments · Override module access
+      </div>
+      
+      <!-- Users table -->
+      <div id="usersListContainer" style="overflow-x:auto;">
+        <div style="text-align:center;padding:40px;color:var(--text-mid);font-size:13px;">Loading users...</div>
+      </div>
+    </div>
   </main>
 </div>
+
+<!-- USER EDIT MODAL -->
+<div id="userEditModal" style="display:none;position:fixed;inset:0;background:rgba(5,8,24,0.7);backdrop-filter:blur(8px);z-index:200;padding:40px 20px;overflow-y:auto;align-items:flex-start;justify-content:center;">
+  <div style="background:white;border-radius:18px;width:100%;max-width:680px;padding:28px;box-shadow:0 24px 80px rgba(0,0,0,0.3);margin:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--line);">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div id="editUserAvatar" style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;">?</div>
+        <div>
+          <h2 style="font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--ink-900);" id="editUserName">—</h2>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-mid);" id="editUserPhone">—</div>
+        </div>
+      </div>
+      <button onclick="closeUserModal()" 
+              style="width:30px;height:30px;border-radius:8px;background:var(--canvas);color:var(--text-mid);font-size:16px;font-weight:700;border:none;cursor:pointer;">✕</button>
+    </div>
+    
+    <!-- Role -->
+    <div style="margin-bottom:18px;">
+      <label style="display:block;font-size:11px;font-weight:800;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:7px;">Role</label>
+      <select id="editRole" style="width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:9px;font-size:13.5px;font-weight:600;font-family:inherit;outline:none;cursor:pointer;background:white;">
+        <option value="admin">👑 Admin</option>
+        <option value="owner">⭐ Owner</option>
+        <option value="senior">⚡ Senior</option>
+        <option value="sales">💼 Sales</option>
+        <option value="operations">⚙️ Operations</option>
+        <option value="operations_manager">⚙️ Operations Manager</option>
+        <option value="hr_sales">📞 HR/Sales</option>
+        <option value="verifier">✅ Verifier</option>
+        <option value="field">📸 Field Worker</option>
+        <option value="printing">🖨️ Printing</option>
+        <option value="stitching">✂️ Stitching</option>
+        <option value="delivery">🚚 Delivery</option>
+        <option value="execution">🎯 Execution</option>
+        <option value="fitting">🔧 Fitting</option>
+        <option value="designer">🎨 Designer</option>
+        <option value="accounts">💰 Accounts</option>
+        <option value="data_entry">📝 Data Entry (DEO)</option>
+        <option value="planner">📋 Planner</option>
+      </select>
+    </div>
+    
+    <!-- OTP Toggle -->
+    <div style="background:linear-gradient(135deg,rgba(245,184,61,0.08),rgba(245,184,61,0.02));border:1px solid rgba(245,184,61,0.25);border-radius:10px;padding:14px;margin-bottom:18px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;">
+        <div>
+          <div style="font-weight:800;color:var(--ink-900);font-size:14px;display:flex;align-items:center;gap:6px;">🔐 Require OTP for Login</div>
+          <div style="font-size:11.5px;color:var(--text-mid);margin-top:3px;line-height:1.5;">If enabled, user must verify 6-digit SMS OTP each login.<br>Disable for workers/frequent users who don't need extra security.</div>
+        </div>
+        <label class="toggle" style="position:relative;display:inline-block;width:54px;height:30px;flex-shrink:0;">
+          <input type="checkbox" id="editOtpRequired" style="opacity:0;width:0;height:0;">
+          <span class="slider" style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:30px;transition:0.3s;"></span>
+        </label>
+      </div>
+    </div>
+    
+    <!-- Departments -->
+    <div style="margin-bottom:18px;">
+      <label style="display:block;font-size:11px;font-weight:800;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Departments (select multiple)</label>
+      <div id="editDepartments" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+    </div>
+    
+    <!-- Module Overrides -->
+    <div style="margin-bottom:18px;">
+      <label style="display:block;font-size:11px;font-weight:800;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Module Access (Optional Override)</label>
+      <div style="font-size:11px;color:var(--text-mid);margin-bottom:8px;line-height:1.5;">Manually grant or deny specific modules beyond department defaults. Leave empty to use department defaults.</div>
+      <div id="editModuleAccess" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px;max-height:240px;overflow-y:auto;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--canvas);"></div>
+    </div>
+    
+    <!-- Notes -->
+    <div style="margin-bottom:18px;">
+      <label style="display:block;font-size:11px;font-weight:800;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:7px;">Access Notes (Optional)</label>
+      <textarea id="editNotes" placeholder="e.g., 'Temporary access for May only'..." 
+                style="width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:13px;font-family:inherit;outline:none;resize:vertical;min-height:60px;"></textarea>
+    </div>
+    
+    <!-- Active Status -->
+    <div style="background:linear-gradient(135deg,rgba(52,211,153,0.08),rgba(52,211,153,0.02));border:1px solid rgba(52,211,153,0.25);border-radius:10px;padding:14px;margin-bottom:18px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;">
+        <div>
+          <div style="font-weight:800;color:var(--ink-900);font-size:14px;">✓ Account Active</div>
+          <div style="font-size:11.5px;color:var(--text-mid);margin-top:3px;">Disable to instantly revoke all access without deleting</div>
+        </div>
+        <label class="toggle" style="position:relative;display:inline-block;width:54px;height:30px;flex-shrink:0;">
+          <input type="checkbox" id="editActive" style="opacity:0;width:0;height:0;">
+          <span class="slider" style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:30px;transition:0.3s;"></span>
+        </label>
+      </div>
+    </div>
+    
+    <!-- Actions -->
+    <div style="display:flex;justify-content:flex-end;gap:10px;padding-top:14px;border-top:1px solid var(--line);">
+      <button onclick="closeUserModal()" 
+              style="padding:10px 18px;background:white;color:var(--text-mid);border:1px solid var(--line);border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Cancel</button>
+      <button onclick="saveUserAccess()" id="saveUserBtn"
+              style="padding:10px 22px;background:linear-gradient(135deg,var(--ink-900),var(--ink-700));color:white;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(5,8,24,0.3);">💾 Save Access Settings</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Toggle switch */
+  .toggle .slider:before {
+    position:absolute;content:"";height:24px;width:24px;left:3px;bottom:3px;
+    background:white;border-radius:50%;transition:0.3s;box-shadow:0 2px 6px rgba(0,0,0,0.2);
+  }
+  .toggle input:checked + .slider { background:linear-gradient(135deg,var(--gold),var(--gold-deep)) !important; }
+  .toggle input:checked + .slider:before { transform:translateX(24px); }
+  
+  /* Dept chip */
+  .dept-chip {
+    padding:7px 13px; border-radius:8px; font-size:12px; font-weight:700;
+    border:1.5px solid var(--line); background:white; color:var(--text-mid);
+    cursor:pointer; transition:all 0.15s; font-family:inherit;
+    display:inline-flex; align-items:center; gap:5px;
+  }
+  .dept-chip:hover { background:var(--canvas); border-color:var(--gold); }
+  .dept-chip.active { background:linear-gradient(135deg,var(--ink-900),var(--ink-700)); color:white; border-color:var(--ink-900); box-shadow:0 2px 8px rgba(5,8,24,0.2); }
+  
+  /* Module override checkbox */
+  .module-row {
+    display:flex; align-items:center; gap:8px; padding:6px 10px;
+    background:white; border:1px solid var(--line); border-radius:7px;
+    font-size:12px; font-weight:600; color:var(--text);
+    cursor:pointer; transition:all 0.15s;
+  }
+  .module-row:hover { background:var(--canvas); }
+  .module-row.granted { background:rgba(52,211,153,0.1); border-color:rgba(52,211,153,0.3); color:#047857; }
+  .module-row.denied { background:rgba(255,84,112,0.08); border-color:rgba(255,84,112,0.25); color:#be123c; }
+  .module-row input[type="checkbox"] { cursor:pointer; }
+  
+  /* Users table */
+  .users-table { width:100%; border-collapse:collapse; min-width:780px; }
+  .users-table th { background:var(--canvas); padding:10px 12px; text-align:left; font-size:10.5px; font-weight:800; color:var(--text-mid); text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid var(--line); }
+  .users-table td { padding:11px 12px; font-size:12.5px; border-bottom:1px solid var(--line-soft); }
+  .users-table tr { cursor:pointer; transition:background 0.12s; }
+  .users-table tr:hover { background:var(--canvas); }
+  
+  .role-pill { display:inline-block; padding:3px 8px; border-radius:6px; font-size:10.5px; font-weight:800; text-transform:uppercase; }
+  .role-pill.admin { background:rgba(245,184,61,0.15); color:#B8860B; }
+  .role-pill.owner { background:linear-gradient(135deg,rgba(245,184,61,0.25),rgba(184,134,11,0.15)); color:#7c2d12; }
+  .role-pill.sales { background:rgba(0,212,210,0.12); color:#0e7490; }
+  .role-pill.operations,.role-pill.operations_manager { background:rgba(139,92,246,0.12); color:#6d28d9; }
+  .role-pill.field { background:rgba(99,102,241,0.12); color:#4338ca; }
+  .role-pill.verifier { background:rgba(52,211,153,0.12); color:#047857; }
+  .role-pill.data_entry { background:rgba(148,163,184,0.18); color:#475569; }
+  
+  .otp-badge { display:inline-flex; align-items:center; gap:3px; padding:2px 7px; border-radius:5px; font-size:10px; font-weight:700; }
+  .otp-badge.on { background:rgba(245,184,61,0.18); color:#B8860B; }
+  .otp-badge.off { background:rgba(148,163,184,0.18); color:var(--text-mid); }
+</style>
 
 <script>
 "use strict";
@@ -458,6 +647,13 @@ function logout() {
 function initApp() {
   setText('userAvatar', getInitials(state.admin.name));
   setText('userName', state.admin.name.split(' ')[0]);
+  
+  // Show role badge
+  const role = (state.admin.role || '').toLowerCase();
+  const roleDisplay = role === 'owner' ? '👑 OWNER' : 
+                      role === 'admin' ? '🛡️ ADMIN' : 
+                      role === 'senior' ? '⚡ SENIOR' : role.toUpperCase();
+  setText('userRoleBadge', roleDisplay);
   setText('greetName', state.admin.name.split(' ')[0]);
   
   // Greeting based on hour
@@ -502,8 +698,241 @@ async function loadStats() {
     setText('statMembers', (members || []).length);
     setText('statCampaigns', (campaigns || []).length);
     setText('statPending', pending.toLocaleString('en-IN'));
+    
+    // Also load team for management
+    loadUsers();
   } catch (err) {
     console.error('Stats load error:', err);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// USER & ACCESS MANAGEMENT
+// ═══════════════════════════════════════════════════════════════
+const mgmtState = { users: [], departments: [], editingUser: null };
+
+const ALL_MODULES = [
+  { key: 'admin-v2', label: '🛡️ Admin V2' },
+  { key: 'verifier', label: '✅ Verifier' },
+  { key: 'master-cache', label: '🗂️ Master DB' },
+  { key: 'ppt', label: '📊 PPT' },
+  { key: 'launch-campaign', label: '🚀 Launch Campaign' },
+  { key: 'execution-plan', label: '📋 Execution Plan' },
+  { key: 'execution-entry', label: '✏️ Daily Entry' },
+  { key: 'rates-master', label: '💰 Rates Master' },
+  { key: 'dashboard', label: '📈 Ops Dashboard' },
+  { key: 'printing', label: '🖨️ Printing' },
+  { key: 'stitching', label: '✂️ Stitching' },
+  { key: 'delivery', label: '🚚 Delivery' },
+  { key: 'payments', label: '💸 Payments' },
+  { key: 'outstanding', label: '💳 Outstanding' },
+  { key: 'report-daily', label: '📅 Daily Report' },
+  { key: 'report-team', label: '🏆 Team Report' },
+  { key: 'report-campaign', label: '🎯 Campaign Report' },
+  { key: 'crm', label: '💼 CRM' },
+  { key: 'leads', label: '🎯 Leads' },
+  { key: 'quotations', label: '📝 Quotations' },
+  { key: 'pi', label: '🧾 PI' },
+  { key: 'invoices', label: '💼 Invoices' },
+  { key: 'clients', label: '👥 Clients' },
+  { key: 'targets', label: '🎯 Targets' },
+  { key: 'field', label: '📸 Field App' },
+  { key: 'owner', label: '👑 Owner Dashboard' }
+];
+
+async function loadUsers() {
+  try {
+    const [users, depts] = await Promise.all([
+      api('/rest/v1/trial_team_members?select=*&order=created_at.desc'),
+      api('/rest/v1/trial_departments?active=eq.true&select=*&order=display_order.asc')
+    ]);
+    
+    mgmtState.users = users || [];
+    mgmtState.departments = depts || [];
+    
+    // Cache dept modules for client-side access checks
+    const deptModules = {};
+    mgmtState.departments.forEach(d => { 
+      deptModules[d.dept_code] = d.default_modules || [];
+    });
+    localStorage.setItem('prajapati_dept_modules', JSON.stringify(deptModules));
+    
+    setText('teamCount', mgmtState.users.length + ' users');
+    
+    // Populate dept filter
+    const filterDept = document.getElementById('filterDept');
+    filterDept.innerHTML = '<option value="">All Departments</option>' + 
+      mgmtState.departments.map(d => `<option value="${d.dept_code}">${d.icon_emoji} ${escHtml(d.dept_name)}</option>`).join('');
+    
+    renderUsers();
+  } catch (err) {
+    console.error('Users load error:', err);
+    document.getElementById('usersListContainer').innerHTML = 
+      `<div style="text-align:center;padding:40px;color:var(--rose);font-size:13px;">⚠️ Error: ${escHtml(err.message)}<br><br>Run 11_RBAC_AND_OTP_SCHEMA.sql first.</div>`;
+  }
+}
+
+function filterUsers() {
+  renderUsers();
+}
+
+function renderUsers() {
+  const search = (document.getElementById('userSearch').value || '').toLowerCase();
+  const deptFilter = document.getElementById('filterDept').value;
+  const otpFilter = document.getElementById('filterOTP').value;
+  
+  let filtered = mgmtState.users.filter(u => {
+    if (search && !((u.name || '').toLowerCase().includes(search) || (u.phone || '').includes(search))) return false;
+    if (deptFilter) {
+      const depts = u.departments || [];
+      if (!depts.includes(deptFilter)) return false;
+    }
+    if (otpFilter === 'otp' && !u.otp_required) return false;
+    if (otpFilter === 'no-otp' && u.otp_required) return false;
+    return true;
+  });
+  
+  if (filtered.length === 0) {
+    document.getElementById('usersListContainer').innerHTML = 
+      `<div style="text-align:center;padding:40px;color:var(--text-mid);font-size:13px;">No users match the filters</div>`;
+    return;
+  }
+  
+  let html = '<table class="users-table"><thead><tr>';
+  html += '<th>Name</th><th>Phone</th><th>Role</th><th>Departments</th><th>OTP</th><th>Status</th><th></th>';
+  html += '</tr></thead><tbody>';
+  
+  filtered.forEach(u => {
+    const depts = (u.departments || []).map(d => {
+      const dept = mgmtState.departments.find(x => x.dept_code === d);
+      return dept ? `<span style="display:inline-block;padding:2px 6px;background:${dept.color_hex}20;color:${dept.color_hex};border-radius:5px;font-size:10px;font-weight:700;margin-right:3px;">${dept.icon_emoji} ${escHtml(dept.dept_name)}</span>` : '';
+    }).join('');
+    
+    html += `<tr onclick="openUserEdit('${u.id}')">
+      <td><strong>${escHtml(u.name || '—')}</strong></td>
+      <td><span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;">${escHtml(u.phone || '—')}</span></td>
+      <td><span class="role-pill ${escHtml(u.role || '')}">${escHtml(u.role || '—')}</span></td>
+      <td>${depts || '<span style="color:var(--text-faint,#CBD5E1);font-size:11px;">No departments</span>'}</td>
+      <td><span class="otp-badge ${u.otp_required ? 'on' : 'off'}">${u.otp_required ? '🔐 ON' : '⚡ OFF'}</span></td>
+      <td>${u.active ? '<span style="color:#047857;font-weight:700;font-size:11.5px;">✓ Active</span>' : '<span style="color:var(--rose);font-weight:700;font-size:11.5px;">⊘ Inactive</span>'}</td>
+      <td><button onclick="event.stopPropagation();openUserEdit('${u.id}')" style="padding:5px 10px;background:white;border:1px solid var(--line);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">Edit</button></td>
+    </tr>`;
+  });
+  
+  html += '</tbody></table>';
+  document.getElementById('usersListContainer').innerHTML = html;
+}
+
+function openUserEdit(userId) {
+  const user = mgmtState.users.find(u => u.id === userId);
+  if (!user) return;
+  mgmtState.editingUser = user;
+  
+  setText('editUserAvatar', getInitials(user.name));
+  setText('editUserName', user.name || 'Unknown');
+  setText('editUserPhone', user.phone);
+  document.getElementById('editRole').value = user.role || 'field';
+  document.getElementById('editOtpRequired').checked = !!user.otp_required;
+  document.getElementById('editActive').checked = user.active !== false;
+  document.getElementById('editNotes').value = user.access_notes || '';
+  
+  // Render departments
+  const userDepts = user.departments || [];
+  const deptsHtml = mgmtState.departments.map(d => {
+    const isActive = userDepts.includes(d.dept_code);
+    return `<button class="dept-chip ${isActive ? 'active' : ''}" data-dept="${d.dept_code}" onclick="toggleDept('${d.dept_code}', this)">${d.icon_emoji} ${escHtml(d.dept_name)}</button>`;
+  }).join('');
+  document.getElementById('editDepartments').innerHTML = deptsHtml;
+  
+  // Render module access overrides
+  const moduleAccess = user.module_access || {};
+  const modulesHtml = ALL_MODULES.map(m => {
+    const explicitValue = moduleAccess[m.key];
+    let state = 'default'; // not set
+    if (explicitValue === true) state = 'granted';
+    else if (explicitValue === false) state = 'denied';
+    
+    return `<label class="module-row ${state === 'granted' ? 'granted' : state === 'denied' ? 'denied' : ''}" data-module="${m.key}">
+      <select onchange="updateModuleAccess('${m.key}', this.value)" 
+              style="border:none;background:transparent;font-size:11px;font-weight:700;cursor:pointer;outline:none;color:inherit;">
+        <option value="default" ${state === 'default' ? 'selected' : ''}>— Default</option>
+        <option value="true" ${state === 'granted' ? 'selected' : ''}>✓ Grant</option>
+        <option value="false" ${state === 'denied' ? 'selected' : ''}>✗ Deny</option>
+      </select>
+      <span style="font-size:11.5px;">${m.label}</span>
+    </label>`;
+  }).join('');
+  document.getElementById('editModuleAccess').innerHTML = modulesHtml;
+  
+  document.getElementById('userEditModal').style.display = 'flex';
+}
+
+function toggleDept(deptCode, btn) {
+  btn.classList.toggle('active');
+}
+
+function updateModuleAccess(moduleKey, value) {
+  const row = document.querySelector(`[data-module="${moduleKey}"]`);
+  if (!row) return;
+  row.classList.remove('granted', 'denied');
+  if (value === 'true') row.classList.add('granted');
+  else if (value === 'false') row.classList.add('denied');
+}
+
+function closeUserModal() {
+  document.getElementById('userEditModal').style.display = 'none';
+  mgmtState.editingUser = null;
+}
+
+async function saveUserAccess() {
+  if (!mgmtState.editingUser) return;
+  const userId = mgmtState.editingUser.id;
+  
+  // Collect departments
+  const departments = Array.from(document.querySelectorAll('.dept-chip.active')).map(b => b.dataset.dept);
+  
+  // Collect module access
+  const moduleAccess = {};
+  document.querySelectorAll('#editModuleAccess select').forEach(s => {
+    const row = s.closest('[data-module]');
+    if (!row) return;
+    const key = row.dataset.module;
+    if (s.value === 'true') moduleAccess[key] = true;
+    else if (s.value === 'false') moduleAccess[key] = false;
+    // 'default' = not set, omit from object
+  });
+  
+  const payload = {
+    role: document.getElementById('editRole').value,
+    departments: departments,
+    module_access: moduleAccess,
+    otp_required: document.getElementById('editOtpRequired').checked,
+    active: document.getElementById('editActive').checked,
+    access_notes: document.getElementById('editNotes').value.trim() || null
+  };
+  
+  const btn = document.getElementById('saveUserBtn');
+  btn.disabled = true;
+  btn.innerHTML = 'Saving...';
+  
+  try {
+    await api('/rest/v1/trial_team_members?id=eq.' + userId, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify(payload)
+    });
+    
+    closeUserModal();
+    await loadUsers();
+    alert('✅ Access settings saved for ' + mgmtState.editingUser.name);
+  } catch (err) {
+    let msg = err.message;
+    if (msg.includes('departments') || msg.includes('module_access') || msg.includes('otp_required')) {
+      msg = 'Schema missing! Run 11_RBAC_AND_OTP_SCHEMA.sql first.';
+    }
+    alert('❌ Save failed: ' + msg);
+    btn.disabled = false;
+    btn.innerHTML = '💾 Save Access Settings';
   }
 }
 
