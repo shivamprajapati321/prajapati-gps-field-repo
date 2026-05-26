@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Prajapati GPS — PPT Generator v4</title>
+<title>Prajapati GPS — PPT Generator v5 ⚡ FAST</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
 <script>
@@ -947,29 +947,59 @@ async function fetchMissingFromSurepass() {
 // ═══════════════════════════════════════════════════════════════
 //  ★ KEY FIX: Fetch image AND get its actual dimensions
 // ═══════════════════════════════════════════════════════════════
+// ⚡ OPTIMIZED: Fetch + compress image (1920px max) for faster PPT
 async function fetchImageWithDims(url) {
   try {
     const res = await fetch(url, { mode: 'cors' });
     if (!res.ok) throw new Error('Image fetch failed');
     const blob = await res.blob();
-    const dataUrl = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
+    
+    // Convert to image first to compress
+    const imgObjectUrl = URL.createObjectURL(blob);
+    const img = await new Promise((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = reject;
+      i.src = imgObjectUrl;
     });
     
-    // Get actual image dimensions
-    const dims = await new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
-      img.onerror = () => resolve({ w: 1080, h: 1920 }); // fallback
-      img.src = dataUrl;
-    });
+    // ⚡ COMPRESS: Resize if larger than 1920px max dimension
+    const MAX_DIM = 1920;
+    let targetW = img.naturalWidth;
+    let targetH = img.naturalHeight;
     
-    return { dataUrl, ...dims };
+    if (targetW > MAX_DIM || targetH > MAX_DIM) {
+      if (targetW > targetH) {
+        targetH = Math.round(targetH * (MAX_DIM / targetW));
+        targetW = MAX_DIM;
+      } else {
+        targetW = Math.round(targetW * (MAX_DIM / targetH));
+        targetH = MAX_DIM;
+      }
+    }
+    
+    // Draw to canvas (compresses + reduces memory)
+    const canvas = document.createElement('canvas');
+    canvas.width = targetW;
+    canvas.height = targetH;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, targetW, targetH);
+    
+    // JPEG with 85% quality - perfect balance for PPT
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    
+    // Cleanup
+    URL.revokeObjectURL(imgObjectUrl);
+    
+    return { 
+      dataUrl, 
+      w: img.naturalWidth, 
+      h: img.naturalHeight 
+    };
   } catch (err) {
-    console.warn('Image fetch failed:', url);
+    console.warn('Image fetch failed:', url, err.message);
     return null;
   }
 }
@@ -1012,6 +1042,7 @@ async function generatePPT() {
   if (!window.PPTX_LIB_LOADED) { showToast('Library abhi load nahi hui', 'error'); return; }
   if (state.vehicles.length === 0) { showToast('Koi vehicles nahi hain', 'error'); return; }
   
+  const startTime = Date.now();
   showModal('Generating PPT...', 'Preparing slides...');
   
   try {
@@ -1027,18 +1058,48 @@ async function generatePPT() {
     addCoverSlide(pptx, campaign, brand);
     
     const totalVehicles = state.vehicles.length;
-    let processed = 0;
+    const totalPhotos = state.vehicles.reduce((s, v) => s + (v.photos?.length || 0), 0);
     
-    for (const vehicle of state.vehicles) {
-      processed++;
-      updateProgress((processed / totalVehicles) * 90,
-        `Slide ${processed} of ${totalVehicles}: ${vehicle.vehicle_number}`);
+    // ⚡ PHASE 1: Fetch ALL images in PARALLEL BATCHES
+    updateProgress(5, `Fetching ${totalPhotos} photos in parallel...`);
+    
+    const BATCH_SIZE = 10; // Process 10 vehicles at a time (= ~30 photos parallel)
+    const vehicleData = []; // Final data: [{vehicle, photoData[]}, ...]
+    
+    for (let i = 0; i < state.vehicles.length; i += BATCH_SIZE) {
+      const batch = state.vehicles.slice(i, i + BATCH_SIZE);
+      const batchEnd = Math.min(i + BATCH_SIZE, totalVehicles);
       
-      // Fetch all photos with dimensions
-      const photoData = [];
-      for (const photo of vehicle.photos) {
-        const result = await fetchImageWithDims(photo.public_url);
-        photoData.push(result);
+      updateProgress(
+        5 + ((i / totalVehicles) * 70),
+        `Loading photos ${i + 1}-${batchEnd} of ${totalVehicles}...`
+      );
+      
+      // Process this batch in parallel
+      const batchResults = await Promise.all(
+        batch.map(async (vehicle) => {
+          // All photos for THIS vehicle in parallel
+          const photoData = await Promise.all(
+            vehicle.photos.map(photo => fetchImageWithDims(photo.public_url))
+          );
+          return { vehicle, photoData };
+        })
+      );
+      
+      vehicleData.push(...batchResults);
+    }
+    
+    // ⚡ PHASE 2: Build all slides (fast - no network)
+    updateProgress(75, 'Building slides...');
+    
+    for (let i = 0; i < vehicleData.length; i++) {
+      const { vehicle, photoData } = vehicleData[i];
+      
+      if (i % 10 === 0 || i === vehicleData.length - 1) {
+        updateProgress(
+          75 + ((i / vehicleData.length) * 20),
+          `Building slide ${i + 1} of ${vehicleData.length}: ${vehicle.vehicle_number}`
+        );
       }
       
       if (vehicle.mode === 'hood') {
@@ -1050,12 +1111,53 @@ async function generatePPT() {
     
     addSummarySlide(pptx, campaign, brand);
     
-    updateProgress(95, 'Saving file...');
-    const filename = `${campaign.name.replace(/[^a-zA-Z0-9]/g, '_')}_${istDateStr()}.pptx`;
-    await pptx.writeFile({ fileName: filename });
+    // ⚡ PHASE 3: Save file via BLOB (more reliable than writeFile)
+    updateProgress(95, 'Packing slides into PPT...');
     
-    updateProgress(100, 'Done!');
-    setTimeout(() => { hideModal(); showToast('✓ PPT generated successfully!', 'success'); }, 500);
+    // Yield to UI thread for progress update
+    await new Promise(resolve => setTimeout(resolve, 50));
+    
+    const filename = `${campaign.name.replace(/[^a-zA-Z0-9]/g, '_')}_${istDateStr()}.pptx`;
+    
+    let blob;
+    try {
+      // Method 1: Modern API - generates blob (reliable, has progress)
+      updateProgress(96, 'Compressing PPT file...');
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      blob = await pptx.write({ outputType: 'blob' });
+      
+      updateProgress(98, 'Starting download...');
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      // Manual download trigger (more reliable than writeFile)
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      // Cleanup blob URL after 1 second
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      
+    } catch (saveErr) {
+      console.error('Blob save failed, trying writeFile fallback:', saveErr);
+      // Fallback to old method
+      updateProgress(96, 'Trying alternate save method...');
+      await pptx.writeFile({ fileName: filename });
+    }
+    
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    const sizeMB = blob ? (blob.size / 1024 / 1024).toFixed(1) : '?';
+    
+    updateProgress(100, `Done in ${elapsed}s!`);
+    
+    setTimeout(() => { 
+      hideModal(); 
+      showToast(`✓ PPT generated in ${elapsed}s — ${totalVehicles} vehicles, ${totalPhotos} photos, ${sizeMB}MB`, 'success'); 
+    }, 500);
     
   } catch (err) {
     console.error('PPT generation error:', err);
