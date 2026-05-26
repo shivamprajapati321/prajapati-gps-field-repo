@@ -724,7 +724,8 @@ async function loadData() {
       api('/rest/v1/prajapati_stitching_masters?active=eq.true&select=*&order=name.asc'),
       api('/rest/v1/prajapati_stitching_log?select=*&order=log_date.desc,created_at.desc&limit=2000'),
       api('/rest/v1/prajapati_stitching_payments?select=*&order=payment_date.desc,created_at.desc&limit=1000'),
-      api('/rest/v1/prajapati_campaigns_v2?deleted_at=is.null&select=id,campaign_code,name&order=created_at.desc&limit=200')
+      // ⚡ FIXED: Use trial_campaigns (current production DB)
+      api('/rest/v1/trial_campaigns?active=eq.true&select=id,key,name&order=name.asc')
     ]);
     state.masters = masters || [];
     state.log = log || [];
@@ -737,14 +738,18 @@ async function loadData() {
   } catch (err) {
     console.error('Load error:', err);
     let msg = err.message;
-    if (msg.includes('does not exist')) msg = 'Tables nahi banayi. Run 09_PRINTING_STITCHING_DELIVERY_SCHEMA.sql first.';
+    if (msg.includes('prajapati_stitching') && msg.includes('does not exist')) {
+      msg = 'Stitching tables nahi banayi. Run 09_PRINTING_STITCHING_DELIVERY_SCHEMA.sql first.';
+    }
     showToast(msg, 'error');
   }
 }
 
 function populateCampaignSelect() {
-  document.getElementById('entryCampaign').innerHTML = '<option value="">No specific campaign</option>' + state.campaigns.map(c => 
-    '<option value="' + c.id + '" data-name="' + esc(c.name) + '">' + esc(c.campaign_code) + ' · ' + esc(c.name) + '</option>'
+  const sel = document.getElementById('entryCampaign');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">No specific campaign</option>' + state.campaigns.map(c => 
+    '<option value="' + c.id + '" data-name="' + esc(c.name) + '">' + esc(c.key) + ' · ' + esc(c.name) + '</option>'
   ).join('');
 }
 

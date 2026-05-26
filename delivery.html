@@ -670,7 +670,8 @@ async function loadData() {
     const [dispatches, vendors, campaigns, members] = await Promise.all([
       api('/rest/v1/prajapati_dispatches?deleted_at=is.null&select=*&order=dispatch_date.desc,created_at.desc'),
       api('/rest/v1/prajapati_delivery_vendors?active=eq.true&select=*&order=vendor_name.asc'),
-      api('/rest/v1/prajapati_campaigns_v2?deleted_at=is.null&select=id,campaign_code,name,client_name&order=created_at.desc&limit=200'),
+      // ⚡ FIXED: Use trial_campaigns (current production DB)
+      api('/rest/v1/trial_campaigns?active=eq.true&select=id,key,name,client_name&order=name.asc'),
       api('/rest/v1/trial_team_members?active=eq.true&select=phone,name,role')
     ]);
     
@@ -687,14 +688,24 @@ async function loadData() {
   } catch (err) {
     console.error('Load error:', err);
     let msg = err.message;
-    if (msg.includes('does not exist')) msg = 'Tables nahi banayi. Run 09_PRINTING_STITCHING_DELIVERY_SCHEMA.sql first.';
+    if (msg.includes('prajapati_dispatches') && msg.includes('does not exist')) {
+      msg = 'Dispatch tables nahi banayi. Run 09_PRINTING_STITCHING_DELIVERY_SCHEMA.sql first.';
+    } else if (msg.includes('does not exist')) {
+      msg = 'Schema issue: ' + msg;
+    }
     document.getElementById('dispatchBody').innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><div class="title">Cannot load data</div><div class="desc">${esc(msg)}</div></div>`;
   }
 }
 
 function populateCampaignSelect() {
-  document.getElementById('dpCampaign').innerHTML = '<option value="">Select campaign...</option>' + state.campaigns.map(c => 
-    `<option value="${c.id}" data-name="${esc(c.name)}">${esc(c.campaign_code)} · ${esc(c.name)} (${esc(c.client_name)})</option>`
+  const sel = document.getElementById('dpCampaign');
+  if (!sel) return;
+  if (state.campaigns.length === 0) {
+    sel.innerHTML = '<option value="">No campaigns - create one in Admin first</option>';
+    return;
+  }
+  sel.innerHTML = '<option value="">Select campaign...</option>' + state.campaigns.map(c => 
+    `<option value="${c.id}" data-name="${esc(c.name)}">${esc(c.key)} · ${esc(c.name)}${c.client_name ? ' (' + esc(c.client_name) + ')' : ''}</option>`
   ).join('');
 }
 
