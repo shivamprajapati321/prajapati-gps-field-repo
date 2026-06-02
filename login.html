@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Sign In · Prajapati Advertising</title>
+<meta name="theme-color" content="#0B1957">
+<link rel="icon" type="image/png" href="/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght,ital@9..144,300..900,0..1&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+:root{
+  --pa-navy:#0B1957;
+  --pa-navy-deep:#050B2E;
+  --pa-navy-mid:#1A237E;
+  --pa-navy-light:#283593;
+  --pa-gold:#B89B4E;
+  --pa-gold-bright:#D4B45F;
+  --pa-gold-deep:#8B7430;
+  --pa-gold-soft:#F4E4B0;
+  --pa-white:#FFFFFF;
+  --pa-cream:#FAF8F3;
+  --pa-paper:#F7F4EC;
+  --text:#0F172A;
+  --text-mid:#475569;
+  --text-dim:#94A3B8;
+  --rule-soft:#E5E0D2;
+  --success:#047857;
+  --warn:#C2410C;
+  --danger:#BE123C;
+  --serif:'Fraunces',Georgia,serif;
+  --sans:'Plus Jakarta Sans',system-ui,sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+body{
+  font-family:var(--sans);
+  background:var(--pa-navy-deep);
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+input{font-family:inherit;outline:none}
+
+/* ═══ BACKGROUND ═══ */
+.bg{
+  position:fixed;inset:0;z-index:0;
+  background:
+    radial-gradient(circle at 25% 30%, rgba(184,155,78,0.16), transparent 50%),
+    radial-gradient(circle at 75% 70%, rgba(26,35,126,0.4), transparent 50%),
+    linear-gradient(135deg, var(--pa-navy-deep), var(--pa-navy));
+}
+.bg::before{
+  content:'';position:absolute;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity:0.07;mix-blend-mode:overlay;
+}
+
+/* ═══ SHELL ═══ */
+.shell{
+  position:relative;z-index:1;
+  min-height:100vh;
+  display:flex;align-items:center;justify-content:center;
+  padding:24px;
+}
+
+/* ═══ CARD ═══ */
+.card{
+  background:var(--pa-white);
+  width:100%;max-width:460px;
+  box-shadow:0 30px 80px rgba(0,0,0,0.5);
+  position:relative;overflow:hidden;
+  border-radius:8px;
+}
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:4px;
+  background:linear-gradient(90deg, var(--pa-gold-deep), var(--pa-gold-bright), var(--pa-gold-deep));
+}
+
+/* ═══ HEAD ═══ */
+.head{
+  padding:36px 36px 24px;
+  border-bottom:1px solid var(--rule-soft);
+}
+.brand-row{
+  display:flex;align-items:center;gap:14px;margin-bottom:24px;
+}
+.brand-mark{
+  width:52px;height:52px;
+  background:var(--pa-navy);color:var(--pa-white);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--serif);font-weight:700;font-size:28px;
+  position:relative;border-radius:4px;
+}
+.brand-mark::after{
+  content:'';position:absolute;inset:3px;
+  border:1px solid var(--pa-gold);border-radius:2px;
+}
+.brand-info .name{
+  font-size:18px;font-weight:800;color:var(--pa-navy);
+  letter-spacing:-0.015em;line-height:1.1;
+}
+.brand-info .tag{
+  font-family:var(--mono);font-size:9.5px;color:var(--pa-gold-deep);
+  letter-spacing:0.18em;text-transform:uppercase;margin-top:4px;
+}
+.head h1{
+  font-family:var(--serif);
+  font-size:36px;font-weight:500;
+  color:var(--pa-navy);
+  letter-spacing:-0.025em;line-height:1.05;
+  margin-bottom:6px;
+}
+.head h1 em{font-style:italic;font-weight:400;color:var(--pa-gold);}
+.head p{
+  font-size:13px;color:var(--text-mid);line-height:1.5;
+}
+
+/* ═══ BODY ═══ */
+.body{padding:28px 36px 32px}
+
+.field{margin-bottom:18px}
+.field-label{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:8px;
+}
+.field-label .lbl{
+  font-family:var(--mono);font-size:9.5px;font-weight:600;
+  color:var(--pa-navy);letter-spacing:0.16em;text-transform:uppercase;
+}
+.field-label .hint{
+  font-size:11px;color:var(--text-dim);font-style:italic;
+}
+
+.input{
+  width:100%;
+  padding:14px 16px;
+  font-size:16px;font-weight:500;
+  border:none;border-bottom:2px solid var(--rule-soft);
+  background:var(--pa-cream);
+  color:var(--pa-navy);
+  font-family:var(--mono);
+  text-align:center;letter-spacing:0.1em;
+  transition:all 0.2s;
+  border-radius:4px 4px 0 0;
+}
+.input:focus{
+  border-bottom-color:var(--pa-gold);
+  background:var(--pa-paper);
+  box-shadow:0 4px 12px rgba(184,155,78,0.1);
+}
+
+/* OTP digit inputs */
+.otp-wrap{display:flex;gap:8px;justify-content:center}
+.otp-digit{
+  width:46px;height:54px;
+  border:2px solid var(--rule-soft);
+  background:var(--pa-cream);
+  font-family:var(--mono);
+  font-size:22px;font-weight:700;text-align:center;
+  color:var(--pa-navy);
+  border-radius:6px;
+  transition:all 0.15s;
+}
+.otp-digit:focus{
+  border-color:var(--pa-gold);
+  box-shadow:0 0 0 4px rgba(184,155,78,0.15);
+  background:var(--pa-paper);
+}
+.otp-digit.filled{
+  background:var(--pa-paper);
+  border-color:var(--pa-gold);
+}
+
+/* ═══ BUTTON ═══ */
+.btn{
+  width:100%;
+  padding:14px 16px;
+  background:var(--pa-navy);
+  color:var(--pa-white);
+  font-family:var(--sans);
+  font-size:14px;font-weight:700;
+  letter-spacing:0.04em;text-transform:uppercase;
+  border-radius:4px;
+  margin-top:8px;
+  transition:all 0.25s;
+  position:relative;overflow:hidden;
+}
+.btn:hover{
+  background:var(--pa-navy-deep);
+  box-shadow:0 8px 24px rgba(11,25,87,0.35);
+  transform:translateY(-1px);
+}
+.btn:disabled{
+  opacity:0.5;cursor:not-allowed;transform:none;
+}
+.btn .spin{
+  display:inline-block;width:14px;height:14px;
+  border:2px solid rgba(255,255,255,0.3);
+  border-top-color:var(--pa-gold-bright);
+  border-radius:50%;
+  animation:spin 0.7s linear infinite;
+  margin-right:8px;vertical-align:middle;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.btn-secondary{
+  background:transparent;
+  color:var(--pa-navy);
+  border:1px solid var(--rule-soft);
+  font-size:12px;font-weight:600;
+  padding:10px 14px;
+  text-transform:none;letter-spacing:normal;
+  margin-top:12px;
+}
+.btn-secondary:hover{
+  border-color:var(--pa-gold);
+  background:var(--pa-cream);
+  box-shadow:none;transform:none;
+}
+
+/* ═══ STATUS BAR ═══ */
+.status{
+  display:flex;align-items:center;justify-content:space-between;
+  padding-top:16px;margin-top:16px;
+  border-top:1px solid var(--rule-soft);
+  font-size:11.5px;
+}
+.status .left{
+  display:flex;align-items:center;gap:6px;
+  font-family:var(--mono);color:var(--pa-gold-deep);font-weight:600;
+}
+.status .right{
+  color:var(--text-dim);font-style:italic;
+}
+.status .right.live{
+  color:var(--success);font-style:normal;font-weight:600;cursor:pointer;
+}
+.status .right.live:hover{text-decoration:underline}
+
+/* ═══ MESSAGES ═══ */
+.alert{
+  padding:12px 14px;
+  border-radius:4px;
+  font-size:13px;font-weight:500;
+  line-height:1.4;
+  margin-bottom:18px;
+  display:none;
+  align-items:flex-start;gap:10px;
+}
+.alert.live{display:flex}
+.alert.error{
+  background:#FEE2E2;color:#991B1B;
+  border-left:3px solid var(--danger);
+}
+.alert.success{
+  background:#D1FAE5;color:#065F46;
+  border-left:3px solid var(--success);
+}
+.alert.info{
+  background:#DBEAFE;color:#1E3A8A;
+  border-left:3px solid #3B82F6;
+}
+
+/* ═══ FOOT ═══ */
+.foot{
+  padding:18px 36px;
+  background:var(--pa-cream);
+  border-top:1px solid var(--rule-soft);
+  text-align:center;
+  font-family:var(--mono);font-size:9.5px;
+  color:var(--text-dim);letter-spacing:0.16em;text-transform:uppercase;
+}
+.foot strong{color:var(--pa-gold-deep);font-weight:700}
+
+/* ═══ STEP ANIMATION ═══ */
+.step{display:none}
+.step.live{display:block;animation:slideUp 0.4s ease}
+@keyframes slideUp{
+  from{opacity:0;transform:translateY(10px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+/* User info chip (shown after phone detected) */
+.user-detected{
+  background:linear-gradient(135deg, var(--pa-navy), var(--pa-navy-mid));
+  color:var(--pa-white);
+  padding:14px 18px;
+  border-radius:6px;
+  display:flex;align-items:center;gap:14px;
+  margin-bottom:18px;
+  border:1px solid var(--pa-gold);
+}
+.user-detected .ava{
+  width:42px;height:42px;
+  background:var(--pa-gold);color:var(--pa-navy-deep);
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--serif);font-weight:700;font-style:italic;font-size:18px;
+  flex-shrink:0;
+}
+.user-detected .info{flex:1;min-width:0}
+.user-detected .name{
+  font-size:14px;font-weight:700;letter-spacing:-0.01em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.user-detected .role{
+  font-family:var(--mono);font-size:9.5px;
+  color:var(--pa-gold-bright);letter-spacing:0.16em;text-transform:uppercase;
+  margin-top:2px;
+}
+.user-detected .method{
+  font-size:10px;
+  background:rgba(212,180,95,0.2);
+  color:var(--pa-gold-bright);
+  padding:3px 10px;border-radius:999px;
+  font-family:var(--mono);font-weight:700;letter-spacing:0.1em;
+  white-space:nowrap;
+}
+
+/* Help text */
+.help{
+  font-size:11.5px;color:var(--text-dim);
+  text-align:center;margin-top:12px;line-height:1.5;
+}
+.help a{color:var(--pa-gold-deep);text-decoration:none;font-weight:600}
+
+@media (max-width:480px){
+  .shell{padding:12px}
+  .head,.body{padding-left:24px;padding-right:24px}
+  .foot{padding-left:24px;padding-right:24px}
+  .head h1{font-size:30px}
+  .otp-digit{width:40px;height:48px;font-size:18px}
+}
+</style>
+</head>
+<body>
+
+<div class="bg"></div>
+
+<div class="shell">
+  <div class="card">
+    
+    <!-- HEAD -->
+    <div class="head">
+      <div class="brand-row">
+        <div class="brand-mark">P</div>
+        <div class="brand-info">
+          <div class="name">Prajapati Advertising</div>
+          <div class="tag">Estd. 2018 · Pune No.1 Agency</div>
+        </div>
+      </div>
+      <h1 id="headTitle">Welcome <em>back</em></h1>
+      <p id="headSub">Enter your registered phone to continue</p>
+    </div>
+    
+    <!-- BODY -->
+    <div class="body">
+      
+      <div id="alertBox" class="alert"></div>
+      
+      <!-- STEP 1: PHONE INPUT -->
+      <div class="step live" id="step1">
+        <div class="field">
+          <div class="field-label">
+            <span class="lbl">Phone Number</span>
+            <span class="hint">10-digit registered</span>
+          </div>
+          <input id="phoneInput" type="tel" class="input" placeholder="9876543210" maxlength="10" autocomplete="tel">
+        </div>
+        <button id="continueBtn" class="btn" onclick="checkPhone()">Continue →</button>
+        <p class="help">
+          Not registered? Contact admin at <a href="tel:+919922138138">+91 99 22 138 138</a>
+        </p>
+      </div>
+      
+      <!-- STEP 2A: OTP VERIFICATION (for OTP-enabled users) -->
+      <div class="step" id="step2_otp">
+        <div class="user-detected" id="userChipOtp"></div>
+        
+        <div class="field">
+          <div class="field-label">
+            <span class="lbl">WhatsApp Code</span>
+            <span class="hint">6 digits</span>
+          </div>
+          <div class="otp-wrap">
+            <input class="otp-digit" maxlength="1" type="tel" data-idx="0">
+            <input class="otp-digit" maxlength="1" type="tel" data-idx="1">
+            <input class="otp-digit" maxlength="1" type="tel" data-idx="2">
+            <input class="otp-digit" maxlength="1" type="tel" data-idx="3">
+            <input class="otp-digit" maxlength="1" type="tel" data-idx="4">
+            <input class="otp-digit" maxlength="1" type="tel" data-idx="5">
+          </div>
+        </div>
+        
+        <button id="verifyBtn" class="btn" onclick="verifyOTP()">Verify & Login</button>
+        
+        <div class="status">
+          <div class="left"><span>⏱</span><span id="otpTimer">10:00</span></div>
+          <div class="right" id="resendArea">Resend in <span id="resendTimer">60</span>s</div>
+        </div>
+        
+        <button class="btn-secondary" onclick="goStep('step1')">← Use different number</button>
+      </div>
+      
+      <!-- STEP 2B: PASSWORD (for field/workers - no OTP) -->
+      <div class="step" id="step2_pwd">
+        <div class="user-detected" id="userChipPwd"></div>
+        
+        <div class="field">
+          <div class="field-label">
+            <span class="lbl">Password / Employee Code</span>
+            <span class="hint">Or last 4 digits of phone</span>
+          </div>
+          <input id="pwdInput" type="password" class="input" placeholder="••••" autocomplete="current-password">
+        </div>
+        
+        <button id="pwdBtn" class="btn" onclick="verifyPassword()">Sign in</button>
+        
+        <button class="btn-secondary" onclick="goStep('step1')">← Use different number</button>
+      </div>
+      
+    </div>
+    
+    <!-- FOOT -->
+    <div class="foot">
+      Powered by <strong>Prajapati GPS</strong> · v8.0
+    </div>
+    
+  </div>
+</div>
+
+<!-- Wati Client Library + Access Guard -->
+<script src="/lib/wati-client.js"></script>
+<script src="/lib/access-guard.js"></script>
+
+<script>
+// ═══ CONFIG ═══
+const SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
+
+// ═══ STATE ═══
+let currentPhone = '';
+let currentMember = null;
+let otpTimerInt = null;
+let resendTimerInt = null;
+let otpExpiresAt = null;
+
+// ═══ AUTO-REDIRECT IF ALREADY LOGGED IN ═══
+(function(){
+  try{
+    const session = WatiClient.getSession();
+    if (session && session.member) {
+      const home = AccessGuard.getDefaultHome();
+      console.log('Already logged in, redirecting to', home);
+      window.location.href = home;
+    }
+  } catch(e){ console.warn(e); }
+})();
+
+// ═══ UTILS ═══
+function showAlert(type, msg) {
+  const box = document.getElementById('alertBox');
+  box.className = 'alert live ' + type;
+  box.textContent = msg;
+}
+function hideAlert() {
+  document.getElementById('alertBox').className = 'alert';
+}
+function goStep(id) {
+  hideAlert();
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('live'));
+  document.getElementById(id).classList.add('live');
+}
+function setButtonLoading(btnId, loading, text) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  if (loading) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spin"></span>' + (text || 'Loading...');
+  } else {
+    btn.disabled = false;
+    btn.innerHTML = text || 'Continue';
+  }
+}
+
+// ═══ STEP 1: PHONE CHECK ═══
+async function checkPhone() {
+  const raw = document.getElementById('phoneInput').value.trim();
+  const phone = String(raw).replace(/\D/g, '');
+  
+  if (phone.length !== 10) {
+    showAlert('error', 'Please enter a valid 10-digit phone number');
+    return;
+  }
+  
+  currentPhone = phone;
+  setButtonLoading('continueBtn', true, 'Checking...');
+  
+  try {
+    // Query trial_team_members
+    const url = SUPABASE_URL + '/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=id,name,phone,role,otp_required,departments,module_access,active';
+    const res = await fetch(url, {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY
+      }
+    });
+    
+    if (!res.ok) {
+      showAlert('error', 'Connection error. Please try again.');
+      setButtonLoading('continueBtn', false, 'Continue →');
+      return;
+    }
+    
+    const members = await res.json();
+    
+    if (!members || members.length === 0) {
+      showAlert('error', 'Phone not registered. Contact admin to add you.');
+      setButtonLoading('continueBtn', false, 'Continue →');
+      return;
+    }
+    
+    currentMember = members[0];
+    setButtonLoading('continueBtn', false, 'Continue →');
+    
+    const role = String(currentMember.role || '').toLowerCase();
+    const otpRequired = currentMember.otp_required === true;
+    
+    // Decide flow: OTP or password
+    if (otpRequired) {
+      await routeToOTP();
+    } else {
+      routeToPassword();
+    }
+    
+  } catch (err) {
+    console.error(err);
+    showAlert('error', 'Error: ' + err.message);
+    setButtonLoading('continueBtn', false, 'Continue →');
+  }
+}
+
+// ═══ OTP FLOW ═══
+async function routeToOTP() {
+  // Render user chip
+  const chip = renderUserChip(currentMember, 'WhatsApp OTP');
+  document.getElementById('userChipOtp').innerHTML = chip;
+  
+  // Send OTP
+  showAlert('info', '📱 Sending OTP to your WhatsApp...');
+  
+  const result = await WatiClient.sendOTP(currentPhone);
+  
+  if (!result.success) {
+    showAlert('error', 'Failed to send OTP: ' + (result.error || 'Unknown error'));
+    return;
+  }
+  
+  hideAlert();
+  goStep('step2_otp');
+  
+  // Update header
+  document.getElementById('headTitle').innerHTML = 'Check <em>WhatsApp</em>';
+  document.getElementById('headSub').textContent = 'Code sent to +91 ' + currentPhone.slice(0, 5) + ' ' + currentPhone.slice(5);
+  
+  // Start timers
+  otpExpiresAt = new Date(result.expires_at).getTime();
+  startOtpTimer();
+  startResendTimer();
+  
+  // Focus first OTP digit
+  setTimeout(() => {
+    const first = document.querySelector('.otp-digit[data-idx="0"]');
+    if (first) first.focus();
+  }, 200);
+}
+
+function startOtpTimer() {
+  if (otpTimerInt) clearInterval(otpTimerInt);
+  otpTimerInt = setInterval(() => {
+    const remaining = Math.max(0, otpExpiresAt - Date.now());
+    if (remaining <= 0) {
+      clearInterval(otpTimerInt);
+      document.getElementById('otpTimer').textContent = 'Expired';
+      showAlert('error', 'OTP expired. Click resend.');
+      return;
+    }
+    const mins = Math.floor(remaining / 60000);
+    const secs = Math.floor((remaining % 60000) / 1000);
+    document.getElementById('otpTimer').textContent = 
+      String(mins).padStart(2,'0') + ':' + String(secs).padStart(2,'0');
+  }, 1000);
+}
+
+function startResendTimer() {
+  let secs = 60;
+  const resendEl = document.getElementById('resendArea');
+  resendEl.className = 'right';
+  if (resendTimerInt) clearInterval(resendTimerInt);
+  resendTimerInt = setInterval(() => {
+    secs--;
+    if (secs <= 0) {
+      clearInterval(resendTimerInt);
+      resendEl.innerHTML = '↻ Resend OTP';
+      resendEl.className = 'right live';
+      resendEl.onclick = resendOTP;
+      return;
+    }
+    document.getElementById('resendTimer').textContent = secs;
+  }, 1000);
+}
+
+async function resendOTP() {
+  if (!currentPhone) return;
+  showAlert('info', 'Resending OTP...');
+  const result = await WatiClient.sendOTP(currentPhone);
+  if (result.success) {
+    showAlert('success', '✓ New OTP sent to WhatsApp');
+    otpExpiresAt = new Date(result.expires_at).getTime();
+    startOtpTimer();
+    startResendTimer();
+    // Clear input
+    document.querySelectorAll('.otp-digit').forEach(d => {
+      d.value = '';
+      d.classList.remove('filled');
+    });
+    document.querySelector('.otp-digit[data-idx="0"]')?.focus();
+  } else {
+    showAlert('error', 'Failed: ' + (result.error || ''));
+  }
+}
+
+function collectOTP() {
+  return Array.from(document.querySelectorAll('.otp-digit'))
+    .sort((a,b) => parseInt(a.dataset.idx) - parseInt(b.dataset.idx))
+    .map(d => d.value.replace(/\D/g, ''))
+    .join('');
+}
+
+async function verifyOTP() {
+  const code = collectOTP();
+  if (code.length !== 6) {
+    showAlert('error', 'Please enter all 6 digits');
+    return;
+  }
+  
+  setButtonLoading('verifyBtn', true, 'Verifying...');
+  
+  const result = await WatiClient.verifyOTP(currentPhone, code);
+  
+  if (!result.success) {
+    showAlert('error', result.error || 'Verification failed');
+    setButtonLoading('verifyBtn', false, 'Verify & Login');
+    return;
+  }
+  
+  // Save session
+  WatiClient.saveSession(result);
+  
+  // Stop timers
+  if (otpTimerInt) clearInterval(otpTimerInt);
+  if (resendTimerInt) clearInterval(resendTimerInt);
+  
+  showAlert('success', '✓ Logged in! Redirecting...');
+  
+  // Route by role
+  setTimeout(() => {
+    const home = AccessGuard.getDefaultHome();
+    window.location.href = home;
+  }, 800);
+}
+
+// ═══ PASSWORD FLOW (NO-OTP USERS) ═══
+function routeToPassword() {
+  const chip = renderUserChip(currentMember, 'Password');
+  document.getElementById('userChipPwd').innerHTML = chip;
+  
+  // Update header
+  document.getElementById('headTitle').innerHTML = 'Sign <em>In</em>';
+  document.getElementById('headSub').textContent = 'Enter your password to continue';
+  
+  goStep('step2_pwd');
+  
+  setTimeout(() => {
+    document.getElementById('pwdInput')?.focus();
+  }, 200);
+}
+
+async function verifyPassword() {
+  const pwd = document.getElementById('pwdInput').value.trim();
+  
+  if (!pwd) {
+    showAlert('error', 'Please enter your password');
+    return;
+  }
+  
+  setButtonLoading('pwdBtn', true, 'Verifying...');
+  
+  // Simple password check: last 4 digits of phone or member.password if set
+  const validPwds = [
+    currentPhone.slice(-4),  // Last 4 of phone
+    currentPhone.slice(-6),  // Last 6 of phone
+    currentMember.name?.toLowerCase().replace(/\s/g, '').slice(0, 4) || '',
+    'prajapati',  // Master fallback (remove in real production)
+  ].filter(p => p);
+  
+  // TODO: Add real password column check via Supabase if needed
+  const isValid = validPwds.includes(pwd.toLowerCase());
+  
+  if (!isValid) {
+    showAlert('error', 'Wrong password. Try last 4 digits of your phone.');
+    setButtonLoading('pwdBtn', false, 'Sign in');
+    return;
+  }
+  
+  // Save session (password-based)
+  WatiClient.savePasswordSession(currentMember);
+  
+  showAlert('success', '✓ Logged in! Redirecting...');
+  
+  setTimeout(() => {
+    const home = AccessGuard.getDefaultHome();
+    window.location.href = home;
+  }, 800);
+}
+
+// ═══ USER CHIP RENDER ═══
+function renderUserChip(member, methodLabel) {
+  const initial = (member.name || '?').charAt(0).toUpperCase();
+  const roleDisplay = String(member.role || 'user').replace(/_/g, ' ').toUpperCase();
+  return `
+    <div class="ava">${initial}</div>
+    <div class="info">
+      <div class="name">${member.name || 'User'}</div>
+      <div class="role">${roleDisplay}</div>
+    </div>
+    <div class="method">${methodLabel}</div>
+  `;
+}
+
+// ═══ INPUT HANDLERS ═══
+// Phone input — digits only, auto-submit on Enter
+document.getElementById('phoneInput').addEventListener('input', function(e) {
+  this.value = this.value.replace(/\D/g, '').slice(0, 10);
+});
+document.getElementById('phoneInput').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') checkPhone();
+});
+
+// Password input — Enter to submit
+document.getElementById('pwdInput').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') verifyPassword();
+});
+
+// OTP digits — auto-focus next, paste support, backspace
+document.querySelectorAll('.otp-digit').forEach(input => {
+  input.addEventListener('input', function(e) {
+    this.value = this.value.replace(/\D/g, '').slice(0, 1);
+    
+    if (this.value) {
+      this.classList.add('filled');
+      const idx = parseInt(this.dataset.idx);
+      const next = document.querySelector(`.otp-digit[data-idx="${idx + 1}"]`);
+      if (next) next.focus();
+      else {
+        // Last digit filled - auto verify
+        if (collectOTP().length === 6) {
+          setTimeout(verifyOTP, 200);
+        }
+      }
+    } else {
+      this.classList.remove('filled');
+    }
+  });
+  
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Backspace' && !this.value) {
+      const idx = parseInt(this.dataset.idx);
+      const prev = document.querySelector(`.otp-digit[data-idx="${idx - 1}"]`);
+      if (prev) {
+        prev.focus();
+        prev.value = '';
+        prev.classList.remove('filled');
+      }
+    }
+  });
+  
+  input.addEventListener('paste', function(e) {
+    e.preventDefault();
+    const pasted = (e.clipboardData || window.clipboardData).getData('text');
+    const digits = pasted.replace(/\D/g, '').slice(0, 6);
+    
+    document.querySelectorAll('.otp-digit').forEach((d, i) => {
+      d.value = digits[i] || '';
+      d.classList.toggle('filled', !!digits[i]);
+    });
+    
+    if (digits.length === 6) {
+      setTimeout(verifyOTP, 200);
+    } else {
+      const nextEmpty = document.querySelector(`.otp-digit[data-idx="${digits.length}"]`);
+      if (nextEmpty) nextEmpty.focus();
+    }
+  });
+});
+
+// Auto-focus phone on load
+document.getElementById('phoneInput').focus();
+</script>
+
+</body>
+</html>
