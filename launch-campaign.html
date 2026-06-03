@@ -3,2482 +3,1098 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Launch Campaign — Prajapati Command Center</title>
-
+<title>Launch Campaign · Prajapati Advertising</title>
+<meta name="theme-color" content="#0B1957">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
-
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght,ital@9..144,300..900,0..1&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
-  
-  :root {
-    --ink-900: #050818; --ink-800: #0B1130; --ink-700: #131A3F; --ink-600: #1c2654; --ink-500: #2a3568;
-    --canvas: #FAFBFF; --paper: #FFFFFF; --line: #E8EAF4; --line-soft: #F0F2F8; --line-strong: #D4D8E8;
-    --text: #0F172A; --text-mid: #475569; --text-dim: #94A3B8; --text-faint: #CBD5E1;
-    --teal: #00D4D2; --teal-glow: #5EEAE8; --teal-dark: #00A8A6;
-    --gold: #F5B83D; --gold-warm: #FFC857; --gold-deep: #B8860B;
-    --rose: #FF5470; --mint: #34D399; --mint-glow: #6EE7B7;
-    --violet: #8B5CF6; --violet-glow: #A78BFA;
-    --blue: #3B82F6; --orange: #F97316;
-    --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
-    --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
-    --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.08);
-    --shadow-xl: 0 24px 60px rgba(15, 23, 42, 0.12);
-    --shadow-glow-teal: 0 8px 24px rgba(0, 212, 210, 0.35);
-    --shadow-glow-gold: 0 8px 24px rgba(245, 184, 61, 0.35);
-  }
-  
-  body {
-    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
-    background: var(--canvas);
-    color: var(--text);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-  
-  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
-  .serif { font-family: 'Fraunces', serif; }
-  
-  button { font-family: inherit; cursor: pointer; border: none; background: none; }
-  input, select, textarea { font-family: inherit; outline: none; border: none; }
-  
-  /* ═══════════ LOGIN ═══════════ */
-  .login-bg {
-    min-height: 100vh;
-    background: linear-gradient(135deg, var(--ink-900), var(--ink-800), var(--ink-700));
-    display: flex; align-items: center; justify-content: center;
-    padding: 20px;
-    position: relative;
-    overflow: hidden;
-  }
-  .login-bg::before {
-    content: '';
-    position: absolute; top: -200px; right: -200px;
-    width: 600px; height: 600px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(0, 212, 210, 0.15), transparent 70%);
-  }
-  .login-bg::after {
-    content: '';
-    position: absolute; bottom: -200px; left: -200px;
-    width: 600px; height: 600px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(245, 184, 61, 0.1), transparent 70%);
-  }
-  .login-card {
-    background: rgba(255,255,255,0.98);
-    border-radius: 20px;
-    padding: 36px 32px;
-    width: 100%;
-    max-width: 420px;
-    box-shadow: 0 30px 80px rgba(0,0,0,0.4);
-    position: relative;
-    animation: loginIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  @keyframes loginIn {
-    from { opacity: 0; transform: translateY(20px) scale(0.95); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-  }
-  .login-logo {
-    width: 56px; height: 56px;
-    border-radius: 14px;
-    background: linear-gradient(135deg, var(--teal), var(--teal-glow));
-    display: flex; align-items: center; justify-content: center;
-    color: var(--ink-900);
-    font-weight: 800;
-    font-size: 24px;
-    margin-bottom: 22px;
-    box-shadow: 0 8px 30px rgba(0, 212, 210, 0.4);
-  }
-  .login-card h1 { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 600; color: var(--ink-900); letter-spacing: -0.02em; margin-bottom: 4px; }
-  .login-card .sub { color: var(--text-mid); font-size: 13px; margin-bottom: 26px; }
-  .field-group { margin-bottom: 16px; }
-  .field-group label { display: block; font-size: 11px; font-weight: 700; color: var(--text-mid); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 7px; }
-  .login-input {
-    width: 100%;
-    padding: 12px 14px;
-    font-size: 14px;
-    font-family: inherit;
-    border: 1.5px solid var(--line);
-    border-radius: 10px;
-    background: var(--paper);
-    transition: all 0.15s;
-  }
-  .login-input:focus { border-color: var(--teal); box-shadow: 0 0 0 4px rgba(0, 212, 210, 0.12); }
-  .login-input.mono { font-family: 'JetBrains Mono', monospace; text-align: center; letter-spacing: 0.05em; font-weight: 600; }
-  .err-banner { background: #fef2f2; color: #991b1b; padding: 10px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; margin-top: 12px; display: none; }
-  .err-banner.show { display: block; }
-  
-  .login-btn {
-    width: 100%;
-    padding: 13px 18px;
-    background: linear-gradient(135deg, var(--teal), var(--teal-glow));
-    color: var(--ink-900);
-    border-radius: 10px;
-    font-size: 14px;
-    font-weight: 700;
-    box-shadow: 0 4px 14px rgba(0, 212, 210, 0.3);
-    transition: all 0.15s;
-  }
-  .login-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(0, 212, 210, 0.5); }
-  .login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-  
-  /* ═══════════ APP ═══════════ */
-  .app { display: none; }
-  .app.active { display: block; }
-  
-  /* SIDEBAR */
-  .sidebar {
-    width: 260px;
-    background: linear-gradient(180deg, var(--ink-900) 0%, var(--ink-800) 60%, var(--ink-700) 100%);
-    height: 100vh;
-    position: fixed;
-    left: 0; top: 0;
-    padding: 24px 16px 20px;
-    z-index: 50;
-    border-right: 1px solid rgba(255,255,255,0.04);
-    overflow-y: auto;
-  }
-  .sidebar::-webkit-scrollbar { width: 4px; }
-  .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
-  
-  .brand { display: flex; align-items: center; gap: 12px; padding: 0 8px 24px; border-bottom: 1px solid rgba(255,255,255,0.06); margin-bottom: 20px; }
-  .brand-logo {
-    width: 40px; height: 40px;
-    border-radius: 12px;
-    background: linear-gradient(135deg, var(--teal), var(--teal-glow));
-    display: flex; align-items: center; justify-content: center;
-    color: var(--ink-900);
-    font-weight: 800;
-    font-size: 18px;
-    box-shadow: var(--shadow-glow-teal);
-  }
-  .brand-text { color: white; }
-  .brand-text .name { font-weight: 800; font-size: 15px; letter-spacing: -0.015em; line-height: 1.1; }
-  .brand-text .sub { color: var(--teal-glow); font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin-top: 3px; }
-  
-  .nav-section { margin-bottom: 22px; }
-  .nav-section-title { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 0 12px; margin-bottom: 8px; }
-  .nav-item {
-    display: flex; align-items: center; gap: 12px;
-    padding: 10px 12px;
-    color: rgba(255,255,255,0.65);
-    font-size: 13px;
-    font-weight: 600;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    margin-bottom: 2px;
-    position: relative;
-    text-decoration: none;
-  }
-  .nav-item:hover { background: rgba(255,255,255,0.05); color: white; transform: translateX(2px); }
-  .nav-item.active {
-    background: linear-gradient(90deg, rgba(0,212,210,0.2), rgba(0,212,210,0.04));
-    color: var(--teal-glow);
-  }
-  .nav-item.active::before {
-    content: '';
-    position: absolute;
-    left: -16px; top: 8px; bottom: 8px;
-    width: 3px;
-    border-radius: 0 3px 3px 0;
-    background: var(--teal);
-    box-shadow: 0 0 16px var(--teal-glow);
-  }
-  .nav-icon { width: 18px; height: 18px; flex-shrink: 0; opacity: 0.9; }
-  .new-pill { margin-left: auto; background: linear-gradient(135deg, var(--gold), var(--gold-warm)); color: var(--ink-900); font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 8px; letter-spacing: 0.04em; }
-  
-  .sidebar-footer { position: absolute; bottom: 16px; left: 16px; right: 16px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 12px; }
-  .sidebar-footer .user { display: flex; align-items: center; gap: 10px; }
-  .sidebar-footer .avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--gold), #ff9a00); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; color: var(--ink-900); }
-  .sidebar-footer .info { flex: 1; min-width: 0; }
-  .sidebar-footer .name { color: white; font-size: 12.5px; font-weight: 700; }
-  .sidebar-footer .role { color: var(--text-dim); font-size: 10.5px; }
-  .sidebar-footer button { background: transparent; border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); width: 28px; height: 28px; border-radius: 7px; cursor: pointer; font-size: 13px; }
-  .sidebar-footer button:hover { color: white; border-color: rgba(255,255,255,0.2); }
-  
-  /* MAIN */
-  .main { margin-left: 260px; margin-right: 360px; min-height: 100vh; }
-  
-  .topbar {
-    background: rgba(255,255,255,0.75);
-    backdrop-filter: blur(20px) saturate(180%);
-    border-bottom: 1px solid var(--line);
-    padding: 14px 32px;
-    display: flex; align-items: center; gap: 16px;
-    position: sticky; top: 0;
-    z-index: 40;
-  }
-  .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-mid); font-weight: 600; }
-  .breadcrumb .current { color: var(--ink-900); font-weight: 700; }
-  .breadcrumb .sep { color: var(--text-faint); }
-  
-  .top-actions { display: flex; gap: 10px; align-items: center; margin-left: auto; }
-  
-  .quick-create {
-    background: linear-gradient(135deg, var(--ink-900), var(--ink-700));
-    color: white;
-    padding: 9px 16px;
-    border-radius: 10px;
-    font-size: 13px;
-    font-weight: 700;
-    display: flex; align-items: center; gap: 7px;
-    transition: all 0.2s;
-    box-shadow: var(--shadow-md);
-  }
-  .quick-create:hover { transform: translateY(-1px); box-shadow: var(--shadow-lg); }
-  
-  .user-chip { display: flex; align-items: center; gap: 9px; padding: 4px 10px 4px 4px; border-radius: 999px; background: var(--paper); border: 1px solid var(--line); cursor: pointer; transition: all 0.15s; }
-  .user-chip:hover { background: var(--line-soft); }
-  .user-chip .avatar { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, var(--gold), var(--gold-deep)); color: white; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; }
-  .user-chip .name { font-size: 12px; font-weight: 700; color: var(--ink-900); }
-  
-  .content { padding: 28px 32px 120px; max-width: 1200px; }
-  
-  /* HERO */
-  .hero {
-    background: linear-gradient(135deg, var(--ink-900) 0%, var(--ink-700) 50%, var(--ink-600) 100%);
-    border-radius: 24px;
-    padding: 32px 36px;
-    color: white;
-    position: relative;
-    overflow: hidden;
-    margin-bottom: 24px;
-    animation: heroIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  @keyframes heroIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-  .hero::before { content: ''; position: absolute; top: -50%; right: -10%; width: 600px; height: 600px; background: radial-gradient(circle, rgba(0, 212, 210, 0.18), transparent 60%); pointer-events: none; }
-  .hero::after { content: ''; position: absolute; bottom: -50%; left: -10%; width: 500px; height: 500px; background: radial-gradient(circle, rgba(245, 184, 61, 0.12), transparent 60%); pointer-events: none; }
-  
-  .hero-content { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: flex-start; }
-  
-  .hero-eyebrow {
-    display: inline-flex; align-items: center; gap: 8px;
-    background: rgba(0, 212, 210, 0.15);
-    border: 1px solid rgba(0, 212, 210, 0.3);
-    color: var(--teal-glow);
-    padding: 5px 12px;
-    border-radius: 999px;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    margin-bottom: 14px;
-  }
-  .hero-eyebrow .pulse { width: 6px; height: 6px; background: var(--teal-glow); border-radius: 50%; animation: pulse 2s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:0.5;transform:scale(1.6);} }
-  
-  .hero h1 { font-family: 'Fraunces', serif; font-size: 38px; font-weight: 600; letter-spacing: -0.035em; line-height: 1.05; margin-bottom: 10px; }
-  .hero h1 .accent { color: var(--teal-glow); font-style: italic; font-weight: 500; }
-  .hero-sub { color: rgba(255,255,255,0.7); font-size: 14.5px; font-weight: 500; max-width: 480px; line-height: 1.5; }
-  
-  .hero-stat { text-align: right; }
-  .hero-stat .label { color: rgba(255,255,255,0.5); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
-  .hero-stat .value { font-family: 'JetBrains Mono', monospace; color: white; font-size: 24px; font-weight: 700; margin-top: 4px; letter-spacing: -0.02em; }
-  .hero-stat .code { font-family: 'JetBrains Mono', monospace; color: var(--teal-glow); font-size: 14px; font-weight: 700; margin-top: 4px; }
-  
-  /* PANELS */
-  .panel {
-    background: var(--paper);
-    border-radius: 20px;
-    box-shadow: var(--shadow-md);
-    border: 1px solid var(--line);
-    margin-bottom: 20px;
-    overflow: hidden;
-    animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards;
-  }
-  @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-  
-  .panel-header {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 20px 26px;
-    border-bottom: 1px solid var(--line-soft);
-    background: linear-gradient(180deg, var(--paper) 0%, var(--canvas) 100%);
-  }
-  .panel-title { display: flex; align-items: center; gap: 12px; font-size: 16px; font-weight: 800; color: var(--ink-900); letter-spacing: -0.015em; }
-  .panel-title .num { width: 26px; height: 26px; background: linear-gradient(135deg, var(--teal), var(--teal-glow)); color: var(--ink-900); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; box-shadow: var(--shadow-glow-teal); }
-  .panel-subtitle { color: var(--text-mid); font-size: 12px; font-weight: 500; margin-left: 38px; margin-top: 1px; }
-  
-  .panel-body { padding: 24px 26px; }
-  
-  /* FORM */
-  .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
-  .form-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
-  .form-grid .full { grid-column: 1 / -1; }
-  
-  .field { position: relative; }
-  .field label { display: block; font-size: 11px; font-weight: 700; color: var(--text-mid); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 7px; }
-  .field label .req { color: var(--rose); margin-left: 2px; }
-  
-  .input {
-    width: 100%;
-    padding: 11px 14px;
-    font-size: 13.5px;
-    border: 1.5px solid var(--line);
-    border-radius: 10px;
-    background: var(--paper);
-    transition: all 0.18s;
-    font-weight: 500;
-  }
-  .input:focus { border-color: var(--teal); box-shadow: 0 0 0 4px rgba(0, 212, 210, 0.1); }
-  .input::placeholder { color: var(--text-dim); }
-  textarea.input { resize: vertical; min-height: 80px; font-family: inherit; line-height: 1.5; }
-  
-  .select-wrap { position: relative; }
-  .select-wrap::after { content: '▾'; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--text-dim); font-size: 14px; pointer-events: none; }
-  .select-wrap select { width: 100%; padding: 11px 36px 11px 14px; font-size: 13.5px; font-weight: 500; border: 1.5px solid var(--line); border-radius: 10px; background: var(--paper); appearance: none; cursor: pointer; transition: all 0.18s; }
-  .select-wrap select:focus { border-color: var(--teal); box-shadow: 0 0 0 4px rgba(0, 212, 210, 0.1); }
-  
-  /* PRIORITY PILLS */
-  .priority-group { display: flex; gap: 6px; }
-  .priority-pill {
-    flex: 1;
-    padding: 9px 12px;
-    border: 1.5px solid var(--line);
-    border-radius: 10px;
-    background: var(--paper);
-    font-size: 12.5px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.18s;
-    display: flex; align-items: center; justify-content: center; gap: 6px;
-    color: var(--text-mid);
-  }
-  .priority-pill:hover { border-color: var(--text-dim); }
-  .priority-pill .dot { width: 7px; height: 7px; border-radius: 50%; }
-  .priority-pill[data-priority="normal"] .dot { background: var(--mint); }
-  .priority-pill[data-priority="urgent"] .dot { background: var(--orange); }
-  .priority-pill[data-priority="vip"] .dot { background: var(--violet); }
-  .priority-pill.active[data-priority="normal"] { background: rgba(52, 211, 153, 0.1); border-color: var(--mint); color: #047857; }
-  .priority-pill.active[data-priority="urgent"] { background: rgba(249, 115, 22, 0.1); border-color: var(--orange); color: #c2410c; }
-  .priority-pill.active[data-priority="vip"] { background: linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(139, 92, 246, 0.06)); border-color: var(--violet); color: #6d28d9; box-shadow: 0 4px 14px rgba(139, 92, 246, 0.2); }
-  
-  /* CHIP INPUT */
-  .chip-input {
-    border: 1.5px solid var(--line);
-    border-radius: 10px;
-    background: var(--paper);
-    padding: 8px 10px;
-    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
-    min-height: 44px;
-    transition: all 0.18s;
-  }
-  .chip-input:focus-within { border-color: var(--teal); box-shadow: 0 0 0 4px rgba(0, 212, 210, 0.1); }
-  .chip {
-    display: inline-flex; align-items: center; gap: 5px;
-    background: linear-gradient(135deg, rgba(0,212,210,0.12), rgba(0,212,210,0.05));
-    border: 1px solid rgba(0, 212, 210, 0.25);
-    color: var(--teal-dark);
-    padding: 4px 9px;
-    border-radius: 7px;
-    font-size: 12px;
-    font-weight: 700;
-  }
-  .chip .x { cursor: pointer; opacity: 0.6; font-size: 14px; line-height: 1; }
-  .chip .x:hover { opacity: 1; }
-  .chip-input input { flex: 1; min-width: 100px; padding: 4px; font-size: 13px; font-weight: 500; }
-  .chip-input input::placeholder { color: var(--text-dim); }
-  
-  /* SEARCHABLE DROPDOWN */
-  .searchable { position: relative; }
-  .searchable .dropdown {
-    position: absolute; top: 100%; left: 0; right: 0;
-    background: var(--paper);
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    margin-top: 4px;
-    max-height: 240px;
-    overflow-y: auto;
-    box-shadow: 0 16px 40px rgba(0,0,0,0.12);
-    z-index: 100;
-    display: none;
-  }
-  .searchable.active .dropdown { display: block; }
-  .dropdown-item {
-    padding: 10px 14px;
-    cursor: pointer;
-    font-size: 13px;
-    border-bottom: 1px solid var(--line-soft);
-    transition: background 0.1s;
-  }
-  .dropdown-item:last-child { border-bottom: none; }
-  .dropdown-item:hover { background: var(--line-soft); }
-  .dropdown-item .sub { font-size: 11px; color: var(--text-mid); margin-top: 2px; font-weight: 500; }
-  .dropdown-item .vip-tag { display: inline-block; background: rgba(139,92,246,0.12); color: var(--violet); padding: 1px 6px; border-radius: 6px; font-size: 9px; font-weight: 800; margin-left: 6px; }
-  
-  /* MEDIA GRID */
-  .media-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
-  .media-option {
-    padding: 14px;
-    border: 1.5px solid var(--line);
-    border-radius: 12px;
-    background: var(--paper);
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    text-align: left;
-    position: relative;
-    overflow: hidden;
-  }
-  .media-option:hover { border-color: var(--teal); transform: translateY(-2px); box-shadow: var(--shadow-md); }
-  .media-option::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, var(--media-color, var(--teal)) 0%, transparent 60%); opacity: 0.05; pointer-events: none; transition: opacity 0.2s; }
-  .media-option:hover::before { opacity: 0.1; }
-  .media-option .icon-wrap { width: 36px; height: 36px; border-radius: 9px; background: var(--media-bg, rgba(0,212,210,0.1)); color: var(--media-color, var(--teal)); display: flex; align-items: center; justify-content: center; margin-bottom: 10px; font-size: 16px; }
-  .media-option .name { font-size: 13px; font-weight: 700; color: var(--ink-900); line-height: 1.3; }
-  .media-option .desc { font-size: 11px; color: var(--text-mid); margin-top: 4px; font-weight: 500; }
-  
-  /* PRODUCT CARD */
-  .product-card {
-    border: 1.5px solid var(--line);
-    border-radius: 14px;
-    background: var(--paper);
-    margin-bottom: 14px;
-    overflow: hidden;
-    transition: all 0.25s;
-    animation: cardIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  @keyframes cardIn { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
-  .product-card:hover { box-shadow: var(--shadow-lg); }
-  
-  .product-head {
-    display: flex; align-items: center; gap: 14px;
-    padding: 16px 18px;
-    background: linear-gradient(135deg, var(--card-bg, rgba(0,212,210,0.04)) 0%, transparent 60%);
-    border-bottom: 1px solid var(--line-soft);
-    cursor: pointer;
-  }
-  .product-head .pic { width: 44px; height: 44px; border-radius: 11px; background: var(--card-icon-bg, rgba(0,212,210,0.12)); color: var(--card-icon, var(--teal)); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
-  .product-head .info { flex: 1; min-width: 0; }
-  .product-head .info .title { font-size: 14.5px; font-weight: 800; color: var(--ink-900); letter-spacing: -0.01em; }
-  .product-head .info .meta { font-size: 12px; color: var(--text-mid); margin-top: 2px; font-weight: 500; display: flex; gap: 10px; flex-wrap: wrap; }
-  .product-head .right { text-align: right; }
-  .product-head .right .amount { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 800; color: var(--ink-900); letter-spacing: -0.02em; }
-  .product-head .right .label { font-size: 10px; color: var(--text-mid); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
-  .product-head .toggle { color: var(--text-dim); transition: transform 0.25s; margin-left: 8px; }
-  .product-head.collapsed .toggle { transform: rotate(-90deg); }
-  .product-head .del-btn { background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; color: var(--rose); font-size: 11px; font-weight: 700; opacity: 0; transition: opacity 0.15s; margin-left: 8px; }
-  .product-card:hover .del-btn { opacity: 1; }
-  .del-btn:hover { background: rgba(255,84,112,0.08); }
-  
-  .product-body { padding: 20px; }
-  .product-body.hidden { display: none; }
-  
-  /* TIMELINE */
-  .timeline {
-    display: flex; align-items: center;
-    margin: 18px 0;
-    padding: 14px 18px;
-    background: var(--canvas);
-    border-radius: 12px;
-    border: 1px solid var(--line-soft);
-    overflow-x: auto;
-  }
-  .timeline-step { flex: 1; min-width: 80px; text-align: center; position: relative; }
-  .timeline-step:not(:last-child)::after { content: ''; position: absolute; top: 14px; left: calc(50% + 16px); right: calc(-50% + 16px); height: 2px; background: var(--line); z-index: 0; }
-  .timeline-step.done:not(:last-child)::after { background: var(--mint); }
-  .timeline-dot { width: 28px; height: 28px; border-radius: 50%; background: var(--paper); border: 2px solid var(--line); display: flex; align-items: center; justify-content: center; margin: 0 auto; position: relative; z-index: 2; font-size: 12px; font-weight: 700; color: var(--text-dim); }
-  .timeline-step.done .timeline-dot { background: var(--mint); border-color: var(--mint); color: white; }
-  .timeline-step.current .timeline-dot { background: white; border-color: var(--teal); color: var(--teal-dark); box-shadow: 0 0 0 4px rgba(0, 212, 210, 0.15); animation: currentPulse 2s infinite; }
-  @keyframes currentPulse { 0%,100%{box-shadow: 0 0 0 4px rgba(0, 212, 210, 0.15);} 50%{box-shadow: 0 0 0 8px rgba(0, 212, 210, 0.08);} }
-  .timeline-step .label { margin-top: 6px; font-size: 10.5px; font-weight: 700; color: var(--text-mid); letter-spacing: 0.02em; }
-  .timeline-step.done .label { color: var(--mint); }
-  .timeline-step.current .label { color: var(--teal-dark); }
-  
-  /* LIVE CALC */
-  .live-calc {
-    background: linear-gradient(135deg, var(--ink-900), var(--ink-700));
-    color: white;
-    padding: 16px 20px;
-    border-radius: 12px;
-    margin-top: 16px;
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
-    position: relative;
-    overflow: hidden;
-  }
-  .live-calc::before { content: ''; position: absolute; top: -30%; right: -10%; width: 200px; height: 200px; background: radial-gradient(circle, rgba(0, 212, 210, 0.2), transparent 60%); }
-  .live-calc .cell { position: relative; }
-  .live-calc .cell .l { font-size: 10px; color: rgba(255,255,255,0.5); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
-  .live-calc .cell .v { font-family: 'JetBrains Mono', monospace; font-size: 19px; font-weight: 800; margin-top: 4px; letter-spacing: -0.02em; }
-  .live-calc .cell.profit .v { color: var(--mint-glow); }
-  .live-calc .cell.revenue .v { color: var(--teal-glow); }
-  .live-calc .cell.cost .v { color: var(--gold-warm); }
-  .live-calc .cell.margin .v { color: white; }
-  
-  .add-media-btn {
-    width: 100%;
-    padding: 16px;
-    border: 2px dashed var(--line-strong);
-    border-radius: 14px;
-    background: var(--canvas);
-    color: var(--text-mid);
-    font-size: 13.5px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-  }
-  .add-media-btn:hover { border-color: var(--teal); background: rgba(0, 212, 210, 0.04); color: var(--teal-dark); }
-  
-  /* ALERTS */
-  .alert-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-  .alert-card { padding: 16px; border-radius: 12px; border: 1px solid var(--line); background: var(--paper); display: flex; align-items: flex-start; gap: 12px; transition: all 0.2s; }
-  .alert-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-  .alert-card .ico { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 16px; }
-  .alert-card.warn .ico { background: rgba(245, 184, 61, 0.15); color: var(--gold-deep); }
-  .alert-card.danger .ico { background: rgba(255, 84, 112, 0.12); color: var(--rose); }
-  .alert-card.info .ico { background: rgba(59, 130, 246, 0.1); color: var(--blue); }
-  .alert-card.success .ico { background: rgba(52, 211, 153, 0.12); color: var(--mint); }
-  .alert-card .text { flex: 1; min-width: 0; }
-  .alert-card .text .title { font-size: 12.5px; font-weight: 800; color: var(--ink-900); line-height: 1.3; }
-  .alert-card .text .desc { font-size: 11.5px; color: var(--text-mid); margin-top: 3px; line-height: 1.4; }
-  .alert-card.warn { border-left: 3px solid var(--gold); }
-  .alert-card.danger { border-left: 3px solid var(--rose); }
-  .alert-card.info { border-left: 3px solid var(--blue); }
-  .alert-card.success { border-left: 3px solid var(--mint); }
-  
-  /* DIFFICULTY */
-  .difficulty-card {
-    background: linear-gradient(135deg, var(--paper) 0%, var(--canvas) 100%);
-    padding: 20px 24px;
-    border-radius: 20px;
-    border: 1px solid var(--line);
-    display: flex; align-items: center; gap: 24px;
-    margin-bottom: 20px;
-  }
-  .difficulty-icon { width: 60px; height: 60px; border-radius: 16px; background: linear-gradient(135deg, var(--gold), var(--gold-warm)); display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; box-shadow: var(--shadow-glow-gold); flex-shrink: 0; transition: all 0.3s; }
-  .difficulty-icon.easy { background: linear-gradient(135deg, var(--mint), var(--mint-glow)); box-shadow: 0 8px 24px rgba(52, 211, 153, 0.35); }
-  .difficulty-icon.hard { background: linear-gradient(135deg, var(--rose), #e11d48); box-shadow: 0 8px 24px rgba(255, 84, 112, 0.35); }
-  .difficulty-meta { flex: 1; }
-  .difficulty-label { font-size: 11px; font-weight: 700; color: var(--text-mid); text-transform: uppercase; letter-spacing: 0.08em; }
-  .difficulty-value { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 700; color: var(--ink-900); line-height: 1; margin-top: 6px; letter-spacing: -0.02em; }
-  .difficulty-bars { display: flex; gap: 4px; margin-top: 12px; }
-  .difficulty-bar { flex: 1; height: 6px; border-radius: 3px; background: var(--line); transition: background 0.4s; }
-  .difficulty-bar.fill-easy { background: var(--mint); }
-  .difficulty-bar.fill-med { background: var(--gold); }
-  .difficulty-bar.fill-hard { background: var(--rose); }
-  .difficulty-factors { display: flex; gap: 16px; text-align: center; }
-  .difficulty-factors .item .v { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 800; color: var(--ink-900); }
-  .difficulty-factors .item .l { font-size: 10px; color: var(--text-mid); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
-  
-  /* PAYMENT */
-  .payment-row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
-  .payment-form .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 14px; }
-  
-  .collection-card {
-    background: linear-gradient(135deg, #1a1a3e 0%, #2d1b4e 70%, #3d2563 100%);
-    border-radius: 20px;
-    padding: 22px;
-    color: white;
-    position: relative;
-    overflow: hidden;
-  }
-  .collection-card::before { content: ''; position: absolute; top: -100px; right: -100px; width: 300px; height: 300px; background: radial-gradient(circle, rgba(139, 92, 246, 0.25), transparent 60%); }
-  .collection-card .heading { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px; position: relative; }
-  .collection-card .big { font-family: 'JetBrains Mono', monospace; font-size: 32px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; position: relative; }
-  .collection-card .pct { font-family: 'Fraunces', serif; font-size: 14px; font-weight: 600; font-style: italic; color: var(--violet-glow); margin-top: 6px; position: relative; }
-  .collection-card .bar { height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; margin-top: 16px; overflow: hidden; position: relative; }
-  .collection-card .bar-fill { height: 100%; background: linear-gradient(90deg, var(--violet), var(--violet-glow)); border-radius: 4px; box-shadow: 0 0 12px rgba(139, 92, 246, 0.6); transition: width 1.5s cubic-bezier(0.16, 1, 0.3, 1); }
-  .collection-card .meta { display: flex; justify-content: space-between; margin-top: 10px; font-size: 11px; color: rgba(255,255,255,0.6); font-weight: 600; position: relative; }
-  .collection-card .meta .strong { color: white; }
-  
-  /* RIGHT PANEL */
-  .right-panel {
-    width: 340px;
-    background: var(--paper);
-    height: 100vh;
-    position: fixed;
-    right: 0; top: 0;
-    border-left: 1px solid var(--line);
-    padding: 20px 22px;
-    overflow-y: auto;
-    z-index: 30;
-  }
-  .right-panel::-webkit-scrollbar { width: 4px; }
-  .right-panel::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 2px; }
-  
-  .summary-head { padding-bottom: 16px; border-bottom: 1px solid var(--line-soft); margin-bottom: 16px; }
-  .summary-head .label { font-size: 10px; font-weight: 700; color: var(--text-mid); text-transform: uppercase; letter-spacing: 0.1em; }
-  .summary-head .title { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; color: var(--ink-900); margin-top: 4px; letter-spacing: -0.02em; line-height: 1.15; }
-  .summary-head .live { display: inline-flex; align-items: center; gap: 5px; background: rgba(52, 211, 153, 0.1); color: var(--mint); padding: 3px 9px; border-radius: 12px; font-size: 10px; font-weight: 700; margin-top: 8px; }
-  .summary-head .live .dot { width: 6px; height: 6px; background: var(--mint); border-radius: 50%; animation: pulse 2s infinite; }
-  
-  .big-stat {
-    background: linear-gradient(135deg, var(--ink-900), var(--ink-700));
-    color: white;
-    padding: 18px 20px;
-    border-radius: 16px;
-    margin-bottom: 16px;
-    position: relative;
-    overflow: hidden;
-  }
-  .big-stat::before { content: ''; position: absolute; top: -30px; right: -30px; width: 150px; height: 150px; background: radial-gradient(circle, rgba(0, 212, 210, 0.2), transparent); }
-  .big-stat .l { font-size: 11px; color: rgba(255,255,255,0.6); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; position: relative; }
-  .big-stat .v { font-family: 'JetBrains Mono', monospace; font-size: 30px; font-weight: 800; letter-spacing: -0.03em; margin-top: 4px; position: relative; }
-  .big-stat .sub { font-size: 11.5px; color: var(--teal-glow); font-weight: 600; margin-top: 4px; position: relative; }
-  
-  .summary-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
-  .mini-stat { background: var(--canvas); border: 1px solid var(--line); padding: 12px 14px; border-radius: 10px; transition: all 0.2s; }
-  .mini-stat:hover { background: white; box-shadow: var(--shadow-sm); }
-  .mini-stat .l { font-size: 10px; color: var(--text-mid); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
-  .mini-stat .v { font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 800; color: var(--ink-900); margin-top: 3px; letter-spacing: -0.02em; }
-  .mini-stat .v.green { color: var(--mint); }
-  .mini-stat .v.red { color: var(--rose); }
-  .mini-stat .v.gold { color: var(--gold-deep); }
-  
-  .right-section-title { font-size: 11px; font-weight: 700; color: var(--text-mid); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
-  
-  /* ACTION BAR */
-  .action-bar {
-    position: fixed;
-    bottom: 16px;
-    left: calc(260px + 32px);
-    right: calc(340px + 32px);
-    background: rgba(11, 17, 48, 0.92);
-    backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 16px;
-    padding: 12px 16px;
-    display: flex; gap: 8px; align-items: center;
-    box-shadow: 0 16px 50px rgba(0,0,0,0.3);
-    z-index: 35;
-  }
-  .action-info { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; color: rgba(255,255,255,0.8); font-size: 12px; font-weight: 600; }
-  .action-info .auto-save { display: inline-flex; align-items: center; gap: 5px; color: var(--mint-glow); }
-  .action-info .auto-save .dot { width: 6px; height: 6px; background: var(--mint-glow); border-radius: 50%; animation: pulse 2s infinite; }
-  
-  .ab-btn { padding: 9px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 700; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
-  .ab-btn.ghost { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.85); border: 1px solid rgba(255,255,255,0.1); }
-  .ab-btn.ghost:hover { background: rgba(255,255,255,0.12); color: white; }
-  .ab-btn.primary { background: linear-gradient(135deg, var(--teal), var(--teal-glow)); color: var(--ink-900); box-shadow: 0 4px 14px rgba(0, 212, 210, 0.4); }
-  .ab-btn.primary:hover { box-shadow: 0 8px 20px rgba(0, 212, 210, 0.5); transform: translateY(-1px); }
-  .ab-btn.gold { background: linear-gradient(135deg, var(--gold), var(--gold-warm)); color: var(--ink-900); box-shadow: 0 4px 14px rgba(245, 184, 61, 0.35); }
-  .ab-btn.gold:hover { box-shadow: 0 8px 20px rgba(245, 184, 61, 0.5); transform: translateY(-1px); }
-  .ab-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  
-  /* TOAST */
-  .toast { position: fixed; bottom: 90px; right: 24px; background: var(--ink-900); color: white; padding: 14px 20px; border-radius: 12px; font-size: 13px; font-weight: 700; box-shadow: var(--shadow-xl); z-index: 9999; opacity: 0; transform: translateY(20px); transition: all 0.3s; display: flex; align-items: center; gap: 10px; max-width: 400px; }
-  .toast.show { opacity: 1; transform: translateY(0); }
-  .toast.success { background: linear-gradient(135deg, var(--mint), #10b981); }
-  .toast.error { background: linear-gradient(135deg, var(--rose), #e11d48); }
-  
-  /* SPINNER */
-  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  
-  /* RESPONSIVE */
-  @media (max-width: 1400px) {
-    .right-panel { display: none; }
-    .main { margin-right: 0; }
-    .action-bar { right: 32px; }
-  }
-  @media (max-width: 1024px) {
-    .form-grid, .form-grid.cols-3, .media-grid, .alert-row, .summary-stats, .payment-row, .payment-form .row {
-      grid-template-columns: repeat(2, 1fr);
-    }
-    .live-calc { grid-template-columns: repeat(2, 1fr); }
-  }
-  @media (max-width: 768px) {
-    .sidebar { width: 64px; padding: 16px 8px; }
-    .sidebar .nav-item span:not(.new-pill) { display: none; }
-    .sidebar .brand-text { display: none; }
-    .sidebar .nav-section-title { display: none; }
-    .sidebar-footer { display: none; }
-    .main { margin-left: 64px; margin-right: 0; }
-    .action-bar { left: 80px; right: 16px; flex-wrap: wrap; }
-    .form-grid, .form-grid.cols-3, .media-grid, .alert-row, .payment-form .row { grid-template-columns: 1fr; }
-    .live-calc { grid-template-columns: 1fr 1fr; }
-    .difficulty-card { flex-direction: column; align-items: stretch; gap: 16px; }
-    .content { padding: 16px 16px 160px; }
-    .topbar { padding: 12px 16px; flex-wrap: wrap; }
-    .hero h1 { font-size: 28px; }
-    .hero-content { flex-direction: column; gap: 16px; }
-    .hero-stat { text-align: left; }
-  }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+:root{
+  --navy:#0B1957;--navy-deep:#050B2E;--navy-mid:#1A237E;
+  --gold:#B89B4E;--gold-bright:#D4B45F;--gold-deep:#8B7430;--gold-soft:#F4E4B0;
+  --cream:#FAF8F3;--paper:#F7F4EC;--rule:#E5E0D2;
+  --ink-950:#0F172A;--ink-700:#475569;--text-dim:#94A3B8;
+  --success:#047857;--success-bg:#D1FAE5;
+  --warn:#C2410C;--warn-bg:#FED7AA;
+  --danger:#BE123C;--danger-bg:#FECACA;
+  --info:#1E40AF;--info-bg:#DBEAFE;
+  --purple:#7C3AED;--purple-bg:#EDE9FE;
+}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--cream);color:var(--ink-950);font-size:14px;line-height:1.5;min-height:100vh}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+a{color:inherit;text-decoration:none}
+
+.topbar{background:var(--navy);color:#fff;padding:14px 32px;border-bottom:3px solid var(--gold);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.tb-brand{display:flex;align-items:center;gap:12px}
+.tb-logo{width:36px;height:36px;background:var(--gold);color:var(--navy);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:700;font-size:20px}
+.tb-name{font-size:14px;font-weight:700}
+.tb-tag{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--gold-bright);letter-spacing:0.16em;text-transform:uppercase;margin-top:2px}
+.tb-user{display:flex;align-items:center;gap:10px;padding:4px 14px 4px 4px;background:rgba(255,255,255,0.08);border:1px solid rgba(212,180,95,0.3);border-radius:999px}
+.tb-ava{width:30px;height:30px;border-radius:50%;background:var(--gold);color:var(--navy);display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-style:italic;font-weight:700;font-size:14px}
+.tb-info .name{font-size:12px;font-weight:700;line-height:1.1}
+.tb-info .role{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--gold-bright);letter-spacing:0.14em;text-transform:uppercase}
+
+.main{padding:28px;max-width:1200px;margin:0 auto;padding-bottom:120px}
+
+.page-head{margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between}
+.page-title{font-family:'Fraunces',serif;font-size:26px;font-weight:500;color:var(--navy);letter-spacing:-0.02em}
+.page-title em{color:var(--gold);font-style:italic}
+.page-sub{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:0.12em;text-transform:uppercase;margin-top:4px}
+
+.section{background:#fff;border:1px solid var(--rule);border-radius:10px;margin-bottom:18px;overflow:hidden}
+.section-head{padding:14px 20px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg, var(--paper), #fff)}
+.section-title{font-family:'Fraunces',serif;font-size:15px;font-weight:600;color:var(--navy);letter-spacing:-0.01em}
+.section-title em{color:var(--gold);font-style:italic}
+.section-meta{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--gold-deep);letter-spacing:0.14em;text-transform:uppercase}
+.section-body{padding:18px 20px}
+
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.row.three{grid-template-columns:2fr 1fr 1fr}
+.row:last-child{margin-bottom:0}
+
+.field{display:flex;flex-direction:column;gap:6px}
+.label{font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:var(--navy);letter-spacing:0.12em;text-transform:uppercase}
+.label .req{color:var(--danger);margin-left:2px}
+.label .hint{color:var(--text-dim);font-weight:400;text-transform:none;letter-spacing:0;font-size:10px;margin-left:6px}
+.input,.select,.textarea{padding:10px 12px;border:1px solid var(--rule);background:var(--cream);font-family:inherit;font-size:13px;color:var(--ink-950);border-radius:6px;outline:none;width:100%}
+.input:focus,.select:focus,.textarea:focus{border-color:var(--gold);background:#fff}
+.textarea{resize:vertical;min-height:70px}
+
+.search-select{position:relative}
+.ss-trigger{padding:10px 12px;border:1px solid var(--rule);background:var(--cream);font-size:13px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;min-height:44px}
+.ss-trigger:hover{border-color:var(--gold)}
+.ss-placeholder{color:var(--text-dim);display:flex;align-items:center;gap:8px}
+.ss-selected{display:flex;align-items:center;gap:8px}
+.ss-ava{width:24px;height:24px;border-radius:50%;background:var(--gold);color:var(--navy);display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-style:italic;font-weight:700;font-size:11px;flex-shrink:0}
+.ss-info{min-width:0}
+.ss-info .name{font-size:13px;font-weight:600;line-height:1.1}
+.ss-info .meta{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-dim);letter-spacing:0.06em;margin-top:1px}
+.ss-chev{color:var(--text-dim);font-size:11px;flex-shrink:0}
+.ss-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:50;background:#fff;border:1px solid var(--gold);border-radius:8px;box-shadow:0 12px 40px rgba(11,25,87,0.25);max-height:320px;display:none;flex-direction:column}
+.ss-dropdown.open{display:flex}
+.ss-search{padding:10px 12px;border:none;border-bottom:1px solid var(--rule);background:transparent;font-size:13px;outline:none;font-family:inherit}
+.ss-options{flex:1;overflow-y:auto;max-height:260px}
+.ss-option{padding:9px 12px;cursor:pointer;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--cream);transition:background 0.1s}
+.ss-option:hover{background:var(--cream)}
+.ss-option:last-child{border-bottom:none}
+.ss-option .ava{width:28px;height:28px;border-radius:50%;background:var(--gold-soft);color:var(--gold-deep);display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-style:italic;font-weight:700;font-size:12px;flex-shrink:0}
+.ss-option .info{flex:1;min-width:0}
+.ss-option .name{font-size:12.5px;font-weight:600;color:var(--navy)}
+.ss-option .meta{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--text-dim);letter-spacing:0.06em}
+.ss-option .tag{font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;background:var(--info-bg);color:var(--info);padding:2px 6px;border-radius:3px;letter-spacing:0.06em;flex-shrink:0}
+
+.job-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(170px, 1fr));gap:10px}
+.job-card{border:1.5px solid var(--rule);background:#fff;padding:12px;border-radius:10px;cursor:pointer;transition:all 0.15s;display:flex;flex-direction:column;gap:6px}
+.job-card:hover{border-color:var(--gold)}
+.job-card.selected{border-color:var(--gold);background:linear-gradient(135deg, var(--gold-soft), #fff);box-shadow:0 4px 14px rgba(184,155,78,0.2)}
+.job-card-icon{font-size:22px}
+.job-card-name{font-size:12px;font-weight:700;color:var(--navy)}
+.job-card-flow{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--text-dim);letter-spacing:0.06em;line-height:1.3}
+.job-card.selected .job-card-flow{color:var(--gold-deep)}
+
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--cream);border-radius:8px;margin-bottom:8px;gap:14px}
+.toggle-info{flex:1;min-width:0}
+.toggle-label{font-size:13px;font-weight:600;color:var(--navy)}
+.toggle-hint{font-size:11px;color:var(--text-dim);margin-top:2px}
+.toggle-switch{width:38px;height:22px;background:var(--rule);border-radius:999px;position:relative;cursor:pointer;transition:background 0.15s;flex-shrink:0}
+.toggle-switch::after{content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;border-radius:50%;transition:transform 0.15s;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
+.toggle-switch.on{background:var(--gold)}
+.toggle-switch.on::after{transform:translateX(16px)}
+
+.design-row{background:#fff;border:1.5px solid var(--rule);border-radius:12px;margin-bottom:12px;overflow:hidden;transition:all 0.15s}
+.design-row:hover{border-color:var(--gold-soft)}
+.design-row.expanded{border-color:var(--gold)}
+.design-row-head{padding:10px 16px;background:linear-gradient(180deg, var(--paper), #fff);border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between}
+.design-num{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--gold-deep);letter-spacing:0.16em;text-transform:uppercase}
+.design-num .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--gold);color:var(--navy);margin-right:6px}
+.design-remove{width:24px;height:24px;border-radius:50%;background:var(--cream);color:var(--danger);display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;font-weight:700}
+.design-remove:hover{background:var(--danger-bg)}
+.design-row-body{padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+
+.dlabel{display:flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:var(--navy);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:5px}
+.dlabel .req{color:var(--danger)}
+.dlabel .hint{color:var(--text-dim);font-weight:400;text-transform:none;letter-spacing:0;font-size:10px;margin-left:4px}
+.dinput{width:100%;padding:9px 12px;border:1px solid var(--rule);background:var(--cream);font-family:inherit;font-size:13px;color:var(--ink-950);border-radius:6px;outline:none;transition:all 0.15s}
+.dinput:focus{border-color:var(--gold);background:#fff}
+
+.location-input{position:relative}
+.location-input .input-wrap{display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--rule);background:var(--cream);border-radius:6px;cursor:text;transition:all 0.15s;min-height:42px}
+.location-input .input-wrap:focus-within{border-color:var(--gold);background:#fff}
+.location-input.has-value .input-wrap{background:linear-gradient(135deg, var(--gold-soft), #fff);border-color:var(--gold)}
+.location-pin{font-size:14px;color:var(--gold-deep);flex-shrink:0}
+.location-text{flex:1;font-size:13px;color:var(--ink-950);min-width:0}
+.location-text input{width:100%;border:none;background:transparent;outline:none;font-family:inherit;font-size:13px;color:var(--ink-950)}
+.location-text.placeholder{color:var(--text-dim)}
+.location-detail{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--gold-deep);letter-spacing:0.06em;margin-top:2px}
+.location-change{font-size:10px;color:var(--gold-deep);font-weight:700;text-transform:uppercase;letter-spacing:0.1em;cursor:pointer;background:transparent;border:none;font-family:inherit;flex-shrink:0}
+
+.gp-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:50;background:#fff;border:1px solid var(--gold);border-radius:8px;box-shadow:0 12px 40px rgba(11,25,87,0.25);max-height:340px;display:none;flex-direction:column;overflow:hidden}
+.gp-dropdown.open{display:flex}
+.gp-section-label{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--gold-deep);letter-spacing:0.14em;text-transform:uppercase;padding:8px 14px 4px;background:var(--paper)}
+.gp-results{flex:1;overflow-y:auto}
+.gp-option{padding:9px 14px;cursor:pointer;display:flex;align-items:flex-start;gap:10px;border-bottom:1px solid var(--cream)}
+.gp-option:hover{background:var(--cream)}
+.gp-option:last-child{border-bottom:none}
+.gp-option .gp-icon{font-size:14px;color:var(--gold-deep);flex-shrink:0;margin-top:1px}
+.gp-option .gp-info{flex:1;min-width:0}
+.gp-option .gp-main{font-size:13px;font-weight:600;color:var(--navy);line-height:1.3}
+.gp-option .gp-sub{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--text-dim);letter-spacing:0.06em;margin-top:1px}
+.gp-footer{padding:6px 14px;background:var(--cream);font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--text-dim);text-align:right;letter-spacing:0.08em}
+
+.file-upload-empty{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;background:var(--cream);border:2px dashed var(--rule);border-radius:8px;cursor:pointer;transition:all 0.15s;color:var(--text-dim);font-size:12.5px;text-align:center}
+.file-upload-empty:hover{border-color:var(--gold);background:var(--gold-soft);color:var(--gold-deep)}
+.file-upload-done{display:flex;align-items:center;gap:12px;padding:10px 12px;background:linear-gradient(135deg, var(--success-bg), #fff);border:1px solid var(--success);border-radius:8px}
+.file-icon{width:36px;height:36px;border-radius:6px;background:var(--success);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.file-info{flex:1;min-width:0}
+.file-name{font-size:12.5px;font-weight:600;color:var(--navy);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-size{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--text-dim);letter-spacing:0.06em;margin-top:2px}
+.file-replace{font-size:10px;color:var(--gold-deep);font-weight:700;text-transform:uppercase;letter-spacing:0.1em;cursor:pointer;background:transparent;border:none;font-family:inherit}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;border-radius:8px;font-size:12px;font-weight:700;letter-spacing:0.02em;cursor:pointer;transition:all 0.15s}
+.btn:hover{transform:translateY(-1px)}
+.btn-primary{background:var(--navy);color:#fff}
+.btn-gold{background:var(--gold);color:var(--navy)}
+.btn-success{background:var(--success);color:#fff}
+.btn-secondary{background:#fff;color:var(--navy);border:1px solid var(--rule)}
+.btn.sm{padding:6px 10px;font-size:10px}
+.btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+.btn-add-design{width:100%;padding:12px;background:var(--cream);border:2px dashed var(--gold);color:var(--gold-deep);border-radius:10px;font-weight:700;font-size:12px;letter-spacing:0.04em;text-transform:uppercase;font-family:'JetBrains Mono',monospace}
+.btn-add-design:hover{background:var(--gold-soft)}
+
+.pricing-bar{background:linear-gradient(135deg, var(--navy), var(--navy-deep));color:#fff;padding:18px 22px;border-radius:10px;display:grid;grid-template-columns:repeat(4, 1fr);gap:14px;border:1px solid var(--gold)}
+.pricing-item{text-align:center}
+.pricing-val{font-family:'Fraunces',serif;font-size:20px;font-weight:600;color:var(--gold-bright);letter-spacing:-0.02em;line-height:1}
+.pricing-lbl{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:#cbd5e1;letter-spacing:0.14em;text-transform:uppercase;margin-top:4px}
+
+.callout{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:12px}
+.callout.info{background:var(--info-bg);color:var(--info)}
+.callout.success{background:var(--success-bg);color:var(--success)}
+.callout.warn{background:var(--warn-bg);color:var(--warn)}
+.callout.error{background:var(--danger-bg);color:var(--danger)}
+.callout-icon{font-size:14px;flex-shrink:0}
+
+.action-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--rule);padding:14px 32px;display:flex;justify-content:flex-end;gap:10px;align-items:center;box-shadow:0 -4px 12px rgba(0,0,0,0.05);z-index:50}
+.action-bar .left{margin-right:auto;font-size:12px;color:var(--text-dim)}
+.action-bar .left strong{color:var(--navy)}
+
+.spin{width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.empty-state{text-align:center;padding:30px;color:var(--text-dim);font-size:12px;font-style:italic}
+
+@media (max-width: 768px){
+  .main{padding:18px;padding-bottom:120px}
+  .row{grid-template-columns:1fr}
+  .row.three{grid-template-columns:1fr 1fr}
+  .pricing-bar{grid-template-columns:repeat(2, 1fr)}
+  .action-bar{padding:12px 18px;flex-wrap:wrap}
+}
 </style>
 </head>
 <body>
 
-<!-- ═══════════════════ LOGIN ═══════════════════ -->
-<div class="login-bg" id="loginScreen">
-  <div class="login-card">
-    <div class="login-logo">P</div>
-    <h1>Launch Campaign</h1>
-    <p class="sub">Admin/Owner/Sales access</p>
-    
-    <div class="field-group">
-      <label>Phone Number</label>
-      <input type="tel" id="loginPhone" class="login-input mono" placeholder="10-digit phone" maxlength="10" pattern="[0-9]{10}">
+<div class="topbar">
+  <div class="tb-brand">
+    <div class="tb-logo">P</div>
+    <div>
+      <div class="tb-name">Prajapati Advertising</div>
+      <div class="tb-tag">Launch Campaign · v3.0</div>
     </div>
-    
-    <button class="login-btn" onclick="doLogin()" id="loginBtn">
-      Access Campaign Studio →
-    </button>
-    
-    <div class="err-banner" id="loginErr"></div>
-    
-    <div style="margin-top:24px; padding-top:20px; border-top:1px solid var(--line); text-align:center; font-size:11px; color:var(--text-dim);">
-      Prajapati Advertising · Campaign Command Center
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <a href="/sales-hub.html" class="btn btn-secondary sm">← Sales Hub</a>
+    <div class="tb-user">
+      <div class="tb-ava" id="tbAva">?</div>
+      <div class="tb-info"><div class="name" id="tbName">…</div><div class="role" id="tbRole">…</div></div>
     </div>
   </div>
 </div>
 
-<!-- ═══════════════════ APP ═══════════════════ -->
-<div class="app" id="mainApp">
+<div class="main">
   
-  <!-- SIDEBAR -->
-  <aside class="sidebar">
-    <div class="brand">
-      <div class="brand-logo">P</div>
-      <div class="brand-text">
-        <div class="name">Prajapati</div>
-        <div class="sub">Command Center</div>
-      </div>
+  <div class="page-head">
+    <div>
+      <div class="page-title">Launch <em>Campaign</em></div>
+      <div class="page-sub" id="todayDate">…</div>
     </div>
-    
-    <div class="nav-section">
-      <div class="nav-section-title">Workspace</div>
-      <a class="nav-item" href="dashboard.html">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        <span>Dashboard</span>
-      </a>
-      <div class="nav-item active">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4l3 14M19 4l-3 14M3 8h18M3 16h18"/></svg>
-        <span>Launch Campaign</span>
-        <span class="new-pill">NEW</span>
-      </div>
-      <a class="nav-item" href="admin.html">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
-        <span>All Campaigns</span>
-      </a>
-      <a class="nav-item" href="execution-entry.html">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.39 0 4.68.94 6.36 2.64"/></svg>
-        <span>Daily Entry</span>
-      </a>
-      <a class="nav-item" href="rates-master.html">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 100 4h4a2 2 0 110 4H8M12 18V6"/></svg>
-        <span>Rates Master</span>
-      </a>
+    <div style="display:flex;gap:8px">
+      <a href="/settings-job-types.html" class="btn btn-secondary">⚙️ Job Types</a>
     </div>
-    
-    <div class="nav-section">
-      <div class="nav-section-title">Operations</div>
-      <a class="nav-item" href="execution-plan.html">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-        <span>Execution Plan</span>
-        <span class="new-pill">NEW</span>
-      </a>
-      <a class="nav-item" href="#" onclick="comingSoon('Production')">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-        <span>Production</span>
-      </a>
-      <a class="nav-item" href="#" onclick="comingSoon('Dispatch')">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-        <span>Dispatch</span>
-      </a>
-    </div>
-    
-    <div class="nav-section">
-      <div class="nav-section-title">Finance</div>
-      <a class="nav-item" href="#" onclick="comingSoon('Payments')">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-        <span>Payments</span>
-      </a>
-    </div>
-    
-    <div class="sidebar-footer">
-      <div class="user">
-        <div class="avatar" id="userAvatar">?</div>
-        <div class="info">
-          <div class="name" id="userName">—</div>
-          <div class="role" id="userRole">—</div>
-        </div>
-        <button onclick="doLogout()" title="Logout">↩</button>
-      </div>
-    </div>
-  </aside>
+  </div>
   
-  <!-- MAIN -->
-  <main class="main">
-    <header class="topbar">
-      <div class="breadcrumb">
-        <span>Campaigns</span>
-        <span class="sep">/</span>
-        <span class="current">New Campaign</span>
-      </div>
-      <div class="top-actions">
-        <button class="quick-create" onclick="window.location.href='dashboard.html'">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-          Dashboard
-        </button>
-        <div class="user-chip">
-          <div class="avatar" id="userAvatar2">?</div>
-          <span class="name" id="userName2">—</span>
-        </div>
-      </div>
-    </header>
-    
-    <div class="content">
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title">Basic <em>Information</em></div>
+      <div class="section-meta">Required</div>
+    </div>
+    <div class="section-body">
       
-      <!-- HERO -->
-      <section class="hero">
-        <div class="hero-content">
-          <div>
-            <div class="hero-eyebrow">
-              <span class="pulse"></span>
-              CAMPAIGN COMMAND CENTER
+      <div class="row">
+        <div class="field">
+          <div class="label">Sales Person <span class="req">*</span> <span class="hint">Searchable</span></div>
+          <div class="search-select" id="salesSelect">
+            <div class="ss-trigger" onclick="toggleSS('salesSelect',event)">
+              <div class="ss-placeholder"><span>🔍</span><span>Search by name, phone or role…</span></div>
+              <div class="ss-chev">▼</div>
             </div>
-            <h1>Launch a <span class="accent">new campaign</span></h1>
-            <p class="hero-sub">Configure media products, assign teams, track production through GPS execution — all in one place.</p>
-          </div>
-          <div class="hero-stat">
-            <div class="label">Campaign Code</div>
-            <div class="code" id="campaignCode">CMP-2026-NEW</div>
-            <div class="label" style="margin-top:14px;">Date</div>
-            <div class="value mono" id="todayDate">—</div>
-          </div>
-        </div>
-      </section>
-      
-      <!-- SECTION 1: CAMPAIGN DETAILS -->
-      <section class="panel">
-        <div class="panel-header">
-          <div>
-            <div class="panel-title"><span class="num">1</span>Campaign Details</div>
-            <div class="panel-subtitle">Basic information about this campaign</div>
-          </div>
-        </div>
-        <div class="panel-body">
-          <div class="form-grid">
-            <div class="field full">
-              <label>Campaign Name <span class="req">*</span></label>
-              <input type="text" class="input" placeholder="e.g., APAR CABLE Q3 Summer Drive" id="fldName" oninput="onFormChange()">
-            </div>
-            
-            <div class="field">
-              <label>Client <span class="req">*</span></label>
-              <div class="searchable" id="clientSearch">
-                <input type="text" class="input" placeholder="Search client..." id="fldClient" onfocus="openClientSearch()" oninput="filterClients(this.value)">
-                <div class="dropdown" id="clientDropdown"></div>
-              </div>
-            </div>
-            
-            <div class="field">
-              <label>Brand Name</label>
-              <input type="text" class="input" placeholder="e.g., APAR Cable" id="fldBrand" oninput="onFormChange()">
-            </div>
-            
-            <div class="field">
-              <label>Campaign Type <span class="req">*</span></label>
-              <div class="select-wrap">
-                <select class="input" id="fldType" onchange="onFormChange()">
-                  <option value="brand_awareness">Brand Awareness</option>
-                  <option value="product_launch">Product Launch</option>
-                  <option value="seasonal">Seasonal Promotion</option>
-                  <option value="election">Election / Political</option>
-                  <option value="local_push">Local Push</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-            </div>
-            
-            <div class="field">
-              <label>Priority <span class="req">*</span></label>
-              <div class="priority-group" id="priorityGroup">
-                <button class="priority-pill active" data-priority="normal" onclick="setPriority('normal')">
-                  <span class="dot"></span>Normal
-                </button>
-                <button class="priority-pill" data-priority="urgent" onclick="setPriority('urgent')">
-                  <span class="dot"></span>Urgent
-                </button>
-                <button class="priority-pill" data-priority="vip" onclick="setPriority('vip')">
-                  <span class="dot"></span>VIP
-                </button>
-              </div>
-            </div>
-            
-            <div class="field">
-              <label>Start Date</label>
-              <input type="date" class="input" id="fldStart" onchange="onFormChange()">
-            </div>
-            
-            <div class="field">
-              <label>Deadline <span class="req">*</span></label>
-              <input type="date" class="input" id="fldDeadline" onchange="onFormChange()">
-            </div>
-            
-            <div class="field">
-              <label>Primary City</label>
-              <div class="select-wrap">
-                <select class="input" id="fldCity" onchange="onFormChange()">
-                  <option value="Pune">Pune</option>
-                  <option value="Mumbai">Mumbai</option>
-                  <option value="Surat">Surat</option>
-                  <option value="Ahmedabad">Ahmedabad</option>
-                  <option value="Aurangabad">Aurangabad</option>
-                  <option value="Solapur">Solapur</option>
-                  <option value="Nashik">Nashik</option>
-                  <option value="Delhi">Delhi</option>
-                  <option value="Bangalore">Bangalore</option>
-                  <option value="Multiple">Multiple Cities</option>
-                </select>
-              </div>
-            </div>
-            
-            <div class="field">
-              <label>Additional Locations</label>
-              <div class="chip-input" id="locationChips">
-                <input type="text" placeholder="Type and press Enter..." onkeydown="addChip(event, 'locationChips')">
-              </div>
-            </div>
-            
-            <div class="field full">
-              <label>Sales Team</label>
-              <div class="chip-input" id="teamChips">
-                <input type="text" placeholder="Add team member..." onkeydown="addChip(event, 'teamChips')">
-              </div>
-            </div>
-            
-            <div class="field full">
-              <label>Notes / Brief</label>
-              <textarea class="input" placeholder="Special instructions, brand guidelines, etc..." id="fldNotes"></textarea>
+            <div class="ss-dropdown">
+              <input type="text" class="ss-search" placeholder="Type to filter…" oninput="filterSales(this.value)">
+              <div class="ss-options" id="salesOptions"><div class="empty-state">Loading…</div></div>
             </div>
           </div>
         </div>
-      </section>
-      
-      <!-- DIFFICULTY -->
-      <div class="difficulty-card">
-        <div class="difficulty-icon" id="diffIcon">⚡</div>
-        <div class="difficulty-meta">
-          <div class="difficulty-label">Execution Difficulty</div>
-          <div class="difficulty-value" id="diffValue">Easy</div>
-          <div class="difficulty-bars" id="diffBars"></div>
-        </div>
-        <div class="difficulty-factors">
-          <div class="item">
-            <div class="v" id="diffQty">0</div>
-            <div class="l">Total Qty</div>
-          </div>
-          <div class="item">
-            <div class="v" id="diffDays">—</div>
-            <div class="l">Timeline</div>
-          </div>
-          <div class="item">
-            <div class="v" id="diffCities">0</div>
-            <div class="l">Cities</div>
+        <div class="field">
+          <div class="label">Client <span class="req">*</span> <span class="hint">Existing or add new</span></div>
+          <div class="search-select" id="clientSelect">
+            <div class="ss-trigger" onclick="toggleSS('clientSelect',event)">
+              <div class="ss-placeholder"><span>🔍</span><span>Search client name…</span></div>
+              <div class="ss-chev">▼</div>
+            </div>
+            <div class="ss-dropdown">
+              <input type="text" class="ss-search" placeholder="Type to filter…" oninput="filterClients(this.value)">
+              <div class="ss-options" id="clientOptions"><div class="empty-state">Loading…</div></div>
+            </div>
           </div>
         </div>
       </div>
       
-      <!-- SECTION 2: MEDIA PRODUCTS -->
-      <section class="panel">
-        <div class="panel-header">
-          <div>
-            <div class="panel-title"><span class="num">2</span>Media Products</div>
-            <div class="panel-subtitle">Add advertising products to this campaign</div>
-          </div>
-          <button class="ab-btn primary" onclick="scrollToMedia()" style="box-shadow:0 4px 14px rgba(0,212,210,0.3);">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M5 12h14"/></svg>
-            Add Media
-          </button>
+      <div class="row">
+        <div class="field">
+          <div class="label">Campaign Name <span class="req">*</span></div>
+          <input class="input" id="campaignName" placeholder="e.g., Sharma Garments — Festive Push 2026">
         </div>
-        <div class="panel-body">
-          
-          <div class="media-grid" id="mediaOptions">
-            <button class="media-option" onclick="addProduct('auto_hood')" style="--media-color:#3B82F6;--media-bg:rgba(59,130,246,0.1);">
-              <div class="icon-wrap">🛺</div>
-              <div class="name">Auto Hood Branding</div>
-              <div class="desc">Top covering · per vehicle</div>
-            </button>
-            <button class="media-option" onclick="addProduct('back_panel')" style="--media-color:#8B5CF6;--media-bg:rgba(139,92,246,0.1);">
-              <div class="icon-wrap">🚖</div>
-              <div class="name">Back Panel Branding</div>
-              <div class="desc">Rear advertising panel</div>
-            </button>
-            <button class="media-option" onclick="addProduct('no_parking')" style="--media-color:#F97316;--media-bg:rgba(249,115,22,0.1);">
-              <div class="icon-wrap">🚫</div>
-              <div class="name">No Parking Board</div>
-              <div class="desc">Society parking boards</div>
-            </button>
-            <button class="media-option" onclick="addProduct('flex')" style="--media-color:#34D399;--media-bg:rgba(52,211,153,0.1);">
-              <div class="icon-wrap">📐</div>
-              <div class="name">Flex Printing</div>
-              <div class="desc">By sqft · digital print</div>
-            </button>
-            <button class="media-option" onclick="addProduct('vinyl')" style="--media-color:#F5B83D;--media-bg:rgba(245,184,61,0.15);">
-              <div class="icon-wrap">🎨</div>
-              <div class="name">Vinyl Printing</div>
-              <div class="desc">Vehicle vinyl wraps</div>
-            </button>
-            <button class="media-option" onclick="addProduct('wall_wrap')" style="--media-color:#FF5470;--media-bg:rgba(255,84,112,0.1);">
-              <div class="icon-wrap">🏢</div>
-              <div class="name">Digital Wall Wrap</div>
-              <div class="desc">Building wraps</div>
-            </button>
-          </div>
-          
-          <div id="productsContainer"></div>
-          
-          <button class="add-media-btn" onclick="scrollToMedia()" id="addMoreBtn" style="display:none;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-            Add Another Media Product
-          </button>
-          
+        <div class="field">
+          <div class="label">Campaign Start Date <span class="req">*</span></div>
+          <input class="input" type="date" id="startDate">
         </div>
-      </section>
+      </div>
       
-      <!-- SECTION 3: ALERTS -->
-      <section class="panel" id="alertsPanel" style="display:none;">
-        <div class="panel-header">
-          <div>
-            <div class="panel-title"><span class="num">3</span>Risk & Alerts</div>
-            <div class="panel-subtitle">Auto-detected risks for this campaign</div>
-          </div>
+      <div class="toggle-row" style="margin-top:8px">
+        <div class="toggle-info">
+          <div class="toggle-label">Self-Sale by Admin/Owner</div>
+          <div class="toggle-hint">Toggle ON for direct admin sale (no salesperson commission)</div>
         </div>
-        <div class="panel-body">
-          <div class="alert-row" id="alertsContainer"></div>
-        </div>
-      </section>
+        <div class="toggle-switch" id="selfSaleToggle" onclick="toggleSwitch(this)"></div>
+      </div>
       
-      <!-- SECTION 4: PAYMENT -->
-      <section class="panel">
-        <div class="panel-header">
-          <div>
-            <div class="panel-title"><span class="num">4</span>Payment & Collection</div>
-            <div class="panel-subtitle">Track financials for this campaign</div>
-          </div>
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <div class="toggle-label">🚨 Mark as URGENT</div>
+          <div class="toggle-hint">Jumps queue, red banner, instant WhatsApp notify</div>
         </div>
-        <div class="panel-body">
-          <div class="payment-row">
-            <div class="payment-form">
-              <div class="row">
-                <div class="field">
-                  <label>Subtotal</label>
-                  <input type="text" class="input mono" id="payTotal" value="₹0" readonly style="background:var(--canvas);">
-                </div>
-                <div class="field">
-                  <label>GST %</label>
-                  <input type="number" class="input mono" id="payGstPercent" value="18" min="0" max="28" oninput="recalcPayment()">
-                </div>
-                <div class="field">
-                  <label>Grand Total</label>
-                  <input type="text" class="input mono" id="payGrandTotal" value="₹0" readonly style="background:var(--canvas);font-weight:800;color:var(--ink-900);">
-                </div>
-              </div>
-              <div class="row">
-                <div class="field">
-                  <label>Advance Required (₹)</label>
-                  <input type="number" class="input mono" id="payAdvance" placeholder="0" oninput="recalcPayment()">
-                </div>
-                <div class="field">
-                  <label>Payment Method</label>
-                  <div class="select-wrap">
-                    <select class="input" id="payMethod">
-                      <option value="bank_transfer">Bank Transfer</option>
-                      <option value="upi">UPI</option>
-                      <option value="cheque">Cheque</option>
-                      <option value="cash">Cash</option>
-                    </select>
-                  </div>
-                </div>
-                <div class="field">
-                  <label>Due Date</label>
-                  <input type="date" class="input" id="payDueDate">
-                </div>
-              </div>
-              <div class="row" style="grid-template-columns:1fr;">
-                <div class="field">
-                  <label>Payment Terms</label>
-                  <textarea class="input" placeholder="e.g., 30% advance, 40% on dispatch, 30% on completion..." id="payTerms" style="min-height:60px;"></textarea>
-                </div>
-              </div>
-            </div>
-            
-            <div class="collection-card">
-              <div class="heading">Collection Status</div>
-              <div class="big" id="collAdvance">₹0</div>
-              <div class="pct" id="collPercent">0% of ₹0 advance</div>
-              <div class="bar">
-                <div class="bar-fill" id="collFill" style="width:0%;"></div>
-              </div>
-              <div class="meta">
-                <span>Advance <span class="strong" id="collA">₹0</span></span>
-                <span>Pending <span class="strong" id="collP">₹0</span></span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+        <div class="toggle-switch" id="urgentToggle" onclick="toggleSwitch(this)"></div>
+      </div>
       
     </div>
-    
-    <!-- ACTION BAR -->
-    <div class="action-bar">
-      <div class="action-info">
-        <span class="auto-save" id="saveStatus">
-          <span class="dot"></span>
-          Auto-saved
-        </span>
-        <span id="summaryInfo">0 products · ₹0 total</span>
-      </div>
-      <button class="ab-btn ghost" onclick="saveDraft()">
-        💾 Draft
-      </button>
-      <button class="ab-btn ghost" onclick="generateQuotation()">
-        📄 Quote
-      </button>
-      <button class="ab-btn ghost" onclick="shareWA()">
-        📱 WhatsApp
-      </button>
-      <button class="ab-btn primary" onclick="launchCampaign()" id="launchBtn">
-        🚀 Send to Operations
-      </button>
-    </div>
-  </main>
+  </div>
   
-  <!-- RIGHT PANEL -->
-  <aside class="right-panel">
-    <div class="summary-head">
-      <div class="label">Live Summary</div>
-      <div class="title" id="summaryTitle">New Campaign</div>
-      <div class="live"><span class="dot"></span>UPDATING LIVE</div>
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title">Select <em>Job Type</em></div>
+      <div class="section-meta"><a href="/settings-job-types.html" style="color:var(--gold-deep)">⚙️ Configure</a></div>
     </div>
-    
-    <div class="big-stat">
-      <div class="l">Campaign Value</div>
-      <div class="v" id="sumValue">₹0</div>
-      <div class="sub" id="sumValueSub">incl. GST · 0 products</div>
+    <div class="section-body">
+      <div class="callout info">
+        <span class="callout-icon">ℹ️</span>
+        <div>Each job type defines required stages (printing/stitching/field/delivery) automatically.</div>
+      </div>
+      <div class="job-grid" id="jobGrid"><div class="empty-state" style="grid-column:1/-1">Loading job types…</div></div>
     </div>
-    
-    <div class="summary-stats">
-      <div class="mini-stat">
-        <div class="l">Total Cost</div>
-        <div class="v gold" id="sumCost">₹0</div>
-      </div>
-      <div class="mini-stat">
-        <div class="l">Est. Profit</div>
-        <div class="v green" id="sumProfit">₹0</div>
-      </div>
-      <div class="mini-stat">
-        <div class="l">Margin</div>
-        <div class="v" id="sumMargin">0%</div>
-      </div>
-      <div class="mini-stat">
-        <div class="l">Pending</div>
-        <div class="v red" id="sumPending">₹0</div>
-      </div>
-      <div class="mini-stat">
-        <div class="l">Total Qty</div>
-        <div class="v" id="sumQty">0</div>
-      </div>
-      <div class="mini-stat">
-        <div class="l">Total Sq Ft</div>
-        <div class="v" id="sumSqft">0</div>
-      </div>
+  </div>
+  
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title">Designs · <em>Mandatory upload</em></div>
+      <div class="section-meta">Any format · max 10 MB · location required</div>
     </div>
-    
-    <div class="right-section-title">Workflow Stages</div>
-    <div style="font-size:11.5px;color:var(--text-mid);margin-bottom:10px;line-height:1.5;">
-      Send to Operations when ready. They'll assign teams and dates.
-    </div>
-    <div style="background: linear-gradient(135deg, var(--canvas), white); border: 1px solid var(--line); border-radius: 12px; padding: 14px;">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-        <span style="width:10px;height:10px;border-radius:50%;background:var(--mint);box-shadow:0 0 8px var(--mint);"></span>
-        <span style="font-size:12px;font-weight:700;">Sales Draft</span>
-        <span style="font-size:10px;background:rgba(52,211,153,0.15);color:#047857;padding:1px 6px;border-radius:6px;margin-left:auto;font-weight:700;">YOU ARE HERE</span>
+    <div class="section-body">
+      <div id="designsList"></div>
+      <button class="btn-add-design" onclick="addDesign()">+ Add Design</button>
+      
+      <div class="callout success" id="materialCalc" style="margin-top:14px;display:none">
+        <span class="callout-icon">📐</span>
+        <div id="materialCalcText"></div>
       </div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;opacity:0.5;">
-        <span style="width:10px;height:10px;border-radius:50%;background:var(--violet);"></span>
-        <span style="font-size:12px;font-weight:600;">⚙️ Operations Plan</span>
+      
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <div class="toggle-label">🔗 Send client preview before printing</div>
+          <div class="toggle-hint">Client gets WhatsApp link to approve designs — avoids reprints</div>
+        </div>
+        <div class="toggle-switch" id="clientPreviewToggle" onclick="toggleSwitch(this)"></div>
       </div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;opacity:0.5;">
-        <span style="width:10px;height:10px;border-radius:50%;background:var(--line-strong);"></span>
-        <span style="font-size:12px;font-weight:600;">Production</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;opacity:0.5;">
-        <span style="width:10px;height:10px;border-radius:50%;background:var(--line-strong);"></span>
-        <span style="font-size:12px;font-weight:600;">Dispatch</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;opacity:0.5;">
-        <span style="width:10px;height:10px;border-radius:50%;background:var(--line-strong);"></span>
-        <span style="font-size:12px;font-weight:600;">Execution & GPS</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;opacity:0.5;">
-        <span style="width:10px;height:10px;border-radius:50%;background:var(--line-strong);"></span>
-        <span style="font-size:12px;font-weight:600;">Completed</span>
+      
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <div class="toggle-label">📱 Notify team via WhatsApp on assignment</div>
+          <div class="toggle-hint">Each assignee gets WhatsApp with design + qty + deadline</div>
+        </div>
+        <div class="toggle-switch on" id="notifyToggle" onclick="toggleSwitch(this)"></div>
       </div>
     </div>
-    
-    <!-- Operations Manager Note -->
-    <div style="margin-top:16px;background:linear-gradient(135deg, rgba(139,92,246,0.08), rgba(139,92,246,0.02));border:1px solid rgba(139,92,246,0.2);border-radius:12px;padding:14px;">
-      <div style="font-size:11px;font-weight:700;color:var(--violet);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">⚙️ Operations Step</div>
-      <div style="font-size:12px;color:var(--text);line-height:1.5;">
-        Operations Manager will see this campaign in their queue and assign:
-        <br>• Team leads per product
-        <br>• Execution dates per city
-        <br>• Production schedule
+  </div>
+  
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title">Pricing <em>Breakdown</em></div>
+      <div class="section-meta">Editable</div>
+    </div>
+    <div class="section-body">
+      <div class="row three">
+        <div class="field">
+          <div class="label">Rate per Unit (₹)</div>
+          <input class="input" type="number" id="rateUnit" value="100" oninput="calcPricing()">
+        </div>
+        <div class="field">
+          <div class="label">Discount (₹)</div>
+          <input class="input" type="number" id="discount" value="0" oninput="calcPricing()">
+        </div>
+        <div class="field">
+          <div class="label">GST %</div>
+          <input class="input" type="number" id="gstPct" value="18" oninput="calcPricing()">
+        </div>
+      </div>
+      
+      <div class="pricing-bar" style="margin-top:14px">
+        <div class="pricing-item"><div class="pricing-val" id="priceBase">₹0</div><div class="pricing-lbl">Base Cost</div></div>
+        <div class="pricing-item"><div class="pricing-val" id="priceGst">₹0</div><div class="pricing-lbl">GST</div></div>
+        <div class="pricing-item"><div class="pricing-val" id="priceDisc">₹0</div><div class="pricing-lbl">Discount</div></div>
+        <div class="pricing-item"><div class="pricing-val" id="priceTotal">₹0</div><div class="pricing-lbl">Grand Total</div></div>
       </div>
     </div>
-  </aside>
+  </div>
+  
+  <div id="submitStatus"></div>
+  
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="action-bar">
+  <div class="left" id="actionLeft">No designs added yet</div>
+  <button class="btn btn-secondary" onclick="saveDraft()">💾 Save Draft</button>
+  <button class="btn btn-gold" onclick="submitCampaign()" id="submitBtn">Submit for Operations →</button>
+</div>
+
+<script src="/lib/access-guard.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 
 <script>
-"use strict";
-
-// ═══════════════════════════════════════════════════════════════
-// CONFIG
-// ═══════════════════════════════════════════════════════════════
-const CONFIG = {
-  supabaseUrl: 'https://fpbktcgtspqsqpaytslv.supabase.co',
-  supabaseKey: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j'
-};
-
-const PRODUCT_CONFIGS = {
-  auto_hood: { name: 'Auto Rickshaw Hood Branding', icon: '🛺', color: '#3B82F6', bg: 'rgba(59,130,246,0.04)', iconBg: 'rgba(59,130,246,0.12)' },
-  back_panel: { name: 'Back Panel Branding', icon: '🚖', color: '#8B5CF6', bg: 'rgba(139,92,246,0.04)', iconBg: 'rgba(139,92,246,0.12)' },
-  no_parking: { name: 'No Parking Board', icon: '🚫', color: '#F97316', bg: 'rgba(249,115,22,0.04)', iconBg: 'rgba(249,115,22,0.12)' },
-  flex: { name: 'Flex Printing', icon: '📐', color: '#34D399', bg: 'rgba(52,211,153,0.04)', iconBg: 'rgba(52,211,153,0.12)' },
-  vinyl: { name: 'Vinyl Printing', icon: '🎨', color: '#F5B83D', bg: 'rgba(245,184,61,0.04)', iconBg: 'rgba(245,184,61,0.15)' },
-  wall_wrap: { name: 'Digital Wall Wrap', icon: '🏢', color: '#FF5470', bg: 'rgba(255,84,112,0.04)', iconBg: 'rgba(255,84,112,0.12)' }
-};
-
-const state = {
-  admin: null,
-  clients: [],
-  priority: 'normal',
-  campaignId: null,
-  products: [],
-  saving: false
-};
-
-// ═══════════════════════════════════════════════════════════════
-// UTILS
-// ═══════════════════════════════════════════════════════════════
-function esc(s) {
-  if (s == null) return '';
-  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-function inr(n) {
-  if (!n || isNaN(n)) return '₹0';
-  return '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 });
-}
-
-function inrShort(n) {
-  if (!n || isNaN(n)) return '₹0';
-  const num = Number(n);
-  if (num >= 100000) return '₹' + (num / 100000).toFixed(2) + 'L';
-  if (num >= 1000) return '₹' + (num / 1000).toFixed(1) + 'k';
-  return '₹' + num.toLocaleString('en-IN', { maximumFractionDigits: 0 });
-}
-
-function todayStr() {
-  const d = new Date();
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-}
-
-function showToast(msg, type) {
-  const t = document.getElementById('toast');
-  const icon = type === 'success' ? '✓' : type === 'error' ? '⚠' : '💡';
-  t.innerHTML = `<span style="font-size:15px;">${icon}</span><span>${esc(msg)}</span>`;
-  t.className = 'toast show ' + (type || '');
-  setTimeout(() => t.classList.remove('show'), 3000);
-}
-
-function getInitials(name) {
-  if (!name) return '?';
-  return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
-}
-
-async function api(path, options) {
-  options = options || {};
-  options.headers = options.headers || {};
-  options.headers.apikey = CONFIG.supabaseKey;
-  options.headers.Authorization = 'Bearer ' + CONFIG.supabaseKey;
-  const res = await fetch(CONFIG.supabaseUrl + path, options);
-  const txt = await res.text();
-  if (!res.ok) {
-    throw new Error('API ' + res.status + ': ' + txt);
-  }
-  if (!txt) return null;
-  try { return JSON.parse(txt); } catch { return txt; }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// LOGIN
-// ═══════════════════════════════════════════════════════════════
-async function doLogin() {
-  const phone = document.getElementById('loginPhone').value.trim();
-  const errEl = document.getElementById('loginErr');
-  const btn = document.getElementById('loginBtn');
-  errEl.classList.remove('show');
-  
-  if (phone.length !== 10 || !/^[0-9]{10}$/.test(phone)) {
-    errEl.textContent = 'Sahi 10 digit phone daalo';
-    errEl.classList.add('show');
-    return;
-  }
-  
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Checking...';
-  
-  try {
-    const members = await api('/rest/v1/trial_team_members?phone=eq.' + encodeURIComponent(phone) + '&active=eq.true&select=*');
-    if (!members || members.length === 0) {
-      errEl.textContent = 'Number registered nahi';
-      errEl.classList.add('show');
-      btn.disabled = false;
-      btn.innerHTML = 'Access Campaign Studio →';
-      return;
-    }
-    const m = members[0];
-    const role = (m.role || '').toLowerCase();
-    if (!['admin', 'owner', 'sales', 'data_entry'].includes(role)) {
-      errEl.textContent = 'Sirf Admin/Owner/Sales ke liye';
-      errEl.classList.add('show');
-      btn.disabled = false;
-      btn.innerHTML = 'Access Campaign Studio →';
-      return;
-    }
-    
-    state.admin = m;
-    localStorage.setItem('prajapati_admin_phone', phone);
-    
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('mainApp').classList.add('active');
-    initApp();
-  } catch (err) {
-    errEl.textContent = 'Login error: ' + err.message;
-    errEl.classList.add('show');
-    btn.disabled = false;
-    btn.innerHTML = 'Access Campaign Studio →';
-  }
-}
-
-async function autoLogin() {
-  const phone = localStorage.getItem('prajapati_admin_phone');
-  if (!phone) return false;
-  try {
-    const members = await api('/rest/v1/trial_team_members?phone=eq.' + encodeURIComponent(phone) + '&active=eq.true&select=*');
-    if (!members || members.length === 0) return false;
-    const m = members[0];
-    if (!['admin', 'owner', 'sales', 'data_entry'].includes((m.role || '').toLowerCase())) return false;
-    state.admin = m;
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('mainApp').classList.add('active');
-    initApp();
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
-
-function doLogout() {
-  if (!confirm('Logout?')) return;
-  localStorage.removeItem('prajapati_admin_phone');
-  state.admin = null;
-  document.getElementById('mainApp').classList.remove('active');
-  document.getElementById('loginScreen').style.display = 'flex';
-  document.getElementById('loginPhone').value = '';
-}
-
-// ═══════════════════════════════════════════════════════════════
-// APP INIT
-// ═══════════════════════════════════════════════════════════════
-async function initApp() {
-  const initials = getInitials(state.admin.name);
-  document.getElementById('userAvatar').textContent = initials;
-  document.getElementById('userAvatar2').textContent = initials;
-  document.getElementById('userName').textContent = state.admin.name;
-  document.getElementById('userName2').textContent = state.admin.name.split(' ')[0];
-  document.getElementById('userRole').textContent = (state.admin.role || '').toUpperCase();
-  
-  // Date
-  const today = new Date();
-  document.getElementById('todayDate').textContent = today.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-  document.getElementById('fldStart').value = todayStr();
-  
-  const deadline = new Date();
-  deadline.setDate(deadline.getDate() + 14);
-  document.getElementById('fldDeadline').value = deadline.toISOString().split('T')[0];
-  
-  // Load clients
-  await loadClients();
-  
-  // Auto-load draft
-  loadDraft();
-  
-  // Initial calc
-  updateLiveSummary();
-}
-
-async function loadClients() {
-  try {
-    state.clients = await api('/rest/v1/prajapati_clients?active=eq.true&order=name.asc&select=*');
-  } catch (err) {
-    console.error('Clients load:', err);
-    showToast('Clients load failed: ' + err.message, 'error');
-    state.clients = [];
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// CLIENT SEARCH
-// ═══════════════════════════════════════════════════════════════
-function openClientSearch() {
-  document.getElementById('clientSearch').classList.add('active');
-  filterClients(document.getElementById('fldClient').value);
-}
-
-function filterClients(q) {
-  const ql = (q || '').toLowerCase().trim();
-  const filtered = state.clients.filter(c => 
-    !ql || (c.name || '').toLowerCase().includes(ql) || (c.brand || '').toLowerCase().includes(ql)
-  );
-  
-  const dd = document.getElementById('clientDropdown');
-  let html = '';
-  
-  // Show matched clients
-  filtered.slice(0, 12).forEach(c => {
-    html += `
-      <div class="dropdown-item js-pick-client" data-client-id="${esc(c.id)}">
-        <strong>${esc(c.name)}${c.vip ? '<span class="vip-tag">VIP</span>' : ''}</strong>
-        <div class="sub">${esc(c.brand || c.city || '')}${c.client_type === 'agency' ? ' · Agency' : ''}</div>
-      </div>
-    `;
-  });
-  
-  // Always show "Add new" option at the bottom (only if user typed something)
-  if (ql && !filtered.some(c => (c.name || '').toLowerCase() === ql)) {
-    const displayName = q.trim() || 'new client';
-    html += `
-      <div class="dropdown-item js-add-client" style="color:var(--teal-dark);font-weight:700;background:var(--canvas);border-top:2px solid var(--teal);">
-        + Add new client: "${esc(displayName)}"
-      </div>
-    `;
-  } else if (!ql && filtered.length === 0) {
-    html += `<div class="dropdown-item" style="color:var(--text-mid);text-align:center;">Type to search or add new...</div>`;
-  }
-  
-  dd.innerHTML = html;
-  
-  // Wire up click handlers (event delegation - safer than inline)
-  dd.querySelectorAll('.js-pick-client').forEach(el => {
-    el.onclick = () => {
-      const id = el.dataset.clientId;
-      const client = state.clients.find(c => c.id === id);
-      if (client) selectClient(client.id, client.name);
-    };
-  });
-  
-  const addBtn = dd.querySelector('.js-add-client');
-  if (addBtn) {
-    addBtn.onclick = () => addNewClient();
-  }
-}
-
-function selectClient(id, name) {
-  document.getElementById('fldClient').value = name;
-  document.getElementById('fldClient').dataset.clientId = id;
-  
-  // Auto-fill brand if available
-  const client = state.clients.find(c => c.id === id);
-  if (client && client.brand && !document.getElementById('fldBrand').value) {
-    document.getElementById('fldBrand').value = client.brand;
-  }
-  
-  document.getElementById('clientSearch').classList.remove('active');
-  onFormChange();
-  showToast('Client selected: ' + name, 'success');
-}
-
-async function addNewClient() {
-  const name = document.getElementById('fldClient').value.trim();
-  if (!name) {
-    showToast('Type a client name first', 'error');
-    document.getElementById('fldClient').focus();
-    return;
-  }
-  if (!confirm(`Add "${name}" as a new client?`)) return;
-  
-  try {
-    const result = await api('/rest/v1/prajapati_clients', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-      body: JSON.stringify({ 
-        name: name, 
-        active: true, 
-        client_type: 'direct',
-        created_by: state.admin.phone 
-      })
-    });
-    
-    if (result && result[0]) {
-      state.clients.push(result[0]);
-      selectClient(result[0].id, result[0].name);
-      showToast('✓ New client added: ' + result[0].name, 'success');
-    } else {
-      showToast('Client created but no response data', 'error');
-    }
-  } catch (err) {
-    showToast('Add client failed: ' + err.message, 'error');
-    console.error('addNewClient error:', err);
-  }
-}
-
-document.addEventListener('click', e => {
-  if (!e.target.closest('.searchable')) {
-    document.querySelectorAll('.searchable.active').forEach(el => el.classList.remove('active'));
-  }
+AccessGuard.protect({ 
+  redirectTo: '/login.html',
+  allowedRoles: ['owner', 'admin', 'sales', 'hr_sales', 'sales_admin']
 });
 
-// ═══════════════════════════════════════════════════════════════
-// PRIORITY
-// ═══════════════════════════════════════════════════════════════
-function setPriority(p) {
-  state.priority = p;
-  document.querySelectorAll('.priority-pill').forEach(el => el.classList.remove('active'));
-  document.querySelector(`.priority-pill[data-priority="${p}"]`).classList.add('active');
-  onFormChange();
+const user = AccessGuard.getUser();
+const SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let jobTypes = [], selectedJobType = null;
+let allSales = [], selectedSales = null;
+let allClients = [], selectedClient = null;
+let designs = [];
+let nextDesignId = 1;
+
+async function init() {
+  const initial = (user.name || '?').charAt(0).toUpperCase();
+  document.getElementById('tbAva').textContent = initial;
+  document.getElementById('tbName').textContent = user.name || 'User';
+  document.getElementById('tbRole').textContent = (user.role || 'user').replace(/_/g, ' ');
+  
+  document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-IN', {
+    weekday: 'long', day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata'
+  });
+  
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  document.getElementById('startDate').value = tomorrow.toISOString().slice(0, 10);
+  
+  await Promise.all([loadJobTypes(), loadSalesTeam(), loadClients()]);
+  addDesign();
 }
 
-// ═══════════════════════════════════════════════════════════════
-// CHIP INPUT
-// ═══════════════════════════════════════════════════════════════
-function addChip(e, containerId) {
-  if (e.key !== 'Enter') return;
-  e.preventDefault();
-  const input = e.target;
-  const val = input.value.trim();
-  if (!val) return;
+async function loadJobTypes() {
+  const { data } = await db.from('trial_campaign_job_types')
+    .select('*').eq('active', true).order('display_order');
+  jobTypes = data || [];
   
-  const container = input.closest('.chip-input');
-  const chip = document.createElement('span');
-  chip.className = 'chip';
-  chip.innerHTML = `${esc(val)} <span class="x" onclick="removeChip(this)">×</span>`;
-  container.insertBefore(chip, input);
-  input.value = '';
-  onFormChange();
-}
-
-function removeChip(el) {
-  el.parentElement.remove();
-  onFormChange();
-}
-
-function getChipValues(containerId) {
-  const container = document.getElementById(containerId);
-  if (!container) return [];
-  return Array.from(container.querySelectorAll('.chip')).map(c => c.firstChild.textContent.trim());
-}
-
-// ═══════════════════════════════════════════════════════════════
-// PRODUCTS
-// ═══════════════════════════════════════════════════════════════
-function addProduct(type) {
-  const config = PRODUCT_CONFIGS[type];
-  if (!config) return;
-  
-  const id = 'p_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-  const product = {
-    id,
-    product_type: type,
-    product_name: config.name,
-    quantity: 0,
-    rate_per_unit: 0,
-    production_cost: 0,
-    fitting_cost: 0,
-    transportation_cost: 0,
-    service_type: 'printing_execution',
-    cities: [],
-    material_type: '',
-    printing_type: '',
-    status: 'design',
-    notes: ''
-  };
-  
-  state.products.push(product);
-  renderProducts();
-  
-  setTimeout(() => {
-    const card = document.querySelector(`[data-product-id="${id}"]`);
-    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, 50);
-  
-  showToast(`${config.name} added`, 'success');
-  onFormChange();
-}
-
-function deleteProduct(id) {
-  if (!confirm('Delete this product?')) return;
-  state.products = state.products.filter(p => p.id !== id);
-  renderProducts();
-  showToast('Product removed', 'info');
-  onFormChange();
-}
-
-function updateProductField(id, field, value) {
-  const p = state.products.find(p => p.id === id);
-  if (!p) return;
-  
-  if (['quantity', 'rate_per_unit', 'production_cost', 'fitting_cost', 'transportation_cost'].includes(field)) {
-    p[field] = parseFloat(value) || 0;
-  } else {
-    p[field] = value;
-  }
-  
-  // Update display only
-  updateProductDisplay(id);
-  updateLiveSummary();
-}
-
-function updateProductDisplay(id) {
-  const p = state.products.find(p => p.id === id);
-  if (!p) return;
-  
-  const card = document.querySelector(`[data-product-id="${id}"]`);
-  if (!card) return;
-  
-  const subtotal = (p.quantity || 0) * (p.rate_per_unit || 0);
-  const totalCost = ((p.production_cost || 0) + (p.fitting_cost || 0) + (p.transportation_cost || 0)) * (p.quantity || 0);
-  const profit = subtotal - totalCost;
-  const margin = subtotal > 0 ? (profit / subtotal * 100).toFixed(1) : 0;
-  
-  // Update header
-  const amountEl = card.querySelector('.product-head .amount');
-  if (amountEl) amountEl.textContent = inr(subtotal);
-  
-  const metaEl = card.querySelector('.product-head .meta');
-  if (metaEl) {
-    const cities = (p.cities || []).join(', ') || 'No city';
-    const svcLabel = (p.service_type || 'printing_execution').replace('_', ' + ').replace('printing only', 'Print only').replace('execution only', 'Exec only');
-    metaEl.innerHTML = `
-      <span>📍 ${esc(cities)}</span>
-      <span>📦 ${p.quantity || 0} ${p.product_type === 'flex' || p.product_type === 'wall_wrap' ? 'sqft' : 'pcs'}</span>
-      <span>💼 ${esc(svcLabel)}</span>
-    `;
-  }
-  
-  // Update live calc
-  const calc = card.querySelector('.live-calc');
-  if (calc) {
-    calc.querySelector('.cell.revenue .v').textContent = inr(subtotal);
-    calc.querySelector('.cell.cost .v').textContent = inr(totalCost);
-    calc.querySelector('.cell.profit .v').textContent = inr(profit);
-    calc.querySelector('.cell.margin .v').textContent = margin + '%';
-  }
-}
-
-function renderProducts() {
-  const container = document.getElementById('productsContainer');
-  const addMoreBtn = document.getElementById('addMoreBtn');
-  
-  if (state.products.length === 0) {
-    container.innerHTML = '';
-    addMoreBtn.style.display = 'none';
+  const grid = document.getElementById('jobGrid');
+  if (!jobTypes.length) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1">No job types configured. <a href="/settings-job-types.html" style="color:var(--gold-deep);font-weight:700">⚙️ Configure now</a></div>';
     return;
   }
   
-  addMoreBtn.style.display = 'flex';
-  
-  container.innerHTML = state.products.map(p => {
-    const config = PRODUCT_CONFIGS[p.product_type];
-    const subtotal = (p.quantity || 0) * (p.rate_per_unit || 0);
-    const totalCost = ((p.production_cost || 0) + (p.fitting_cost || 0) + (p.transportation_cost || 0)) * (p.quantity || 0);
-    const profit = subtotal - totalCost;
-    const margin = subtotal > 0 ? (profit / subtotal * 100).toFixed(1) : 0;
-    const cities = (p.cities || []).join(', ') || 'No city';
-    
+  grid.innerHTML = jobTypes.map(jt => {
+    const stages = [];
+    if (jt.requires_printing) stages.push('Print');
+    if (jt.requires_stitching) stages.push('Stitch');
+    if (jt.requires_field_execution) stages.push('Field');
+    if (jt.requires_delivery) stages.push('Deliver');
     return `
-      <div class="product-card" data-product-id="${p.id}" style="--card-bg:${config.bg};--card-icon:${config.color};--card-icon-bg:${config.iconBg};">
-        <div class="product-head" onclick="toggleProduct(this, event)">
-          <div class="pic">${config.icon}</div>
-          <div class="info">
-            <div class="title">${esc(config.name)}</div>
-            <div class="meta">
-              <span>📍 ${esc(cities)}</span>
-              <span>📦 ${p.quantity || 0} ${p.product_type === 'flex' || p.product_type === 'wall_wrap' ? 'sqft' : 'pcs'}</span>
-              <span>💼 ${esc((p.service_type || 'printing_execution').replace('_', ' + ').replace('printing only', 'Print only').replace('execution only', 'Exec only'))}</span>
-            </div>
-          </div>
-          <div class="right">
-            <div class="amount">${inr(subtotal)}</div>
-            <div class="label">Subtotal</div>
-          </div>
-          <button class="del-btn" onclick="event.stopPropagation();deleteProduct('${p.id}')">Remove</button>
-          <svg class="toggle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-        </div>
-        <div class="product-body">
-          <div class="form-grid cols-3">
-            <div class="field">
-              <label>Quantity ${p.product_type === 'flex' || p.product_type === 'wall_wrap' ? '(sqft)' : ''}</label>
-              <input type="number" class="input mono" value="${p.quantity || ''}" placeholder="0" min="0" oninput="updateProductField('${p.id}', 'quantity', this.value)">
-            </div>
-            <div class="field">
-              <label>Rate / unit (₹)</label>
-              <input type="number" class="input mono" value="${p.rate_per_unit || ''}" placeholder="0" min="0" step="0.5" oninput="updateProductField('${p.id}', 'rate_per_unit', this.value)">
-            </div>
-            <div class="field">
-              <label>Service Type</label>
-              <div class="select-wrap">
-                <select class="input" onchange="updateProductField('${p.id}', 'service_type', this.value)">
-                  <option value="printing_execution" ${p.service_type === 'printing_execution' ? 'selected' : ''}>Printing + Execution</option>
-                  <option value="printing_only" ${p.service_type === 'printing_only' ? 'selected' : ''}>Only Printing</option>
-                  <option value="execution_only" ${p.service_type === 'execution_only' ? 'selected' : ''}>Only Execution</option>
-                </select>
-              </div>
-            </div>
-            <div class="field">
-              <label>Material Type</label>
-              <input type="text" class="input" value="${esc(p.material_type || '')}" placeholder="e.g., Cotton, Flex Vinyl" oninput="updateProductField('${p.id}', 'material_type', this.value)">
-            </div>
-            <div class="field">
-              <label>Printing Type</label>
-              <input type="text" class="input" value="${esc(p.printing_type || '')}" placeholder="e.g., Digital, Screen" oninput="updateProductField('${p.id}', 'printing_type', this.value)">
-            </div>
-            <div class="field">
-              <label>Cities</label>
-              <div class="chip-input" id="cities_${p.id}">
-                ${(p.cities || []).map(c => `<span class="chip">${esc(c)} <span class="x" onclick="removeProductCity('${p.id}', '${esc(c)}')">×</span></span>`).join('')}
-                <input type="text" placeholder="Add city..." onkeydown="addProductCity(event, '${p.id}')">
-              </div>
-            </div>
-            <div class="field">
-              <label>Production Cost / unit (₹)</label>
-              <input type="number" class="input mono" value="${p.production_cost || ''}" placeholder="0" min="0" oninput="updateProductField('${p.id}', 'production_cost', this.value)">
-            </div>
-            <div class="field">
-              <label>Fitting Cost / unit (₹)</label>
-              <input type="number" class="input mono" value="${p.fitting_cost || ''}" placeholder="0" min="0" oninput="updateProductField('${p.id}', 'fitting_cost', this.value)">
-            </div>
-            <div class="field">
-              <label>Transportation / unit (₹)</label>
-              <input type="number" class="input mono" value="${p.transportation_cost || ''}" placeholder="0" min="0" oninput="updateProductField('${p.id}', 'transportation_cost', this.value)">
-            </div>
-            <div class="field full" style="background:var(--canvas);border:1px dashed var(--line-strong);border-radius:10px;padding:14px;">
-              <label style="color:var(--violet);">⚙️ Operations Manager will assign:</label>
-              <div style="font-size:12px;color:var(--text-mid);line-height:1.6;margin-top:4px;">
-                • Team Lead (Mubarak, Abbas, Nagesh, etc.)<br>
-                • Execution date per city<br>
-                • City-wise quantity allocation<br>
-                • Production schedule
-              </div>
-            </div>
-          </div>
-          
-          <!-- Sales Workflow Timeline -->
-          <div class="timeline">
-            <div class="timeline-step done">
-              <div class="timeline-dot">✓</div>
-              <div class="label">Quote Sent</div>
-            </div>
-            <div class="timeline-step current">
-              <div class="timeline-dot">●</div>
-              <div class="label">Pricing</div>
-            </div>
-            <div class="timeline-step">
-              <div class="timeline-dot">3</div>
-              <div class="label">Ops Plan</div>
-            </div>
-            <div class="timeline-step">
-              <div class="timeline-dot">4</div>
-              <div class="label">Production</div>
-            </div>
-            <div class="timeline-step">
-              <div class="timeline-dot">5</div>
-              <div class="label">Dispatch</div>
-            </div>
-            <div class="timeline-step">
-              <div class="timeline-dot">6</div>
-              <div class="label">Execution</div>
-            </div>
-            <div class="timeline-step">
-              <div class="timeline-dot">7</div>
-              <div class="label">Closed</div>
-            </div>
-          </div>
-          
-          <!-- Live Calc -->
-          <div class="live-calc">
-            <div class="cell revenue">
-              <div class="l">Revenue</div>
-              <div class="v">${inr(subtotal)}</div>
-            </div>
-            <div class="cell cost">
-              <div class="l">Total Cost</div>
-              <div class="v">${inr(totalCost)}</div>
-            </div>
-            <div class="cell profit">
-              <div class="l">Profit</div>
-              <div class="v">${inr(profit)}</div>
-            </div>
-            <div class="cell margin">
-              <div class="l">Margin</div>
-              <div class="v">${margin}%</div>
-            </div>
-          </div>
-        </div>
+      <div class="job-card" data-id="${jt.id}" onclick="selectJobType('${jt.id}')">
+        <div class="job-card-icon">${jt.icon || '📦'}</div>
+        <div class="job-card-name">${escapeHtml(jt.name)}</div>
+        <div class="job-card-flow">${stages.join(' → ') || 'Custom flow'}</div>
       </div>
     `;
   }).join('');
 }
 
-function toggleProduct(headEl, event) {
-  if (event && event.target.closest('.del-btn')) return;
-  const body = headEl.nextElementSibling;
-  headEl.classList.toggle('collapsed');
-  body.classList.toggle('hidden');
+function selectJobType(id) {
+  selectedJobType = jobTypes.find(j => j.id === id);
+  document.querySelectorAll('.job-card').forEach(c => c.classList.remove('selected'));
+  document.querySelector(`.job-card[data-id="${id}"]`)?.classList.add('selected');
+  updateActionBar();
 }
 
-function addProductCity(e, productId) {
-  if (e.key !== 'Enter') return;
-  e.preventDefault();
-  const val = e.target.value.trim();
-  if (!val) return;
-  
-  const p = state.products.find(p => p.id === productId);
-  if (!p) return;
-  if (!p.cities) p.cities = [];
-  if (!p.cities.includes(val)) p.cities.push(val);
-  e.target.value = '';
-  renderProducts();
-}
-
-function removeProductCity(productId, city) {
-  const p = state.products.find(p => p.id === productId);
-  if (!p || !p.cities) return;
-  p.cities = p.cities.filter(c => c !== city);
-  renderProducts();
-}
-
-function scrollToMedia() {
-  document.getElementById('mediaOptions').scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-
-// ═══════════════════════════════════════════════════════════════
-// CALCULATIONS
-// ═══════════════════════════════════════════════════════════════
-function calculateTotals() {
-  let subtotal = 0, totalCost = 0, totalQty = 0, totalSqft = 0;
-  
-  state.products.forEach(p => {
-    const sub = (p.quantity || 0) * (p.rate_per_unit || 0);
-    const cost = ((p.production_cost || 0) + (p.fitting_cost || 0) + (p.transportation_cost || 0)) * (p.quantity || 0);
-    subtotal += sub;
-    totalCost += cost;
-    totalQty += (p.quantity || 0);
-    if (p.product_type === 'flex' || p.product_type === 'wall_wrap') {
-      totalSqft += (p.quantity || 0);
-    }
+function toggleSS(id, ev) {
+  if (ev) ev.stopPropagation();
+  document.querySelectorAll('.ss-dropdown').forEach(d => {
+    if (d.parentElement.id !== id) d.classList.remove('open');
   });
-  
-  const profit = subtotal - totalCost;
-  const margin = subtotal > 0 ? (profit / subtotal * 100) : 0;
-  
-  const gstPercent = parseFloat(document.getElementById('payGstPercent')?.value) || 18;
-  const gstAmount = subtotal * gstPercent / 100;
-  const grandTotal = subtotal + gstAmount;
-  
-  const advance = parseFloat(document.getElementById('payAdvance')?.value) || 0;
-  const pending = grandTotal - advance;
-  
-  return {
-    subtotal, totalCost, totalQty, totalSqft,
-    profit, margin,
-    gstPercent, gstAmount, grandTotal,
-    advance, pending
-  };
+  const dd = document.getElementById(id).querySelector('.ss-dropdown');
+  dd.classList.toggle('open');
+  if (dd.classList.contains('open')) {
+    setTimeout(() => dd.querySelector('.ss-search')?.focus(), 50);
+  }
 }
 
-function recalcPayment() {
-  const totals = calculateTotals();
-  document.getElementById('payTotal').value = inr(totals.subtotal);
-  document.getElementById('payGrandTotal').value = inr(totals.grandTotal);
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.search-select') && !e.target.closest('.location-input')) {
+    document.querySelectorAll('.ss-dropdown, .gp-dropdown').forEach(d => d.classList.remove('open'));
+  }
+});
+
+async function loadSalesTeam() {
+  const { data } = await db.from('trial_team_members')
+    .select('id, name, phone, role, lead_sources, hr_role')
+    .eq('active', true)
+    .in('role', ['owner', 'admin', 'sales', 'hr_sales', 'sales_admin'])
+    .order('name');
   
-  document.getElementById('collAdvance').textContent = inr(totals.advance);
-  const pctOfGrand = totals.grandTotal > 0 ? (totals.advance / totals.grandTotal * 100) : 0;
-  document.getElementById('collPercent').textContent = pctOfGrand.toFixed(0) + '% of ' + inr(totals.grandTotal) + ' collected';
-  document.getElementById('collFill').style.width = Math.min(100, pctOfGrand) + '%';
-  document.getElementById('collA').textContent = inr(totals.advance);
-  document.getElementById('collP').textContent = inr(totals.pending);
+  allSales = data || [];
+  renderSalesOptions(allSales);
   
-  updateLiveSummary();
+  const myRole = String(user.role || '').toLowerCase();
+  if (['sales', 'hr_sales', 'sales_admin'].includes(myRole)) {
+    const self = allSales.find(s => s.id === user.id);
+    if (self) selectSales(self);
+  }
 }
 
-function updateLiveSummary() {
-  const totals = calculateTotals();
-  
-  document.getElementById('sumValue').textContent = inrShort(totals.grandTotal);
-  document.getElementById('sumValueSub').textContent = `incl. ${totals.gstPercent}% GST · ${state.products.length} product${state.products.length !== 1 ? 's' : ''}`;
-  document.getElementById('sumCost').textContent = inrShort(totals.totalCost);
-  document.getElementById('sumProfit').textContent = inrShort(totals.profit);
-  document.getElementById('sumMargin').textContent = totals.margin.toFixed(1) + '%';
-  document.getElementById('sumPending').textContent = inrShort(totals.pending);
-  document.getElementById('sumQty').textContent = totals.totalQty.toLocaleString('en-IN');
-  document.getElementById('sumSqft').textContent = totals.totalSqft.toLocaleString('en-IN');
-  
-  // Title
-  const name = document.getElementById('fldName').value.trim() || 'New Campaign';
-  document.getElementById('summaryTitle').textContent = name;
-  
-  // Action info
-  document.getElementById('summaryInfo').textContent = `${state.products.length} product${state.products.length !== 1 ? 's' : ''} · ${inrShort(totals.grandTotal)} total`;
-  
-  // Payment fields
-  document.getElementById('payTotal').value = inr(totals.subtotal);
-  document.getElementById('payGrandTotal').value = inr(totals.grandTotal);
-  
-  // Difficulty
-  updateDifficulty(totals);
-  
-  // Alerts
-  updateAlerts(totals);
+function renderSalesOptions(arr) {
+  const el = document.getElementById('salesOptions');
+  if (!arr.length) { el.innerHTML = '<div class="empty-state">No matching team found</div>'; return; }
+  el.innerHTML = arr.map(s => {
+    const sources = (s.lead_sources || []).join(', ') || s.phone || '';
+    const roleTag = s.role === 'owner' ? 'OWNER' : (s.hr_role ? 'SALES + HR' : (s.role || '').toUpperCase().replace('_', ' '));
+    const initial = (s.name || '?').charAt(0).toUpperCase();
+    return `
+      <div class="ss-option" data-id="${s.id}" onclick='_sel(this,"sales")'>
+        <div class="ava">${initial}</div>
+        <div class="info">
+          <div class="name">${escapeHtml(s.name)}</div>
+          <div class="meta">${escapeHtml(s.phone || '')}${sources ? ' · ' + escapeHtml(sources) : ''}</div>
+        </div>
+        <span class="tag">${roleTag}</span>
+      </div>
+    `;
+  }).join('');
 }
 
-function updateDifficulty(totals) {
-  const qty = totals.totalQty;
-  const cities = getChipValues('locationChips').length + 1; // +1 for primary
-  const deadline = document.getElementById('fldDeadline').value;
-  const start = document.getElementById('fldStart').value;
-  
-  let days = 14;
-  if (deadline && start) {
-    days = Math.max(1, Math.ceil((new Date(deadline) - new Date(start)) / (1000 * 60 * 60 * 24)));
-  }
-  
-  document.getElementById('diffQty').textContent = qty.toLocaleString('en-IN');
-  document.getElementById('diffDays').textContent = days + 'd';
-  document.getElementById('diffCities').textContent = cities;
-  
-  // Calculate difficulty
-  let score = 0;
-  if (qty > 500) score += 3; else if (qty > 200) score += 2; else if (qty > 50) score += 1;
-  if (days < 7) score += 3; else if (days < 14) score += 2; else if (days < 21) score += 1;
-  if (cities > 3) score += 2; else if (cities > 1) score += 1;
-  
-  let level, levelText, icon, fills;
-  if (score >= 6) {
-    level = 'hard'; levelText = 'Hard'; icon = '🔥';
-    fills = ['fill-easy', 'fill-easy', 'fill-med', 'fill-med', 'fill-hard'];
-  } else if (score >= 3) {
-    level = 'medium'; levelText = 'Medium'; icon = '⚡';
-    fills = ['fill-easy', 'fill-easy', 'fill-med', '', ''];
-  } else {
-    level = 'easy'; levelText = 'Easy'; icon = '🌟';
-    fills = ['fill-easy', 'fill-easy', '', '', ''];
-  }
-  
-  const iconEl = document.getElementById('diffIcon');
-  iconEl.textContent = icon;
-  iconEl.className = 'difficulty-icon ' + level;
-  
-  document.getElementById('diffValue').textContent = levelText;
-  
-  document.getElementById('diffBars').innerHTML = fills.map(f => `<div class="difficulty-bar ${f}"></div>`).join('');
-}
+window._sel = function(el, type) {
+  const id = el.dataset.id;
+  if (type === 'sales') selectSales(allSales.find(s => s.id === id));
+  else if (type === 'client') selectClient(allClients.find(c => c.id === id));
+};
 
-function updateAlerts(totals) {
-  const alerts = [];
-  
-  if (totals.advance === 0 && totals.grandTotal > 0) {
-    alerts.push({ type: 'warn', icon: '💰', title: 'No Advance Recorded', desc: 'Recommend 30-50% upfront for cash flow safety.' });
-  }
-  
-  const deadline = document.getElementById('fldDeadline').value;
-  const start = document.getElementById('fldStart').value;
-  if (deadline && start) {
-    const days = Math.ceil((new Date(deadline) - new Date(start)) / (1000 * 60 * 60 * 24));
-    if (days < 7 && totals.totalQty > 100) {
-      alerts.push({ type: 'danger', icon: '⏰', title: 'Tight Deadline', desc: `${days} days for ${totals.totalQty} units. Plan production immediately.` });
-    }
-  }
-  
-  if (totals.margin < 15 && totals.subtotal > 0) {
-    alerts.push({ type: 'danger', icon: '📉', title: 'Low Margin', desc: `Margin only ${totals.margin.toFixed(1)}%. Review rates or costs.` });
-  } else if (totals.margin >= 30) {
-    alerts.push({ type: 'success', icon: '📈', title: 'Healthy Margin', desc: `${totals.margin.toFixed(1)}% margin. Good profitability.` });
-  }
-  
-  if (state.products.length === 0 && document.getElementById('fldName').value) {
-    alerts.push({ type: 'info', icon: '➕', title: 'Add Media Products', desc: 'No products added yet. Click "Add Media" above.' });
-  }
-  
-  if (state.priority === 'vip') {
-    alerts.push({ type: 'info', icon: '⭐', title: 'VIP Campaign', desc: 'Senior team should be notified. Premium handling required.' });
-  }
-  
-  const panel = document.getElementById('alertsPanel');
-  const container = document.getElementById('alertsContainer');
-  
-  if (alerts.length === 0) {
-    panel.style.display = 'none';
-    return;
-  }
-  
-  panel.style.display = 'block';
-  container.innerHTML = alerts.map(a => `
-    <div class="alert-card ${a.type}">
-      <div class="ico">${a.icon}</div>
-      <div class="text">
-        <div class="title">${esc(a.title)}</div>
-        <div class="desc">${esc(a.desc)}</div>
+function selectSales(s) {
+  if (!s) return;
+  selectedSales = s;
+  const trigger = document.querySelector('#salesSelect .ss-trigger');
+  const initial = (s.name || '?').charAt(0).toUpperCase();
+  trigger.innerHTML = `
+    <div class="ss-selected">
+      <div class="ss-ava">${initial}</div>
+      <div class="ss-info">
+        <div class="name">${escapeHtml(s.name)}</div>
+        <div class="meta">${(s.role || '').toUpperCase()} · ${escapeHtml(s.phone || '')}</div>
       </div>
     </div>
-  `).join('');
+    <div class="ss-chev">▼</div>
+  `;
+  trigger.setAttribute('onclick', "toggleSS('salesSelect',event)");
+  document.querySelector('#salesSelect .ss-dropdown').classList.remove('open');
+  updateActionBar();
 }
 
-function onFormChange() {
-  updateLiveSummary();
-  saveDraftSilent();
-  setSaveStatus('saving');
-  setTimeout(() => setSaveStatus('saved'), 500);
+function filterSales(query) {
+  const q = query.toLowerCase().trim();
+  if (!q) return renderSalesOptions(allSales);
+  const filtered = allSales.filter(s => 
+    (s.name || '').toLowerCase().includes(q) || 
+    (s.phone || '').toLowerCase().includes(q) ||
+    (s.role || '').toLowerCase().includes(q) ||
+    (s.lead_sources || []).join(' ').toLowerCase().includes(q)
+  );
+  renderSalesOptions(filtered);
 }
 
-function setSaveStatus(state) {
-  const el = document.getElementById('saveStatus');
-  if (state === 'saving') {
-    el.innerHTML = '<span class="spinner" style="border-top-color: rgba(110,231,183,1);"></span> Saving...';
-  } else {
-    el.innerHTML = '<span class="dot"></span> Auto-saved';
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// DRAFT (localStorage)
-// ═══════════════════════════════════════════════════════════════
-function buildPayload() {
-  return {
-    name: document.getElementById('fldName').value.trim(),
-    client_id: document.getElementById('fldClient').dataset.clientId || null,
-    client_name: document.getElementById('fldClient').value.trim(),
-    brand_name: document.getElementById('fldBrand').value.trim(),
-    campaign_type: document.getElementById('fldType').value,
-    priority: state.priority,
-    start_date: document.getElementById('fldStart').value || null,
-    deadline: document.getElementById('fldDeadline').value || null,
-    primary_city: document.getElementById('fldCity').value,
-    locations: getChipValues('locationChips'),
-    sales_team: getChipValues('teamChips'),
-    notes: document.getElementById('fldNotes').value.trim(),
-    gst_percent: parseFloat(document.getElementById('payGstPercent').value) || 18,
-    advance_required: parseFloat(document.getElementById('payAdvance').value) || 0,
-    payment_method: document.getElementById('payMethod').value,
-    payment_due_date: document.getElementById('payDueDate').value || null,
-    payment_terms: document.getElementById('payTerms').value.trim(),
-    products: state.products,
-    priority_state: state.priority
-  };
-}
-
-function saveDraftSilent() {
+async function loadClients() {
   try {
-    const payload = buildPayload();
-    localStorage.setItem('launch_campaign_draft', JSON.stringify({ ...payload, savedAt: Date.now() }));
-  } catch (e) {}
-}
-
-function loadDraft() {
-  try {
-    const raw = localStorage.getItem('launch_campaign_draft');
-    if (!raw) return;
-    const d = JSON.parse(raw);
-    
-    if (d.savedAt && (Date.now() - d.savedAt > 7 * 24 * 60 * 60 * 1000)) {
-      // older than 7 days, skip
+    const { data, error } = await db.from('trial_clients')
+      .select('id, name, phone, city')
+      .order('name').limit(500);
+    if (!error && data) {
+      allClients = data;
+      renderClientOptions(allClients);
       return;
     }
-    
-    document.getElementById('fldName').value = d.name || '';
-    document.getElementById('fldClient').value = d.client_name || '';
-    if (d.client_id) document.getElementById('fldClient').dataset.clientId = d.client_id;
-    document.getElementById('fldBrand').value = d.brand_name || '';
-    document.getElementById('fldType').value = d.campaign_type || 'brand_awareness';
-    if (d.start_date) document.getElementById('fldStart').value = d.start_date;
-    if (d.deadline) document.getElementById('fldDeadline').value = d.deadline;
-    if (d.primary_city) document.getElementById('fldCity').value = d.primary_city;
-    document.getElementById('fldNotes').value = d.notes || '';
-    document.getElementById('payGstPercent').value = d.gst_percent || 18;
-    document.getElementById('payAdvance').value = d.advance_required || '';
-    document.getElementById('payMethod').value = d.payment_method || 'bank_transfer';
-    if (d.payment_due_date) document.getElementById('payDueDate').value = d.payment_due_date;
-    document.getElementById('payTerms').value = d.payment_terms || '';
-    
-    setPriority(d.priority_state || d.priority || 'normal');
-    
-    // Locations
-    const locContainer = document.getElementById('locationChips');
-    if (d.locations && d.locations.length > 0) {
-      d.locations.forEach(loc => {
-        const chip = document.createElement('span');
-        chip.className = 'chip';
-        chip.innerHTML = `${esc(loc)} <span class="x" onclick="removeChip(this)">×</span>`;
-        locContainer.insertBefore(chip, locContainer.querySelector('input'));
-      });
-    }
-    
-    // Team
-    const teamContainer = document.getElementById('teamChips');
-    if (d.sales_team && d.sales_team.length > 0) {
-      d.sales_team.forEach(t => {
-        const chip = document.createElement('span');
-        chip.className = 'chip';
-        chip.innerHTML = `${esc(t)} <span class="x" onclick="removeChip(this)">×</span>`;
-        teamContainer.insertBefore(chip, teamContainer.querySelector('input'));
-      });
-    }
-    
-    // Products
-    if (d.products && d.products.length > 0) {
-      state.products = d.products;
-      renderProducts();
-    }
-    
-    updateLiveSummary();
-    showToast('Draft restored', 'info');
-  } catch (e) {
-    console.error('Draft load:', e);
-  }
+  } catch(e) {}
+  
+  allClients = [];
+  document.getElementById('clientOptions').innerHTML = `
+    <div class="ss-option" onclick="addNewClient()" style="background:var(--gold-soft);font-weight:700;color:var(--gold-deep)">
+      <div class="ava" style="background:var(--gold);color:var(--navy)">+</div>
+      <div class="info"><div class="name">Add New Client</div><div class="meta">Manual entry</div></div>
+    </div>
+    <div class="empty-state" style="padding:20px">No clients table found in DB</div>
+  `;
 }
 
-// ═══════════════════════════════════════════════════════════════
-// SUPABASE SAVE
-// ═══════════════════════════════════════════════════════════════
-async function saveCampaignToDB(status) {
-  if (state.saving) return null;
-  state.saving = true;
+function renderClientOptions(arr) {
+  const el = document.getElementById('clientOptions');
+  let html = `<div class="ss-option" onclick="addNewClient()" style="background:var(--gold-soft);font-weight:700;color:var(--gold-deep)">
+    <div class="ava" style="background:var(--gold);color:var(--navy)">+</div>
+    <div class="info"><div class="name">Add New Client</div><div class="meta">Manual entry</div></div>
+  </div>`;
   
-  const totals = calculateTotals();
-  const payload = buildPayload();
+  html += arr.map(c => {
+    const initial = (c.name || '?').charAt(0).toUpperCase();
+    return `
+      <div class="ss-option" data-id="${c.id}" onclick='_sel(this,"client")'>
+        <div class="ava" style="background:var(--purple-bg);color:var(--purple)">${initial}</div>
+        <div class="info">
+          <div class="name">${escapeHtml(c.name)}</div>
+          <div class="meta">${escapeHtml(c.phone || '')}${c.city ? ' · ' + escapeHtml(c.city) : ''}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
   
-  // ─── BUILD CAMPAIGN PAYLOAD (only non-generated columns) ───
-  const dbPayload = {
-    name: payload.name || 'Untitled',
-    client_name: payload.client_name || 'Unknown Client',
-    campaign_type: payload.campaign_type || 'brand_awareness',
-    priority: payload.priority || 'normal',
-    status: status || 'draft',
-    gst_percent: payload.gst_percent || 18,
-    advance_required: payload.advance_required || 0,
-    created_by: state.admin.phone
-  };
-  
-  // Optional fields - only add if value exists
-  if (payload.client_id) dbPayload.client_id = payload.client_id;
-  if (payload.brand_name) dbPayload.brand_name = payload.brand_name;
-  if (payload.start_date) dbPayload.start_date = payload.start_date;
-  if (payload.deadline) dbPayload.deadline = payload.deadline;
-  if (payload.primary_city) dbPayload.primary_city = payload.primary_city;
-  if (payload.locations && payload.locations.length > 0) dbPayload.locations = payload.locations;
-  if (payload.sales_team && payload.sales_team.length > 0) dbPayload.sales_team = payload.sales_team;
-  if (state.admin.phone) dbPayload.lead_phone = state.admin.phone;
-  if (state.admin.name) dbPayload.lead_name = state.admin.name;
-  if (payload.notes) dbPayload.notes = payload.notes;
-  if (payload.payment_method) dbPayload.payment_method = payload.payment_method;
-  if (payload.payment_due_date) dbPayload.payment_due_date = payload.payment_due_date;
-  if (payload.payment_terms) dbPayload.payment_terms = payload.payment_terms;
-  
-  if (status === 'in_production' || status === 'design_approval') {
-    dbPayload.launched_at = new Date().toISOString();
-  }
-  
-  console.log('[Launch] Saving campaign:', dbPayload);
+  el.innerHTML = html;
+}
+
+function filterClients(query) {
+  const q = query.toLowerCase().trim();
+  if (!q) return renderClientOptions(allClients);
+  const filtered = allClients.filter(c => 
+    (c.name || '').toLowerCase().includes(q) ||
+    (c.phone || '').toLowerCase().includes(q) ||
+    (c.city || '').toLowerCase().includes(q)
+  );
+  renderClientOptions(filtered);
+}
+
+function selectClient(c) {
+  if (!c) return;
+  selectedClient = c;
+  const trigger = document.querySelector('#clientSelect .ss-trigger');
+  const initial = (c.name || '?').charAt(0).toUpperCase();
+  trigger.innerHTML = `
+    <div class="ss-selected">
+      <div class="ss-ava" style="background:var(--purple-bg);color:var(--purple)">${initial}</div>
+      <div class="ss-info">
+        <div class="name">${escapeHtml(c.name)}</div>
+        <div class="meta">${escapeHtml(c.phone || '')}${c.city ? ' · ' + escapeHtml(c.city) : ''}</div>
+      </div>
+    </div>
+    <div class="ss-chev">▼</div>
+  `;
+  trigger.setAttribute('onclick', "toggleSS('clientSelect',event)");
+  document.querySelector('#clientSelect .ss-dropdown').classList.remove('open');
+  updateActionBar();
+}
+
+async function addNewClient() {
+  const name = prompt('Client name?');
+  if (!name) return;
+  const phone = prompt('Client phone? (optional)') || '';
+  const city = prompt('Client city? (optional)') || '';
   
   try {
-    let campaign;
-    if (state.campaignId) {
-      console.log('[Launch] Updating existing campaign:', state.campaignId);
-      const updated = await api('/rest/v1/prajapati_campaigns_v2?id=eq.' + state.campaignId, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-        body: JSON.stringify(dbPayload)
-      });
-      campaign = updated && updated[0];
-    } else {
-      console.log('[Launch] Inserting new campaign...');
-      const inserted = await api('/rest/v1/prajapati_campaigns_v2', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-        body: JSON.stringify(dbPayload)
-      });
-      console.log('[Launch] Insert response:', inserted);
-      campaign = inserted && inserted[0];
-      if (campaign) state.campaignId = campaign.id;
-    }
-    
-    if (!campaign) throw new Error('Campaign created but no data returned');
-    
-    console.log('[Launch] Campaign saved! Code:', campaign.campaign_code, 'ID:', campaign.id);
-    
-    // ─── SAVE PRODUCTS ───
-    // Delete existing products first if updating
-    if (state.campaignId) {
-      try {
-        await api('/rest/v1/prajapati_campaign_products?campaign_id=eq.' + state.campaignId, {
-          method: 'DELETE'
-        });
-      } catch (e) { 
-        console.warn('[Launch] Could not delete old products:', e.message);
-      }
-    }
-    
-    // Insert products (only non-generated columns)
-    if (state.products.length > 0) {
-      const productsPayload = state.products.map((p, idx) => {
-        const prod = {
-          campaign_id: campaign.id,
-          product_type: p.product_type,
-          product_name: p.product_name || PRODUCT_CONFIGS[p.product_type]?.name || 'Product',
-          quantity: parseInt(p.quantity) || 0,
-          rate_per_unit: parseFloat(p.rate_per_unit) || 0,
-          production_cost: parseFloat(p.production_cost) || 0,
-          fitting_cost: parseFloat(p.fitting_cost) || 0,
-          transportation_cost: parseFloat(p.transportation_cost) || 0,
-          service_type: p.service_type || 'printing_execution',
-          status: p.status || 'design',
-          display_order: idx
-        };
-        
-        // Optional fields (Operations will add team/execution later)
-        if (p.cities && p.cities.length > 0) prod.cities = p.cities;
-        if (p.material_type) prod.material_type = p.material_type;
-        if (p.printing_type) prod.printing_type = p.printing_type;
-        if (p.notes) prod.notes = p.notes;
-        
-        return prod;
-      });
-      
-      console.log('[Launch] Saving', productsPayload.length, 'products...');
-      
-      await api('/rest/v1/prajapati_campaign_products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-        body: JSON.stringify(productsPayload)
-      });
-      
-      console.log('[Launch] Products saved!');
-    }
-    
-    // Update campaign code display
-    if (campaign.campaign_code) {
-      document.getElementById('campaignCode').textContent = campaign.campaign_code;
-    }
-    
-    state.saving = false;
-    return campaign;
-  } catch (err) {
-    state.saving = false;
-    console.error('[Launch] Save failed:', err);
-    throw err;
+    const { data, error } = await db.from('trial_clients').insert({ name, phone, city }).select().single();
+    if (error) throw error;
+    allClients.unshift(data);
+    selectClient(data);
+  } catch(e) {
+    const tmpClient = { id: 'tmp_' + Date.now(), name, phone, city };
+    selectClient(tmpClient);
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// ACTION HANDLERS
-// ═══════════════════════════════════════════════════════════════
-function validateBasics() {
-  const name = document.getElementById('fldName').value.trim();
-  const client = document.getElementById('fldClient').value.trim();
-  
-  if (!name) {
-    showToast('Campaign name required', 'error');
-    document.getElementById('fldName').focus();
-    return false;
-  }
-  if (!client) {
-    showToast('Client name required', 'error');
-    document.getElementById('fldClient').focus();
-    return false;
-  }
-  if (state.products.length === 0) {
-    showToast('Add at least 1 media product', 'error');
-    scrollToMedia();
-    return false;
-  }
-  
-  // Validate each product
-  for (let i = 0; i < state.products.length; i++) {
-    const p = state.products[i];
-    if (!p.quantity || p.quantity <= 0) {
-      showToast(`Product ${i + 1}: Quantity required`, 'error');
-      return false;
-    }
-    if (!p.rate_per_unit || p.rate_per_unit <= 0) {
-      showToast(`Product ${i + 1}: Rate required`, 'error');
-      return false;
-    }
-  }
-  
-  return true;
+function toggleSwitch(el) { el.classList.toggle('on'); }
+
+function addDesign() {
+  designs.push({
+    tempId: 'd_' + (nextDesignId++),
+    design_name: '',
+    location_name: '',
+    location_address: '',
+    location_lat: null,
+    location_lng: null,
+    location_place_id: null,
+    location_city: null,
+    location_state: 'Maharashtra',
+    location_pincode: null,
+    location_type: null,
+    quantity: 0,
+    design_url: null,
+    design_file_name: null,
+    design_file_size: null,
+    design_file_type: null
+  });
+  renderDesigns();
+  setTimeout(() => {
+    const lastRow = document.querySelector('.design-row:last-of-type input[data-field="design_name"]');
+    lastRow?.focus();
+  }, 100);
 }
 
-async function saveDraft() {
-  if (!document.getElementById('fldName').value.trim()) {
-    showToast('Campaign name required', 'error');
+function removeDesign(tempId) {
+  designs = designs.filter(d => d.tempId !== tempId);
+  if (designs.length === 0) addDesign();
+  else renderDesigns();
+}
+
+function renderDesigns() {
+  const el = document.getElementById('designsList');
+  el.innerHTML = designs.map((d, i) => {
+    const isFilled = d.design_name && d.location_name && d.quantity > 0 && d.design_url;
+    const isExpanded = d.design_name || d.location_name;
+    const stateLabel = isFilled ? 'COMPLETE' : (isExpanded ? 'IN PROGRESS' : 'NEW · INCOMPLETE');
+    
+    return `
+      <div class="design-row ${isExpanded ? 'expanded' : ''}" id="${d.tempId}">
+        <div class="design-row-head">
+          <span class="design-num"><span class="badge">#${i+1}</span>DESIGN · ${stateLabel}</span>
+          <button class="design-remove" onclick="removeDesign('${d.tempId}')" title="Remove">×</button>
+        </div>
+        <div class="design-row-body">
+          
+          <div>
+            <div class="dlabel">Design Name <span class="req">*</span></div>
+            <input class="dinput" data-field="design_name" 
+                   value="${escapeAttr(d.design_name)}" 
+                   placeholder="e.g., Auto Hood Front — Diwali Edition"
+                   oninput="updateDesignField('${d.tempId}', 'design_name', this.value)">
+          </div>
+          
+          <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px">
+            <div style="position:relative">
+              <div class="dlabel">📍 Location <span class="req">*</span> <span class="hint">City, locality, anywhere</span></div>
+              <div class="location-input ${d.location_name ? 'has-value' : ''}">
+                ${d.location_name ? `
+                  <div class="input-wrap">
+                    <span class="location-pin">📍</span>
+                    <div style="flex:1;min-width:0">
+                      <div class="location-text" style="font-weight:600">${escapeHtml(d.location_name)}</div>
+                      <div class="location-detail">${escapeHtml((d.location_state || '').toUpperCase())}${d.location_lat ? ' · ' + d.location_lat.toFixed(4) + '°N, ' + d.location_lng.toFixed(4) + '°E' : ''}</div>
+                    </div>
+                    <button class="location-change" onclick="clearLocation('${d.tempId}')">Change</button>
+                  </div>
+                ` : `
+                  <div class="input-wrap">
+                    <span class="location-pin">🔍</span>
+                    <div class="location-text" style="flex:1">
+                      <input type="text" placeholder="Search city, locality, or address..." 
+                             oninput="searchLocation('${d.tempId}', this.value)"
+                             onfocus="searchLocation('${d.tempId}', this.value)">
+                    </div>
+                  </div>
+                `}
+                <div class="gp-dropdown" id="gp-${d.tempId}"></div>
+              </div>
+            </div>
+            <div>
+              <div class="dlabel">Quantity <span class="req">*</span></div>
+              <input class="dinput" type="number" min="1" data-field="quantity"
+                     value="${d.quantity || ''}" placeholder="0"
+                     oninput="updateDesignField('${d.tempId}', 'quantity', parseInt(this.value) || 0)">
+            </div>
+          </div>
+          
+          <div>
+            <div class="dlabel">Design File <span class="req">*</span> <span class="hint">Any format · Max 10 MB</span></div>
+            <div id="file-${d.tempId}">
+              ${d.design_url ? `
+                <div class="file-upload-done">
+                  <div class="file-icon">📄</div>
+                  <div class="file-info">
+                    <div class="file-name">${escapeHtml(d.design_file_name || 'uploaded')}</div>
+                    <div class="file-size">${formatFileSize(d.design_file_size)} · Uploaded</div>
+                  </div>
+                  <button class="file-replace" onclick="triggerFilePick('${d.tempId}')">Replace</button>
+                </div>
+              ` : `
+                <div class="file-upload-empty" onclick="triggerFilePick('${d.tempId}')">
+                  <span style="font-size:18px">📎</span>
+                  <span>Click to upload design file · Any format · Max 10 MB</span>
+                </div>
+              `}
+              <input type="file" id="file-input-${d.tempId}" style="display:none" 
+                     onchange="handleFileSelect('${d.tempId}', this.files[0])">
+            </div>
+          </div>
+          
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  updateActionBar();
+  calcPricing();
+}
+
+function updateDesignField(tempId, field, value) {
+  const d = designs.find(x => x.tempId === tempId);
+  if (d) { d[field] = value; updateActionBar(); calcPricing(); }
+}
+
+function clearLocation(tempId) {
+  const d = designs.find(x => x.tempId === tempId);
+  if (d) {
+    d.location_name = '';
+    d.location_lat = null;
+    d.location_lng = null;
+    d.location_address = '';
+    d.location_place_id = null;
+    d.location_city = null;
+    d.location_state = 'Maharashtra';
+    d.location_pincode = null;
+    d.location_type = null;
+    renderDesigns();
+  }
+}
+
+let locTimer = null;
+async function searchLocation(tempId, query) {
+  const dropdown = document.getElementById('gp-' + tempId);
+  if (!dropdown) return;
+  
+  if (!query || query.length < 2) {
+    dropdown.classList.remove('open');
     return;
   }
   
-  setSaveStatus('saving');
-  try {
-    const campaign = await saveCampaignToDB('draft');
-    showToast(`💾 Draft saved · ${campaign.campaign_code}`, 'success');
-    setSaveStatus('saved');
-  } catch (err) {
-    showToast('Save failed: ' + err.message, 'error');
-    setSaveStatus('saved');
-  }
-}
-
-async function launchCampaign() {
-  if (!validateBasics()) return;
-  
-  const totals = calculateTotals();
-  const msg = `🚀 Send this campaign to Operations team?\n\nValue: ${inr(totals.grandTotal)}\nProducts: ${state.products.length}\nQuantity: ${totals.totalQty}\n\nOperations Manager will:\n• Assign team leads per product\n• Set execution dates per city\n• Plan production schedule\n\nProceed?`;
-  if (!confirm(msg)) return;
-  
-  const btn = document.getElementById('launchBtn');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Sending...';
-  
-  try {
-    const campaign = await saveCampaignToDB('pending_execution_plan');
-    showToast(`🚀 Sent to Operations · ${campaign.campaign_code}`, 'success');
+  clearTimeout(locTimer);
+  locTimer = setTimeout(async () => {
+    dropdown.classList.add('open');
+    dropdown.innerHTML = `<div class="gp-section-label">Searching "${escapeHtml(query)}"…</div>`;
     
-    // Clear draft
-    localStorage.removeItem('launch_campaign_draft');
-    
-    setTimeout(() => {
-      const url = 'execution-plan.html?campaign=' + campaign.id;
-      if (confirm(`✅ Campaign ${campaign.campaign_code} sent to Operations!\n\nOperations Manager will assign teams + dates.\n\nView in Operations queue?`)) {
-        window.location.href = 'execution-plan.html';
-      } else if (confirm('Create another campaign?')) {
-        window.location.reload();
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=6&countrycodes=in`;
+      const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+      const results = await res.json();
+      
+      if (!results.length) {
+        dropdown.innerHTML = `
+          <div class="gp-section-label">No results</div>
+          <div style="padding:14px;text-align:center;color:var(--text-dim);font-size:12px">Try different keywords</div>
+          <div class="gp-footer">Powered by OpenStreetMap</div>
+        `;
+        return;
       }
-    }, 1500);
-  } catch (err) {
-    let errMsg = err.message || String(err);
-    if (errMsg.includes('row-level security') || errMsg.includes('42501')) {
-      errMsg = 'RLS blocking. Run 06_STATUS_FLOW_UPDATE.sql in Supabase.';
-      showToast(errMsg, 'error');
-      alert('🚨 DATABASE FIX NEEDED:\n\nRow-Level Security blocking saves.\n\nFIX:\n1. Open Supabase SQL Editor\n2. Run: 06_STATUS_FLOW_UPDATE.sql\n3. Retry');
-    } else if (errMsg.includes('JSON.parse') || errMsg.includes('unexpected end')) {
-      errMsg = 'Schema not deployed. Run 03_LAUNCH_CAMPAIGN_SCHEMA.sql first.';
-      showToast(errMsg, 'error');
-    } else if (errMsg.includes('status_check') || errMsg.includes('check constraint')) {
-      errMsg = 'Status flow not updated. Run 06_STATUS_FLOW_UPDATE.sql in Supabase.';
-      showToast(errMsg, 'error');
-      alert('🚨 SCHEMA UPDATE NEEDED:\n\nNew status "pending_execution_plan" not in DB yet.\n\nFIX:\n1. Open Supabase SQL Editor\n2. Run: 06_STATUS_FLOW_UPDATE.sql\n3. Retry');
-    } else {
-      showToast('Send failed: ' + errMsg, 'error');
+      
+      dropdown.innerHTML = `
+        <div class="gp-section-label">Suggestions for "${escapeHtml(query)}"</div>
+        <div class="gp-results">
+          ${results.map((r, idx) => {
+            const addr = r.address || {};
+            const main = addr.suburb || addr.neighbourhood || addr.village || addr.town || addr.city_district || addr.city || (r.display_name || '').split(',')[0];
+            const city = addr.city || addr.town || addr.village || addr.county || '';
+            const state = addr.state || '';
+            const pincode = addr.postcode || '';
+            const subLine = [city, state, pincode].filter(x => x && x !== main).join(' · ');
+            const icon = r.type === 'railway' || r.class === 'railway' ? '🚉' : (r.class === 'amenity' ? '🏛️' : (r.class === 'place' ? '📍' : '🏙️'));
+            
+            window['_loc_' + tempId + '_' + idx] = {
+              location_name: main + (city && city !== main ? ', ' + city : ''),
+              location_address: r.display_name,
+              location_lat: parseFloat(r.lat),
+              location_lng: parseFloat(r.lon),
+              location_place_id: r.place_id ? String(r.place_id) : null,
+              location_city: city || main,
+              location_state: state || 'Maharashtra',
+              location_pincode: pincode,
+              location_type: r.type || r.class
+            };
+            
+            return `
+              <div class="gp-option" onclick="selectLocation('${tempId}', window['_loc_${tempId}_${idx}'])">
+                <span class="gp-icon">${icon}</span>
+                <div class="gp-info">
+                  <div class="gp-main">${escapeHtml(main + (city && city !== main ? ', ' + city : ''))}</div>
+                  <div class="gp-sub">${escapeHtml(subLine || (r.display_name || '').slice(0, 60))}</div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+        <div class="gp-footer">Powered by OpenStreetMap</div>
+      `;
+    } catch(e) {
+      dropdown.innerHTML = `
+        <div class="gp-section-label" style="color:var(--danger)">Search failed</div>
+        <div style="padding:14px;text-align:center;color:var(--text-dim);font-size:12px">${escapeHtml(e.message || 'Network error')}</div>
+        <div class="gp-footer">Powered by OpenStreetMap</div>
+      `;
     }
-    console.error('Launch error:', err);
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '🚀 Send to Operations';
+  }, 350);
+}
+
+function selectLocation(tempId, locData) {
+  const d = designs.find(x => x.tempId === tempId);
+  if (d) {
+    Object.assign(d, locData);
+    renderDesigns();
   }
 }
 
-function generateQuotation() {
-  if (!validateBasics()) return;
+function triggerFilePick(tempId) {
+  document.getElementById('file-input-' + tempId)?.click();
+}
+
+async function handleFileSelect(tempId, file) {
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) {
+    alert('File too large. Max 10 MB.');
+    return;
+  }
   
-  const totals = calculateTotals();
-  const name = document.getElementById('fldName').value.trim();
-  const client = document.getElementById('fldClient').value.trim();
+  const d = designs.find(x => x.tempId === tempId);
+  if (!d) return;
   
-  let html = `
-    <h1 style="font-family:Arial;font-size:24px;margin-bottom:8px;">QUOTATION</h1>
-    <p style="font-family:Arial;color:#666;margin-bottom:20px;">Prajapati Advertising · www.prajapatiadvertising.com · 9922138138</p>
-    <hr style="margin:20px 0;">
-    <p><strong>Campaign:</strong> ${esc(name)}</p>
-    <p><strong>Client:</strong> ${esc(client)}</p>
-    <p><strong>Date:</strong> ${new Date().toLocaleDateString('en-IN')}</p>
-    <p><strong>Code:</strong> ${esc(document.getElementById('campaignCode').textContent)}</p>
-    <hr style="margin:20px 0;">
-    <table style="width:100%;border-collapse:collapse;font-family:Arial;">
-      <thead>
-        <tr style="background:#f0f0f0;">
-          <th style="padding:10px;text-align:left;border:1px solid #ddd;">Product</th>
-          <th style="padding:10px;text-align:right;border:1px solid #ddd;">Qty</th>
-          <th style="padding:10px;text-align:right;border:1px solid #ddd;">Rate</th>
-          <th style="padding:10px;text-align:right;border:1px solid #ddd;">Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${state.products.map(p => `
-          <tr>
-            <td style="padding:10px;border:1px solid #ddd;">${esc(p.product_name)}<br><small>${esc((p.cities || []).join(', '))}</small></td>
-            <td style="padding:10px;text-align:right;border:1px solid #ddd;">${p.quantity}</td>
-            <td style="padding:10px;text-align:right;border:1px solid #ddd;">${inr(p.rate_per_unit)}</td>
-            <td style="padding:10px;text-align:right;border:1px solid #ddd;"><strong>${inr((p.quantity || 0) * (p.rate_per_unit || 0))}</strong></td>
-          </tr>
-        `).join('')}
-      </tbody>
-      <tfoot>
-        <tr><td colspan="3" style="padding:10px;text-align:right;border:1px solid #ddd;">Subtotal</td><td style="padding:10px;text-align:right;border:1px solid #ddd;">${inr(totals.subtotal)}</td></tr>
-        <tr><td colspan="3" style="padding:10px;text-align:right;border:1px solid #ddd;">GST (${totals.gstPercent}%)</td><td style="padding:10px;text-align:right;border:1px solid #ddd;">${inr(totals.gstAmount)}</td></tr>
-        <tr style="background:#f0f0f0;font-weight:bold;"><td colspan="3" style="padding:10px;text-align:right;border:1px solid #ddd;">GRAND TOTAL</td><td style="padding:10px;text-align:right;border:1px solid #ddd;">${inr(totals.grandTotal)}</td></tr>
-      </tfoot>
-    </table>
-    <p style="margin-top:20px;"><strong>Terms:</strong> ${esc(document.getElementById('payTerms').value || '50% advance, 50% on completion')}</p>
+  const fileWrap = document.getElementById('file-' + tempId);
+  fileWrap.querySelector('.file-upload-empty, .file-upload-done').outerHTML = `
+    <div class="file-upload-done" style="background:linear-gradient(135deg, var(--info-bg), #fff);border-color:var(--info)">
+      <div class="file-icon" style="background:var(--info)"><span class="spin"></span></div>
+      <div class="file-info">
+        <div class="file-name">${escapeHtml(file.name)}</div>
+        <div class="file-size">Uploading…</div>
+      </div>
+    </div>
   `;
   
-  // Open in new window for printing
-  const w = window.open('', '_blank');
-  w.document.write(`<html><head><title>Quotation - ${esc(name)}</title></head><body style="padding:30px;">${html}<button onclick="window.print()" style="margin-top:20px;padding:10px 20px;background:#00D4D2;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">🖨 Print / Save PDF</button></body></html>`);
-}
-
-function shareWA() {
-  if (!validateBasics()) return;
-  
-  const totals = calculateTotals();
-  const name = document.getElementById('fldName').value.trim();
-  const client = document.getElementById('fldClient').value.trim();
-  
-  let msg = `*${name}*\n`;
-  msg += `Client: ${client}\n`;
-  msg += `Code: ${document.getElementById('campaignCode').textContent}\n\n`;
-  msg += `*Products:*\n`;
-  state.products.forEach((p, i) => {
-    msg += `${i + 1}. ${p.product_name} · ${p.quantity} units · ${inr((p.quantity || 0) * (p.rate_per_unit || 0))}\n`;
-  });
-  msg += `\n*Total:* ${inr(totals.grandTotal)} (incl. ${totals.gstPercent}% GST)`;
-  msg += `\n\n_Prajapati Advertising_`;
-  
-  const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
-  window.open(url, '_blank');
-}
-
-function comingSoon(f) {
-  showToast(f + ' — Coming soon', 'info');
-}
-
-// ═══════════════════════════════════════════════════════════════
-// INIT
-// ═══════════════════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', () => {
-  autoLogin();
-  
-  document.getElementById('loginPhone').addEventListener('keypress', e => {
-    if (e.key === 'Enter') doLogin();
-  });
-  document.getElementById('loginPhone').addEventListener('input', e => {
-    e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
-  });
-});
-
-// Keyboard shortcuts
-document.addEventListener('keydown', e => {
-  if (e.ctrlKey && e.key === 's') {
-    e.preventDefault();
-    saveDraft();
+  try {
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `${user.id}/${Date.now()}_${safeName}`;
+    
+    const { error } = await db.storage.from('campaign-designs')
+      .upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: false });
+    
+    if (error) throw error;
+    
+    const { data: urlData } = db.storage.from('campaign-designs').getPublicUrl(path);
+    
+    d.design_url = urlData.publicUrl;
+    d.design_file_name = file.name;
+    d.design_file_size = file.size;
+    d.design_file_type = file.type;
+    
+    renderDesigns();
+  } catch(e) {
+    alert('Upload failed: ' + (e.message || e) + '\n\nCheck that "campaign-designs" storage bucket exists (public, 10MB limit).');
+    renderDesigns();
   }
-  if (e.ctrlKey && e.key === 'Enter') {
-    e.preventDefault();
-    launchCampaign();
+}
+
+function calcPricing() {
+  const totalQty = designs.reduce((s, d) => s + (d.quantity || 0), 0);
+  const rate = parseFloat(document.getElementById('rateUnit').value) || 0;
+  const disc = parseFloat(document.getElementById('discount').value) || 0;
+  const gstPct = parseFloat(document.getElementById('gstPct').value) || 0;
+  
+  const base = totalQty * rate;
+  const afterDisc = Math.max(0, base - disc);
+  const gst = afterDisc * (gstPct / 100);
+  const total = afterDisc + gst;
+  
+  document.getElementById('priceBase').textContent = '₹' + Math.round(base).toLocaleString('en-IN');
+  document.getElementById('priceGst').textContent = '₹' + Math.round(gst).toLocaleString('en-IN');
+  document.getElementById('priceDisc').textContent = '₹' + Math.round(disc).toLocaleString('en-IN');
+  document.getElementById('priceTotal').textContent = '₹' + Math.round(total).toLocaleString('en-IN');
+  
+  const cities = new Set();
+  designs.forEach(d => d.location_city && cities.add(d.location_city));
+  const calcEl = document.getElementById('materialCalc');
+  if (totalQty > 0) {
+    calcEl.style.display = 'flex';
+    document.getElementById('materialCalcText').innerHTML = `
+      <strong>Material Calculator:</strong> ${totalQty.toLocaleString('en-IN')} total units across <strong>${cities.size}</strong> location${cities.size !== 1 ? 's' : ''}${cities.size > 0 ? ' (' + Array.from(cities).slice(0, 3).join(', ') + (cities.size > 3 ? '…' : '') + ')' : ''} · Est. wastage allowance: <strong>5%</strong> = ${Math.ceil(totalQty * 0.05).toLocaleString('en-IN')} extra units
+    `;
+  } else {
+    calcEl.style.display = 'none';
   }
-});
+}
+
+function updateActionBar() {
+  const totalQty = designs.reduce((s, d) => s + (d.quantity || 0), 0);
+  const validDesigns = designs.filter(d => d.design_name && d.location_name && d.quantity > 0 && d.design_url);
+  const cities = new Set();
+  designs.forEach(d => d.location_city && cities.add(d.location_city));
+  
+  const parts = [];
+  if (validDesigns.length > 0) parts.push(`<strong>${validDesigns.length}</strong> design${validDesigns.length !== 1 ? 's' : ''}`);
+  if (cities.size > 0) parts.push(`<strong>${cities.size}</strong> location${cities.size !== 1 ? 's' : ''}`);
+  if (totalQty > 0) parts.push(`<strong>${totalQty.toLocaleString('en-IN')}</strong> units`);
+  if (selectedJobType) parts.push(`Type: <strong>${escapeHtml(selectedJobType.name)}</strong>`);
+  
+  document.getElementById('actionLeft').innerHTML = parts.length ? parts.join(' · ') : 'Fill form to enable submit';
+  document.getElementById('submitBtn').disabled = !(validDesigns.length > 0 && selectedSales && selectedClient && selectedJobType);
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(s) { return String(s == null ? '' : s).replace(/"/g, '&quot;'); }
+function formatFileSize(b) {
+  if (!b) return '0 KB';
+  if (b < 1024) return b + ' B';
+  if (b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
+  return (b/(1024*1024)).toFixed(1) + ' MB';
+}
+
+async function saveDraft() { await submitCampaign('draft'); }
+
+async function submitCampaign(targetStatus = 'pending_execution_plan') {
+  const campaignName = document.getElementById('campaignName').value.trim();
+  const validDesigns = designs.filter(d => d.design_name && d.location_name && d.quantity > 0 && d.design_url);
+  
+  if (targetStatus !== 'draft') {
+    if (!selectedSales || !selectedClient || !selectedJobType || !campaignName) {
+      document.getElementById('submitStatus').innerHTML = '<div class="callout error"><span class="callout-icon">⚠️</span><div>Please complete: Sales person, Client, Job Type, Campaign name</div></div>';
+      window.scrollTo({top: 0, behavior: 'smooth'});
+      return;
+    }
+    if (validDesigns.length === 0) {
+      document.getElementById('submitStatus').innerHTML = '<div class="callout error"><span class="callout-icon">⚠️</span><div>At least 1 complete design required (name + location + qty + file)</div></div>';
+      return;
+    }
+  }
+  
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Submitting…';
+  document.getElementById('submitStatus').innerHTML = '<div class="callout info"><span class="callout-icon">⏳</span><div>Saving campaign…</div></div>';
+  
+  try {
+    let clientId = selectedClient?.id;
+    if (clientId && String(clientId).startsWith('tmp_')) {
+      try {
+        const { data: newClient } = await db.from('trial_clients').insert({
+          name: selectedClient.name, phone: selectedClient.phone, city: selectedClient.city
+        }).select().single();
+        clientId = newClient?.id || null;
+      } catch(e) { clientId = null; }
+    }
+    
+    const totalQty = validDesigns.reduce((s, d) => s + (d.quantity || 0), 0);
+    const rate = parseFloat(document.getElementById('rateUnit').value) || 0;
+    const disc = parseFloat(document.getElementById('discount').value) || 0;
+    const gstPct = parseFloat(document.getElementById('gstPct').value) || 0;
+    const base = totalQty * rate;
+    const afterDisc = Math.max(0, base - disc);
+    const gst = afterDisc * (gstPct / 100);
+    const total = afterDisc + gst;
+    
+    const campaignPayload = {
+      campaign_name: campaignName || 'Untitled Draft',
+      client_id: clientId,
+      client_name: selectedClient?.name,
+      start_date: document.getElementById('startDate').value || null,
+      job_type_id: selectedJobType?.id,
+      job_type_code: selectedJobType?.code,
+      sales_member_id: selectedSales?.id,
+      is_self_sale: document.getElementById('selfSaleToggle').classList.contains('on'),
+      is_urgent: document.getElementById('urgentToggle').classList.contains('on'),
+      notify_whatsapp: document.getElementById('notifyToggle').classList.contains('on'),
+      send_client_preview: document.getElementById('clientPreviewToggle').classList.contains('on'),
+      rate_per_unit: rate,
+      discount: disc,
+      gst_pct: gstPct,
+      base_amount: base,
+      gst_amount: gst,
+      total_amount: total,
+      total_quantity: totalQty,
+      status: targetStatus,
+      created_by: user.id
+    };
+    
+    // Strip nulls to avoid type errors
+    Object.keys(campaignPayload).forEach(k => {
+      if (campaignPayload[k] === null || campaignPayload[k] === undefined) delete campaignPayload[k];
+    });
+    
+    const { data: campaign, error: campErr } = await db.from('trial_campaigns')
+      .insert(campaignPayload).select().single();
+    
+    if (campErr) throw campErr;
+    
+    if (validDesigns.length > 0) {
+      const designsPayload = validDesigns.map((d, i) => ({
+        campaign_id: campaign.id,
+        sort_order: i,
+        design_name: d.design_name,
+        location_name: d.location_name,
+        location_address: d.location_address,
+        location_lat: d.location_lat,
+        location_lng: d.location_lng,
+        location_place_id: d.location_place_id,
+        location_city: d.location_city,
+        location_state: d.location_state,
+        location_pincode: d.location_pincode,
+        location_type: d.location_type,
+        quantity: d.quantity,
+        design_url: d.design_url,
+        design_file_name: d.design_file_name,
+        design_file_size: d.design_file_size,
+        design_file_type: d.design_file_type,
+        created_by: user.id
+      }));
+      
+      const { error: dErr } = await db.from('trial_campaign_designs').insert(designsPayload);
+      if (dErr) throw dErr;
+    }
+    
+    document.getElementById('submitStatus').innerHTML = `
+      <div class="callout success">
+        <span class="callout-icon">✅</span>
+        <div>
+          <strong>${targetStatus === 'draft' ? 'Draft saved!' : 'Campaign submitted!'}</strong><br>
+          ${targetStatus === 'draft' ? 'You can resume editing anytime.' : 'Operations team will assign teams. Redirecting…'}
+        </div>
+      </div>
+    `;
+    
+    setTimeout(() => {
+      window.location.href = targetStatus === 'draft' ? '/sales-hub.html' : '/execution-plan.html?campaign=' + campaign.id;
+    }, 1800);
+    
+  } catch(e) {
+    console.error(e);
+    document.getElementById('submitStatus').innerHTML = `
+      <div class="callout error">
+        <span class="callout-icon">❌</span>
+        <div><strong>Submit failed:</strong> ${escapeHtml(e.message || String(e))}<br><small>Make sure SQL schema is applied and storage bucket 'campaign-designs' exists.</small></div>
+      </div>
+    `;
+    btn.disabled = false;
+    btn.innerHTML = 'Submit for Operations →';
+  }
+}
+
+init();
 </script>
 
 </body>

@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Settings · Job Types · Prajapati Advertising</title>
+<meta name="theme-color" content="#0B1957">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght,ital@9..144,300..900,0..1&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+:root{
+  --navy:#0B1957;--gold:#B89B4E;--gold-bright:#D4B45F;--gold-deep:#8B7430;--gold-soft:#F4E4B0;
+  --cream:#FAF8F3;--paper:#F7F4EC;--rule:#E5E0D2;
+  --ink-950:#0F172A;--text-dim:#94A3B8;
+  --success:#047857;--success-bg:#D1FAE5;
+  --warn:#C2410C;--warn-bg:#FED7AA;
+  --danger:#BE123C;--danger-bg:#FECACA;
+  --info:#1E40AF;--info-bg:#DBEAFE;
+}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--cream);color:var(--ink-950);font-size:14px;line-height:1.5;min-height:100vh}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+a{color:inherit;text-decoration:none}
+
+.topbar{background:var(--navy);color:#fff;padding:14px 32px;border-bottom:3px solid var(--gold);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.tb-brand{display:flex;align-items:center;gap:12px}
+.tb-logo{width:36px;height:36px;background:var(--gold);color:var(--navy);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:700;font-size:20px}
+.tb-name{font-size:14px;font-weight:700}
+.tb-tag{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--gold-bright);letter-spacing:0.16em;text-transform:uppercase;margin-top:2px}
+
+.main{padding:28px;max-width:1100px;margin:0 auto}
+
+.page-head{margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between}
+.page-title{font-family:'Fraunces',serif;font-size:26px;font-weight:500;color:var(--navy);letter-spacing:-0.02em}
+.page-title em{color:var(--gold);font-style:italic}
+.page-sub{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:0.12em;text-transform:uppercase;margin-top:4px}
+
+.section{background:#fff;border:1px solid var(--rule);border-radius:10px;margin-bottom:18px;overflow:hidden}
+.section-head{padding:14px 20px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg, var(--paper), #fff)}
+.section-title{font-family:'Fraunces',serif;font-size:15px;font-weight:600;color:var(--navy);letter-spacing:-0.01em}
+.section-title em{color:var(--gold);font-style:italic}
+.section-meta{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--gold-deep);letter-spacing:0.14em;text-transform:uppercase}
+.section-body{padding:18px 20px}
+
+/* Job type cards in list */
+.jt-list{display:flex;flex-direction:column;gap:10px}
+.jt-card{background:#fff;border:1.5px solid var(--rule);border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;transition:all 0.15s}
+.jt-card:hover{border-color:var(--gold)}
+.jt-card.inactive{opacity:0.5;background:var(--cream)}
+.jt-icon{font-size:30px;width:46px;height:46px;background:var(--gold-soft);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.jt-info .name{font-family:'Fraunces',serif;font-size:16px;font-weight:600;color:var(--navy);display:flex;align-items:center;gap:10px}
+.jt-info .code{font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;background:var(--info-bg);color:var(--info);padding:2px 7px;border-radius:3px;letter-spacing:0.1em}
+.jt-info .desc{font-size:12px;color:var(--text-dim);margin-top:3px}
+.jt-flow{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.flow-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase}
+.flow-pill.on{background:var(--gold);color:var(--navy)}
+.flow-pill.off{background:#f3f4f6;color:#9ca3af;text-decoration:line-through}
+.jt-actions{display:flex;gap:6px}
+
+/* Form */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.form-grid.three{grid-template-columns:2fr 1fr 1fr}
+.field{display:flex;flex-direction:column;gap:6px}
+.label{font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:var(--navy);letter-spacing:0.12em;text-transform:uppercase}
+.label .req{color:var(--danger);margin-left:2px}
+.label .hint{color:var(--text-dim);font-weight:400;text-transform:none;letter-spacing:0;font-size:10px;margin-left:6px}
+.input{padding:10px 12px;border:1px solid var(--rule);background:var(--cream);font-family:inherit;font-size:13px;color:var(--ink-950);border-radius:6px;outline:none;width:100%}
+.input:focus{border-color:var(--gold);background:#fff}
+
+.icon-grid{display:grid;grid-template-columns:repeat(8, 1fr);gap:6px;margin-top:4px}
+.icon-pick{width:38px;height:38px;border:1.5px solid var(--rule);background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;transition:all 0.15s}
+.icon-pick:hover{border-color:var(--gold)}
+.icon-pick.selected{border-color:var(--gold);background:var(--gold-soft)}
+
+.stage-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));gap:8px;margin-top:6px}
+.stage-toggle{padding:10px 12px;background:var(--cream);border:1.5px solid var(--rule);border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:all 0.15s}
+.stage-toggle:hover{border-color:var(--gold)}
+.stage-toggle.on{background:linear-gradient(135deg, var(--gold-soft), #fff);border-color:var(--gold)}
+.stage-toggle-icon{font-size:20px}
+.stage-toggle-name{font-size:12px;font-weight:700;color:var(--navy)}
+.stage-toggle-state{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--text-dim);letter-spacing:0.1em;text-transform:uppercase}
+.stage-toggle.on .stage-toggle-state{color:var(--gold-deep)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.15s}
+.btn:hover{transform:translateY(-1px)}
+.btn-gold{background:var(--gold);color:var(--navy)}
+.btn-success{background:var(--success);color:#fff}
+.btn-secondary{background:#fff;color:var(--navy);border:1px solid var(--rule)}
+.btn-danger{background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger)}
+.btn.sm{padding:6px 10px;font-size:10px}
+.btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+
+.modal-bg{position:fixed;inset:0;background:rgba(11,25,87,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;backdrop-filter:blur(4px)}
+.modal{background:#fff;border-radius:12px;max-width:600px;width:100%;max-height:90vh;overflow-y:auto;border:1px solid var(--gold);box-shadow:0 20px 60px rgba(0,0,0,0.3)}
+.modal-head{padding:18px 22px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg, var(--paper), #fff)}
+.modal-title{font-family:'Fraunces',serif;font-size:18px;font-weight:600;color:var(--navy)}
+.modal-close{width:30px;height:30px;border-radius:50%;background:var(--cream);color:var(--danger);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer}
+.modal-body{padding:18px 22px}
+.modal-foot{padding:14px 22px;border-top:1px solid var(--rule);display:flex;justify-content:flex-end;gap:8px;background:var(--paper)}
+
+.callout{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:12px}
+.callout.info{background:var(--info-bg);color:var(--info)}
+.callout.success{background:var(--success-bg);color:var(--success)}
+.callout.error{background:var(--danger-bg);color:var(--danger)}
+
+.empty-state{text-align:center;padding:40px 20px;color:var(--text-dim);font-size:13px}
+.spin{width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media (max-width:768px){
+  .main{padding:18px}
+  .form-grid,.form-grid.three{grid-template-columns:1fr}
+  .jt-card{grid-template-columns:1fr;gap:8px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="tb-brand">
+    <div class="tb-logo">P</div>
+    <div>
+      <div class="tb-name">Prajapati Advertising</div>
+      <div class="tb-tag">Settings · Job Types</div>
+    </div>
+  </div>
+  <a href="/owner.html" class="btn btn-secondary sm">← Owner</a>
+</div>
+
+<div class="main">
+  
+  <div class="page-head">
+    <div>
+      <div class="page-title">Job Type <em>Configuration</em></div>
+      <div class="page-sub">Admin / Owner only · Configure available campaign types</div>
+    </div>
+    <button class="btn btn-gold" onclick="openModal()">+ Add Job Type</button>
+  </div>
+  
+  <div class="callout info">
+    <span style="font-size:14px">ℹ️</span>
+    <div>
+      Each job type defines which stages (Printing / Stitching / Field Execution / Delivery) are required. When sales launches a campaign, they pick a job type and the system auto-configures the workflow.
+    </div>
+  </div>
+  
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title">Active <em>Job Types</em></div>
+      <div class="section-meta" id="cntActive">Loading…</div>
+    </div>
+    <div class="section-body">
+      <div class="jt-list" id="jtList"><div class="empty-state">Loading…</div></div>
+    </div>
+  </div>
+  
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title">Inactive · <em>Archived</em></div>
+      <div class="section-meta" id="cntInactive">0</div>
+    </div>
+    <div class="section-body">
+      <div class="jt-list" id="jtListInactive"><div class="empty-state">No archived types</div></div>
+    </div>
+  </div>
+  
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-bg" id="modal" style="display:none">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="modalTitle">Add Job Type</div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      
+      <div class="form-grid">
+        <div class="field">
+          <div class="label">Code <span class="req">*</span> <span class="hint">UPPERCASE_SNAKE</span></div>
+          <input class="input" id="fCode" placeholder="e.g., AUTO_HOOD" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_')">
+        </div>
+        <div class="field">
+          <div class="label">Default Days <span class="hint">To complete</span></div>
+          <input class="input" type="number" id="fDays" value="5" min="1" max="60">
+        </div>
+      </div>
+      
+      <div class="field" style="margin-bottom:14px">
+        <div class="label">Display Name <span class="req">*</span></div>
+        <input class="input" id="fName" placeholder="e.g., Auto Rickshaw Hood">
+      </div>
+      
+      <div class="field" style="margin-bottom:14px">
+        <div class="label">Description <span class="hint">Shown to sales when picking</span></div>
+        <input class="input" id="fDesc" placeholder="e.g., Full hood with side panels — print + stitch + install">
+      </div>
+      
+      <div class="field" style="margin-bottom:14px">
+        <div class="label">Icon</div>
+        <div class="icon-grid" id="iconGrid"></div>
+      </div>
+      
+      <div class="field">
+        <div class="label">Required Stages <span class="req">*</span> <span class="hint">Click to toggle</span></div>
+        <div class="stage-grid">
+          <div class="stage-toggle on" id="stage_printing" onclick="this.classList.toggle('on');updateStageState(this)">
+            <div class="stage-toggle-icon">🖨️</div>
+            <div>
+              <div class="stage-toggle-name">Printing</div>
+              <div class="stage-toggle-state">ON</div>
+            </div>
+          </div>
+          <div class="stage-toggle" id="stage_stitching" onclick="this.classList.toggle('on');updateStageState(this)">
+            <div class="stage-toggle-icon">🧵</div>
+            <div>
+              <div class="stage-toggle-name">Stitching</div>
+              <div class="stage-toggle-state">OFF</div>
+            </div>
+          </div>
+          <div class="stage-toggle" id="stage_field" onclick="this.classList.toggle('on');updateStageState(this)">
+            <div class="stage-toggle-icon">📍</div>
+            <div>
+              <div class="stage-toggle-name">Field Exec</div>
+              <div class="stage-toggle-state">OFF</div>
+            </div>
+          </div>
+          <div class="stage-toggle" id="stage_delivery" onclick="this.classList.toggle('on');updateStageState(this)">
+            <div class="stage-toggle-icon">🚚</div>
+            <div>
+              <div class="stage-toggle-name">Delivery</div>
+              <div class="stage-toggle-state">OFF</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div id="modalStatus"></div>
+      
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-gold" id="saveBtn" onclick="saveJobType()">Save Job Type</button>
+    </div>
+  </div>
+</div>
+
+<script src="/lib/access-guard.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+
+<script>
+AccessGuard.protect({
+  redirectTo: '/login.html',
+  allowedRoles: ['owner', 'admin']
+});
+
+const user = AccessGuard.getUser();
+const SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const ICONS = ['🛺','🖨️','🚗','📏','📦','🏪','🎨','🚛','🪧','📱','🎯','⚙️','🏗️','🚐','🎪','📌','🔖','🎭','🌐','📸','📺','🎬','🎵','🛍️'];
+let editingId = null;
+let jobTypes = [];
+
+async function init() {
+  // Render icons
+  document.getElementById('iconGrid').innerHTML = ICONS.map(i => `
+    <div class="icon-pick" data-icon="${i}" onclick="selectIcon('${i}')">${i}</div>
+  `).join('');
+  selectIcon('📦');
+  
+  await loadJobTypes();
+}
+
+async function loadJobTypes() {
+  const { data } = await db.from('trial_campaign_job_types')
+    .select('*').order('display_order');
+  jobTypes = data || [];
+  
+  const active = jobTypes.filter(j => j.active);
+  const inactive = jobTypes.filter(j => !j.active);
+  
+  document.getElementById('cntActive').textContent = active.length + ' types';
+  document.getElementById('cntInactive').textContent = inactive.length;
+  
+  renderList('jtList', active);
+  renderList('jtListInactive', inactive);
+}
+
+function renderList(elId, list) {
+  const el = document.getElementById(elId);
+  if (!list.length) {
+    el.innerHTML = '<div class="empty-state">None</div>';
+    return;
+  }
+  
+  el.innerHTML = list.map(j => `
+    <div class="jt-card ${!j.active ? 'inactive' : ''}">
+      <div class="jt-icon">${j.icon || '📦'}</div>
+      <div class="jt-info">
+        <div class="name">${escapeHtml(j.name)} <span class="code">${escapeHtml(j.code)}</span></div>
+        ${j.description ? `<div class="desc">${escapeHtml(j.description)}</div>` : ''}
+        <div class="jt-flow">
+          <span class="flow-pill ${j.requires_printing ? 'on' : 'off'}">🖨️ Print</span>
+          <span class="flow-pill ${j.requires_stitching ? 'on' : 'off'}">🧵 Stitch</span>
+          <span class="flow-pill ${j.requires_field_execution ? 'on' : 'off'}">📍 Field</span>
+          <span class="flow-pill ${j.requires_delivery ? 'on' : 'off'}">🚚 Deliver</span>
+          <span class="flow-pill" style="background:var(--info-bg);color:var(--info)">📅 ${j.default_days_to_complete}d</span>
+        </div>
+      </div>
+      <div class="jt-actions">
+        <button class="btn btn-secondary sm" onclick='editJobType(${JSON.stringify(j).replace(/'/g, "&#39;")})'>✏️ Edit</button>
+        ${j.active 
+          ? `<button class="btn btn-danger sm" onclick="toggleActive('${j.id}', false)">Archive</button>`
+          : `<button class="btn btn-success sm" onclick="toggleActive('${j.id}', true)">Restore</button>`
+        }
+      </div>
+    </div>
+  `).join('');
+}
+
+function updateStageState(el) {
+  el.querySelector('.stage-toggle-state').textContent = el.classList.contains('on') ? 'ON' : 'OFF';
+}
+
+function selectIcon(icon) {
+  document.querySelectorAll('.icon-pick').forEach(p => p.classList.toggle('selected', p.dataset.icon === icon));
+  document.getElementById('iconGrid').dataset.selected = icon;
+}
+
+function openModal() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = 'Add Job Type';
+  document.getElementById('fCode').value = '';
+  document.getElementById('fName').value = '';
+  document.getElementById('fDesc').value = '';
+  document.getElementById('fDays').value = 5;
+  document.getElementById('fCode').disabled = false;
+  selectIcon('📦');
+  
+  // Reset stages
+  document.querySelectorAll('.stage-toggle').forEach(s => {
+    s.classList.toggle('on', s.id === 'stage_printing');
+    updateStageState(s);
+  });
+  
+  document.getElementById('modalStatus').innerHTML = '';
+  document.getElementById('modal').style.display = 'flex';
+}
+
+function editJobType(jt) {
+  editingId = jt.id;
+  document.getElementById('modalTitle').textContent = 'Edit: ' + jt.name;
+  document.getElementById('fCode').value = jt.code;
+  document.getElementById('fCode').disabled = true;  // Don't allow code change
+  document.getElementById('fName').value = jt.name;
+  document.getElementById('fDesc').value = jt.description || '';
+  document.getElementById('fDays').value = jt.default_days_to_complete || 5;
+  selectIcon(jt.icon || '📦');
+  
+  document.getElementById('stage_printing').classList.toggle('on', !!jt.requires_printing);
+  document.getElementById('stage_stitching').classList.toggle('on', !!jt.requires_stitching);
+  document.getElementById('stage_field').classList.toggle('on', !!jt.requires_field_execution);
+  document.getElementById('stage_delivery').classList.toggle('on', !!jt.requires_delivery);
+  
+  document.querySelectorAll('.stage-toggle').forEach(updateStageState);
+  
+  document.getElementById('modalStatus').innerHTML = '';
+  document.getElementById('modal').style.display = 'flex';
+}
+
+function closeModal() {
+  document.getElementById('modal').style.display = 'none';
+}
+
+async function saveJobType() {
+  const code = document.getElementById('fCode').value.trim();
+  const name = document.getElementById('fName').value.trim();
+  
+  if (!code || !name) {
+    document.getElementById('modalStatus').innerHTML = '<div class="callout error"><span>⚠️</span><div>Code and Name required</div></div>';
+    return;
+  }
+  
+  const payload = {
+    code,
+    name,
+    description: document.getElementById('fDesc').value.trim() || null,
+    icon: document.getElementById('iconGrid').dataset.selected || '📦',
+    default_days_to_complete: parseInt(document.getElementById('fDays').value) || 5,
+    requires_printing: document.getElementById('stage_printing').classList.contains('on'),
+    requires_stitching: document.getElementById('stage_stitching').classList.contains('on'),
+    requires_field_execution: document.getElementById('stage_field').classList.contains('on'),
+    requires_delivery: document.getElementById('stage_delivery').classList.contains('on'),
+    updated_at: new Date().toISOString()
+  };
+  
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Saving…';
+  
+  try {
+    if (editingId) {
+      delete payload.code;  // Don't update code
+      await db.from('trial_campaign_job_types').update(payload).eq('id', editingId);
+    } else {
+      payload.created_by = user.id;
+      payload.display_order = jobTypes.length + 1;
+      const { error } = await db.from('trial_campaign_job_types').insert(payload);
+      if (error) throw error;
+    }
+    
+    closeModal();
+    await loadJobTypes();
+  } catch(e) {
+    document.getElementById('modalStatus').innerHTML = `<div class="callout error"><span>❌</span><div>${escapeHtml(e.message || String(e))}</div></div>`;
+    btn.disabled = false;
+    btn.innerHTML = 'Save Job Type';
+  }
+}
+
+async function toggleActive(id, active) {
+  if (!confirm(active ? 'Restore this job type?' : 'Archive this job type? Existing campaigns will continue.')) return;
+  
+  try {
+    await db.from('trial_campaign_job_types').update({ active, updated_at: new Date().toISOString() }).eq('id', id);
+    await loadJobTypes();
+  } catch(e) {
+    alert('Failed: ' + e.message);
+  }
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+init();
+</script>
+
+</body>
+</html>

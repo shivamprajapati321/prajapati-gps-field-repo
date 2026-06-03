@@ -3,1284 +3,753 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-<meta name="version" content="1.0.0-2026-05-24">
-<title>Execution Plan v1.0 — Operations</title>
-
+<title>Execution Plan · Prajapati Advertising</title>
+<meta name="theme-color" content="#0B1957">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
-
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght,ital@9..144,300..900,0..1&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
-  
-  :root {
-    --ink-900: #050818; --ink-800: #0B1130; --ink-700: #131A3F; --ink-600: #1c2654;
-    --canvas: #FAFBFF; --paper: #FFFFFF; --line: #E8EAF4; --line-soft: #F0F2F8; --line-strong: #D4D8E8;
-    --text: #0F172A; --text-mid: #475569; --text-dim: #94A3B8; --text-faint: #CBD5E1;
-    --teal: #00D4D2; --teal-glow: #5EEAE8; --teal-dark: #00A8A6;
-    --gold: #F5B83D; --gold-warm: #FFC857; --gold-deep: #B8860B;
-    --rose: #FF5470; --mint: #34D399; --mint-glow: #6EE7B7;
-    --violet: #8B5CF6; --violet-glow: #A78BFA;
-    --blue: #3B82F6; --orange: #F97316;
-    --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
-    --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
-    --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.08);
-    --shadow-xl: 0 24px 60px rgba(15, 23, 42, 0.12);
-  }
-  
-  body {
-    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
-    background: var(--canvas);
-    color: var(--text);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-  
-  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
-  .serif { font-family: 'Fraunces', serif; }
-  
-  button { font-family: inherit; cursor: pointer; border: none; background: none; }
-  input, select, textarea { font-family: inherit; outline: none; border: none; }
-  
-  /* LOGIN */
-  .login-bg {
-    min-height: 100vh;
-    background: linear-gradient(135deg, var(--ink-900), var(--ink-800), var(--violet));
-    display: flex; align-items: center; justify-content: center;
-    padding: 20px;
-    position: relative; overflow: hidden;
-  }
-  .login-bg::before { content: ''; position: absolute; top: -200px; right: -200px; width: 600px; height: 600px; border-radius: 50%; background: radial-gradient(circle, rgba(139,92,246,0.2), transparent 70%); }
-  .login-card {
-    background: rgba(255,255,255,0.98);
-    border-radius: 20px;
-    padding: 36px 32px;
-    width: 100%; max-width: 420px;
-    box-shadow: 0 30px 80px rgba(0,0,0,0.4);
-    position: relative;
-    animation: loginIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  @keyframes loginIn { from { opacity: 0; transform: translateY(20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
-  .login-logo {
-    width: 56px; height: 56px;
-    border-radius: 14px;
-    background: linear-gradient(135deg, var(--violet), var(--violet-glow));
-    display: flex; align-items: center; justify-content: center;
-    color: white;
-    font-weight: 800; font-size: 22px;
-    margin-bottom: 22px;
-    box-shadow: 0 8px 30px rgba(139,92,246,0.4);
-  }
-  .login-card h1 { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 600; color: var(--ink-900); letter-spacing: -0.02em; margin-bottom: 4px; }
-  .login-card .sub { color: var(--text-mid); font-size: 13px; margin-bottom: 26px; }
-  .field-group { margin-bottom: 16px; }
-  .field-group label { display: block; font-size: 11px; font-weight: 700; color: var(--text-mid); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 7px; }
-  .login-input {
-    width: 100%; padding: 12px 14px; font-size: 14px; font-family: inherit;
-    border: 1.5px solid var(--line); border-radius: 10px;
-    background: var(--paper); transition: all 0.15s;
-  }
-  .login-input:focus { border-color: var(--violet); box-shadow: 0 0 0 4px rgba(139,92,246,0.12); }
-  .login-input.mono { font-family: 'JetBrains Mono', monospace; text-align: center; letter-spacing: 0.05em; font-weight: 600; }
-  .err-banner { background: #fef2f2; color: #991b1b; padding: 10px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; margin-top: 12px; display: none; }
-  .err-banner.show { display: block; }
-  .login-btn {
-    width: 100%; padding: 13px 18px;
-    background: linear-gradient(135deg, var(--violet), var(--violet-glow));
-    color: white; border-radius: 10px; font-size: 14px; font-weight: 700;
-    box-shadow: 0 4px 14px rgba(139,92,246,0.3); transition: all 0.15s;
-  }
-  .login-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(139,92,246,0.5); }
-  .login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-  
-  .app { display: none; }
-  .app.active { display: block; }
-  
-  /* SIDEBAR */
-  .sidebar {
-    width: 260px;
-    background: linear-gradient(180deg, var(--ink-900) 0%, var(--ink-800) 60%, var(--ink-700) 100%);
-    height: 100vh; position: fixed; left: 0; top: 0;
-    padding: 24px 16px 20px; z-index: 50;
-    border-right: 1px solid rgba(255,255,255,0.04);
-    overflow-y: auto;
-  }
-  .sidebar::-webkit-scrollbar { width: 4px; }
-  .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
-  
-  .brand { display: flex; align-items: center; gap: 12px; padding: 0 8px 24px; border-bottom: 1px solid rgba(255,255,255,0.06); margin-bottom: 20px; }
-  .brand-logo {
-    width: 40px; height: 40px; border-radius: 12px;
-    background: linear-gradient(135deg, var(--violet), var(--violet-glow));
-    display: flex; align-items: center; justify-content: center;
-    color: white; font-weight: 800; font-size: 18px;
-    box-shadow: 0 4px 14px rgba(139,92,246,0.5);
-  }
-  .brand-text { color: white; }
-  .brand-text .name { font-weight: 800; font-size: 15px; letter-spacing: -0.015em; line-height: 1.1; }
-  .brand-text .sub { color: var(--violet-glow); font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin-top: 3px; }
-  
-  .nav-section { margin-bottom: 22px; }
-  .nav-section-title { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 0 12px; margin-bottom: 8px; }
-  .nav-item {
-    display: flex; align-items: center; gap: 12px;
-    padding: 10px 12px;
-    color: rgba(255,255,255,0.65); font-size: 13px; font-weight: 600;
-    border-radius: 10px; cursor: pointer; margin-bottom: 2px;
-    text-decoration: none;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    position: relative;
-  }
-  .nav-item:hover { background: rgba(255,255,255,0.05); color: white; transform: translateX(2px); }
-  .nav-item.active {
-    background: linear-gradient(90deg, rgba(139,92,246,0.2), rgba(139,92,246,0.04));
-    color: var(--violet-glow);
-  }
-  .nav-item.active::before {
-    content: ''; position: absolute;
-    left: -16px; top: 8px; bottom: 8px;
-    width: 3px; border-radius: 0 3px 3px 0;
-    background: var(--violet);
-    box-shadow: 0 0 16px var(--violet-glow);
-  }
-  .nav-icon { width: 18px; height: 18px; flex-shrink: 0; opacity: 0.9; }
-  .nav-badge { margin-left: auto; background: var(--rose); color: white; font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 10px; font-family: 'JetBrains Mono', monospace; }
-  .new-pill { margin-left: auto; background: linear-gradient(135deg, var(--gold), var(--gold-warm)); color: var(--ink-900); font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 8px; letter-spacing: 0.04em; }
-  
-  .sidebar-footer { position: absolute; bottom: 16px; left: 16px; right: 16px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 12px; }
-  .sidebar-footer .user { display: flex; align-items: center; gap: 10px; }
-  .sidebar-footer .avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--violet), var(--violet-glow)); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; color: white; }
-  .sidebar-footer .info { flex: 1; min-width: 0; }
-  .sidebar-footer .name { color: white; font-size: 12.5px; font-weight: 700; }
-  .sidebar-footer .role { color: var(--text-dim); font-size: 10.5px; }
-  .sidebar-footer button { background: transparent; border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); width: 28px; height: 28px; border-radius: 7px; cursor: pointer; font-size: 13px; }
-  
-  /* MAIN */
-  .main { margin-left: 260px; min-height: 100vh; }
-  
-  .topbar {
-    background: rgba(255,255,255,0.75);
-    backdrop-filter: blur(20px) saturate(180%);
-    border-bottom: 1px solid var(--line);
-    padding: 14px 32px;
-    display: flex; align-items: center; gap: 16px;
-    position: sticky; top: 0; z-index: 40;
-  }
-  .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-mid); font-weight: 600; }
-  .breadcrumb .current { color: var(--ink-900); font-weight: 700; }
-  .breadcrumb .sep { color: var(--text-faint); }
-  
-  .top-actions { display: flex; gap: 10px; align-items: center; margin-left: auto; }
-  .user-chip { display: flex; align-items: center; gap: 9px; padding: 4px 10px 4px 4px; border-radius: 999px; background: var(--paper); border: 1px solid var(--line); }
-  .user-chip .avatar { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, var(--violet), var(--violet-glow)); color: white; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; }
-  .user-chip .name { font-size: 12px; font-weight: 700; color: var(--ink-900); }
-  
-  .content { padding: 28px 32px; max-width: 1400px; }
-  
-  /* HERO */
-  .hero {
-    background: linear-gradient(135deg, var(--ink-900) 0%, #2d1b4e 60%, var(--violet) 130%);
-    border-radius: 24px;
-    padding: 32px 36px;
-    color: white;
-    position: relative; overflow: hidden;
-    margin-bottom: 24px;
-  }
-  .hero::before { content: ''; position: absolute; top: -50%; right: -10%; width: 600px; height: 600px; background: radial-gradient(circle, rgba(139,92,246,0.25), transparent 60%); }
-  .hero-content { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: flex-start; }
-  .hero-eyebrow {
-    display: inline-flex; align-items: center; gap: 8px;
-    background: rgba(139,92,246,0.2);
-    border: 1px solid rgba(139,92,246,0.4);
-    color: var(--violet-glow);
-    padding: 5px 12px; border-radius: 999px;
-    font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
-    margin-bottom: 14px;
-  }
-  .hero-eyebrow .pulse { width: 6px; height: 6px; background: var(--violet-glow); border-radius: 50%; animation: pulse 2s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:0.5;transform:scale(1.6);} }
-  .hero h1 { font-family: 'Fraunces', serif; font-size: 36px; font-weight: 600; letter-spacing: -0.035em; line-height: 1.05; margin-bottom: 10px; }
-  .hero h1 .accent { color: var(--violet-glow); font-style: italic; font-weight: 500; }
-  .hero-sub { color: rgba(255,255,255,0.7); font-size: 14.5px; font-weight: 500; max-width: 520px; line-height: 1.5; }
-  .hero-stats { display: flex; gap: 24px; }
-  .hero-stat { text-align: right; }
-  .hero-stat .label { color: rgba(255,255,255,0.5); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
-  .hero-stat .value { font-family: 'JetBrains Mono', monospace; color: white; font-size: 28px; font-weight: 800; margin-top: 4px; letter-spacing: -0.03em; }
-  .hero-stat .value.urgent { color: var(--gold-warm); }
-  
-  /* FILTER BAR */
-  .filter-bar {
-    background: var(--paper);
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    padding: 12px;
-    display: flex;
-    gap: 8px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-  .filter-btn {
-    padding: 8px 14px;
-    border-radius: 8px;
-    font-size: 12.5px;
-    font-weight: 700;
-    color: var(--text-mid);
-    background: transparent;
-    border: 1px solid var(--line);
-    transition: all 0.15s;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .filter-btn:hover { background: var(--line-soft); }
-  .filter-btn.active {
-    background: var(--ink-900);
-    color: white;
-    border-color: var(--ink-900);
-  }
-  .filter-btn .count {
-    background: rgba(255,255,255,0.15);
-    padding: 1px 6px;
-    border-radius: 6px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-  }
-  .filter-btn:not(.active) .count {
-    background: var(--line-soft);
-    color: var(--text-mid);
-  }
-  
-  /* CAMPAIGN CARDS */
-  .campaigns-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-  
-  .empty-state {
-    text-align: center;
-    padding: 80px 20px;
-    color: var(--text-mid);
-  }
-  .empty-state .icon { font-size: 56px; margin-bottom: 16px; opacity: 0.5; }
-  .empty-state .title { font-size: 20px; font-weight: 700; color: var(--ink-900); margin-bottom: 6px; font-family: 'Fraunces', serif; }
-  .empty-state .desc { font-size: 13px; max-width: 400px; margin: 0 auto; line-height: 1.5; }
-  
-  .campaign-card {
-    background: var(--paper);
-    border: 1px solid var(--line);
-    border-radius: 16px;
-    overflow: hidden;
-    transition: all 0.25s;
-    animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards;
-  }
-  @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-  .campaign-card:hover { box-shadow: var(--shadow-lg); border-color: var(--line-strong); }
-  
-  .campaign-head {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 18px 22px;
-    cursor: pointer;
-    border-bottom: 1px solid var(--line-soft);
-    background: linear-gradient(180deg, var(--paper), var(--canvas));
-  }
-  .priority-tag {
-    width: 6px;
-    align-self: stretch;
-    border-radius: 3px;
-    flex-shrink: 0;
-  }
-  .priority-tag.normal { background: var(--mint); }
-  .priority-tag.urgent { background: var(--orange); }
-  .priority-tag.vip { background: var(--violet); box-shadow: 0 0 12px rgba(139,92,246,0.5); }
-  
-  .campaign-info { flex: 1; min-width: 0; }
-  .campaign-info .code {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--violet);
-    margin-bottom: 3px;
-    letter-spacing: 0.02em;
-  }
-  .campaign-info .title {
-    font-size: 17px;
-    font-weight: 800;
-    color: var(--ink-900);
-    line-height: 1.2;
-    letter-spacing: -0.015em;
-  }
-  .campaign-info .meta {
-    display: flex;
-    gap: 14px;
-    margin-top: 6px;
-    font-size: 12px;
-    color: var(--text-mid);
-    font-weight: 500;
-    flex-wrap: wrap;
-  }
-  .campaign-info .meta span { display: inline-flex; align-items: center; gap: 4px; }
-  
-  .campaign-stats {
-    display: flex;
-    gap: 18px;
-    margin-right: 12px;
-  }
-  .campaign-stats .stat .l { font-size: 10px; color: var(--text-mid); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
-  .campaign-stats .stat .v { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 800; color: var(--ink-900); margin-top: 2px; letter-spacing: -0.02em; }
-  .campaign-stats .stat .v.urgent { color: var(--rose); }
-  .campaign-stats .stat .v.warn { color: var(--orange); }
-  
-  .status-badge {
-    padding: 6px 12px;
-    border-radius: 8px;
-    font-size: 11px;
-    font-weight: 800;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    white-space: nowrap;
-  }
-  .status-badge.pending {
-    background: linear-gradient(135deg, rgba(245,184,61,0.15), rgba(245,184,61,0.06));
-    color: var(--gold-deep);
-    border: 1px solid rgba(245,184,61,0.3);
-  }
-  .status-badge.locked {
-    background: linear-gradient(135deg, rgba(52,211,153,0.15), rgba(52,211,153,0.06));
-    color: #047857;
-    border: 1px solid rgba(52,211,153,0.3);
-  }
-  .status-badge.production {
-    background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(59,130,246,0.06));
-    color: #1d4ed8;
-    border: 1px solid rgba(59,130,246,0.3);
-  }
-  
-  .toggle { color: var(--text-dim); transition: transform 0.25s; margin-left: 10px; }
-  .campaign-head.collapsed .toggle { transform: rotate(-90deg); }
-  
-  .campaign-body {
-    padding: 22px;
-    background: var(--canvas);
-    border-top: 1px solid var(--line-soft);
-  }
-  .campaign-body.hidden { display: none; }
-  
-  /* Product assignment table */
-  .product-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  
-  .product-row {
-    background: var(--paper);
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    padding: 16px;
-  }
-  .product-row .head {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 12px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--line-soft);
-  }
-  .product-row .pic {
-    width: 40px; height: 40px;
-    border-radius: 10px;
-    background: var(--card-bg, rgba(0,212,210,0.12));
-    color: var(--card-color, var(--teal));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    flex-shrink: 0;
-  }
-  .product-row .info { flex: 1; }
-  .product-row .info .name { font-size: 14px; font-weight: 800; color: var(--ink-900); }
-  .product-row .info .meta { font-size: 11.5px; color: var(--text-mid); font-weight: 500; margin-top: 2px; display: flex; gap: 12px; flex-wrap: wrap; }
-  .product-row .qty-pill {
-    background: var(--ink-900);
-    color: white;
-    padding: 4px 10px;
-    border-radius: 8px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    font-weight: 800;
-  }
-  
-  .assignment-grid {
-    display: grid;
-    grid-template-columns: 2fr 2fr 1fr 1fr;
-    gap: 12px;
-    align-items: end;
-  }
-  .field { position: relative; }
-  .field label { display: block; font-size: 10.5px; font-weight: 700; color: var(--text-mid); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
-  .input {
-    width: 100%;
-    padding: 10px 12px;
-    font-size: 13px;
-    border: 1.5px solid var(--line);
-    border-radius: 9px;
-    background: var(--paper);
-    transition: all 0.15s;
-    font-weight: 500;
-  }
-  .input:focus { border-color: var(--violet); box-shadow: 0 0 0 3px rgba(139,92,246,0.1); }
-  .input.mono { font-family: 'JetBrains Mono', monospace; }
-  .select-wrap { position: relative; }
-  .select-wrap::after { content: '▾'; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--text-dim); pointer-events: none; }
-  .select-wrap select {
-    width: 100%; padding: 10px 32px 10px 12px;
-    font-size: 13px; font-weight: 500;
-    border: 1.5px solid var(--line); border-radius: 9px;
-    background: var(--paper); appearance: none; cursor: pointer;
-    transition: all 0.15s;
-  }
-  .select-wrap select:focus { border-color: var(--violet); box-shadow: 0 0 0 3px rgba(139,92,246,0.1); }
-  
-  /* TEAM SUGGESTIONS */
-  .team-suggestions {
-    margin-top: 8px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-  }
-  .team-pill {
-    background: var(--line-soft);
-    border: 1px solid var(--line);
-    color: var(--text-mid);
-    padding: 3px 8px;
-    border-radius: 6px;
-    font-size: 10.5px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.12s;
-  }
-  .team-pill:hover { background: var(--violet); color: white; border-color: var(--violet); }
-  
-  /* CITY ALLOCATION */
-  .city-allocation {
-    background: linear-gradient(135deg, var(--canvas), white);
-    border: 1px dashed var(--line-strong);
-    border-radius: 10px;
-    padding: 12px;
-    margin-top: 12px;
-  }
-  .city-allocation .title { font-size: 11px; font-weight: 700; color: var(--text-mid); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
-  .city-row {
-    display: grid;
-    grid-template-columns: 1fr 100px 1fr 1fr;
-    gap: 8px;
-    align-items: center;
-    padding: 6px 0;
-  }
-  .city-row .name { font-size: 12.5px; font-weight: 700; color: var(--ink-900); }
-  
-  /* CAMPAIGN ACTIONS */
-  .campaign-actions {
-    display: flex;
-    gap: 8px;
-    margin-top: 18px;
-    padding-top: 18px;
-    border-top: 1px solid var(--line);
-    justify-content: flex-end;
-    flex-wrap: wrap;
-  }
-  .ab-btn {
-    padding: 10px 16px;
-    border-radius: 10px;
-    font-size: 13px;
-    font-weight: 700;
-    transition: all 0.15s;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .ab-btn.ghost {
-    background: white;
-    color: var(--text-mid);
-    border: 1px solid var(--line);
-  }
-  .ab-btn.ghost:hover { background: var(--canvas); }
-  .ab-btn.primary {
-    background: linear-gradient(135deg, var(--violet), var(--violet-glow));
-    color: white;
-    box-shadow: 0 4px 14px rgba(139,92,246,0.35);
-  }
-  .ab-btn.primary:hover { box-shadow: 0 8px 22px rgba(139,92,246,0.5); transform: translateY(-1px); }
-  .ab-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  
-  /* TOAST */
-  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--ink-900); color: white; padding: 14px 20px; border-radius: 12px; font-size: 13px; font-weight: 700; box-shadow: var(--shadow-xl); z-index: 9999; opacity: 0; transform: translateY(20px); transition: all 0.3s; display: flex; align-items: center; gap: 10px; max-width: 400px; }
-  .toast.show { opacity: 1; transform: translateY(0); }
-  .toast.success { background: linear-gradient(135deg, var(--mint), #10b981); }
-  .toast.error { background: linear-gradient(135deg, var(--rose), #e11d48); }
-  
-  /* SPINNER */
-  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  
-  .loading {
-    text-align: center;
-    padding: 60px 20px;
-    color: var(--text-mid);
-  }
-  .loading .spinner { border-color: rgba(139,92,246,0.2); border-top-color: var(--violet); width: 32px; height: 32px; }
-  
-  @media (max-width: 1024px) {
-    .assignment-grid { grid-template-columns: repeat(2, 1fr); }
-    .city-row { grid-template-columns: 1fr 80px; grid-row-gap: 6px; }
-  }
-  @media (max-width: 768px) {
-    .sidebar { width: 64px; padding: 16px 8px; }
-    .sidebar .nav-item span:not(.new-pill):not(.nav-badge) { display: none; }
-    .sidebar .brand-text, .sidebar .nav-section-title, .sidebar-footer { display: none; }
-    .main { margin-left: 64px; }
-    .content { padding: 16px; }
-    .topbar { padding: 12px 16px; }
-    .hero h1 { font-size: 26px; }
-    .hero-content { flex-direction: column; gap: 16px; }
-    .assignment-grid { grid-template-columns: 1fr; }
-    .campaign-head { flex-wrap: wrap; }
-    .campaign-stats { width: 100%; margin-top: 8px; }
-  }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+:root{
+  --navy:#0B1957;--navy-deep:#050B2E;
+  --gold:#B89B4E;--gold-bright:#D4B45F;--gold-deep:#8B7430;--gold-soft:#F4E4B0;
+  --cream:#FAF8F3;--paper:#F7F4EC;--rule:#E5E0D2;
+  --ink-950:#0F172A;--ink-700:#475569;--text-dim:#94A3B8;
+  --success:#047857;--success-bg:#D1FAE5;
+  --warn:#C2410C;--warn-bg:#FED7AA;
+  --danger:#BE123C;--danger-bg:#FECACA;
+  --info:#1E40AF;--info-bg:#DBEAFE;
+  --purple:#7C3AED;--purple-bg:#EDE9FE;
+}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--cream);color:var(--ink-950);font-size:14px;line-height:1.5;min-height:100vh}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+a{color:inherit;text-decoration:none}
+
+.topbar{background:var(--navy);color:#fff;padding:14px 32px;border-bottom:3px solid var(--gold);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.tb-brand{display:flex;align-items:center;gap:12px}
+.tb-logo{width:36px;height:36px;background:var(--gold);color:var(--navy);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:700;font-size:20px}
+.tb-name{font-size:14px;font-weight:700}
+.tb-tag{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--gold-bright);letter-spacing:0.16em;text-transform:uppercase;margin-top:2px}
+.tb-user{display:flex;align-items:center;gap:10px;padding:4px 14px 4px 4px;background:rgba(255,255,255,0.08);border:1px solid rgba(212,180,95,0.3);border-radius:999px}
+.tb-ava{width:30px;height:30px;border-radius:50%;background:var(--gold);color:var(--navy);display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-style:italic;font-weight:700;font-size:14px}
+.tb-info .name{font-size:12px;font-weight:700;line-height:1.1}
+.tb-info .role{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--gold-bright);letter-spacing:0.14em;text-transform:uppercase}
+
+.main{padding:28px;max-width:1280px;margin:0 auto;padding-bottom:120px}
+
+.page-head{margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between}
+.page-title{font-family:'Fraunces',serif;font-size:26px;font-weight:500;color:var(--navy);letter-spacing:-0.02em}
+.page-title em{color:var(--gold);font-style:italic}
+.page-sub{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:0.12em;text-transform:uppercase;margin-top:4px}
+
+.section{background:#fff;border:1px solid var(--rule);border-radius:10px;margin-bottom:18px;overflow:hidden}
+.section-head{padding:14px 20px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg, var(--paper), #fff)}
+.section-title{font-family:'Fraunces',serif;font-size:15px;font-weight:600;color:var(--navy);letter-spacing:-0.01em}
+.section-title em{color:var(--gold);font-style:italic}
+.section-meta{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--gold-deep);letter-spacing:0.14em;text-transform:uppercase}
+.section-body{padding:18px 20px}
+
+/* Campaign list cards */
+.campaign-card{background:#fff;border:1px solid var(--rule);border-radius:10px;padding:14px 18px;margin-bottom:10px;display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;cursor:pointer;transition:all 0.15s}
+.campaign-card:hover{border-color:var(--gold);transform:translateY(-1px);box-shadow:0 4px 14px rgba(184,155,78,0.15)}
+.campaign-card.urgent{border-left:4px solid var(--danger);background:linear-gradient(90deg, var(--danger-bg) 0%, #fff 20%)}
+.cc-icon{font-size:28px;width:42px;height:42px;background:var(--gold-soft);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.cc-name{font-family:'Fraunces',serif;font-size:16px;font-weight:600;color:var(--navy);margin-bottom:4px}
+.cc-meta{display:flex;gap:14px;font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--text-dim);letter-spacing:0.06em;flex-wrap:wrap}
+.cc-meta strong{color:var(--gold-deep)}
+.cc-urgent-flag{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:var(--danger);color:#fff;border-radius:999px;font-size:9px;font-weight:700;letter-spacing:0.08em;margin-right:8px}
+
+/* Detail view */
+.back-link{display:inline-flex;align-items:center;gap:6px;color:var(--gold-deep);font-size:12px;font-weight:600;margin-bottom:14px;cursor:pointer}
+.back-link:hover{color:var(--navy)}
+
+.detail-head{background:linear-gradient(135deg, var(--navy), var(--navy-deep));color:#fff;padding:20px 24px;border-radius:10px;margin-bottom:16px;border:1px solid var(--gold)}
+.dh-top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+.dh-name{font-family:'Fraunces',serif;font-size:22px;font-weight:500;color:#fff;letter-spacing:-0.02em}
+.dh-meta{display:flex;gap:20px;font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--gold-bright);letter-spacing:0.1em;text-transform:uppercase;flex-wrap:wrap}
+.dh-meta div{display:flex;align-items:center;gap:6px}
+.dh-stats{display:grid;grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid rgba(212,180,95,0.3)}
+.dh-stat{text-align:center}
+.dh-stat-val{font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--gold-bright);line-height:1}
+.dh-stat-lbl{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:#cbd5e1;letter-spacing:0.14em;text-transform:uppercase;margin-top:4px}
+
+/* Designs table */
+.dtable{width:100%;border-collapse:collapse;font-size:13px}
+.dtable th{background:var(--paper);color:var(--navy);padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-align:left;border-bottom:2px solid var(--rule)}
+.dtable td{padding:14px 12px;border-bottom:1px solid var(--rule);vertical-align:top}
+.dtable tr:hover td{background:var(--cream)}
+.dtable .num-badge{display:inline-block;padding:2px 8px;background:var(--gold);color:var(--navy);border-radius:999px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700}
+.dtable .design-cell strong{font-weight:700;color:var(--navy)}
+.dtable .loc-cell .name{font-size:12.5px;font-weight:600;color:var(--navy);display:flex;align-items:center;gap:6px}
+.dtable .loc-cell .detail{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-dim);letter-spacing:0.06em;margin-top:2px}
+.dtable .qty-cell{font-family:'Fraunces',serif;font-size:18px;font-weight:600;color:var(--navy)}
+.dtable .file-cell{display:flex;align-items:center;gap:6px}
+.dtable .file-icon-sm{font-size:18px}
+.dtable .file-name-sm{font-size:11px;font-weight:600}
+.dtable .file-meta-sm{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-dim)}
+
+.status-pill{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:999px;font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase}
+.status-pill.todo{background:#f3f4f6;color:#6b7280}
+.status-pill.progress{background:var(--info-bg);color:var(--info)}
+.status-pill.done{background:var(--success-bg);color:var(--success)}
+.status-pill.skip{background:#f3f4f6;color:#9ca3af;text-decoration:line-through}
+
+/* Assignment rows */
+.assign-grid{display:grid;grid-template-columns:1fr;gap:12px}
+.assign-row{display:grid;grid-template-columns:150px 1fr 120px;gap:14px;padding:14px;background:var(--cream);border:1px solid var(--rule);border-radius:10px;align-items:center}
+.assign-row.required{border-left:3px solid var(--gold)}
+.assign-row.skip{border-left:3px solid var(--rule);opacity:0.5}
+.assign-stage{display:flex;align-items:center;gap:8px}
+.assign-icon{width:36px;height:36px;border-radius:8px;background:var(--navy);color:var(--gold);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.assign-name{font-size:13px;font-weight:700;color:var(--navy)}
+.assign-status{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--gold-deep);letter-spacing:0.1em;text-transform:uppercase;margin-top:2px}
+.assign-due input{padding:8px 10px;border:1px solid var(--rule);background:#fff;font-family:inherit;font-size:12px;border-radius:6px;width:100%}
+
+/* Searchable dropdown */
+.search-select{position:relative}
+.ss-trigger{padding:10px 12px;border:1px solid var(--rule);background:#fff;font-size:13px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;min-height:44px}
+.ss-trigger:hover{border-color:var(--gold)}
+.ss-placeholder{color:var(--text-dim);display:flex;align-items:center;gap:8px}
+.ss-selected{display:flex;align-items:center;gap:8px}
+.ss-ava{width:24px;height:24px;border-radius:50%;background:var(--gold);color:var(--navy);display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-style:italic;font-weight:700;font-size:11px;flex-shrink:0}
+.ss-info{min-width:0}
+.ss-info .name{font-size:13px;font-weight:600;line-height:1.1}
+.ss-info .meta{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-dim);letter-spacing:0.06em;margin-top:1px}
+.ss-chev{color:var(--text-dim);font-size:11px;flex-shrink:0}
+.ss-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:50;background:#fff;border:1px solid var(--gold);border-radius:8px;box-shadow:0 12px 40px rgba(11,25,87,0.25);max-height:320px;display:none;flex-direction:column}
+.ss-dropdown.open{display:flex}
+.ss-search{padding:10px 12px;border:none;border-bottom:1px solid var(--rule);background:transparent;font-size:13px;outline:none;font-family:inherit}
+.ss-options{flex:1;overflow-y:auto;max-height:260px}
+.ss-option{padding:9px 12px;cursor:pointer;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--cream)}
+.ss-option:hover{background:var(--cream)}
+.ss-option .ava{width:28px;height:28px;border-radius:50%;background:var(--gold-soft);color:var(--gold-deep);display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-style:italic;font-weight:700;font-size:12px;flex-shrink:0}
+.ss-option .info{flex:1;min-width:0}
+.ss-option .name{font-size:12.5px;font-weight:600;color:var(--navy)}
+.ss-option .meta{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--text-dim);letter-spacing:0.06em}
+.ss-option .tag{font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;background:var(--info-bg);color:var(--info);padding:2px 6px;border-radius:3px;letter-spacing:0.06em}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.15s}
+.btn:hover{transform:translateY(-1px)}
+.btn-primary{background:var(--navy);color:#fff}
+.btn-gold{background:var(--gold);color:var(--navy)}
+.btn-success{background:var(--success);color:#fff}
+.btn-secondary{background:#fff;color:var(--navy);border:1px solid var(--rule)}
+.btn.sm{padding:6px 10px;font-size:10px}
+.btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+
+.callout{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:12px}
+.callout.info{background:var(--info-bg);color:var(--info)}
+.callout.success{background:var(--success-bg);color:var(--success)}
+.callout.warn{background:var(--warn-bg);color:var(--warn)}
+.callout.error{background:var(--danger-bg);color:var(--danger)}
+
+.action-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--rule);padding:14px 32px;display:flex;justify-content:flex-end;gap:10px;align-items:center;box-shadow:0 -4px 12px rgba(0,0,0,0.05);z-index:50}
+.action-bar .left{margin-right:auto;font-size:12px;color:var(--text-dim)}
+.action-bar .left strong{color:var(--navy)}
+
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--cream);border-radius:8px;margin-bottom:8px;gap:14px}
+.toggle-info{flex:1}
+.toggle-label{font-size:13px;font-weight:600;color:var(--navy)}
+.toggle-hint{font-size:11px;color:var(--text-dim);margin-top:2px}
+.toggle-switch{width:38px;height:22px;background:var(--rule);border-radius:999px;position:relative;cursor:pointer;transition:background 0.15s;flex-shrink:0}
+.toggle-switch::after{content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;border-radius:50%;transition:transform 0.15s;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
+.toggle-switch.on{background:var(--gold)}
+.toggle-switch.on::after{transform:translateX(16px)}
+
+.spin{width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty-state{text-align:center;padding:40px 20px;color:var(--text-dim);font-size:13px}
+
+.tab-bar{display:flex;gap:4px;margin-bottom:18px;border-bottom:1px solid var(--rule);padding-bottom:0}
+.tab{padding:10px 18px;border-bottom:3px solid transparent;font-size:12px;font-weight:600;color:var(--text-dim);cursor:pointer;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:0.08em}
+.tab.active{color:var(--navy);border-bottom-color:var(--gold)}
+.tab .count{display:inline-block;background:var(--gold-soft);color:var(--gold-deep);padding:1px 7px;border-radius:999px;font-size:9.5px;margin-left:6px}
+
+@media (max-width:768px){
+  .main{padding:16px;padding-bottom:130px}
+  .campaign-card{grid-template-columns:auto 1fr;gap:10px}
+  .campaign-card > div:last-child{grid-column:1/-1}
+  .assign-row{grid-template-columns:1fr;gap:10px}
+  .action-bar{padding:12px 16px;flex-wrap:wrap}
+  .dtable{font-size:11px}
+  .dtable th,.dtable td{padding:8px 6px}
+}
 </style>
 </head>
 <body>
 
-<!-- LOGIN -->
-<div class="login-bg" id="loginScreen">
-  <div class="login-card">
-    <div class="login-logo">⚙️</div>
-    <h1>Operations Plan</h1>
-    <p class="sub">Operations Manager / Admin access</p>
-    
-    <div class="field-group">
-      <label>Phone Number</label>
-      <input type="tel" id="loginPhone" class="login-input mono" placeholder="10-digit phone" maxlength="10">
+<div class="topbar">
+  <div class="tb-brand">
+    <div class="tb-logo">P</div>
+    <div>
+      <div class="tb-name">Prajapati Advertising</div>
+      <div class="tb-tag">Execution Plan · v2.0 · Operations</div>
     </div>
-    
-    <button class="login-btn" onclick="doLogin()" id="loginBtn">
-      Access Operations Console →
-    </button>
-    
-    <div class="err-banner" id="loginErr"></div>
-    
-    <div style="margin-top:24px; padding-top:20px; border-top:1px solid var(--line); text-align:center; font-size:11px; color:var(--text-dim);">
-      Operations Manager · Plan execution & assign teams
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <a href="/owner.html" class="btn btn-secondary sm">← Owner</a>
+    <div class="tb-user">
+      <div class="tb-ava" id="tbAva">?</div>
+      <div class="tb-info"><div class="name" id="tbName">…</div><div class="role" id="tbRole">…</div></div>
     </div>
   </div>
 </div>
 
-<!-- APP -->
-<div class="app" id="mainApp">
+<div class="main">
   
-  <aside class="sidebar">
-    <div class="brand">
-      <div class="brand-logo">⚙</div>
-      <div class="brand-text">
-        <div class="name">Operations</div>
-        <div class="sub">Plan & Assign</div>
+  <!-- LIST VIEW -->
+  <div id="listView">
+    <div class="page-head">
+      <div>
+        <div class="page-title">Execution <em>Plan</em></div>
+        <div class="page-sub">Operations · Team assignment for pending campaigns</div>
       </div>
     </div>
     
-    <div class="nav-section">
-      <div class="nav-section-title">Workspace</div>
-      <a class="nav-item" href="dashboard.html">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        <span>Dashboard</span>
-      </a>
-      <a class="nav-item" href="launch-campaign.html">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4l3 14M19 4l-3 14M3 8h18M3 16h18"/></svg>
-        <span>Launch Campaign</span>
-      </a>
+    <div class="tab-bar">
+      <div class="tab active" data-tab="pending" onclick="switchTab('pending')">Pending Plan <span class="count" id="cntPending">0</span></div>
+      <div class="tab" data-tab="locked" onclick="switchTab('locked')">Plan Locked <span class="count" id="cntLocked">0</span></div>
+      <div class="tab" data-tab="production" onclick="switchTab('production')">In Production <span class="count" id="cntProd">0</span></div>
     </div>
     
-    <div class="nav-section">
-      <div class="nav-section-title">Operations</div>
-      <div class="nav-item active">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-        <span>Execution Plan</span>
-        <span class="new-pill">NEW</span>
-      </div>
-      <a class="nav-item" href="execution-entry.html">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.39 0 4.68.94 6.36 2.64"/></svg>
-        <span>Daily Entry</span>
-      </a>
-      <a class="nav-item" href="rates-master.html">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 100 4h4a2 2 0 110 4H8M12 18V6"/></svg>
-        <span>Rates Master</span>
-      </a>
+    <div id="campaignsList">
+      <div class="empty-state">Loading campaigns…</div>
     </div>
-    
-    <div class="nav-section">
-      <div class="nav-section-title">Production</div>
-      <a class="nav-item" href="printing.html">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"/></svg>
-        <span>Printing</span>
-      </a>
-      <a class="nav-item" href="stitching.html">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/></svg>
-        <span>Stitching</span>
-      </a>
-      <a class="nav-item" href="delivery.html">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-        <span>Delivery</span>
-      </a>
-    </div>
-    
-    <div class="sidebar-footer">
-      <div class="user">
-        <div class="avatar" id="userAvatar">?</div>
-        <div class="info">
-          <div class="name" id="userName">—</div>
-          <div class="role" id="userRole">—</div>
-        </div>
-        <button onclick="doLogout()" title="Logout">↩</button>
-      </div>
-    </div>
-  </aside>
+  </div>
   
-  <main class="main">
-    <header class="topbar">
-      <div class="breadcrumb">
-        <span>Operations</span>
-        <span class="sep">/</span>
-        <span class="current">Execution Plan</span>
-      </div>
-      <div class="top-actions">
-        <div class="user-chip">
-          <div class="avatar" id="userAvatar2">?</div>
-          <span class="name" id="userName2">—</span>
-        </div>
-      </div>
-    </header>
-    
-    <div class="content">
-      
-      <!-- HERO -->
-      <section class="hero">
-        <div class="hero-content">
-          <div>
-            <div class="hero-eyebrow">
-              <span class="pulse"></span>
-              OPERATIONS CONSOLE
-            </div>
-            <h1>Plan <span class="accent">execution</span> for sales campaigns</h1>
-            <p class="hero-sub">Assign team leads, schedule execution dates per city, allocate quantities — bring sales campaigns into production.</p>
-          </div>
-          <div class="hero-stats">
-            <div class="hero-stat">
-              <div class="label">Pending</div>
-              <div class="value urgent" id="statPending">0</div>
-            </div>
-            <div class="hero-stat">
-              <div class="label">In Plan</div>
-              <div class="value" id="statLocked">0</div>
-            </div>
-          </div>
-        </div>
-      </section>
-      
-      <!-- FILTER BAR -->
-      <div class="filter-bar">
-        <button class="filter-btn active" data-filter="pending_execution_plan" onclick="setFilter(this)">
-          ⏳ Pending Plan <span class="count" id="cntPending">0</span>
-        </button>
-        <button class="filter-btn" data-filter="plan_locked" onclick="setFilter(this)">
-          ✓ Plan Locked <span class="count" id="cntLocked">0</span>
-        </button>
-        <button class="filter-btn" data-filter="in_production" onclick="setFilter(this)">
-          🏭 In Production <span class="count" id="cntProduction">0</span>
-        </button>
-        <button class="filter-btn" data-filter="all" onclick="setFilter(this)">
-          📋 All <span class="count" id="cntAll">0</span>
-        </button>
-        
-        <button class="filter-btn" style="margin-left:auto;" onclick="loadCampaigns()">
-          🔄 Refresh
-        </button>
-      </div>
-      
-      <!-- CAMPAIGNS -->
-      <div id="campaignsContainer">
-        <div class="loading">
-          <div class="spinner"></div>
-          <div style="margin-top:14px;font-weight:600;">Loading campaigns...</div>
-        </div>
-      </div>
-      
-    </div>
-  </main>
+  <!-- DETAIL VIEW -->
+  <div id="detailView" style="display:none">
+    <div class="back-link" onclick="showList()">← Back to list</div>
+    <div id="detailContent"></div>
+  </div>
+  
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="action-bar" id="actionBar" style="display:none">
+  <div class="left" id="actionLeft">Loading…</div>
+  <button class="btn btn-secondary" onclick="generateJobCards()">📄 Job Cards (PDF)</button>
+  <button class="btn btn-gold" id="lockBtn" onclick="lockPlan()">🔒 Approve & Lock Plan</button>
+</div>
+
+<script src="/lib/access-guard.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 
 <script>
-"use strict";
+AccessGuard.protect({
+  redirectTo: '/login.html',
+  allowedRoles: ['owner', 'admin', 'operations_manager', 'ops_manager']
+});
 
-const CONFIG = {
-  url: 'https://fpbktcgtspqsqpaytslv.supabase.co',
-  key: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j'
-};
+const user = AccessGuard.getUser();
+const SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const PRODUCT_CONFIGS = {
-  auto_hood: { name: 'Auto Hood', icon: '🛺', color: '#3B82F6', bg: 'rgba(59,130,246,0.12)' },
-  back_panel: { name: 'Back Panel', icon: '🚖', color: '#8B5CF6', bg: 'rgba(139,92,246,0.12)' },
-  no_parking: { name: 'No Parking', icon: '🚫', color: '#F97316', bg: 'rgba(249,115,22,0.12)' },
-  flex: { name: 'Flex', icon: '📐', color: '#34D399', bg: 'rgba(52,211,153,0.12)' },
-  vinyl: { name: 'Vinyl', icon: '🎨', color: '#F5B83D', bg: 'rgba(245,184,61,0.15)' },
-  wall_wrap: { name: 'Wall Wrap', icon: '🏢', color: '#FF5470', bg: 'rgba(255,84,112,0.12)' }
-};
+let currentTab = 'pending';
+let campaigns = { pending: [], locked: [], production: [] };
+let currentCampaign = null;
+let currentDesigns = [];
+let teamByRole = {};  // {printing: [...], stitching: [...], field: [...], delivery: [...]}
+let assignments = {};  // {stage: {member_id, due_date}}
 
-// Known team leads (with phone). Sourced from execution rates master.
-const KNOWN_TEAMS = [
-  { name: 'Mubarak', phone: '' },
-  { name: 'Sajan', phone: '' },
-  { name: 'Hanumant', phone: '' },
-  { name: 'Nagesh', phone: '' },
-  { name: 'Sachin', phone: '' },
-  { name: 'Ganpat', phone: '' },
-  { name: 'Abbas', phone: '' },
-  { name: 'Anand', phone: '' }
-];
-
-const state = {
-  admin: null,
-  campaigns: [],
-  currentFilter: 'pending_execution_plan',
-  saving: {}
-};
-
-function esc(s) {
-  if (s == null) return '';
-  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-function inr(n) {
-  if (!n || isNaN(n)) return '₹0';
-  return '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 });
-}
-
-function inrShort(n) {
-  if (!n || isNaN(n)) return '₹0';
-  const num = Number(n);
-  if (num >= 100000) return '₹' + (num / 100000).toFixed(2) + 'L';
-  if (num >= 1000) return '₹' + (num / 1000).toFixed(1) + 'k';
-  return '₹' + num.toLocaleString('en-IN', { maximumFractionDigits: 0 });
-}
-
-function getInitials(name) {
-  if (!name) return '?';
-  return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
-}
-
-function showToast(msg, type) {
-  const t = document.getElementById('toast');
-  const icon = type === 'success' ? '✓' : type === 'error' ? '⚠' : '💡';
-  t.innerHTML = `<span style="font-size:15px;">${icon}</span><span>${esc(msg)}</span>`;
-  t.className = 'toast show ' + (type || '');
-  setTimeout(() => t.classList.remove('show'), 3000);
-}
-
-async function api(path, options = {}) {
-  options.headers = options.headers || {};
-  options.headers.apikey = CONFIG.key;
-  options.headers.Authorization = 'Bearer ' + CONFIG.key;
-  const res = await fetch(CONFIG.url + path, options);
-  const txt = await res.text();
-  if (!res.ok) throw new Error('API ' + res.status + ': ' + txt);
-  if (!txt) return null;
-  try { return JSON.parse(txt); } catch { return txt; }
-}
-
-// LOGIN
-async function doLogin() {
-  const phone = document.getElementById('loginPhone').value.trim();
-  const errEl = document.getElementById('loginErr');
-  const btn = document.getElementById('loginBtn');
-  errEl.classList.remove('show');
+async function init() {
+  const initial = (user.name || '?').charAt(0).toUpperCase();
+  document.getElementById('tbAva').textContent = initial;
+  document.getElementById('tbName').textContent = user.name || 'User';
+  document.getElementById('tbRole').textContent = (user.role || 'user').replace(/_/g, ' ');
   
-  if (phone.length !== 10) {
-    errEl.textContent = '10 digit phone daalo';
-    errEl.classList.add('show');
-    return;
-  }
+  await loadTeam();
   
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Checking...';
+  // Check if specific campaign in URL
+  const urlParams = new URLSearchParams(location.search);
+  const campId = urlParams.get('campaign');
   
-  try {
-    const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
-    if (!members || members.length === 0) {
-      errEl.textContent = 'Number registered nahi';
-      errEl.classList.add('show');
-      btn.disabled = false;
-      btn.innerHTML = 'Access Operations Console →';
-      return;
-    }
-    const m = members[0];
-    const role = (m.role || '').toLowerCase();
-    if (!['admin', 'owner', 'operations', 'operations_manager'].includes(role)) {
-      errEl.textContent = 'Sirf Admin/Owner/Operations role ke liye';
-      errEl.classList.add('show');
-      btn.disabled = false;
-      btn.innerHTML = 'Access Operations Console →';
-      return;
-    }
-    
-    state.admin = m;
-    localStorage.setItem('prajapati_admin_phone', phone);
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('mainApp').classList.add('active');
-    initApp();
-  } catch (err) {
-    errEl.textContent = 'Login error: ' + err.message;
-    errEl.classList.add('show');
-    btn.disabled = false;
-    btn.innerHTML = 'Access Operations Console →';
+  if (campId) {
+    await openCampaign(campId);
+  } else {
+    await loadCampaigns();
   }
 }
 
-async function autoLogin() {
-  const phone = localStorage.getItem('prajapati_admin_phone');
-  if (!phone) return false;
-  try {
-    const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
-    if (!members || members.length === 0) return false;
-    const m = members[0];
-    if (!['admin', 'owner', 'operations', 'operations_manager'].includes((m.role || '').toLowerCase())) return false;
-    state.admin = m;
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('mainApp').classList.add('active');
-    initApp();
-    return true;
-  } catch (e) { return false; }
-}
-
-function doLogout() {
-  if (!confirm('Logout?')) return;
-  localStorage.removeItem('prajapati_admin_phone');
-  location.reload();
-}
-
-function initApp() {
-  const initials = getInitials(state.admin.name);
-  document.getElementById('userAvatar').textContent = initials;
-  document.getElementById('userAvatar2').textContent = initials;
-  document.getElementById('userName').textContent = state.admin.name;
-  document.getElementById('userName2').textContent = state.admin.name.split(' ')[0];
-  document.getElementById('userRole').textContent = (state.admin.role || '').toUpperCase();
+async function loadTeam() {
+  const { data } = await db.from('trial_team_members')
+    .select('id, name, phone, role, departments, hr_role, active')
+    .eq('active', true)
+    .order('name');
   
-  loadCampaigns();
+  const all = data || [];
+  teamByRole.printing = all.filter(m => ['printing', 'printer', 'admin', 'owner'].includes(String(m.role || '').toLowerCase()) || (m.departments || []).includes('printing'));
+  teamByRole.stitching = all.filter(m => ['stitching', 'tailor', 'admin', 'owner'].includes(String(m.role || '').toLowerCase()) || (m.departments || []).includes('stitching'));
+  teamByRole.field_execution = all.filter(m => ['field', 'field_worker', 'admin', 'owner'].includes(String(m.role || '').toLowerCase()) || (m.departments || []).includes('field'));
+  teamByRole.delivery = all.filter(m => ['delivery', 'driver', 'admin', 'owner'].includes(String(m.role || '').toLowerCase()) || (m.departments || []).includes('delivery'));
+  teamByRole.all = all;
 }
 
 async function loadCampaigns() {
-  document.getElementById('campaignsContainer').innerHTML = '<div class="loading"><div class="spinner"></div><div style="margin-top:14px;font-weight:600;">Loading campaigns...</div></div>';
+  const { data } = await db.from('trial_campaigns')
+    .select('*, job_type:trial_campaign_job_types(name, code, icon, requires_printing, requires_stitching, requires_field_execution, requires_delivery), sales:sales_member_id(name, phone)')
+    .in('status', ['pending_execution_plan', 'plan_locked', 'in_production'])
+    .order('is_urgent', { ascending: false })
+    .order('created_at', { ascending: false });
   
-  try {
-    // Fetch campaigns
-    const camps = await api('/rest/v1/prajapati_campaigns_v2?status=in.(pending_execution_plan,plan_locked,in_production)&select=*&order=priority.asc,deadline.asc,created_at.desc');
-    
-    // Fetch all products for these campaigns
-    if (camps && camps.length > 0) {
-      const ids = camps.map(c => c.id).join(',');
-      const products = await api(`/rest/v1/prajapati_campaign_products?campaign_id=in.(${ids})&select=*&order=display_order.asc`);
-      
-      camps.forEach(c => {
-        c.products = (products || []).filter(p => p.campaign_id === c.id);
-      });
-    }
-    
-    state.campaigns = camps || [];
-    
-    // Update counts
-    const pendingCount = state.campaigns.filter(c => c.status === 'pending_execution_plan').length;
-    const lockedCount = state.campaigns.filter(c => c.status === 'plan_locked').length;
-    const productionCount = state.campaigns.filter(c => c.status === 'in_production').length;
-    
-    document.getElementById('statPending').textContent = pendingCount;
-    document.getElementById('statLocked').textContent = lockedCount;
-    document.getElementById('cntPending').textContent = pendingCount;
-    document.getElementById('cntLocked').textContent = lockedCount;
-    document.getElementById('cntProduction').textContent = productionCount;
-    document.getElementById('cntAll').textContent = state.campaigns.length;
-    
-    renderCampaigns();
-  } catch (err) {
-    console.error('Load campaigns:', err);
-    let msg = err.message;
-    if (msg.includes('check constraint') || msg.includes('pending_execution_plan')) {
-      msg = '⚠️ Schema needs update! Run 06_STATUS_FLOW_UPDATE.sql in Supabase first.';
-    }
-    document.getElementById('campaignsContainer').innerHTML = `
-      <div class="empty-state">
-        <div class="icon">⚠️</div>
-        <div class="title">Cannot load campaigns</div>
-        <div class="desc">${esc(msg)}</div>
-      </div>
-    `;
-  }
+  campaigns.pending = (data || []).filter(c => c.status === 'pending_execution_plan');
+  campaigns.locked = (data || []).filter(c => c.status === 'plan_locked');
+  campaigns.production = (data || []).filter(c => c.status === 'in_production');
+  
+  document.getElementById('cntPending').textContent = campaigns.pending.length;
+  document.getElementById('cntLocked').textContent = campaigns.locked.length;
+  document.getElementById('cntProd').textContent = campaigns.production.length;
+  
+  renderCampaigns();
 }
 
-function setFilter(btn) {
-  document.querySelectorAll('.filter-btn[data-filter]').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  state.currentFilter = btn.dataset.filter;
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
   renderCampaigns();
 }
 
 function renderCampaigns() {
-  const container = document.getElementById('campaignsContainer');
+  const list = campaigns[currentTab] || [];
+  const el = document.getElementById('campaignsList');
   
-  let filtered = state.campaigns;
-  if (state.currentFilter !== 'all') {
-    filtered = state.campaigns.filter(c => c.status === state.currentFilter);
-  }
-  
-  if (filtered.length === 0) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <div class="icon">📭</div>
-        <div class="title">No campaigns in this stage</div>
-        <div class="desc">When Sales sends campaigns to Operations, they appear here. Switch tabs above to see other stages.</div>
-      </div>
-    `;
+  if (!list.length) {
+    el.innerHTML = `<div class="empty-state">No campaigns in this state</div>`;
     return;
   }
   
-  container.innerHTML = '<div class="campaigns-grid">' + filtered.map(c => renderCampaignCard(c)).join('') + '</div>';
-  
-  // Wire up city allocation calculation
-  document.querySelectorAll('.city-qty-input').forEach(inp => {
-    inp.addEventListener('input', () => updateCityTotal(inp.dataset.productId));
-  });
+  el.innerHTML = list.map(c => {
+    const jt = c.job_type || {};
+    const sales = c.sales || {};
+    const date = new Date(c.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', timeZone: 'Asia/Kolkata' });
+    
+    return `
+      <div class="campaign-card ${c.is_urgent ? 'urgent' : ''}" onclick="openCampaign('${c.id}')">
+        <div class="cc-icon">${jt.icon || '📦'}</div>
+        <div>
+          <div class="cc-name">
+            ${c.is_urgent ? '<span class="cc-urgent-flag">🚨 URGENT</span>' : ''}
+            ${escapeHtml(c.campaign_name)}
+          </div>
+          <div class="cc-meta">
+            <span>📋 <strong>${escapeHtml(jt.name || 'Unknown')}</strong></span>
+            <span>👤 ${escapeHtml(c.client_name || 'No client')}</span>
+            <span>🧑‍💼 ${escapeHtml(sales.name || 'Self-sale')}</span>
+            <span>📅 ${date}</span>
+            ${c.total_quantity ? `<span>📦 <strong>${c.total_quantity.toLocaleString('en-IN')}</strong> units</span>` : ''}
+            ${c.total_locations ? `<span>📍 <strong>${c.total_locations}</strong> cities</span>` : ''}
+          </div>
+        </div>
+        <div style="text-align:right">
+          <button class="btn btn-gold sm">Open →</button>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
-function renderCampaignCard(c) {
-  const statusBadge = {
-    pending_execution_plan: '<span class="status-badge pending">⏳ Pending Plan</span>',
-    plan_locked: '<span class="status-badge locked">✓ Plan Locked</span>',
-    in_production: '<span class="status-badge production">🏭 In Production</span>'
-  }[c.status] || '';
+async function openCampaign(id) {
+  document.getElementById('listView').style.display = 'none';
+  document.getElementById('detailView').style.display = 'block';
+  document.getElementById('actionBar').style.display = 'flex';
+  document.getElementById('detailContent').innerHTML = '<div class="empty-state">Loading campaign…</div>';
   
-  const daysLeft = c.deadline ? Math.ceil((new Date(c.deadline) - new Date()) / (1000 * 60 * 60 * 24)) : null;
-  const daysClass = daysLeft !== null && daysLeft <= 7 ? 'urgent' : daysLeft <= 14 ? 'warn' : '';
-  
-  const totalQty = (c.products || []).reduce((s, p) => s + (p.quantity || 0), 0);
-  
-  return `
-    <div class="campaign-card" data-id="${c.id}">
-      <div class="campaign-head collapsed" onclick="toggleCampaign(this)">
-        <div class="priority-tag ${c.priority || 'normal'}"></div>
-        <div class="campaign-info">
-          <div class="code">${esc(c.campaign_code || 'CMP-?')}</div>
-          <div class="title">${esc(c.name)}</div>
-          <div class="meta">
-            <span>👤 ${esc(c.client_name)}</span>
-            ${c.brand_name ? `<span>🏷 ${esc(c.brand_name)}</span>` : ''}
-            <span>📍 ${esc(c.primary_city || '—')}</span>
-            <span>📦 ${(c.products || []).length} product${(c.products || []).length !== 1 ? 's' : ''}</span>
-          </div>
-        </div>
-        <div class="campaign-stats">
-          <div class="stat">
-            <div class="l">Value</div>
-            <div class="v">${inrShort(c.total_amount || c.subtotal || 0)}</div>
-          </div>
-          <div class="stat">
-            <div class="l">Quantity</div>
-            <div class="v">${totalQty.toLocaleString('en-IN')}</div>
-          </div>
-          ${daysLeft !== null ? `
-          <div class="stat">
-            <div class="l">Deadline</div>
-            <div class="v ${daysClass}">${daysLeft < 0 ? 'Overdue' : daysLeft + 'd'}</div>
-          </div>` : ''}
-        </div>
-        ${statusBadge}
-        <svg class="toggle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+  try {
+    const { data: camp, error } = await db.from('trial_campaigns')
+      .select('*, job_type:trial_campaign_job_types(*), sales:sales_member_id(name, phone)')
+      .eq('id', id)
+      .single();
+    
+    if (error) throw error;
+    currentCampaign = camp;
+    
+    const { data: designs } = await db.from('trial_campaign_designs')
+      .select('*')
+      .eq('campaign_id', id)
+      .order('sort_order');
+    
+    currentDesigns = designs || [];
+    
+    // Load existing assignments
+    const { data: existing } = await db.from('trial_campaign_assignments')
+      .select('*, member:assigned_to(name, phone)')
+      .eq('campaign_id', id)
+      .is('design_id', null);
+    
+    assignments = {};
+    (existing || []).forEach(a => {
+      assignments[a.stage] = {
+        member_id: a.assigned_to,
+        member: a.member,
+        due_date: a.due_date,
+        existing_id: a.id
+      };
+    });
+    
+    renderDetail();
+  } catch(e) {
+    document.getElementById('detailContent').innerHTML = `
+      <div class="callout error">
+        <span>❌</span>
+        <div>Failed to load: ${escapeHtml(e.message || String(e))}</div>
       </div>
-      
-      <div class="campaign-body hidden">
-        <div class="product-list">
-          ${(c.products || []).map(p => renderProductAssignment(c, p)).join('')}
+    `;
+  }
+}
+
+function renderDetail() {
+  const c = currentCampaign;
+  const jt = c.job_type || {};
+  const sales = c.sales || {};
+  const isLocked = ['plan_locked', 'in_production', 'completed'].includes(c.status);
+  
+  // Compute stages required
+  const stages = [];
+  if (jt.requires_printing) stages.push({ key: 'printing', name: 'Printing', icon: '🖨️', team: teamByRole.printing, days: 3 });
+  if (jt.requires_stitching) stages.push({ key: 'stitching', name: 'Stitching', icon: '🧵', team: teamByRole.stitching, days: 3 });
+  if (jt.requires_field_execution) stages.push({ key: 'field_execution', name: 'Field Execution', icon: '📍', team: teamByRole.field_execution, days: 5 });
+  if (jt.requires_delivery) stages.push({ key: 'delivery', name: 'Delivery', icon: '🚚', team: teamByRole.delivery, days: 1 });
+  
+  // Cities
+  const cities = new Set();
+  currentDesigns.forEach(d => d.location_city && cities.add(d.location_city));
+  
+  const html = `
+    <div class="detail-head" style="${c.is_urgent ? 'border-left:6px solid var(--danger)' : ''}">
+      <div class="dh-top">
+        <div>
+          <div class="dh-name">${c.is_urgent ? '🚨 ' : ''}${escapeHtml(c.campaign_name)}</div>
+          <div class="dh-meta" style="margin-top:6px">
+            <div>${jt.icon || '📦'} ${escapeHtml(jt.name || 'Unknown type')}</div>
+            <div>👤 ${escapeHtml(c.client_name || 'No client')}</div>
+            <div>🧑‍💼 ${escapeHtml(sales.name || 'Self-sale')}</div>
+            <div>📅 Start: ${c.start_date || 'TBD'}</div>
+          </div>
         </div>
-        
-        <div class="campaign-actions">
-          ${c.status === 'pending_execution_plan' ? `
-            <button class="ab-btn ghost" onclick="rejectCampaign('${c.id}')">↩ Send Back to Sales</button>
-            <button class="ab-btn primary" onclick="lockPlan('${c.id}')">✓ Lock Execution Plan</button>
-          ` : c.status === 'plan_locked' ? `
-            <button class="ab-btn ghost" onclick="reopenPlan('${c.id}')">↩ Reopen Plan</button>
-            <button class="ab-btn primary" onclick="moveToProduction('${c.id}')">🏭 Move to Production</button>
-          ` : `
-            <button class="ab-btn ghost" onclick="markDispatched('${c.id}')">🚚 Mark Dispatched</button>
-          `}
+        <div>
+          <span class="status-pill ${isLocked ? 'done' : 'progress'}">${(c.status || 'pending').replace(/_/g, ' ').toUpperCase()}</span>
+        </div>
+      </div>
+      <div class="dh-stats">
+        <div class="dh-stat">
+          <div class="dh-stat-val">${currentDesigns.length}</div>
+          <div class="dh-stat-lbl">Designs</div>
+        </div>
+        <div class="dh-stat">
+          <div class="dh-stat-val">${cities.size}</div>
+          <div class="dh-stat-lbl">Cities</div>
+        </div>
+        <div class="dh-stat">
+          <div class="dh-stat-val">${(c.total_quantity || 0).toLocaleString('en-IN')}</div>
+          <div class="dh-stat-lbl">Units</div>
+        </div>
+        <div class="dh-stat">
+          <div class="dh-stat-val">₹${Math.round(c.total_amount || 0).toLocaleString('en-IN')}</div>
+          <div class="dh-stat-lbl">Value</div>
         </div>
       </div>
     </div>
-  `;
-}
-
-function renderProductAssignment(campaign, p) {
-  const config = PRODUCT_CONFIGS[p.product_type] || { name: p.product_name, icon: '📦', color: 'var(--teal)', bg: 'rgba(0,212,210,0.12)' };
-  const cities = p.cities || [];
-  
-  return `
-    <div class="product-row" data-product-id="${p.id}">
-      <div class="head">
-        <div class="pic" style="--card-bg:${config.bg};--card-color:${config.color};">${config.icon}</div>
-        <div class="info">
-          <div class="name">${esc(config.name)}</div>
-          <div class="meta">
-            ${cities.length > 0 ? `<span>📍 ${esc(cities.join(', '))}</span>` : ''}
-            <span>💼 ${esc((p.service_type || 'printing_execution').replace('_', ' + '))}</span>
-            ${p.material_type ? `<span>🎨 ${esc(p.material_type)}</span>` : ''}
-          </div>
-        </div>
-        <div class="qty-pill">${(p.quantity || 0).toLocaleString('en-IN')} ${p.product_type === 'flex' || p.product_type === 'wall_wrap' ? 'sqft' : 'pcs'}</div>
+    
+    <!-- DESIGNS TABLE -->
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">Designs · <em>${currentDesigns.length} item${currentDesigns.length !== 1 ? 's' : ''}</em></div>
+        <div class="section-meta">Per-location tracking</div>
       </div>
-      
-      <div class="assignment-grid">
-        <div class="field">
-          <label>Team Lead Name</label>
-          <input type="text" class="input" id="lead_name_${p.id}" value="${esc(p.team_lead_name || '')}" placeholder="e.g., Mubarak">
-          <div class="team-suggestions">
-            ${KNOWN_TEAMS.map(t => `<span class="team-pill" onclick="document.getElementById('lead_name_${p.id}').value='${esc(t.name)}'">${esc(t.name)}</span>`).join('')}
-          </div>
-        </div>
-        <div class="field">
-          <label>Team Lead Phone</label>
-          <input type="tel" class="input mono" id="lead_phone_${p.id}" value="${esc(p.team_lead_phone || '')}" placeholder="10-digit" maxlength="10">
-        </div>
-        <div class="field">
-          <label>Execution Date</label>
-          <input type="date" class="input" id="exec_date_${p.id}" value="${p.execution_date || ''}">
-        </div>
-        <div class="field">
-          <label>Product Status</label>
-          <div class="select-wrap">
-            <select class="input" id="prod_status_${p.id}">
-              <option value="design" ${p.status === 'design' ? 'selected' : ''}>Design</option>
-              <option value="printing" ${p.status === 'printing' ? 'selected' : ''}>Printing</option>
-              <option value="stitching" ${p.status === 'stitching' ? 'selected' : ''}>Stitching</option>
-              <option value="dispatch" ${p.status === 'dispatch' ? 'selected' : ''}>Dispatch</option>
-              <option value="execution" ${p.status === 'execution' ? 'selected' : ''}>Execution</option>
-              <option value="closed" ${p.status === 'closed' ? 'selected' : ''}>Closed</option>
-            </select>
-          </div>
+      <div class="section-body" style="padding:0">
+        <div style="overflow-x:auto">
+          <table class="dtable">
+            <thead>
+              <tr>
+                <th style="width:40px">#</th>
+                <th>Design Name</th>
+                <th>📍 Location</th>
+                <th style="width:80px">Qty</th>
+                <th>File</th>
+                <th style="width:140px">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${currentDesigns.map((d, i) => `
+                <tr>
+                  <td><span class="num-badge">#${i+1}</span></td>
+                  <td class="design-cell"><strong>${escapeHtml(d.design_name)}</strong></td>
+                  <td class="loc-cell">
+                    <div class="name"><span style="color:var(--gold-deep)">📍</span>${escapeHtml(d.location_name)}</div>
+                    <div class="detail">${escapeHtml((d.location_state || '').toUpperCase())}${d.location_lat ? ' · ' + Number(d.location_lat).toFixed(4) + '°N, ' + Number(d.location_lng).toFixed(4) + '°E' : ''}</div>
+                  </td>
+                  <td class="qty-cell">${(d.quantity || 0).toLocaleString('en-IN')}</td>
+                  <td>
+                    ${d.design_url ? `
+                      <a href="${d.design_url}" target="_blank" class="file-cell" style="text-decoration:none">
+                        <span class="file-icon-sm">📄</span>
+                        <div>
+                          <div class="file-name-sm">${escapeHtml(d.design_file_name || 'file')}</div>
+                          <div class="file-meta-sm">${formatFileSize(d.design_file_size)}</div>
+                        </div>
+                      </a>
+                    ` : '<span style="color:var(--text-dim);font-size:11px">No file</span>'}
+                  </td>
+                  <td>
+                    <div style="display:flex;gap:3px;flex-wrap:wrap">
+                      ${jt.requires_printing ? `<span class="status-pill ${d.printing_status === 'completed' ? 'done' : (d.printing_status === 'in_progress' ? 'progress' : 'todo')}">P</span>` : ''}
+                      ${jt.requires_stitching ? `<span class="status-pill ${d.stitching_status === 'completed' ? 'done' : (d.stitching_status === 'in_progress' ? 'progress' : 'todo')}">S</span>` : ''}
+                      ${jt.requires_field_execution ? `<span class="status-pill ${d.field_status === 'completed' ? 'done' : (d.field_status === 'in_progress' ? 'progress' : 'todo')}">F</span>` : ''}
+                      ${jt.requires_delivery ? `<span class="status-pill ${d.delivery_status === 'completed' ? 'done' : (d.delivery_status === 'in_progress' ? 'progress' : 'todo')}">D</span>` : ''}
+                    </div>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
         </div>
       </div>
-      
-      ${cities.length > 1 ? `
-        <div class="city-allocation">
-          <div class="title">📍 City-wise Allocation (Total: ${p.quantity || 0} ${p.product_type === 'flex' ? 'sqft' : 'pcs'})</div>
-          ${cities.map((city, idx) => `
-            <div class="city-row">
-              <div class="name">${esc(city)}</div>
-              <input type="number" class="input mono city-qty-input" data-product-id="${p.id}" 
-                placeholder="0" min="0" max="${p.quantity || 0}"
-                id="city_${p.id}_${idx}">
-              <input type="text" class="input" placeholder="Team for this city..." id="city_team_${p.id}_${idx}">
-              <input type="date" class="input" id="city_date_${p.id}_${idx}">
+    </div>
+    
+    <!-- TEAM ASSIGNMENT -->
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">Assign <em>Teams</em> · Per Stage</div>
+        <div class="section-meta">${stages.length} stage${stages.length !== 1 ? 's' : ''} required</div>
+      </div>
+      <div class="section-body">
+        ${isLocked ? '<div class="callout warn"><span>🔒</span><div>Plan is locked. Status changes only via individual stage modules.</div></div>' : ''}
+        
+        <div class="assign-grid">
+          ${stages.map(s => `
+            <div class="assign-row required">
+              <div class="assign-stage">
+                <div class="assign-icon">${s.icon}</div>
+                <div>
+                  <div class="assign-name">${s.name}</div>
+                  <div class="assign-status">REQUIRED</div>
+                </div>
+              </div>
+              <div class="search-select" id="assign-${s.key}">
+                <div class="ss-trigger" onclick="${isLocked ? '' : `toggleAssignSS('${s.key}',event)`}">
+                  ${assignments[s.key] && assignments[s.key].member ? `
+                    <div class="ss-selected">
+                      <div class="ss-ava">${(assignments[s.key].member.name || '?').charAt(0).toUpperCase()}</div>
+                      <div class="ss-info">
+                        <div class="name">${escapeHtml(assignments[s.key].member.name)}</div>
+                        <div class="meta">${escapeHtml(assignments[s.key].member.phone || '')}</div>
+                      </div>
+                    </div>
+                  ` : `
+                    <div class="ss-placeholder"><span>🔍</span><span>Search ${s.team.length} ${s.name.toLowerCase()} team members…</span></div>
+                  `}
+                  <div class="ss-chev">▼</div>
+                </div>
+                <div class="ss-dropdown">
+                  <input type="text" class="ss-search" placeholder="Type to filter…" oninput="filterAssign('${s.key}', this.value)">
+                  <div class="ss-options" id="assign-opts-${s.key}">
+                    ${renderTeamOptions(s.team, s.key)}
+                  </div>
+                </div>
+              </div>
+              <div class="assign-due">
+                <input type="date" id="due-${s.key}" 
+                       value="${assignments[s.key]?.due_date || calcDueDate(s.days)}"
+                       ${isLocked ? 'disabled' : ''}
+                       onchange="updateDueDate('${s.key}', this.value)">
+              </div>
             </div>
           `).join('')}
-          <div style="font-size:11px;color:var(--text-mid);margin-top:6px;text-align:right;">
-            Allocated: <span id="city_total_${p.id}" style="font-weight:800;color:var(--ink-900);">0</span> / ${p.quantity || 0}
-          </div>
         </div>
-      ` : ''}
+        
+        ${stages.length === 0 ? '<div class="empty-state">No stages required for this job type</div>' : ''}
+        
+        <div class="toggle-row" style="margin-top:14px">
+          <div class="toggle-info">
+            <div class="toggle-label">📱 Send WhatsApp notification on lock</div>
+            <div class="toggle-hint">Each assignee gets WhatsApp with design + qty + deadline</div>
+          </div>
+          <div class="toggle-switch ${c.notify_whatsapp !== false ? 'on' : ''}" id="notifyToggle" onclick="toggleSwitch(this)"></div>
+        </div>
+        
+      </div>
     </div>
   `;
+  
+  document.getElementById('detailContent').innerHTML = html;
+  document.getElementById('lockBtn').disabled = isLocked;
+  document.getElementById('lockBtn').innerHTML = isLocked ? '🔒 Plan Locked' : '🔒 Approve & Lock Plan';
+  updateActionBar();
 }
 
-function updateCityTotal(productId) {
-  const inputs = document.querySelectorAll(`.city-qty-input[data-product-id="${productId}"]`);
-  let total = 0;
-  inputs.forEach(inp => total += parseInt(inp.value) || 0);
-  const totalEl = document.getElementById('city_total_' + productId);
-  if (totalEl) {
-    totalEl.textContent = total.toLocaleString('en-IN');
-    const max = parseInt(inputs[0]?.max) || 0;
-    totalEl.style.color = total > max ? 'var(--rose)' : total === max ? 'var(--mint)' : 'var(--ink-900)';
-  }
+function renderTeamOptions(team, stageKey) {
+  if (!team.length) return '<div class="empty-state" style="padding:14px;font-size:11px">No team members available for this stage</div>';
+  return team.map(m => `
+    <div class="ss-option" onclick="selectAssignee('${stageKey}', '${m.id}')">
+      <div class="ava">${(m.name || '?').charAt(0).toUpperCase()}</div>
+      <div class="info">
+        <div class="name">${escapeHtml(m.name)}</div>
+        <div class="meta">${escapeHtml(m.phone || '')} · ${escapeHtml((m.role || '').replace(/_/g, ' ').toUpperCase())}</div>
+      </div>
+    </div>
+  `).join('');
 }
 
-function toggleCampaign(headEl) {
-  const body = headEl.nextElementSibling;
-  headEl.classList.toggle('collapsed');
-  body.classList.toggle('hidden');
+function selectAssignee(stageKey, memberId) {
+  const team = teamByRole[stageKey] || [];
+  const m = team.find(x => x.id === memberId) || teamByRole.all.find(x => x.id === memberId);
+  if (!m) return;
+  
+  assignments[stageKey] = {
+    member_id: m.id,
+    member: m,
+    due_date: assignments[stageKey]?.due_date || document.getElementById('due-' + stageKey)?.value
+  };
+  
+  document.querySelector('#assign-' + stageKey + ' .ss-dropdown').classList.remove('open');
+  renderDetail();
 }
 
-// ────────── ACTIONS ──────────
-
-function collectAssignments(campaign) {
-  const updates = [];
-  for (const p of (campaign.products || [])) {
-    const leadName = document.getElementById('lead_name_' + p.id)?.value.trim();
-    const leadPhone = document.getElementById('lead_phone_' + p.id)?.value.trim();
-    const execDate = document.getElementById('exec_date_' + p.id)?.value;
-    const prodStatus = document.getElementById('prod_status_' + p.id)?.value || 'design';
-    
-    const update = {
-      id: p.id,
-      status: prodStatus
-    };
-    if (leadName) update.team_lead_name = leadName;
-    if (leadPhone) update.team_lead_phone = leadPhone;
-    if (execDate) update.execution_date = execDate;
-    
-    updates.push(update);
-  }
-  return updates;
-}
-
-function validateAssignments(updates) {
-  const missingTeam = updates.filter(u => !u.team_lead_name);
-  if (missingTeam.length > 0) {
-    showToast(`${missingTeam.length} product${missingTeam.length !== 1 ? 's' : ''} need team assignment`, 'error');
-    return false;
-  }
-  const missingDate = updates.filter(u => !u.execution_date);
-  if (missingDate.length > 0) {
-    showToast(`${missingDate.length} product${missingDate.length !== 1 ? 's' : ''} need execution date`, 'error');
-    return false;
-  }
-  return true;
-}
-
-async function saveProductUpdates(updates) {
-  for (const u of updates) {
-    const { id, ...payload } = u;
-    await api('/rest/v1/prajapati_campaign_products?id=eq.' + id, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-  }
-}
-
-async function updateCampaignStatus(campaignId, status) {
-  const payload = { status };
-  if (status === 'in_production') {
-    payload.launched_at = new Date().toISOString();
-  }
-  await api('/rest/v1/prajapati_campaigns_v2?id=eq.' + campaignId, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
+function toggleAssignSS(stageKey, ev) {
+  if (ev) ev.stopPropagation();
+  document.querySelectorAll('.ss-dropdown').forEach(d => {
+    if (d.parentElement.id !== 'assign-' + stageKey) d.classList.remove('open');
   });
-}
-
-async function lockPlan(campaignId) {
-  const campaign = state.campaigns.find(c => c.id === campaignId);
-  if (!campaign) return;
-  
-  const updates = collectAssignments(campaign);
-  if (!validateAssignments(updates)) return;
-  
-  if (!confirm(`Lock execution plan for "${campaign.name}"?\n\nThis sets:\n• Team leads assigned\n• Execution dates set\n• Status → Plan Locked\n\nProceed?`)) return;
-  
-  try {
-    await saveProductUpdates(updates);
-    await updateCampaignStatus(campaignId, 'plan_locked');
-    showToast('✓ Plan locked for ' + campaign.campaign_code, 'success');
-    await loadCampaigns();
-  } catch (err) {
-    showToast('Lock failed: ' + err.message, 'error');
-    console.error(err);
+  const dd = document.querySelector('#assign-' + stageKey + ' .ss-dropdown');
+  dd?.classList.toggle('open');
+  if (dd?.classList.contains('open')) {
+    setTimeout(() => dd.querySelector('.ss-search')?.focus(), 50);
   }
 }
 
-async function reopenPlan(campaignId) {
-  const campaign = state.campaigns.find(c => c.id === campaignId);
-  if (!campaign) return;
-  if (!confirm(`Reopen plan for "${campaign.name}"?\n\nThis will let you re-edit assignments.`)) return;
-  
-  try {
-    await updateCampaignStatus(campaignId, 'pending_execution_plan');
-    showToast('↩ Plan reopened', 'success');
-    await loadCampaigns();
-  } catch (err) {
-    showToast('Reopen failed: ' + err.message, 'error');
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.search-select')) {
+    document.querySelectorAll('.ss-dropdown').forEach(d => d.classList.remove('open'));
   }
-}
-
-async function moveToProduction(campaignId) {
-  const campaign = state.campaigns.find(c => c.id === campaignId);
-  if (!campaign) return;
-  
-  const updates = collectAssignments(campaign);
-  if (!validateAssignments(updates)) return;
-  
-  if (!confirm(`🏭 Move "${campaign.name}" to Production?\n\nThis will:\n• Notify production team\n• Lock plan\n• Start production workflow`)) return;
-  
-  try {
-    await saveProductUpdates(updates);
-    await updateCampaignStatus(campaignId, 'in_production');
-    showToast('🏭 Moved to production: ' + campaign.campaign_code, 'success');
-    await loadCampaigns();
-  } catch (err) {
-    showToast('Move failed: ' + err.message, 'error');
-  }
-}
-
-async function rejectCampaign(campaignId) {
-  const campaign = state.campaigns.find(c => c.id === campaignId);
-  if (!campaign) return;
-  
-  const reason = prompt(`Send "${campaign.name}" back to Sales?\n\nWhy? (will be saved in internal notes)`);
-  if (!reason) return;
-  
-  try {
-    await api('/rest/v1/prajapati_campaigns_v2?id=eq.' + campaignId, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        status: 'draft',
-        internal_notes: 'Sent back by Operations on ' + new Date().toLocaleDateString('en-IN') + ': ' + reason
-      })
-    });
-    showToast('↩ Sent back to Sales', 'success');
-    await loadCampaigns();
-  } catch (err) {
-    showToast('Failed: ' + err.message, 'error');
-  }
-}
-
-async function markDispatched(campaignId) {
-  if (!confirm('Mark this campaign as dispatched?')) return;
-  try {
-    await updateCampaignStatus(campaignId, 'dispatched');
-    showToast('🚚 Marked as dispatched', 'success');
-    await loadCampaigns();
-  } catch (err) {
-    showToast('Failed: ' + err.message, 'error');
-  }
-}
-
-// INIT
-document.addEventListener('DOMContentLoaded', () => {
-  autoLogin();
-  
-  document.getElementById('loginPhone').addEventListener('keypress', e => {
-    if (e.key === 'Enter') doLogin();
-  });
-  document.getElementById('loginPhone').addEventListener('input', e => {
-    e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
-  });
 });
+
+function filterAssign(stageKey, q) {
+  const team = teamByRole[stageKey] || [];
+  const query = q.toLowerCase().trim();
+  const filtered = !query ? team : team.filter(m => 
+    (m.name || '').toLowerCase().includes(query) ||
+    (m.phone || '').toLowerCase().includes(query) ||
+    (m.role || '').toLowerCase().includes(query)
+  );
+  document.getElementById('assign-opts-' + stageKey).innerHTML = renderTeamOptions(filtered, stageKey);
+}
+
+function updateDueDate(stageKey, value) {
+  if (!assignments[stageKey]) assignments[stageKey] = {};
+  assignments[stageKey].due_date = value;
+}
+
+function calcDueDate(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + (days || 5));
+  return d.toISOString().slice(0, 10);
+}
+
+function toggleSwitch(el) { el.classList.toggle('on'); }
+
+function updateActionBar() {
+  const jt = currentCampaign?.job_type || {};
+  const stagesNeeded = [];
+  if (jt.requires_printing) stagesNeeded.push('printing');
+  if (jt.requires_stitching) stagesNeeded.push('stitching');
+  if (jt.requires_field_execution) stagesNeeded.push('field_execution');
+  if (jt.requires_delivery) stagesNeeded.push('delivery');
+  
+  const filled = stagesNeeded.filter(s => assignments[s]?.member_id).length;
+  
+  document.getElementById('actionLeft').innerHTML = `
+    <strong>${filled}/${stagesNeeded.length}</strong> stages assigned · 
+    Campaign: <strong>${escapeHtml(currentCampaign?.campaign_name || '')}</strong>
+  `;
+  
+  document.getElementById('lockBtn').disabled = filled < stagesNeeded.length;
+}
+
+async function lockPlan() {
+  const jt = currentCampaign?.job_type || {};
+  const stagesNeeded = [];
+  if (jt.requires_printing) stagesNeeded.push({ key: 'printing', name: 'Printing' });
+  if (jt.requires_stitching) stagesNeeded.push({ key: 'stitching', name: 'Stitching' });
+  if (jt.requires_field_execution) stagesNeeded.push({ key: 'field_execution', name: 'Field Execution' });
+  if (jt.requires_delivery) stagesNeeded.push({ key: 'delivery', name: 'Delivery' });
+  
+  for (const s of stagesNeeded) {
+    if (!assignments[s.key]?.member_id) {
+      alert(`Please assign ${s.name} team member`);
+      return;
+    }
+  }
+  
+  if (!confirm(`Lock this plan?\n\n${stagesNeeded.length} team assignment(s) will be created and ${document.getElementById('notifyToggle').classList.contains('on') ? 'WhatsApp notifications sent' : 'no notifications sent'}.`)) return;
+  
+  const btn = document.getElementById('lockBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Locking…';
+  
+  try {
+    // Insert/update assignments
+    for (const s of stagesNeeded) {
+      const a = assignments[s.key];
+      const payload = {
+        campaign_id: currentCampaign.id,
+        stage: s.key,
+        assigned_to: a.member_id,
+        assigned_by: user.id,
+        due_date: a.due_date || null,
+        status: 'pending',
+        quantity_assigned: currentCampaign.total_quantity || 0
+      };
+      
+      if (a.existing_id) {
+        await db.from('trial_campaign_assignments')
+          .update(payload).eq('id', a.existing_id);
+      } else {
+        await db.from('trial_campaign_assignments').insert(payload);
+      }
+    }
+    
+    // Lock campaign
+    await db.from('trial_campaigns')
+      .update({ status: 'plan_locked', updated_at: new Date().toISOString() })
+      .eq('id', currentCampaign.id);
+    
+    // WhatsApp notification (placeholder - integrate with Wati edge function)
+    if (document.getElementById('notifyToggle').classList.contains('on')) {
+      console.log('Would send WhatsApp to:', stagesNeeded.map(s => assignments[s.key]?.member?.phone));
+    }
+    
+    alert('✅ Plan locked successfully!');
+    showList();
+    await loadCampaigns();
+  } catch(e) {
+    alert('❌ Failed: ' + (e.message || e));
+    btn.disabled = false;
+    btn.innerHTML = '🔒 Approve & Lock Plan';
+  }
+}
+
+function generateJobCards() {
+  alert('Job Card PDF generation coming next phase. Will create printable cards per stage with QR codes.');
+}
+
+function showList() {
+  document.getElementById('listView').style.display = 'block';
+  document.getElementById('detailView').style.display = 'none';
+  document.getElementById('actionBar').style.display = 'none';
+  history.replaceState({}, '', '/execution-plan.html');
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function formatFileSize(b) {
+  if (!b) return '0 KB';
+  if (b < 1024) return b + ' B';
+  if (b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
+  return (b/(1024*1024)).toFixed(1) + ' MB';
+}
+
+init();
 </script>
 
 </body>
