@@ -604,6 +604,11 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   .main { padding: 16px; }
 }
 </style>
+<!-- ═══ RLS LIBRARIES (Phase 3 - sales multi-tenancy) ═══ -->
+<script src="/lib/wati-client.js"></script>
+<script src="/lib/access-guard.js"></script>
+<script src="/lib/sales-rls.js"></script>
+
 </head>
 <body>
 
@@ -900,15 +905,20 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+
+// ═══ RLS PROTECTION (Phase 3) ═══
+AccessGuard.protect({ module: 'crm' });
+
 const SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ─── Auth check ───
-const userJSON = localStorage.getItem('prajapati_crm_user');
-if (!userJSON) {
-  window.location.href = 'crm-login.html';
+// LEGACY AUTH REMOVED - using AccessGuard instead
+// const userJSON = localStorage.getItem('prajapati_crm_user');
+// if (!userJSON) {
+//   window.location.href = 'crm-login.html';
 }
 let CURRENT_USER;
 try {
