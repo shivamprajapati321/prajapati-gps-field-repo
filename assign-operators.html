@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Assign Operators · Prajapati Advertising</title>
+<meta name="theme-color" content="#0B1957">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght,ital@9..144,300..900,0..1&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+:root{
+  --navy:#0B1957;--navy-deep:#050B2E;
+  --gold:#B89B4E;--gold-bright:#D4B45F;--gold-deep:#8B7430;--gold-soft:#F4E4B0;
+  --cream:#FAF8F3;--paper:#F7F4EC;--rule:#E5E0D2;
+  --ink-950:#0F172A;--ink-700:#475569;--text-dim:#94A3B8;
+  --success:#047857;--success-bg:#D1FAE5;
+  --warn:#C2410C;--warn-bg:#FED7AA;
+  --danger:#BE123C;--danger-bg:#FECACA;
+  --info:#1E40AF;--info-bg:#DBEAFE;
+  --purple:#7C3AED;--purple-bg:#EDE9FE;
+  --print:#3B82F6;--stitch:#10B981;--deliv:#F59E0B;
+}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--cream);color:var(--ink-950);font-size:14px;line-height:1.5;min-height:100vh}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+a{color:inherit;text-decoration:none}
+
+.topbar{background:var(--navy);color:#fff;padding:14px 32px;border-bottom:3px solid var(--gold);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.tb-brand{display:flex;align-items:center;gap:12px}
+.tb-logo{width:36px;height:36px;background:var(--gold);color:var(--navy);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:20px}
+.tb-name{font-size:14px;font-weight:700}
+.tb-tag{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--gold-bright);letter-spacing:0.16em;text-transform:uppercase;margin-top:2px}
+.tb-user{display:flex;align-items:center;gap:10px;padding:4px 14px 4px 4px;background:rgba(255,255,255,0.08);border:1px solid rgba(212,180,95,0.3);border-radius:999px}
+.tb-ava{width:30px;height:30px;border-radius:50%;background:var(--gold);color:var(--navy);display:flex;align-items:center;justify-content:center;font-style:italic;font-weight:700;font-size:14px}
+.tb-info .name{font-size:12px;font-weight:700;line-height:1.1}
+.tb-info .role{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--gold-bright);letter-spacing:0.14em;text-transform:uppercase}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.15s;font-family:inherit}
+.btn:hover{transform:translateY(-1px)}
+.btn-primary{background:var(--navy);color:#fff}
+.btn-gold{background:var(--gold);color:var(--navy)}
+.btn-success{background:var(--success);color:#fff}
+.btn-secondary{background:#fff;color:var(--navy);border:1px solid var(--rule)}
+.btn-info{background:var(--info);color:#fff}
+.btn.sm{padding:6px 10px;font-size:10.5px}
+.btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+
+.main{padding:28px;max-width:1320px;margin:0 auto;padding-bottom:60px}
+
+.login-bg{position:fixed;inset:0;background:linear-gradient(135deg, var(--navy), var(--navy-deep));display:flex;align-items:center;justify-content:center;padding:20px;z-index:200}
+.login-card{background:#fff;padding:36px 32px;border-radius:14px;max-width:380px;width:100%;border:1px solid var(--gold)}
+.login-logo{width:64px;height:64px;background:var(--gold);color:var(--navy);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 18px}
+.login-title{font-family:'Fraunces',serif;font-size:22px;font-weight:500;text-align:center;color:var(--navy);margin-bottom:6px}
+.login-sub{font-family:'JetBrains Mono',monospace;font-size:9.5px;text-align:center;color:var(--text-dim);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:24px}
+.login-input{width:100%;padding:12px 14px;border:1px solid var(--rule);font-family:inherit;font-size:14px;border-radius:8px;outline:none;margin-bottom:10px}
+.login-input:focus{border-color:var(--gold)}
+.login-btn{width:100%;padding:13px;background:var(--navy);color:#fff;border-radius:8px;font-weight:700;font-size:13px}
+.login-err{color:var(--danger);font-size:12px;text-align:center;margin-top:10px;display:none}
+.login-err.show{display:block}
+
+.page-head{margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.page-title{font-family:'Fraunces',serif;font-size:26px;font-weight:500;color:var(--navy);letter-spacing:-0.02em}
+.page-title em{color:var(--gold);font-style:italic}
+.page-sub{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:0.12em;text-transform:uppercase;margin-top:4px}
+
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:14px;margin-bottom:24px}
+.stat-card{background:#fff;border:1px solid var(--rule);border-radius:12px;padding:18px;position:relative;overflow:hidden}
+.stat-card.highlight{background:linear-gradient(135deg, var(--gold-soft), #fff);border-color:var(--gold)}
+.stat-card.warn{background:linear-gradient(135deg, var(--warn-bg), #fff);border-color:var(--warn)}
+.stat-card.info{background:linear-gradient(135deg, var(--info-bg), #fff);border-color:var(--info)}
+.stat-card.success{background:linear-gradient(135deg, var(--success-bg), #fff);border-color:var(--success)}
+.stat-label{font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:var(--gold-deep);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:8px}
+.stat-value{font-family:'Fraunces',serif;font-size:32px;font-weight:600;color:var(--navy);line-height:1}
+.stat-meta{font-size:11px;color:var(--text-dim);margin-top:6px}
+
+.filter-bar{background:#fff;border:1px solid var(--rule);border-radius:10px;padding:14px 18px;margin-bottom:18px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.filter-bar .label{font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:var(--navy);letter-spacing:0.12em;text-transform:uppercase}
+.filter-bar select,.filter-bar input{padding:8px 12px;border:1px solid var(--rule);background:var(--cream);font-family:inherit;font-size:13px;border-radius:6px;outline:none}
+.filter-bar select:focus,.filter-bar input:focus{border-color:var(--gold);background:#fff}
+
+.section{background:#fff;border:1px solid var(--rule);border-radius:10px;margin-bottom:18px;overflow:hidden}
+.section-head{padding:14px 20px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg, var(--paper), #fff);flex-wrap:wrap;gap:10px}
+.section-title{font-family:'Fraunces',serif;font-size:16px;font-weight:600;color:var(--navy)}
+.section-title em{color:var(--gold);font-style:italic}
+.section-meta{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--gold-deep);letter-spacing:0.14em;text-transform:uppercase}
+.section-body{padding:18px 20px}
+
+.design-card{background:#fff;border:1.5px solid var(--rule);border-radius:12px;padding:16px;margin-bottom:14px;transition:all 0.15s}
+.design-card.urgent{border-left:4px solid var(--danger);background:linear-gradient(90deg, var(--danger-bg) 0%, #fff 15%)}
+.design-card.all-assigned{border-left:4px solid var(--success);background:linear-gradient(90deg, var(--success-bg) 0%, #fff 15%)}
+.design-card.no-file{opacity:0.7;background:var(--cream)}
+
+.dc-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.dc-title{font-family:'Fraunces',serif;font-size:17px;font-weight:600;color:var(--navy);margin-bottom:4px}
+.dc-meta{display:flex;flex-wrap:wrap;gap:14px;font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--text-dim);letter-spacing:0.06em}
+.dc-meta strong{color:var(--gold-deep)}
+
+.dc-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.tag{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase}
+.tag.urgent{background:var(--danger);color:#fff}
+.tag.location{background:var(--gold-soft);color:var(--gold-deep)}
+.tag.qty{background:var(--purple-bg);color:var(--purple)}
+.tag.no-file{background:var(--warn-bg);color:var(--warn)}
+.tag.file-ready{background:var(--success-bg);color:var(--success)}
+
+.stage-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid var(--rule)}
+.stage-row{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--paper);border:1px solid var(--rule);border-radius:8px}
+.stage-row.assigned{background:var(--success-bg);border-color:var(--success)}
+.stage-icon{font-size:18px;flex-shrink:0}
+.stage-label{flex:1;min-width:0}
+.stage-name{font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:0.06em}
+.stage-operator{font-size:11px;color:var(--text-dim);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stage-row select{padding:5px 8px;font-size:11px;border:1px solid var(--rule);border-radius:5px;background:#fff;font-family:inherit;max-width:140px;outline:none}
+.stage-row select:focus{border-color:var(--gold)}
+
+.dc-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed var(--rule)}
+
+.modal-bg{position:fixed;inset:0;background:rgba(11,25,87,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;backdrop-filter:blur(4px)}
+.modal{background:#fff;border-radius:12px;max-width:560px;width:100%;max-height:90vh;overflow-y:auto;border:1px solid var(--gold);box-shadow:0 20px 60px rgba(0,0,0,0.3)}
+.modal-head{padding:18px 22px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg, var(--paper), #fff)}
+.modal-title{font-family:'Fraunces',serif;font-size:18px;font-weight:600;color:var(--navy)}
+.modal-close{width:30px;height:30px;border-radius:50%;background:var(--cream);color:var(--danger);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer}
+.modal-body{padding:18px 22px}
+.modal-foot{padding:14px 22px;border-top:1px solid var(--rule);display:flex;justify-content:flex-end;gap:8px;background:var(--paper)}
+
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.label{font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:var(--navy);letter-spacing:0.12em;text-transform:uppercase}
+.label .req{color:var(--danger)}
+.label .hint{color:var(--text-dim);font-weight:400;text-transform:none;letter-spacing:0;font-size:10px;margin-left:6px}
+.input,.textarea{padding:10px 12px;border:1px solid var(--rule);background:var(--cream);font-family:inherit;font-size:13px;color:var(--ink-950);border-radius:6px;outline:none;width:100%}
+.input:focus,.textarea:focus{border-color:var(--gold);background:#fff}
+.textarea{resize:vertical;min-height:60px}
+
+.checkbox-row{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--paper);border-radius:6px;cursor:pointer;border:1px solid var(--rule)}
+.checkbox-row input[type=checkbox]{width:16px;height:16px;cursor:pointer}
+.checkbox-row label{font-size:12px;font-weight:600;color:var(--navy);cursor:pointer;flex:1}
+.checkbox-row .description{font-size:10.5px;color:var(--text-dim);font-weight:400;margin-top:1px}
+
+.callout{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:8px;margin-bottom:12px;font-size:12px}
+.callout.info{background:var(--info-bg);color:var(--info)}
+.callout.success{background:var(--success-bg);color:var(--success)}
+.callout.warn{background:var(--warn-bg);color:var(--warn)}
+.callout.error{background:var(--danger-bg);color:var(--danger)}
+
+.spin{width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:40px 20px;color:var(--text-dim);font-size:13px;font-style:italic}
+
+@media (max-width:768px){
+  .main{padding:18px}
+  .stats-grid{grid-template-columns:repeat(2, 1fr)}
+  .topbar{padding:12px 16px}
+  .dc-head{flex-direction:column}
+  .stage-grid{grid-template-columns:1fr}
+  .stage-row select{max-width:none;width:100%}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-bg" id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">🎯</div>
+    <div class="login-title">Assign Operators</div>
+    <div class="login-sub">Manager · Per-Design Assignment</div>
+    <input id="loginPhone" class="login-input" type="tel" placeholder="10-digit phone" maxlength="10">
+    <button id="loginBtn" class="login-btn" onclick="doLogin()">Access Assignment Hub →</button>
+    <div id="loginErr" class="login-err"></div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="mainApp" style="display:none">
+  
+  <div class="topbar">
+    <div class="tb-brand">
+      <div class="tb-logo">🎯</div>
+      <div>
+        <div class="tb-name">Assign Operators</div>
+        <div class="tb-tag">Per-Design Pipeline</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <a href="/execution-plan.html" class="btn btn-secondary sm">📋 Execution Plan</a>
+      <a href="/dashboard.html" class="btn btn-secondary sm">← Dashboard</a>
+      <div class="tb-user">
+        <div class="tb-ava" id="tbAva">?</div>
+        <div class="tb-info"><div class="name" id="tbName">…</div><div class="role" id="tbRole">…</div></div>
+      </div>
+      <button class="btn btn-secondary sm" onclick="logout()">⎋</button>
+    </div>
+  </div>
+  
+  <div class="main">
+    
+    <div class="page-head">
+      <div>
+        <div class="page-title">Assign <em>Operators</em></div>
+        <div class="page-sub" id="todayDate">…</div>
+      </div>
+    </div>
+    
+    <div id="statsArea"></div>
+    
+    <div class="filter-bar">
+      <span class="label">Filter:</span>
+      <select id="filterStatus" onchange="renderList()">
+        <option value="all">All Designs</option>
+        <option value="unassigned">Has Unassigned Stage</option>
+        <option value="fully_assigned">Fully Assigned</option>
+        <option value="no_file">No Design File</option>
+        <option value="urgent">Urgent Only</option>
+      </select>
+      <select id="filterCampaign" onchange="renderList()">
+        <option value="">All Campaigns</option>
+      </select>
+      <input type="text" id="filterSearch" placeholder="Search design name..." oninput="renderList()">
+    </div>
+    
+    <div id="contentArea">
+      <div class="empty">Loading designs…</div>
+    </div>
+    
+  </div>
+</div>
+
+<!-- ASSIGN MODAL -->
+<div class="modal-bg" id="assignModal" style="display:none">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">🎯 Assign Operator</div>
+      <button class="modal-close" onclick="closeAssignModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="assignDesignInfo" style="margin-bottom:14px"></div>
+      
+      <div class="field">
+        <div class="label">Stage <span class="req">*</span></div>
+        <input class="input" id="assignStage" readonly style="background:var(--paper)">
+      </div>
+      
+      <div class="field">
+        <div class="label">Operator <span class="req">*</span></div>
+        <select class="input" id="assignOperator">
+          <option value="">— Select operator —</option>
+        </select>
+      </div>
+      
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field" style="margin-bottom:0">
+          <div class="label">Quantity <span class="hint">From design</span></div>
+          <input class="input" id="assignQuantity" type="number" min="1">
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <div class="label">Due Date</div>
+          <input class="input" id="assignDueDate" type="date">
+        </div>
+      </div>
+      
+      <div class="field" style="margin-top:14px">
+        <div class="label">Notes for Operator <span class="hint">Optional</span></div>
+        <textarea class="textarea" id="assignNotes" placeholder="Special instructions..."></textarea>
+      </div>
+      
+      <div class="checkbox-row" style="margin-bottom:14px">
+        <input type="checkbox" id="assignNotify" checked>
+        <label for="assignNotify">
+          📱 Send WhatsApp notification to operator
+          <div class="description">Operator gets instant alert with job details</div>
+        </label>
+      </div>
+      
+      <div id="assignStatus"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeAssignModal()">Cancel</button>
+      <button class="btn btn-success" id="assignSaveBtn" onclick="saveAssignment()">💾 Assign & Notify</button>
+    </div>
+  </div>
+</div>
+
+<script src="/lib/access-guard.js"></script>
+
+<script>
+const SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
+const WATI_FUNCTION_URL = SUPABASE_URL + '/functions/v1/wati-send';
+
+const STAGES = [
+  { key: 'printing', label: 'Printing', icon: '🖨️', roles: ['printing', 'printer'] },
+  { key: 'stitching', label: 'Stitching', icon: '🧵', roles: ['stitching', 'tailor'] },
+  { key: 'field_execution', label: 'Field Execution', icon: '📍', roles: ['field', 'field_worker'] },
+  { key: 'delivery', label: 'Delivery', icon: '🚚', roles: ['delivery', 'driver'] }
+];
+
+const state = {
+  user: null,
+  designs: [],
+  campaigns: [],
+  operators: { printing: [], stitching: [], field_execution: [], delivery: [] },
+  assignments: [],
+  currentAssign: null
+};
+
+const HEADERS = {
+  'apikey': SUPABASE_KEY,
+  'Authorization': 'Bearer ' + SUPABASE_KEY,
+  'Content-Type': 'application/json'
+};
+
+async function api(path, opts = {}) {
+  const res = await fetch(SUPABASE_URL + path, { ...opts, headers: { ...HEADERS, ...(opts.headers || {}) } });
+  if (!res.ok) throw new Error('API ' + res.status + ': ' + await res.text());
+  if (res.status === 204 || res.headers.get('content-length') === '0') return null;
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LOGIN
+// ═══════════════════════════════════════════════════════════════
+
+async function doLogin() {
+  const phone = document.getElementById('loginPhone').value.trim();
+  const errEl = document.getElementById('loginErr');
+  const btn = document.getElementById('loginBtn');
+  
+  errEl.classList.remove('show');
+  if (phone.length !== 10) {
+    errEl.textContent = 'Phone 10 digits ka hona chahiye';
+    errEl.classList.add('show');
+    return;
+  }
+  
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Loading…';
+  
+  try {
+    const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
+    if (!members || !members.length) throw new Error('Number registered nahi');
+    
+    const m = members[0];
+    const allowedRoles = ['admin', 'owner', 'operations_manager', 'ops_manager', 'operations'];
+    if (!allowedRoles.includes((m.role || '').toLowerCase())) {
+      throw new Error('Manager-only page — Sirf Owner/Admin/Ops Manager');
+    }
+    
+    state.user = m;
+    localStorage.setItem('prajapati_admin_phone', phone);
+    
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    
+    initApp();
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.add('show');
+    btn.disabled = false;
+    btn.innerHTML = 'Access Assignment Hub →';
+  }
+}
+
+async function autoLogin() {
+  const phone = localStorage.getItem('prajapati_admin_phone');
+  if (!phone) return;
+  try {
+    const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
+    if (!members || !members.length) return;
+    const m = members[0];
+    const allowedRoles = ['admin', 'owner', 'operations_manager', 'ops_manager', 'operations'];
+    if (!allowedRoles.includes((m.role || '').toLowerCase())) return;
+    
+    state.user = m;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    initApp();
+  } catch (e) {}
+}
+
+function logout() {
+  localStorage.removeItem('prajapati_admin_phone');
+  location.reload();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+
+function initApp() {
+  const initial = (state.user.name || '?').charAt(0).toUpperCase();
+  document.getElementById('tbAva').textContent = initial;
+  document.getElementById('tbName').textContent = state.user.name || 'User';
+  document.getElementById('tbRole').textContent = (state.user.role || 'user').replace(/_/g, ' ');
+  
+  document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-IN', {
+    weekday: 'long', day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata'
+  });
+  
+  if (window.AccessGuard) AccessGuard.filterUI(state.user);
+  
+  loadData();
+}
+
+async function loadData() {
+  document.getElementById('contentArea').innerHTML = '<div class="empty">Loading…</div>';
+  
+  try {
+    // Parallel load all data
+    const [designs, assignments, allOperators] = await Promise.all([
+      api('/rest/v1/v_designs_pending_assignment?select=*&limit=300'),
+      api('/rest/v1/trial_campaign_assignments?status=in.(pending,in_progress)&select=*'),
+      api('/rest/v1/trial_team_members?active=eq.true&role=in.(printing,printer,stitching,tailor,field,field_worker,delivery,driver)&select=id,name,phone,role&order=name.asc')
+    ]);
+    
+    state.designs = designs || [];
+    state.assignments = assignments || [];
+    
+    // Group operators by stage
+    state.operators = { printing: [], stitching: [], field_execution: [], delivery: [] };
+    (allOperators || []).forEach(op => {
+      const role = (op.role || '').toLowerCase();
+      STAGES.forEach(stage => {
+        if (stage.roles.includes(role)) {
+          state.operators[stage.key].push(op);
+        }
+      });
+    });
+    
+    // Extract unique campaigns for filter
+    const campaignMap = {};
+    state.designs.forEach(d => {
+      if (d.campaign_id) campaignMap[d.campaign_id] = d.campaign_name;
+    });
+    state.campaigns = Object.entries(campaignMap).map(([id, name]) => ({ id, name }));
+    
+    renderUI();
+  } catch (err) {
+    console.error(err);
+    document.getElementById('contentArea').innerHTML = `
+      <div class="callout error">
+        <span>❌</span>
+        <div><strong>Load failed:</strong> ${escapeHtml(err.message)}<br>
+        <small>Run SESSION_3_VALIDATION_NOTIFICATIONS.sql in Supabase first.</small></div>
+      </div>
+    `;
+  }
+}
+
+function renderUI() {
+  const designs = state.designs;
+  
+  // Calculate stats
+  const total = designs.length;
+  const filesReady = designs.filter(d => d.file_ready).length;
+  const fullyAssigned = designs.filter(d => {
+    const assigns = d.current_assignments || {};
+    return STAGES.every(s => assigns[s.key]);
+  }).length;
+  const urgent = designs.filter(d => d.is_urgent).length;
+  
+  document.getElementById('statsArea').innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card highlight">
+        <div class="stat-label">📋 Total Designs</div>
+        <div class="stat-value">${total}</div>
+        <div class="stat-meta">in active campaigns</div>
+      </div>
+      <div class="stat-card success">
+        <div class="stat-label">✅ Files Ready</div>
+        <div class="stat-value">${filesReady}</div>
+        <div class="stat-meta">${total - filesReady} pending</div>
+      </div>
+      <div class="stat-card info">
+        <div class="stat-label">🎯 Fully Assigned</div>
+        <div class="stat-value">${fullyAssigned}</div>
+        <div class="stat-meta">${total - fullyAssigned} need attention</div>
+      </div>
+      <div class="stat-card warn">
+        <div class="stat-label">🚨 Urgent</div>
+        <div class="stat-value">${urgent}</div>
+        <div class="stat-meta">priority designs</div>
+      </div>
+    </div>
+  `;
+  
+  // Campaign filter
+  const sel = document.getElementById('filterCampaign');
+  sel.innerHTML = '<option value="">All Campaigns</option>' + 
+    state.campaigns.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+  
+  renderList();
+}
+
+function renderList() {
+  const statusFilter = document.getElementById('filterStatus').value;
+  const campaignFilter = document.getElementById('filterCampaign').value;
+  const search = (document.getElementById('filterSearch').value || '').toLowerCase();
+  
+  let list = state.designs;
+  
+  if (campaignFilter) list = list.filter(d => d.campaign_id === campaignFilter);
+  if (search) list = list.filter(d => 
+    (d.design_name || '').toLowerCase().includes(search) ||
+    (d.location_name || '').toLowerCase().includes(search) ||
+    (d.campaign_name || '').toLowerCase().includes(search)
+  );
+  
+  if (statusFilter === 'unassigned') {
+    list = list.filter(d => {
+      const assigns = d.current_assignments || {};
+      return !STAGES.every(s => assigns[s.key]);
+    });
+  } else if (statusFilter === 'fully_assigned') {
+    list = list.filter(d => {
+      const assigns = d.current_assignments || {};
+      return STAGES.every(s => assigns[s.key]);
+    });
+  } else if (statusFilter === 'no_file') {
+    list = list.filter(d => !d.file_ready);
+  } else if (statusFilter === 'urgent') {
+    list = list.filter(d => d.is_urgent);
+  }
+  
+  if (!list.length) {
+    document.getElementById('contentArea').innerHTML = '<div class="empty">No designs match current filter.</div>';
+    return;
+  }
+  
+  document.getElementById('contentArea').innerHTML = list.map(d => renderDesignCard(d)).join('');
+}
+
+function renderDesignCard(d) {
+  const assigns = d.current_assignments || {};
+  const allAssigned = STAGES.every(s => assigns[s.key]);
+  const noFile = !d.file_ready;
+  
+  // Find operator names for current assignments
+  const opMap = {};
+  STAGES.forEach(s => {
+    if (assigns[s.key]) {
+      const op = (state.operators[s.key] || []).find(o => o.id === assigns[s.key]);
+      opMap[s.key] = op ? op.name : 'Unknown';
+    }
+  });
+  
+  return `
+    <div class="design-card ${d.is_urgent ? 'urgent' : ''} ${allAssigned ? 'all-assigned' : ''} ${noFile ? 'no-file' : ''}">
+      <div class="dc-head">
+        <div style="flex:1;min-width:0">
+          <div class="dc-title">${escapeHtml(d.design_name || 'Unnamed Design')}</div>
+          <div class="dc-meta">
+            <span>📋 <strong>${escapeHtml(d.campaign_name || '')}</strong></span>
+            ${d.client_name ? `<span>👤 ${escapeHtml(d.client_name)}</span>` : ''}
+            ${d.location_name ? `<span>📍 ${escapeHtml(d.location_name)}</span>` : ''}
+            ${d.start_date ? `<span>📅 ${escapeHtml(d.start_date)}</span>` : ''}
+          </div>
+          <div class="dc-tags" style="margin-top:8px">
+            ${d.is_urgent ? '<span class="tag urgent">🚨 URGENT</span>' : ''}
+            ${d.location_city ? `<span class="tag location">📍 ${escapeHtml(d.location_city)}</span>` : ''}
+            <span class="tag qty">📦 ${(d.design_quantity || 0).toLocaleString('en-IN')} units</span>
+            <span class="tag ${noFile ? 'no-file' : 'file-ready'}">
+              ${noFile ? '⚠️ NO FILE' : '✅ FILE READY'}
+            </span>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${d.drive_url ? `<a href="${d.drive_url}" target="_blank" class="btn btn-secondary sm">📂 Drive</a>` : ''}
+          ${d.supabase_file_url ? `<a href="${d.supabase_file_url}" target="_blank" class="btn btn-secondary sm">📄 File</a>` : ''}
+        </div>
+      </div>
+      
+      <div class="stage-grid">
+        ${STAGES.map(s => {
+          const assignedOp = assigns[s.key];
+          const opName = opMap[s.key] || '';
+          return `
+            <div class="stage-row ${assignedOp ? 'assigned' : ''}">
+              <span class="stage-icon">${s.icon}</span>
+              <div class="stage-label">
+                <div class="stage-name">${s.label}</div>
+                <div class="stage-operator">${assignedOp ? '✓ ' + escapeHtml(opName) : 'Unassigned'}</div>
+              </div>
+              <button class="btn ${assignedOp ? 'btn-secondary' : 'btn-info'} sm" 
+                      onclick="openAssignModal('${d.design_id}', '${s.key}')">
+                ${assignedOp ? '✏️' : '+ Assign'}
+              </button>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ASSIGN MODAL
+// ═══════════════════════════════════════════════════════════════
+
+function openAssignModal(designId, stage) {
+  const design = state.designs.find(d => d.design_id === designId);
+  if (!design) return;
+  
+  const stageInfo = STAGES.find(s => s.key === stage);
+  const assigns = design.current_assignments || {};
+  const currentOpId = assigns[stage];
+  
+  state.currentAssign = { design, stage, stageInfo, currentOpId };
+  
+  document.getElementById('assignDesignInfo').innerHTML = `
+    <div class="callout info" style="margin-bottom:0">
+      <span>${stageInfo.icon}</span>
+      <div>
+        <strong>${escapeHtml(design.design_name)}</strong> · ${escapeHtml(design.campaign_name || '')}<br>
+        <small>${escapeHtml(design.location_name || design.location_city || '')} · ${(design.design_quantity || 0).toLocaleString('en-IN')} units</small>
+      </div>
+    </div>
+  `;
+  
+  document.getElementById('assignStage').value = stageInfo.label + ' ' + stageInfo.icon;
+  
+  // Populate operators
+  const sel = document.getElementById('assignOperator');
+  const ops = state.operators[stage] || [];
+  sel.innerHTML = '<option value="">— Select operator —</option>' +
+    ops.map(o => `<option value="${o.id}" ${o.id === currentOpId ? 'selected' : ''}>${escapeHtml(o.name)} (${escapeHtml(o.phone || '')})</option>`).join('');
+  
+  document.getElementById('assignQuantity').value = design.design_quantity || '';
+  document.getElementById('assignDueDate').value = '';
+  document.getElementById('assignNotes').value = '';
+  document.getElementById('assignNotify').checked = true;
+  document.getElementById('assignStatus').innerHTML = '';
+  
+  document.getElementById('assignModal').style.display = 'flex';
+}
+
+function closeAssignModal() {
+  document.getElementById('assignModal').style.display = 'none';
+  state.currentAssign = null;
+}
+
+async function saveAssignment() {
+  const ctx = state.currentAssign;
+  if (!ctx) return;
+  
+  const operatorId = document.getElementById('assignOperator').value;
+  const quantity = parseInt(document.getElementById('assignQuantity').value) || 0;
+  const dueDate = document.getElementById('assignDueDate').value || null;
+  const notes = document.getElementById('assignNotes').value.trim() || null;
+  const notify = document.getElementById('assignNotify').checked;
+  
+  if (!operatorId) {
+    document.getElementById('assignStatus').innerHTML = '<div class="callout error"><span>⚠️</span><div>Please select an operator</div></div>';
+    return;
+  }
+  if (quantity <= 0) {
+    document.getElementById('assignStatus').innerHTML = '<div class="callout error"><span>⚠️</span><div>Quantity must be > 0</div></div>';
+    return;
+  }
+  
+  const btn = document.getElementById('assignSaveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Saving…';
+  
+  try {
+    // Check if assignment exists for this design + stage
+    const existing = await api(`/rest/v1/trial_campaign_assignments?design_id=eq.${ctx.design.design_id}&stage=eq.${ctx.stage}&select=id,assigned_to`);
+    
+    const payload = {
+      campaign_id: ctx.design.campaign_id,
+      design_id: ctx.design.design_id,
+      stage: ctx.stage,
+      assigned_to: operatorId,
+      quantity_assigned: quantity,
+      due_date: dueDate,
+      notes: notes,
+      status: 'pending',
+      assigned_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    let assignmentId;
+    
+    if (existing && existing.length) {
+      // Update existing
+      const oldOp = existing[0].assigned_to;
+      assignmentId = existing[0].id;
+      
+      await api(`/rest/v1/trial_campaign_assignments?id=eq.${assignmentId}`, {
+        method: 'PATCH',
+        headers: { 'Prefer': 'return=minimal' },
+        body: JSON.stringify(payload)
+      });
+      
+      // Log reassignment if operator changed
+      if (oldOp && oldOp !== operatorId) {
+        await api('/rest/v1/trial_assignment_reassignments', {
+          method: 'POST',
+          headers: { 'Prefer': 'return=minimal' },
+          body: JSON.stringify({
+            assignment_id: assignmentId,
+            from_operator_id: oldOp,
+            to_operator_id: operatorId,
+            reassigned_by: state.user.id,
+            reason: notes || 'Reassigned via per-design hub',
+            qty_done_at_reassignment: 0,
+            qty_assigned_at_reassignment: quantity
+          })
+        });
+      }
+    } else {
+      // Create new
+      const result = await api('/rest/v1/trial_campaign_assignments', {
+        method: 'POST',
+        headers: { 'Prefer': 'return=representation' },
+        body: JSON.stringify(payload)
+      });
+      assignmentId = result && result[0] ? result[0].id : null;
+    }
+    
+    // Send WhatsApp notification if requested
+    if (notify && assignmentId) {
+      await sendWhatsAppNotification(operatorId, ctx, quantity, dueDate, assignmentId);
+    }
+    
+    document.getElementById('assignStatus').innerHTML = `<div class="callout success"><span>✅</span><div>Assigned!${notify ? ' WhatsApp notification queued.' : ''}</div></div>`;
+    setTimeout(() => {
+      closeAssignModal();
+      loadData();
+    }, 1000);
+    
+  } catch (e) {
+    document.getElementById('assignStatus').innerHTML = `<div class="callout error"><span>❌</span><div>${escapeHtml(e.message)}</div></div>`;
+    btn.disabled = false;
+    btn.innerHTML = '💾 Assign & Notify';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// WHATSAPP NOTIFICATION (via Wati edge function)
+// ═══════════════════════════════════════════════════════════════
+
+async function sendWhatsAppNotification(operatorId, ctx, quantity, dueDate, assignmentId) {
+  // Get operator phone
+  const operator = state.operators[ctx.stage].find(o => o.id === operatorId);
+  if (!operator || !operator.phone) {
+    console.warn('No phone for operator, skipping WhatsApp');
+    return;
+  }
+  
+  const messageBody = 
+    `Aapko naya kaam mila hai:\n\n` +
+    `🎨 Design: ${ctx.design.design_name}\n` +
+    `${ctx.stageInfo.icon} Work: ${ctx.stageInfo.label}\n` +
+    `📦 Quantity: ${quantity.toLocaleString('en-IN')} units\n` +
+    `📍 Location: ${ctx.design.location_name || ctx.design.location_city || '—'}\n` +
+    (dueDate ? `⏰ Due: ${dueDate}\n` : '') +
+    `\nLogin karke dekho: prajapati-gps-field-repo.vercel.app/${ctx.stage}-v2.html`;
+  
+  // Log to notification audit table
+  try {
+    await api('/rest/v1/trial_whatsapp_notifications', {
+      method: 'POST',
+      headers: { 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        recipient_phone: operator.phone,
+        recipient_id: operatorId,
+        notification_type: 'job_assigned',
+        related_assignment_id: assignmentId,
+        related_design_id: ctx.design.design_id,
+        related_campaign_id: ctx.design.campaign_id,
+        message_preview: messageBody.substring(0, 200),
+        template_name: 'job_assignment',
+        triggered_by: state.user.id,
+        status: 'pending'
+      })
+    });
+  } catch (e) {
+    console.error('Failed to log notification:', e);
+  }
+  
+  // Try to send via Wati edge function (graceful failure)
+  try {
+    const watiRes = await fetch(WATI_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        phone: operator.phone,
+        message: messageBody,
+        template: 'job_assignment'
+      })
+    });
+    
+    if (!watiRes.ok) {
+      console.warn('Wati notification failed:', await watiRes.text());
+    }
+  } catch (e) {
+    console.warn('Wati notification error:', e);
+    // Don't fail the assignment if notification fails
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  autoLogin();
+  document.getElementById('loginPhone').addEventListener('keypress', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+  document.getElementById('loginPhone').addEventListener('input', e => {
+    e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
+  });
+});
+</script>
+
+</body>
+</html>
