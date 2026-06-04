@@ -209,6 +209,8 @@
     .hero h1{font-size:22px}
   }
 </style>
+<!-- v3.3: AccessGuard for sidebar filtering -->
+<script src="/lib/access-guard.js"></script>
 </head>
 <body>
 
@@ -646,6 +648,8 @@ async function autoLogin() {
 function initApp() {
   setText('userAvatar', getInitials(state.admin.name));
   setText('userName', state.admin.name.split(' ')[0]);
+  // v3.3: Filter sidebar based on user's access (hides modules they can't access)
+  if (window.AccessGuard) AccessGuard.filterUI(state.admin);
   loadData();
 }
 
