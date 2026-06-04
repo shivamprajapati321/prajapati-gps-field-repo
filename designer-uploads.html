@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Designer Uploads · Prajapati Advertising</title>
+<meta name="theme-color" content="#0B1957">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght,ital@9..144,300..900,0..1&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+:root{
+  --navy:#0B1957;--navy-deep:#050B2E;
+  --gold:#B89B4E;--gold-bright:#D4B45F;--gold-deep:#8B7430;--gold-soft:#F4E4B0;
+  --cream:#FAF8F3;--paper:#F7F4EC;--rule:#E5E0D2;
+  --ink-950:#0F172A;--ink-700:#475569;--text-dim:#94A3B8;
+  --success:#047857;--success-bg:#D1FAE5;
+  --warn:#C2410C;--warn-bg:#FED7AA;
+  --danger:#BE123C;--danger-bg:#FECACA;
+  --info:#1E40AF;--info-bg:#DBEAFE;
+  --purple:#7C3AED;--purple-bg:#EDE9FE;
+}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--cream);color:var(--ink-950);font-size:14px;line-height:1.5;min-height:100vh}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+a{color:inherit;text-decoration:none}
+
+.topbar{background:var(--navy);color:#fff;padding:14px 32px;border-bottom:3px solid var(--gold);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.tb-brand{display:flex;align-items:center;gap:12px}
+.tb-logo{width:36px;height:36px;background:var(--gold);color:var(--navy);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:700;font-size:20px}
+.tb-name{font-size:14px;font-weight:700}
+.tb-tag{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--gold-bright);letter-spacing:0.16em;text-transform:uppercase;margin-top:2px}
+.tb-user{display:flex;align-items:center;gap:10px;padding:4px 14px 4px 4px;background:rgba(255,255,255,0.08);border:1px solid rgba(212,180,95,0.3);border-radius:999px}
+.tb-ava{width:30px;height:30px;border-radius:50%;background:var(--gold);color:var(--navy);display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-style:italic;font-weight:700;font-size:14px}
+.tb-info .name{font-size:12px;font-weight:700;line-height:1.1}
+.tb-info .role{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--gold-bright);letter-spacing:0.14em;text-transform:uppercase}
+
+.main{padding:28px;max-width:1280px;margin:0 auto}
+
+/* LOGIN */
+.login-bg{position:fixed;inset:0;background:linear-gradient(135deg, var(--navy), var(--navy-deep));display:flex;align-items:center;justify-content:center;padding:20px;z-index:200}
+.login-card{background:#fff;padding:36px 32px;border-radius:14px;max-width:380px;width:100%;border:1px solid var(--gold)}
+.login-logo{width:64px;height:64px;background:var(--purple);color:#fff;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 18px}
+.login-title{font-family:'Fraunces',serif;font-size:22px;font-weight:500;text-align:center;color:var(--navy);margin-bottom:6px}
+.login-sub{font-family:'JetBrains Mono',monospace;font-size:9.5px;text-align:center;color:var(--text-dim);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:24px}
+.login-input{width:100%;padding:12px 14px;border:1px solid var(--rule);font-family:inherit;font-size:14px;border-radius:8px;outline:none;margin-bottom:10px}
+.login-input:focus{border-color:var(--gold)}
+.login-btn{width:100%;padding:13px;background:var(--navy);color:#fff;border-radius:8px;font-weight:700;font-size:13px}
+.login-err{color:var(--danger);font-size:12px;text-align:center;margin-top:10px;display:none}
+.login-err.show{display:block}
+
+.page-head{margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.page-title{font-family:'Fraunces',serif;font-size:26px;font-weight:500;color:var(--navy);letter-spacing:-0.02em}
+.page-title em{color:var(--gold);font-style:italic}
+.page-sub{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:0.12em;text-transform:uppercase;margin-top:4px}
+
+/* DESIGNER STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:14px;margin-bottom:24px}
+.stat-card{background:#fff;border:1px solid var(--rule);border-radius:12px;padding:18px;position:relative;overflow:hidden}
+.stat-card.pending{border-left:4px solid var(--warn)}
+.stat-card.in-progress{border-left:4px solid var(--info)}
+.stat-card.ready{border-left:4px solid var(--success)}
+.stat-label{font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:var(--gold-deep);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:8px}
+.stat-value{font-family:'Fraunces',serif;font-size:32px;font-weight:600;color:var(--navy);line-height:1}
+.stat-meta{font-size:11px;color:var(--text-dim);margin-top:6px}
+
+/* TAB BAR */
+.tab-bar{display:flex;gap:4px;margin-bottom:18px;border-bottom:1px solid var(--rule);overflow-x:auto}
+.tab{padding:10px 18px;border-bottom:3px solid transparent;font-size:12px;font-weight:600;color:var(--text-dim);cursor:pointer;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:0.08em;white-space:nowrap}
+.tab.active{color:var(--navy);border-bottom-color:var(--gold)}
+.tab .count{display:inline-block;background:var(--gold-soft);color:var(--gold-deep);padding:1px 7px;border-radius:999px;font-size:9.5px;margin-left:6px}
+
+/* DESIGN CARD */
+.design-card{background:#fff;border:1.5px solid var(--rule);border-radius:12px;padding:16px;margin-bottom:12px;transition:all 0.15s}
+.design-card:hover{border-color:var(--gold-soft)}
+.design-card.urgent{border-left:4px solid var(--danger);background:linear-gradient(90deg, var(--danger-bg) 0%, #fff 15%)}
+.dc-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.dc-title{font-family:'Fraunces',serif;font-size:17px;font-weight:600;color:var(--navy);margin-bottom:4px}
+.dc-meta{display:flex;flex-wrap:wrap;gap:14px;font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--text-dim);letter-spacing:0.06em}
+.dc-meta strong{color:var(--gold-deep)}
+.dc-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+.dc-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;margin-bottom:10px}
+.tag{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase}
+.tag.urgent{background:var(--danger);color:#fff}
+.tag.location{background:var(--gold-soft);color:var(--gold-deep)}
+.tag.qty{background:var(--purple-bg);color:var(--purple)}
+.tag.pending{background:var(--warn-bg);color:var(--warn)}
+.tag.in-progress{background:var(--info-bg);color:var(--info)}
+.tag.ready{background:var(--success-bg);color:var(--success)}
+
+.file-status{padding:10px 14px;border-radius:8px;margin-top:8px;display:flex;align-items:center;gap:10px;font-size:12px}
+.file-status.empty{background:var(--cream);border:1.5px dashed var(--rule);color:var(--text-dim)}
+.file-status.has-file{background:var(--success-bg);border:1px solid var(--success);color:var(--success)}
+.file-icon-lg{font-size:20px}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.15s;font-family:inherit}
+.btn:hover{transform:translateY(-1px)}
+.btn-primary{background:var(--navy);color:#fff}
+.btn-gold{background:var(--gold);color:var(--navy)}
+.btn-success{background:var(--success);color:#fff}
+.btn-secondary{background:#fff;color:var(--navy);border:1px solid var(--rule)}
+.btn-info{background:var(--info);color:#fff}
+.btn-purple{background:var(--purple);color:#fff}
+.btn.sm{padding:6px 10px;font-size:10.5px}
+.btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(11,25,87,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;backdrop-filter:blur(4px)}
+.modal{background:#fff;border-radius:12px;max-width:640px;width:100%;max-height:90vh;overflow-y:auto;border:1px solid var(--gold);box-shadow:0 20px 60px rgba(0,0,0,0.3)}
+.modal-head{padding:18px 22px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg, var(--paper), #fff)}
+.modal-title{font-family:'Fraunces',serif;font-size:18px;font-weight:600;color:var(--navy)}
+.modal-close{width:30px;height:30px;border-radius:50%;background:var(--cream);color:var(--danger);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer}
+.modal-body{padding:18px 22px}
+.modal-foot{padding:14px 22px;border-top:1px solid var(--rule);display:flex;justify-content:flex-end;gap:8px;background:var(--paper)}
+
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.label{font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:var(--navy);letter-spacing:0.12em;text-transform:uppercase}
+.label .req{color:var(--danger)}
+.label .hint{color:var(--text-dim);font-weight:400;text-transform:none;letter-spacing:0;font-size:10px;margin-left:6px}
+.input,.textarea{padding:10px 12px;border:1px solid var(--rule);background:var(--cream);font-family:inherit;font-size:13px;color:var(--ink-950);border-radius:6px;outline:none;width:100%}
+.input:focus,.textarea:focus{border-color:var(--gold);background:#fff}
+.textarea{resize:vertical;min-height:70px}
+
+.tabs-pick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.pick-tab{padding:12px;background:var(--cream);border:1.5px solid var(--rule);border-radius:8px;cursor:pointer;text-align:center;font-size:12px;font-weight:600;color:var(--text-dim);transition:all 0.15s}
+.pick-tab:hover{border-color:var(--gold)}
+.pick-tab.active{background:linear-gradient(135deg, var(--gold-soft), #fff);border-color:var(--gold);color:var(--gold-deep)}
+.pick-icon{font-size:22px;display:block;margin-bottom:4px}
+
+.callout{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:12px}
+.callout.info{background:var(--info-bg);color:var(--info)}
+.callout.success{background:var(--success-bg);color:var(--success)}
+.callout.warn{background:var(--warn-bg);color:var(--warn)}
+.callout.error{background:var(--danger-bg);color:var(--danger)}
+
+.spin{width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:40px 20px;color:var(--text-dim);font-size:13px;font-style:italic}
+
+.preview-img{max-width:100%;max-height:180px;border-radius:6px;border:1px solid var(--rule);margin-top:8px}
+
+@media (max-width:768px){
+  .main{padding:18px}
+  .stats-grid{grid-template-columns:repeat(2, 1fr)}
+  .topbar{padding:12px 16px}
+  .dc-head{flex-direction:column}
+  .tabs-pick{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-bg" id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">🎨</div>
+    <div class="login-title">Designer</div>
+    <div class="login-sub">v1.0 · Design Upload</div>
+    <input id="loginPhone" class="login-input" type="tel" placeholder="10-digit phone" maxlength="10">
+    <button id="loginBtn" class="login-btn" onclick="doLogin()">Access Designer →</button>
+    <div id="loginErr" class="login-err"></div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="mainApp" style="display:none">
+  
+  <div class="topbar">
+    <div class="tb-brand">
+      <div class="tb-logo">🎨</div>
+      <div>
+        <div class="tb-name">Designer Uploads</div>
+        <div class="tb-tag">v1.0 · Design Pipeline</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <a href="/dashboard.html" class="btn btn-secondary sm">← Dashboard</a>
+      <div class="tb-user">
+        <div class="tb-ava" id="tbAva">?</div>
+        <div class="tb-info"><div class="name" id="tbName">…</div><div class="role" id="tbRole">…</div></div>
+      </div>
+      <button class="btn btn-secondary sm" onclick="logout()">⎋</button>
+    </div>
+  </div>
+  
+  <div class="main">
+    
+    <div class="page-head">
+      <div>
+        <div class="page-title">Design <em>Pipeline</em></div>
+        <div class="page-sub" id="todayDate">…</div>
+      </div>
+    </div>
+    
+    <div id="statsArea"></div>
+    
+    <div class="tab-bar" id="tabBar"></div>
+    
+    <div id="contentArea">
+      <div class="empty">Loading…</div>
+    </div>
+    
+  </div>
+</div>
+
+<!-- UPLOAD MODAL -->
+<div class="modal-bg" id="uploadModal" style="display:none">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">📎 Upload Design File</div>
+      <button class="modal-close" onclick="closeUploadModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="uploadDesignInfo" style="margin-bottom:14px"></div>
+      
+      <div class="tabs-pick">
+        <div class="pick-tab active" id="pickDrive" onclick="pickMethod('drive')">
+          <span class="pick-icon">📂</span>
+          Google Drive Link
+          <div style="font-size:10px;color:var(--text-dim);margin-top:4px;font-weight:400">Up to 500 MB</div>
+        </div>
+        <div class="pick-tab" id="pickSupabase" onclick="pickMethod('supabase')">
+          <span class="pick-icon">📄</span>
+          Direct Upload
+          <div style="font-size:10px;color:var(--text-dim);margin-top:4px;font-weight:400">Up to 50 MB</div>
+        </div>
+      </div>
+      
+      <div id="driveSection">
+        <div class="field">
+          <div class="label">Google Drive Link <span class="req">*</span> <span class="hint">Sharing must be "Anyone with link"</span></div>
+          <input class="input" id="driveUrl" placeholder="https://drive.google.com/file/d/.../view?usp=sharing">
+        </div>
+        <div class="callout info">
+          <span>💡</span>
+          <div>
+            <strong>How to get Drive link:</strong><br>
+            1. Upload file to Google Drive<br>
+            2. Right-click → "Share" → Change to "Anyone with the link"<br>
+            3. Click "Copy link" → paste here
+          </div>
+        </div>
+      </div>
+      
+      <div id="supabaseSection" style="display:none">
+        <div class="field">
+          <div class="label">Upload File <span class="req">*</span> <span class="hint">Image/PDF max 50 MB</span></div>
+          <input type="file" id="fileInput" class="input" accept="image/*,application/pdf,.ai,.psd,.cdr">
+        </div>
+      </div>
+      
+      <hr style="border:none;border-top:1px solid var(--rule);margin:14px 0">
+      
+      <div class="field">
+        <div class="label">Preview Image <span class="hint">Optional · Small JPG/PNG for fast operator view</span></div>
+        <input type="file" id="previewInput" class="input" accept="image/*">
+      </div>
+      
+      <hr style="border:none;border-top:1px solid var(--rule);margin:14px 0">
+      
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field" style="margin-bottom:0">
+          <div class="label">Size <span class="hint">e.g., A3, 36x24"</span></div>
+          <input class="input" id="specSize" placeholder="A3 / 36x24 inch">
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <div class="label">Color Mode</div>
+          <select class="input" id="specColor">
+            <option value="">— Select —</option>
+            <option value="CMYK">CMYK</option>
+            <option value="RGB">RGB</option>
+            <option value="Pantone">Pantone</option>
+          </select>
+        </div>
+      </div>
+      
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px">
+        <div class="field" style="margin-bottom:0">
+          <div class="label">Paper / Material</div>
+          <input class="input" id="specPaper" placeholder="Rexin / Flex / Vinyl">
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <div class="label">DPI / Resolution</div>
+          <input class="input" id="specDpi" placeholder="300 DPI">
+        </div>
+      </div>
+      
+      <div class="field" style="margin-top:14px;margin-bottom:0">
+        <div class="label">Notes <span class="hint">Optional</span></div>
+        <textarea class="textarea" id="designNotes" placeholder="Any specific instructions..."></textarea>
+      </div>
+      
+      <div id="uploadStatus" style="margin-top:10px"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeUploadModal()">Cancel</button>
+      <button class="btn btn-success" id="uploadSaveBtn" onclick="saveUpload()">💾 Save & Mark Ready</button>
+    </div>
+  </div>
+</div>
+
+<script src="/lib/access-guard.js"></script>
+
+<script>
+const SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
+
+const state = {
+  user: null,
+  designs: [],
+  campaigns: [],
+  activeTab: 'pending',
+  currentDesign: null,
+  uploadMethod: 'drive'
+};
+
+const HEADERS = {
+  'apikey': SUPABASE_KEY,
+  'Authorization': 'Bearer ' + SUPABASE_KEY,
+  'Content-Type': 'application/json'
+};
+
+async function api(path, opts = {}) {
+  const res = await fetch(SUPABASE_URL + path, { 
+    ...opts, 
+    headers: { ...HEADERS, ...(opts.headers || {}) }
+  });
+  if (!res.ok) throw new Error('API error: ' + res.status + ' ' + await res.text());
+  if (res.status === 204 || res.headers.get('content-length') === '0') return null;
+  const text = await res.text();
+  if (!text) return null;
+  return JSON.parse(text);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LOGIN
+// ═══════════════════════════════════════════════════════════════
+
+async function doLogin() {
+  const phone = document.getElementById('loginPhone').value.trim();
+  const errEl = document.getElementById('loginErr');
+  const btn = document.getElementById('loginBtn');
+  
+  errEl.classList.remove('show');
+  if (phone.length !== 10) {
+    errEl.textContent = 'Phone 10 digits ka hona chahiye';
+    errEl.classList.add('show');
+    return;
+  }
+  
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Loading…';
+  
+  try {
+    const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
+    if (!members || !members.length) {
+      throw new Error('Number registered nahi');
+    }
+    const m = members[0];
+    
+    const allowedRoles = ['admin', 'owner', 'designer', 'design', 'operations_manager', 'ops_manager'];
+    if (!allowedRoles.includes((m.role || '').toLowerCase())) {
+      throw new Error('Sirf Designer/Admin/Owner/Manager roles');
+    }
+    
+    state.user = m;
+    localStorage.setItem('prajapati_admin_phone', phone);
+    
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    
+    initApp();
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.add('show');
+    btn.disabled = false;
+    btn.innerHTML = 'Access Designer →';
+  }
+}
+
+async function autoLogin() {
+  const phone = localStorage.getItem('prajapati_admin_phone');
+  if (!phone) return;
+  try {
+    const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
+    if (!members || !members.length) return;
+    const m = members[0];
+    const allowedRoles = ['admin', 'owner', 'designer', 'design', 'operations_manager', 'ops_manager'];
+    if (!allowedRoles.includes((m.role || '').toLowerCase())) return;
+    
+    state.user = m;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    initApp();
+  } catch (e) {}
+}
+
+function logout() {
+  localStorage.removeItem('prajapati_admin_phone');
+  location.reload();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+
+function initApp() {
+  const initial = (state.user.name || '?').charAt(0).toUpperCase();
+  document.getElementById('tbAva').textContent = initial;
+  document.getElementById('tbName').textContent = state.user.name || 'User';
+  document.getElementById('tbRole').textContent = (state.user.role || 'user').replace(/_/g, ' ');
+  
+  document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-IN', {
+    weekday: 'long', day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata'
+  });
+  
+  if (window.AccessGuard) AccessGuard.filterUI(state.user);
+  
+  loadData();
+}
+
+async function loadData() {
+  document.getElementById('contentArea').innerHTML = '<div class="empty">Loading designs…</div>';
+  
+  try {
+    // Load all designs with their campaign info
+    const designs = await api('/rest/v1/trial_campaign_designs?select=*,campaign:campaign_id(id,campaign_name,name,client_name,is_urgent,status,start_date)&order=created_at.desc&limit=200');
+    
+    // Filter out designs whose campaign is cancelled/completed
+    state.designs = (designs || []).filter(d => 
+      d.campaign && !['completed', 'cancelled'].includes(d.campaign.status || '')
+    );
+    
+    renderUI();
+  } catch (err) {
+    console.error(err);
+    document.getElementById('contentArea').innerHTML = `
+      <div class="callout error">
+        <span>❌</span>
+        <div><strong>Load failed:</strong> ${escapeHtml(err.message)}</div>
+      </div>
+    `;
+  }
+}
+
+function renderUI() {
+  const designs = state.designs;
+  
+  const pending = designs.filter(d => !d.drive_url && !d.design_url);
+  const inProgress = designs.filter(d => 
+    (d.drive_url || d.design_url) && d.design_status === 'in_design'
+  );
+  const ready = designs.filter(d => 
+    (d.drive_url || d.design_url) && ['ready', 'approved'].includes(d.design_status || '')
+  );
+  const all = designs;
+  
+  // Stats
+  document.getElementById('statsArea').innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card pending">
+        <div class="stat-label">⏳ Pending Upload</div>
+        <div class="stat-value">${pending.length}</div>
+        <div class="stat-meta">designs need files</div>
+      </div>
+      <div class="stat-card in-progress">
+        <div class="stat-label">🎨 In Progress</div>
+        <div class="stat-value">${inProgress.length}</div>
+        <div class="stat-meta">being designed</div>
+      </div>
+      <div class="stat-card ready">
+        <div class="stat-label">✅ Ready</div>
+        <div class="stat-value">${ready.length}</div>
+        <div class="stat-meta">files uploaded</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">📋 Total Active</div>
+        <div class="stat-value">${all.length}</div>
+        <div class="stat-meta">all campaigns</div>
+      </div>
+    </div>
+  `;
+  
+  // Tabs
+  document.getElementById('tabBar').innerHTML = `
+    <div class="tab ${state.activeTab === 'pending' ? 'active' : ''}" onclick="switchTab('pending')">
+      ⏳ Pending <span class="count">${pending.length}</span>
+    </div>
+    <div class="tab ${state.activeTab === 'in_progress' ? 'active' : ''}" onclick="switchTab('in_progress')">
+      🎨 In Progress <span class="count">${inProgress.length}</span>
+    </div>
+    <div class="tab ${state.activeTab === 'ready' ? 'active' : ''}" onclick="switchTab('ready')">
+      ✅ Ready <span class="count">${ready.length}</span>
+    </div>
+    <div class="tab ${state.activeTab === 'all' ? 'active' : ''}" onclick="switchTab('all')">
+      📋 All <span class="count">${all.length}</span>
+    </div>
+  `;
+  
+  renderContent();
+}
+
+function switchTab(tab) {
+  state.activeTab = tab;
+  renderUI();
+}
+
+function renderContent() {
+  const designs = state.designs;
+  const tab = state.activeTab;
+  
+  let list;
+  if (tab === 'pending') list = designs.filter(d => !d.drive_url && !d.design_url);
+  else if (tab === 'in_progress') list = designs.filter(d => (d.drive_url || d.design_url) && d.design_status === 'in_design');
+  else if (tab === 'ready') list = designs.filter(d => (d.drive_url || d.design_url) && ['ready','approved'].includes(d.design_status));
+  else list = designs;
+  
+  if (!list.length) {
+    document.getElementById('contentArea').innerHTML = '<div class="empty">No designs in this category.</div>';
+    return;
+  }
+  
+  document.getElementById('contentArea').innerHTML = list.map(d => {
+    const c = d.campaign || {};
+    const isUrgent = c.is_urgent;
+    const hasFile = !!(d.drive_url || d.design_url);
+    const status = d.design_status || 'pending';
+    
+    return `
+      <div class="design-card ${isUrgent ? 'urgent' : ''}">
+        <div class="dc-head">
+          <div style="flex:1;min-width:0">
+            <div class="dc-title">${escapeHtml(d.design_name || 'Unnamed Design')}</div>
+            <div class="dc-meta">
+              <span>📋 <strong>${escapeHtml(c.campaign_name || c.name || 'No campaign')}</strong></span>
+              ${c.client_name ? `<span>👤 ${escapeHtml(c.client_name)}</span>` : ''}
+              ${d.location_name ? `<span>📍 ${escapeHtml(d.location_name)}</span>` : ''}
+              ${c.start_date ? `<span>📅 Start: ${escapeHtml(c.start_date)}</span>` : ''}
+            </div>
+            <div class="dc-tags">
+              ${isUrgent ? '<span class="tag urgent">🚨 URGENT</span>' : ''}
+              ${d.location_city ? `<span class="tag location">📍 ${escapeHtml(d.location_city)}</span>` : ''}
+              <span class="tag qty">📦 ${(d.quantity || 0).toLocaleString('en-IN')} units</span>
+              <span class="tag ${hasFile ? (status==='ready'?'ready':'in-progress') : 'pending'}">
+                ${hasFile ? (status==='ready' ? '✅ READY' : '🎨 IN PROGRESS') : '⏳ PENDING'}
+              </span>
+            </div>
+          </div>
+          <div class="dc-actions">
+            ${hasFile && d.drive_url ? `
+              <a href="${d.drive_url}" target="_blank" class="btn btn-secondary sm">
+                📂 View Drive
+              </a>
+            ` : ''}
+            ${hasFile && d.design_url ? `
+              <a href="${d.design_url}" target="_blank" class="btn btn-secondary sm">
+                📄 View File
+              </a>
+            ` : ''}
+            <button class="btn ${hasFile ? 'btn-secondary' : 'btn-purple'} sm" onclick="openUploadModal('${d.id}')">
+              ${hasFile ? '✏️ Edit' : '📎 Upload'}
+            </button>
+          </div>
+        </div>
+        
+        ${d.design_specs ? `
+          <div class="file-status has-file" style="background:var(--paper);color:var(--ink-700);border-color:var(--rule)">
+            <span class="file-icon-lg">⚙️</span>
+            <div style="flex:1">
+              <strong>Specs:</strong>
+              ${[
+                d.design_specs.size && `Size: ${d.design_specs.size}`,
+                d.design_specs.color && `Color: ${d.design_specs.color}`,
+                d.design_specs.paper && `Material: ${d.design_specs.paper}`,
+                d.design_specs.dpi && `DPI: ${d.design_specs.dpi}`
+              ].filter(Boolean).join(' · ')}
+            </div>
+          </div>
+        ` : ''}
+        
+        ${d.preview_url ? `
+          <img src="${d.preview_url}" class="preview-img" alt="Preview">
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// UPLOAD MODAL
+// ═══════════════════════════════════════════════════════════════
+
+function openUploadModal(designId) {
+  const design = state.designs.find(d => d.id === designId);
+  if (!design) return;
+  
+  state.currentDesign = design;
+  
+  const c = design.campaign || {};
+  document.getElementById('uploadDesignInfo').innerHTML = `
+    <div class="callout info" style="margin-bottom:0">
+      <span>🎨</span>
+      <div>
+        <strong>${escapeHtml(design.design_name)}</strong> · ${escapeHtml(c.campaign_name || c.name || '')}<br>
+        <small>${escapeHtml(design.location_name || '')} · ${(design.quantity || 0).toLocaleString('en-IN')} units</small>
+      </div>
+    </div>
+  `;
+  
+  // Pre-fill if exists
+  document.getElementById('driveUrl').value = design.drive_url || '';
+  
+  if (design.design_specs) {
+    document.getElementById('specSize').value = design.design_specs.size || '';
+    document.getElementById('specColor').value = design.design_specs.color || '';
+    document.getElementById('specPaper').value = design.design_specs.paper || '';
+    document.getElementById('specDpi').value = design.design_specs.dpi || '';
+  } else {
+    ['specSize','specColor','specPaper','specDpi'].forEach(id => document.getElementById(id).value = '');
+  }
+  
+  document.getElementById('designNotes').value = design.design_notes || '';
+  document.getElementById('uploadStatus').innerHTML = '';
+  
+  // Default to drive method
+  pickMethod(design.drive_url ? 'drive' : (design.design_url ? 'supabase' : 'drive'));
+  
+  document.getElementById('uploadModal').style.display = 'flex';
+}
+
+function closeUploadModal() {
+  document.getElementById('uploadModal').style.display = 'none';
+  state.currentDesign = null;
+}
+
+function pickMethod(method) {
+  state.uploadMethod = method;
+  document.getElementById('pickDrive').classList.toggle('active', method === 'drive');
+  document.getElementById('pickSupabase').classList.toggle('active', method === 'supabase');
+  document.getElementById('driveSection').style.display = method === 'drive' ? 'block' : 'none';
+  document.getElementById('supabaseSection').style.display = method === 'supabase' ? 'block' : 'none';
+}
+
+async function saveUpload() {
+  const design = state.currentDesign;
+  if (!design) return;
+  
+  const btn = document.getElementById('uploadSaveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Saving…';
+  document.getElementById('uploadStatus').innerHTML = '<div class="callout info"><span>⏳</span><div>Processing…</div></div>';
+  
+  try {
+    const payload = {
+      design_status: 'ready',
+      designer_id: state.user.id,
+      designed_at: new Date().toISOString(),
+      design_specs: {
+        size: document.getElementById('specSize').value.trim() || null,
+        color: document.getElementById('specColor').value || null,
+        paper: document.getElementById('specPaper').value.trim() || null,
+        dpi: document.getElementById('specDpi').value.trim() || null
+      },
+      design_notes: document.getElementById('designNotes').value.trim() || null,
+      updated_at: new Date().toISOString()
+    };
+    
+    // Strip empty specs
+    Object.keys(payload.design_specs).forEach(k => {
+      if (!payload.design_specs[k]) delete payload.design_specs[k];
+    });
+    if (Object.keys(payload.design_specs).length === 0) payload.design_specs = null;
+    
+    // Method-specific handling
+    if (state.uploadMethod === 'drive') {
+      const driveUrl = document.getElementById('driveUrl').value.trim();
+      if (!driveUrl) throw new Error('Drive URL required');
+      if (!driveUrl.includes('drive.google.com')) throw new Error('Invalid Google Drive URL');
+      
+      payload.drive_url = driveUrl;
+      
+      // Extract Drive file ID
+      const idMatch = driveUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || driveUrl.match(/id=([a-zA-Z0-9_-]+)/);
+      if (idMatch) payload.drive_file_id = idMatch[1];
+    } else {
+      const file = document.getElementById('fileInput').files[0];
+      if (!file) throw new Error('Please select a file');
+      if (file.size > 50 * 1024 * 1024) throw new Error('File too large (max 50 MB for direct upload — use Drive for larger)');
+      
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const path = `${state.user.id}/${Date.now()}_${safeName}`;
+      
+      const formData = new FormData();
+      formData.append('', file);
+      
+      const uploadRes = await fetch(SUPABASE_URL + '/storage/v1/object/campaign-designs/' + path, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_KEY,
+          'Content-Type': file.type || 'application/octet-stream'
+        },
+        body: file
+      });
+      
+      if (!uploadRes.ok) throw new Error('Upload failed: ' + await uploadRes.text());
+      
+      payload.design_url = SUPABASE_URL + '/storage/v1/object/public/campaign-designs/' + path;
+      payload.design_file_name = file.name;
+      payload.design_file_size = file.size;
+      payload.design_file_type = file.type;
+    }
+    
+    // Preview image (optional)
+    const previewFile = document.getElementById('previewInput').files[0];
+    if (previewFile) {
+      const safeName = previewFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const previewPath = `${state.user.id}/previews/${Date.now()}_${safeName}`;
+      
+      const previewRes = await fetch(SUPABASE_URL + '/storage/v1/object/campaign-designs/' + previewPath, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_KEY,
+          'Content-Type': previewFile.type || 'image/jpeg'
+        },
+        body: previewFile
+      });
+      
+      if (previewRes.ok) {
+        payload.preview_url = SUPABASE_URL + '/storage/v1/object/public/campaign-designs/' + previewPath;
+      }
+    }
+    
+    // Save to DB
+    await api(`/rest/v1/trial_campaign_designs?id=eq.${design.id}`, {
+      method: 'PATCH',
+      headers: { 'Prefer': 'return=minimal' },
+      body: JSON.stringify(payload)
+    });
+    
+    document.getElementById('uploadStatus').innerHTML = '<div class="callout success"><span>✅</span><div>Saved! Design marked as ready.</div></div>';
+    setTimeout(() => {
+      closeUploadModal();
+      loadData();
+    }, 1000);
+    
+  } catch (e) {
+    document.getElementById('uploadStatus').innerHTML = `<div class="callout error"><span>❌</span><div>${escapeHtml(e.message)}</div></div>`;
+    btn.disabled = false;
+    btn.innerHTML = '💾 Save & Mark Ready';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  autoLogin();
+  document.getElementById('loginPhone').addEventListener('keypress', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+  document.getElementById('loginPhone').addEventListener('input', e => {
+    e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
+  });
+});
+</script>
+
+</body>
+</html>
