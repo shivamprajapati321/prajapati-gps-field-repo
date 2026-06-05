@@ -1,0 +1,1714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Stitching v3 · Prajapati Advertising</title>
+<meta name="theme-color" content="#0B1957">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght,ital@9..144,300..900,0..1&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+:root{
+  --navy:#0B1957;--navy-deep:#050B2E;
+  --gold:#B89B4E;--gold-bright:#D4B45F;--gold-deep:#8B7430;--gold-soft:#F4E4B0;
+  --orange:#EA580C;--orange-bright:#F97316;--orange-deep:#9A3412;--orange-soft:#FED7AA;
+  --cream:#FAF8F3;--paper:#F7F4EC;--rule:#E5E0D2;
+  --ink-950:#0F172A;--ink-700:#475569;--text-dim:#94A3B8;
+  --success:#047857;--success-bg:#D1FAE5;
+  --warn:#C2410C;--warn-bg:#FED7AA;
+  --danger:#BE123C;--danger-bg:#FECACA;
+  --info:#1E40AF;--info-bg:#DBEAFE;
+  --purple:#7C3AED;--purple-bg:#EDE9FE;
+  --emerald:#10B981;--emerald-bg:#D1FAE5;
+}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--cream);color:var(--ink-950);font-size:14px;line-height:1.5;min-height:100vh}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+a{color:inherit;text-decoration:none}
+input,select,textarea{font-family:inherit}
+
+/* TOPBAR */
+.topbar{background:var(--navy);color:#fff;padding:14px 28px;border-bottom:3px solid var(--gold);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;flex-wrap:wrap;gap:12px}
+.tb-brand{display:flex;align-items:center;gap:12px}
+.tb-logo{width:40px;height:40px;background:var(--orange);color:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700}
+.tb-name{font-size:14px;font-weight:700}
+.tb-tag{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--gold-bright);letter-spacing:0.16em;text-transform:uppercase;margin-top:2px}
+.tb-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tb-user{display:flex;align-items:center;gap:10px;padding:4px 14px 4px 4px;background:rgba(255,255,255,0.08);border:1px solid rgba(212,180,95,0.3);border-radius:999px}
+.tb-ava{width:28px;height:28px;border-radius:50%;background:var(--gold);color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
+.tb-info .name{font-size:12px;font-weight:700;line-height:1.1}
+.tb-info .role{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--gold-bright);letter-spacing:0.14em;text-transform:uppercase}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.15s;font-family:inherit;white-space:nowrap}
+.btn:hover{transform:translateY(-1px)}
+.btn-primary{background:var(--navy);color:#fff}
+.btn-orange{background:var(--orange);color:#fff}
+.btn-orange:hover{background:var(--orange-bright)}
+.btn-gold{background:var(--gold);color:var(--navy)}
+.btn-success{background:var(--success);color:#fff}
+.btn-secondary{background:#fff;color:var(--navy);border:1px solid var(--rule)}
+.btn-info{background:var(--info);color:#fff}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-icon{padding:6px;width:30px;height:30px}
+.btn.sm{padding:6px 10px;font-size:11px}
+.btn.lg{padding:11px 18px;font-size:13px}
+.btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+
+/* LOGIN */
+.login-bg{position:fixed;inset:0;background:linear-gradient(135deg, var(--navy), var(--navy-deep));display:flex;align-items:center;justify-content:center;padding:20px;z-index:200}
+.login-card{background:#fff;padding:36px 32px;border-radius:14px;max-width:380px;width:100%;border:1px solid var(--gold)}
+.login-logo{width:64px;height:64px;background:var(--orange);color:#fff;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 18px}
+.login-title{font-family:'Fraunces',serif;font-size:22px;font-weight:500;text-align:center;color:var(--navy);margin-bottom:6px}
+.login-sub{font-family:'JetBrains Mono',monospace;font-size:9.5px;text-align:center;color:var(--text-dim);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:24px}
+.login-input{width:100%;padding:12px 14px;border:1px solid var(--rule);font-family:inherit;font-size:14px;border-radius:8px;outline:none;margin-bottom:10px}
+.login-input:focus{border-color:var(--orange)}
+.login-btn{width:100%;padding:13px;background:var(--orange);color:#fff;border-radius:8px;font-weight:700;font-size:13px}
+.login-err{color:var(--danger);font-size:12px;text-align:center;margin-top:10px;display:none}
+.login-err.show{display:block}
+
+/* MAIN LAYOUT */
+.main{padding:24px 28px;max-width:1400px;margin:0 auto}
+
+/* BULK ENTRY BANNER */
+.hero-banner{background:linear-gradient(135deg, var(--orange-deep), var(--orange));color:#fff;border-radius:14px;padding:24px 28px;margin-bottom:22px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:18px;box-shadow:0 8px 24px rgba(234,88,12,0.2)}
+.hero-content{flex:1;min-width:280px}
+.hero-tag{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:rgba(255,255,255,0.18);border-radius:999px;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;margin-bottom:10px}
+.hero-title{font-family:'Fraunces',serif;font-size:30px;font-weight:500;line-height:1.1;margin-bottom:6px}
+.hero-title em{font-style:italic;color:var(--orange-soft)}
+.hero-sub{font-size:13px;opacity:0.92}
+.hero-stats{display:flex;gap:24px;flex-wrap:wrap}
+.hero-stat{text-align:right}
+.hero-stat-label{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;opacity:0.85;margin-bottom:4px}
+.hero-stat-value{font-family:'Fraunces',serif;font-size:24px;font-weight:600;line-height:1}
+
+/* STATS GRID */
+.stats-grid{display:grid;grid-template-columns:repeat(4, 1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:#fff;border:1px solid var(--rule);border-radius:10px;padding:16px 18px;position:relative;overflow:hidden}
+.stat-card.entries{border-left:4px solid var(--info)}
+.stat-card.earned{border-left:4px solid var(--gold)}
+.stat-card.paid{border-left:4px solid var(--success)}
+.stat-card.outstanding{border-left:4px solid var(--danger)}
+.stat-label{font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:var(--gold-deep);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:6px}
+.stat-value{font-family:'Fraunces',serif;font-size:24px;font-weight:600;color:var(--navy);line-height:1}
+.stat-meta{font-size:10.5px;color:var(--text-dim);margin-top:4px}
+
+/* GLOBAL SEARCH BAR */
+.search-bar{background:#fff;border:1px solid var(--rule);border-radius:10px;padding:12px 16px;margin-bottom:18px;display:flex;align-items:center;gap:10px;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+.search-bar input{flex:1;padding:8px;border:none;outline:none;font-size:14px;background:transparent}
+.search-bar .icon{font-size:18px;color:var(--text-dim)}
+.search-bar .clear{padding:4px 10px;font-size:11px;color:var(--text-dim);cursor:pointer;border-radius:4px}
+.search-bar .clear:hover{background:var(--paper);color:var(--danger)}
+
+/* TAB BAR */
+.tab-bar{background:#fff;border:1px solid var(--rule);border-radius:10px;padding:6px;margin-bottom:18px;display:flex;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tab{flex:1;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:700;color:var(--text-dim);cursor:pointer;transition:all 0.15s;text-align:center;white-space:nowrap;min-width:fit-content;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.tab:hover{background:var(--paper);color:var(--navy)}
+.tab.active{background:var(--orange);color:#fff}
+.tab .count{display:inline-flex;align-items:center;justify-content:center;min-width:20px;padding:0 6px;height:18px;background:rgba(255,255,255,0.25);border-radius:9px;font-size:10px;font-weight:700}
+.tab:not(.active) .count{background:var(--paper);color:var(--text-dim)}
+
+/* SECTION */
+.section{background:#fff;border:1px solid var(--rule);border-radius:10px;margin-bottom:16px;overflow:hidden}
+.section-head{padding:14px 18px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg, var(--paper), #fff);flex-wrap:wrap;gap:10px}
+.section-title{font-family:'Fraunces',serif;font-size:15px;font-weight:600;color:var(--navy)}
+.section-title em{color:var(--orange);font-style:italic}
+.section-meta{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--gold-deep);letter-spacing:0.14em;text-transform:uppercase}
+.section-body{padding:16px 18px}
+
+/* FILTER BAR */
+.filter-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 16px;background:var(--paper);border-bottom:1px solid var(--rule)}
+.filter-bar .flabel{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--gold-deep);letter-spacing:0.12em;text-transform:uppercase;margin-right:4px}
+.filter-bar select,.filter-bar input{padding:7px 10px;border:1px solid var(--rule);background:#fff;font-family:inherit;font-size:12px;border-radius:6px;outline:none}
+.filter-bar select:focus,.filter-bar input:focus{border-color:var(--orange)}
+
+.chip-group{display:inline-flex;gap:0;border:1px solid var(--rule);border-radius:6px;overflow:hidden;background:#fff}
+.chip{padding:6px 12px;font-size:11px;font-weight:700;color:var(--ink-700);cursor:pointer;border-right:1px solid var(--rule);transition:all 0.15s}
+.chip:last-child{border-right:none}
+.chip:hover{background:var(--paper)}
+.chip.active{background:var(--orange);color:#fff}
+
+/* FORMS */
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.flabel{font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:var(--navy);letter-spacing:0.12em;text-transform:uppercase}
+.flabel .req{color:var(--danger)}
+.flabel .hint{color:var(--text-dim);font-weight:400;text-transform:none;letter-spacing:0;font-size:10px;margin-left:6px}
+.input,.textarea{padding:10px 12px;border:1px solid var(--rule);background:var(--cream);font-family:inherit;font-size:13px;color:var(--ink-950);border-radius:6px;outline:none;width:100%}
+.input:focus,.textarea:focus{border-color:var(--orange);background:#fff}
+.textarea{resize:vertical;min-height:60px}
+.row-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:12px}
+
+/* CONTEXT CARD (Daily Entry) */
+.context-card{background:linear-gradient(135deg, var(--orange-soft), #fff);border:1px solid var(--orange);border-radius:10px;padding:16px;margin-bottom:14px}
+.context-card-title{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--orange-deep);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+
+/* DRAFT ROWS */
+.draft-row{background:#fff;border:1px solid var(--rule);border-radius:8px;padding:12px;margin-bottom:8px;display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 40px;gap:10px;align-items:center}
+.draft-row.cash-row{background:linear-gradient(90deg, var(--emerald-bg) 0%, #fff 50%);border-left:3px solid var(--emerald)}
+.draft-row select,.draft-row input{padding:8px;border:1px solid var(--rule);border-radius:6px;font-size:13px;outline:none;width:100%}
+.draft-row select:focus,.draft-row input:focus{border-color:var(--orange)}
+.draft-row .total-display{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--navy);text-align:right;padding:8px}
+.draft-row .delete-btn{padding:6px;background:var(--danger-bg);color:var(--danger);border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+/* TABLE */
+.data-table{width:100%;border-collapse:collapse}
+.data-table th{background:var(--paper);color:var(--navy);padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-align:left;border-bottom:2px solid var(--rule)}
+.data-table td{padding:10px 12px;border-bottom:1px solid var(--rule);font-size:13px}
+.data-table tr:hover td{background:var(--paper)}
+.data-table .num{text-align:right;font-family:'JetBrains Mono',monospace;font-weight:600}
+
+/* MASTER AVATAR */
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--gold);color:var(--navy);display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;font-family:'JetBrains Mono',monospace;flex-shrink:0}
+.master-pill{display:inline-flex;align-items:center;gap:8px}
+.master-pill .name{font-weight:600;color:var(--ink-950)}
+.master-pill .phone{font-size:10.5px;color:var(--text-dim);font-family:'JetBrains Mono',monospace}
+
+/* TAGS */
+.tag{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:999px;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase}
+.tag.regular{background:var(--info-bg);color:var(--info)}
+.tag.ot-cash{background:var(--emerald-bg);color:var(--emerald)}
+.tag.success{background:var(--success-bg);color:var(--success)}
+.tag.warn{background:var(--warn-bg);color:var(--warn)}
+.tag.danger{background:var(--danger-bg);color:var(--danger)}
+
+/* PERFORMANCE CARDS */
+.performance-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:14px}
+.perf-card{background:#fff;border:1px solid var(--rule);border-radius:12px;padding:16px;transition:all 0.15s}
+.perf-card:hover{border-color:var(--orange);box-shadow:0 4px 12px rgba(0,0,0,0.06)}
+.perf-card-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--rule)}
+.perf-card-name{font-family:'Fraunces',serif;font-size:15px;font-weight:600;color:var(--navy)}
+.perf-card-phone{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim)}
+.perf-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.perf-stat{background:var(--paper);padding:8px 10px;border-radius:6px}
+.perf-stat.cash{background:var(--emerald-bg)}
+.perf-stat-label{font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;color:var(--gold-deep);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:2px}
+.perf-stat.cash .perf-stat-label{color:var(--emerald)}
+.perf-stat-value{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--ink-950)}
+.perf-stat-sub{font-size:9.5px;color:var(--text-dim);margin-top:1px}
+.perf-card-total{display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px dashed var(--rule)}
+.perf-card-total .label{font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:var(--gold-deep);letter-spacing:0.12em;text-transform:uppercase}
+.perf-card-total .value{font-family:'Fraunces',serif;font-size:18px;font-weight:600;color:var(--navy)}
+.perf-card-foot{margin-top:10px;display:flex;justify-content:space-between;font-size:10.5px;color:var(--text-dim);font-family:'JetBrains Mono',monospace}
+
+/* OUTSTANDING CARDS */
+.outstanding-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));gap:12px}
+.out-card{background:#fff;border:1px solid var(--rule);border-radius:10px;padding:14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:all 0.15s}
+.out-card:hover{border-color:var(--orange)}
+.out-card.zero{opacity:0.5}
+.out-card-info{flex:1;min-width:0}
+.out-card-name{font-weight:600;color:var(--navy);margin-bottom:2px;display:flex;align-items:center;gap:6px}
+.out-card-phone{font-size:10.5px;color:var(--text-dim);font-family:'JetBrains Mono',monospace}
+.out-card-meta{font-size:10px;color:var(--text-dim);margin-top:4px;display:flex;gap:10px;flex-wrap:wrap}
+.out-card-amount{text-align:right}
+.out-card-amount .val{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:var(--danger)}
+.out-card-amount .label{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--text-dim);letter-spacing:0.12em;text-transform:uppercase}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(11,25,87,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;backdrop-filter:blur(4px)}
+.modal{background:#fff;border-radius:12px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;border:1px solid var(--gold);box-shadow:0 20px 60px rgba(0,0,0,0.3)}
+.modal-head{padding:16px 20px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg, var(--paper), #fff)}
+.modal-title{font-family:'Fraunces',serif;font-size:18px;font-weight:600;color:var(--navy)}
+.modal-close{width:30px;height:30px;border-radius:50%;background:var(--cream);color:var(--danger);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer}
+.modal-body{padding:18px 20px}
+.modal-foot{padding:14px 20px;border-top:1px solid var(--rule);display:flex;justify-content:flex-end;gap:8px;background:var(--paper)}
+
+/* CALLOUTS */
+.callout{display:flex;align-items:flex-start;gap:10px;padding:12px 16px;border-radius:8px;margin-bottom:12px;font-size:12.5px}
+.callout.info{background:var(--info-bg);color:var(--info)}
+.callout.success{background:var(--success-bg);color:var(--success)}
+.callout.warn{background:var(--warn-bg);color:var(--warn)}
+.callout.error{background:var(--danger-bg);color:var(--danger)}
+
+.spin{width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:40px 20px;color:var(--text-dim);font-size:13px;font-style:italic}
+.empty-icon{font-size:32px;display:block;margin-bottom:8px}
+
+/* RESPONSIVE */
+@media (max-width:900px){
+  .stats-grid{grid-template-columns:repeat(2, 1fr)}
+  .hero-stats{justify-content:flex-start}
+  .draft-row{grid-template-columns:1fr;gap:8px}
+}
+@media (max-width:600px){
+  .main{padding:16px}
+  .topbar{padding:12px 16px}
+  .stats-grid{grid-template-columns:1fr 1fr}
+  .hero-title{font-size:22px}
+  .hero-stat-value{font-size:18px}
+}
+
+/* SUMMARY MODE TOGGLE */
+.view-toggle{display:inline-flex;gap:4px;background:var(--paper);padding:4px;border-radius:6px;border:1px solid var(--rule)}
+.view-toggle .vt{padding:5px 10px;font-size:11px;font-weight:700;color:var(--text-dim);cursor:pointer;border-radius:4px;transition:all 0.15s}
+.view-toggle .vt.active{background:#fff;color:var(--navy);box-shadow:0 1px 2px rgba(0,0,0,0.06)}
+
+.text-success{color:var(--success)}
+.text-danger{color:var(--danger)}
+.text-warn{color:var(--warn)}
+.text-emerald{color:var(--emerald)}
+.text-muted{color:var(--text-dim)}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-bg" id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">🧵</div>
+    <div class="login-title">Stitching v3</div>
+    <div class="login-sub">Production · Payment Tracking</div>
+    <input id="loginPhone" class="login-input" type="tel" placeholder="10-digit phone" maxlength="10">
+    <button id="loginBtn" class="login-btn" onclick="doLogin()">Access Stitching →</button>
+    <div id="loginErr" class="login-err"></div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="mainApp" style="display:none">
+  
+  <div class="topbar">
+    <div class="tb-brand">
+      <div class="tb-logo">🧵</div>
+      <div>
+        <div class="tb-name">Stitching v3</div>
+        <div class="tb-tag">Production · Payments · Outstanding</div>
+      </div>
+    </div>
+    <div class="tb-actions">
+      <a href="/dashboard.html" class="btn btn-secondary sm">← Dashboard</a>
+      <a href="/stitching.html" class="btn btn-secondary sm" title="Old version">v2</a>
+      <button class="btn btn-orange sm" onclick="openPaymentModal()">💰 Record Payment</button>
+      <div class="tb-user">
+        <div class="tb-ava" id="tbAva">?</div>
+        <div class="tb-info"><div class="name" id="tbName">…</div><div class="role" id="tbRole">…</div></div>
+      </div>
+      <button class="btn btn-secondary sm" onclick="logout()">⎋</button>
+    </div>
+  </div>
+  
+  <div class="main">
+    
+    <!-- HERO BANNER -->
+    <div class="hero-banner">
+      <div class="hero-content">
+        <div class="hero-tag">⚡ Bulk Entry Mode</div>
+        <div class="hero-title">Daily <em>stitching</em> log</div>
+        <div class="hero-sub">Top par Date + Campaign · Per row Master + Shift + Qty · Bulk save</div>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <div class="hero-stat-label">Pending Payout</div>
+          <div class="hero-stat-value" id="heroOutstanding">₹0</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-label">Active Masters</div>
+          <div class="hero-stat-value" id="heroMasters">0</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- STATS -->
+    <div class="stats-grid">
+      <div class="stat-card entries">
+        <div class="stat-label">📊 Total Entries</div>
+        <div class="stat-value" id="statEntries">0</div>
+        <div class="stat-meta">all time</div>
+      </div>
+      <div class="stat-card earned">
+        <div class="stat-label">💰 Total Earned</div>
+        <div class="stat-value" id="statEarned">₹0</div>
+        <div class="stat-meta" id="statEarnedSub">incl OT cash</div>
+      </div>
+      <div class="stat-card paid">
+        <div class="stat-label">✅ Total Paid</div>
+        <div class="stat-value" id="statPaid">₹0</div>
+        <div class="stat-meta">all payouts</div>
+      </div>
+      <div class="stat-card outstanding">
+        <div class="stat-label">⏳ Outstanding</div>
+        <div class="stat-value" id="statOutstanding">₹0</div>
+        <div class="stat-meta">pending payout</div>
+      </div>
+    </div>
+    
+    <!-- GLOBAL SEARCH -->
+    <div class="search-bar">
+      <span class="icon">🔍</span>
+      <input type="text" id="globalSearch" placeholder="Search master, campaign, date…" oninput="onSearchInput()">
+      <span class="clear" onclick="clearSearch()" id="searchClear" style="display:none">✕ Clear</span>
+    </div>
+    
+    <!-- TAB BAR -->
+    <div class="tab-bar">
+      <div class="tab active" data-tab="entry" onclick="switchTab('entry')">
+        ✏️ Daily Entry
+      </div>
+      <div class="tab" data-tab="history" onclick="switchTab('history')">
+        📋 History <span class="count" id="histCount">0</span>
+      </div>
+      <div class="tab" data-tab="performance" onclick="switchTab('performance')">
+        🏆 Performance
+      </div>
+      <div class="tab" data-tab="payments" onclick="switchTab('payments')">
+        💰 Payments <span class="count" id="payCount">0</span>
+      </div>
+      <div class="tab" data-tab="advances" onclick="switchTab('advances')">
+        🪙 Advances/Loans
+      </div>
+    </div>
+    
+    <!-- TAB CONTENT -->
+    <div id="tabContent">
+      <div class="empty"><span class="empty-icon">⏳</span> Loading…</div>
+    </div>
+    
+  </div>
+</div>
+
+<!-- PAYMENT MODAL -->
+<div class="modal-bg" id="paymentModal" style="display:none">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">💰 Record Payment</div>
+      <button class="modal-close" onclick="closePaymentModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="callout info" style="margin-bottom:12px">
+        <span>ℹ️</span>
+        <div>Record cash/bank payment given to a master. Outstanding will be reduced automatically.</div>
+      </div>
+      
+      <div class="field">
+        <div class="flabel">Master <span class="req">*</span></div>
+        <select class="input" id="payMaster" onchange="onPayMasterChange()">
+          <option value="">— Select master —</option>
+        </select>
+        <div id="payOutstandingHint" class="text-muted" style="font-size:11px;margin-top:4px"></div>
+      </div>
+      
+      <div class="row-grid">
+        <div class="field">
+          <div class="flabel">Amount <span class="req">*</span></div>
+          <input class="input" type="number" id="payAmount" min="1" placeholder="0">
+        </div>
+        <div class="field">
+          <div class="flabel">Payment Date</div>
+          <input class="input" type="date" id="payDate">
+        </div>
+      </div>
+      
+      <div class="row-grid">
+        <div class="field">
+          <div class="flabel">Mode <span class="req">*</span></div>
+          <select class="input" id="payMode">
+            <option value="cash">💵 Cash</option>
+            <option value="bank_transfer">🏦 Bank Transfer</option>
+            <option value="upi">📱 UPI</option>
+            <option value="cheque">📝 Cheque</option>
+            <option value="other">📦 Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <div class="flabel">Reference <span class="hint">Optional</span></div>
+          <input class="input" id="payRef" placeholder="Txn ID, cheque no…">
+        </div>
+      </div>
+      
+      <div class="field">
+        <div class="flabel">Notes <span class="hint">Optional</span></div>
+        <textarea class="textarea" id="payNotes" placeholder="Any remarks…"></textarea>
+      </div>
+      
+      <div id="payStatus"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closePaymentModal()">Cancel</button>
+      <button class="btn btn-success" id="paySaveBtn" onclick="savePayment()">💾 Record Payment</button>
+    </div>
+  </div>
+</div>
+
+<script src="/lib/access-guard.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
+
+const OT_CASH_RATE = 15; // Flat ₹15/pc for OT cash
+
+const HEADERS = {
+  'apikey': SUPABASE_KEY,
+  'Authorization': 'Bearer ' + SUPABASE_KEY,
+  'Content-Type': 'application/json'
+};
+
+const state = {
+  user: null,
+  activeTab: 'entry',
+  search: '',
+  
+  // Data
+  masters: [],
+  campaigns: [],
+  entries: [],          // all entries
+  payments: [],         // all payments
+  balances: [],         // master balances from view
+  
+  // Daily Entry
+  entryDate: new Date().toISOString().slice(0, 10),
+  entryCampaignId: '',
+  entryDefaultShift: 'regular',
+  draftRows: [],
+  
+  // History filters
+  histFromDate: '',
+  histToDate: '',
+  histMasterId: '',
+  histCampaignId: '',
+  histShiftFilter: 'all',
+  histView: 'table',  // table | master | campaign
+  
+  // Performance filters  
+  perfPeriod: 'month',  // today | yesterday | week | month | custom
+  perfFromDate: '',
+  perfToDate: '',
+  perfSortBy: 'earned',
+  
+  // Payment filters
+  payPeriod: 'all',
+  payFromDate: '',
+  payToDate: '',
+  payMasterFilter: ''
+};
+
+// ═══════════════════════════════════════════════════════════════
+// API HELPERS
+// ═══════════════════════════════════════════════════════════════
+async function api(path, opts = {}) {
+  const res = await fetch(SUPABASE_URL + path, { ...opts, headers: { ...HEADERS, ...(opts.headers || {}) } });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error('API ' + res.status + ': ' + text);
+  }
+  if (res.status === 204 || res.headers.get('content-length') === '0') return null;
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function fmtINR(n) {
+  if (n === null || n === undefined || isNaN(n)) return '₹0';
+  const num = Number(n);
+  if (Math.abs(num) >= 100000) return '₹' + (num / 100000).toFixed(2) + 'L';
+  if (Math.abs(num) >= 1000) return '₹' + (num / 1000).toFixed(1) + 'k';
+  return '₹' + num.toLocaleString('en-IN');
+}
+
+function fmtNum(n) {
+  if (n === null || n === undefined || isNaN(n)) return '0';
+  return Number(n).toLocaleString('en-IN');
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  try {
+    return new Date(d).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric', timeZone: 'Asia/Kolkata' });
+  } catch (e) { return d; }
+}
+
+function todayISO() { return new Date().toISOString().slice(0, 10); }
+function nDaysAgoISO(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().slice(0, 10);
+}
+
+function getInitials(name) {
+  if (!name) return '?';
+  const parts = String(name).trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return parts[0].substring(0, 2).toUpperCase();
+}
+
+function avatarColor(name) {
+  const colors = ['#B89B4E', '#1E40AF', '#7C3AED', '#10B981', '#EA580C', '#0E7490', '#BE185D'];
+  let h = 0;
+  for (let i = 0; i < (name || '').length; i++) h = (h << 5) - h + name.charCodeAt(i);
+  return colors[Math.abs(h) % colors.length];
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LOGIN
+// ═══════════════════════════════════════════════════════════════
+async function doLogin() {
+  const phone = document.getElementById('loginPhone').value.trim();
+  const errEl = document.getElementById('loginErr');
+  const btn = document.getElementById('loginBtn');
+  
+  errEl.classList.remove('show');
+  if (phone.length !== 10) {
+    errEl.textContent = 'Phone 10 digits ka hona chahiye';
+    errEl.classList.add('show');
+    return;
+  }
+  
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Loading…';
+  
+  try {
+    const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
+    if (!members || !members.length) throw new Error('Number registered nahi');
+    
+    const m = members[0];
+    const allowedRoles = ['admin', 'owner', 'operations', 'operations_manager', 'ops_manager', 'stitching'];
+    if (!allowedRoles.includes((m.role || '').toLowerCase())) {
+      throw new Error('Access denied — Manager/Owner only');
+    }
+    
+    state.user = m;
+    localStorage.setItem('prajapati_admin_phone', phone);
+    
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    
+    initApp();
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.add('show');
+    btn.disabled = false;
+    btn.innerHTML = 'Access Stitching →';
+  }
+}
+
+async function autoLogin() {
+  const phone = localStorage.getItem('prajapati_admin_phone');
+  if (!phone) return;
+  try {
+    const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
+    if (!members || !members.length) return;
+    const m = members[0];
+    const allowedRoles = ['admin', 'owner', 'operations', 'operations_manager', 'ops_manager', 'stitching'];
+    if (!allowedRoles.includes((m.role || '').toLowerCase())) return;
+    
+    state.user = m;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    initApp();
+  } catch (e) {}
+}
+
+function logout() {
+  localStorage.removeItem('prajapati_admin_phone');
+  location.reload();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+function initApp() {
+  document.getElementById('tbAva').textContent = getInitials(state.user.name);
+  document.getElementById('tbName').textContent = state.user.name || 'User';
+  document.getElementById('tbRole').textContent = (state.user.role || 'user').replace(/_/g, ' ');
+  
+  if (window.AccessGuard) AccessGuard.filterUI(state.user);
+  
+  loadData();
+}
+
+async function loadData() {
+  try {
+    // Parallel fetch all data
+    const [masters, entries, payments, campaigns] = await Promise.all([
+      api('/rest/v1/prajapati_stitching_masters?active=eq.true&select=*&order=name.asc').catch(() => []),
+      api('/rest/v1/prajapati_stitching_log?select=*&order=log_date.desc,created_at.desc&limit=2000').catch(() => []),
+      api('/rest/v1/prajapati_stitching_payments?deleted_at=is.null&select=*&order=payment_date.desc&limit=500').catch(() => []),
+      api('/rest/v1/trial_campaigns?select=id,name,campaign_name&order=created_at.desc&limit=200').catch(() => [])
+    ]);
+    
+    state.masters = masters || [];
+    state.entries = entries || [];
+    state.payments = payments || [];
+    state.campaigns = campaigns || [];
+    
+    // Compute balances client-side as fallback if view not available
+    computeBalances();
+    
+    updateStats();
+    renderTab();
+    
+  } catch (err) {
+    document.getElementById('tabContent').innerHTML = `
+      <div class="callout error">
+        <span>❌</span>
+        <div><strong>Load failed:</strong> ${escapeHtml(err.message)}<br>
+        <small>Make sure SESSION_5_STITCHING_OT_PAYMENTS.sql is applied. If your tables use different names, update them in the code.</small></div>
+      </div>
+    `;
+  }
+}
+
+function computeBalances() {
+  // Client-side computation in case v_stitching_master_balance not available
+  state.balances = state.masters.map(m => {
+    const mid = m.id;
+    const myEntries = state.entries.filter(e => e.master_id === mid);
+    const myPayments = state.payments.filter(p => p.master_id === mid);
+    
+    const regularEarned = myEntries
+      .filter(e => !(e.shift_type === 'ot_cash'))
+      .reduce((s, e) => s + Number(e.total_amount || (e.quantity || 0) * (e.rate_per_piece || 0)), 0);
+    const otCashEarned = myEntries
+      .filter(e => !!(e.shift_type === 'ot_cash'))
+      .reduce((s, e) => s + Number(e.total_amount || (e.quantity || 0) * (e.rate_per_piece || OT_CASH_RATE)), 0);
+    const totalEarned = regularEarned + otCashEarned;
+    
+    const regularPcs = myEntries.filter(e => !(e.shift_type === 'ot_cash')).reduce((s, e) => s + Number(e.quantity || 0), 0);
+    const otCashPcs = myEntries.filter(e => !!(e.shift_type === 'ot_cash')).reduce((s, e) => s + Number(e.quantity || 0), 0);
+    const totalPcs = regularPcs + otCashPcs;
+    
+    const totalPaid = myPayments.reduce((s, p) => s + Number(p.amount || 0), 0);
+    const otAutoPaid = myPayments.filter(p => p.is_auto_ot_cash).reduce((s, p) => s + Number(p.amount || 0), 0);
+    const manualPaid = totalPaid - otAutoPaid;
+    
+    // Outstanding = regular earned - manual payments
+    const outstanding = regularEarned - manualPaid;
+    
+    const dates = [...new Set(myEntries.map(e => e.log_date))];
+    
+    return {
+      master_id: mid,
+      master_name: m.name,
+      master_phone: m.phone,
+      default_rate: m.rate_per_piece,
+      regular_earned: regularEarned,
+      ot_cash_earned: otCashEarned,
+      total_earned: totalEarned,
+      regular_pcs: regularPcs,
+      ot_cash_pcs: otCashPcs,
+      total_pcs: totalPcs,
+      total_paid: totalPaid,
+      outstanding: outstanding,
+      days_worked: dates.length,
+      entries_count: myEntries.length,
+      last_work_date: dates.sort().reverse()[0] || null
+    };
+  });
+}
+
+function updateStats() {
+  const totalEntries = state.entries.length;
+  const totalEarned = state.balances.reduce((s, b) => s + b.total_earned, 0);
+  const totalPaid = state.balances.reduce((s, b) => s + b.total_paid, 0);
+  const totalOutstanding = state.balances.reduce((s, b) => s + b.outstanding, 0);
+  const otCashTotal = state.balances.reduce((s, b) => s + b.ot_cash_earned, 0);
+  const activeMasters = state.masters.length;
+  
+  document.getElementById('statEntries').textContent = fmtNum(totalEntries);
+  document.getElementById('statEarned').textContent = fmtINR(totalEarned);
+  document.getElementById('statEarnedSub').textContent = otCashTotal > 0 ? `incl ${fmtINR(otCashTotal)} OT cash` : 'incl OT cash';
+  document.getElementById('statPaid').textContent = fmtINR(totalPaid);
+  document.getElementById('statOutstanding').textContent = fmtINR(totalOutstanding);
+  
+  document.getElementById('heroOutstanding').textContent = fmtINR(totalOutstanding);
+  document.getElementById('heroMasters').textContent = activeMasters;
+  
+  document.getElementById('histCount').textContent = fmtNum(state.entries.length);
+  document.getElementById('payCount').textContent = fmtNum(state.payments.length);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TAB ROUTING
+// ═══════════════════════════════════════════════════════════════
+function switchTab(tab) {
+  state.activeTab = tab;
+  document.querySelectorAll('.tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.tab === tab);
+  });
+  renderTab();
+}
+
+function renderTab() {
+  const el = document.getElementById('tabContent');
+  if (state.activeTab === 'entry') el.innerHTML = renderEntryTab();
+  else if (state.activeTab === 'history') el.innerHTML = renderHistoryTab();
+  else if (state.activeTab === 'performance') el.innerHTML = renderPerformanceTab();
+  else if (state.activeTab === 'payments') el.innerHTML = renderPaymentsTab();
+  else if (state.activeTab === 'advances') el.innerHTML = renderAdvancesTab();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SEARCH
+// ═══════════════════════════════════════════════════════════════
+let searchTimer;
+function onSearchInput() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    state.search = document.getElementById('globalSearch').value.trim().toLowerCase();
+    document.getElementById('searchClear').style.display = state.search ? 'inline-block' : 'none';
+    renderTab();
+  }, 200);
+}
+
+function clearSearch() {
+  document.getElementById('globalSearch').value = '';
+  state.search = '';
+  document.getElementById('searchClear').style.display = 'none';
+  renderTab();
+}
+
+function matchesSearch(...fields) {
+  if (!state.search) return true;
+  return fields.some(f => String(f || '').toLowerCase().includes(state.search));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TAB 1: DAILY ENTRY
+// ═══════════════════════════════════════════════════════════════
+function renderEntryTab() {
+  return `
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">⚡ Set <em>Context</em> for All Entries Below</div>
+      </div>
+      <div class="section-body">
+        <div class="context-card">
+          <div class="row-grid">
+            <div class="field">
+              <div class="flabel">📅 Entry Date</div>
+              <input class="input" type="date" id="entryDate" value="${state.entryDate}" onchange="state.entryDate = this.value">
+            </div>
+            <div class="field">
+              <div class="flabel">🎯 Campaign (Optional)</div>
+              <select class="input" id="entryCampaign" onchange="state.entryCampaignId = this.value">
+                <option value="">No specific campaign</option>
+                ${state.campaigns.map(c => `<option value="${c.id}" ${c.id === state.entryCampaignId ? 'selected' : ''}>${escapeHtml(c.campaign_name || c.name)}</option>`).join('')}
+              </select>
+            </div>
+            <div class="field">
+              <div class="flabel">⏱️ Default Shift for New Rows</div>
+              <select class="input" id="entryShift" onchange="state.entryDefaultShift = this.value">
+                <option value="regular" ${state.entryDefaultShift === 'regular' ? 'selected' : ''}>Regular</option>
+                <option value="ot_cash" ${state.entryDefaultShift === 'ot_cash' ? 'selected' : ''}>💵 OT Cash (₹${OT_CASH_RATE}/pc)</option>
+              </select>
+            </div>
+            <div class="field" style="justify-content:flex-end">
+              <button class="btn btn-orange" onclick="addAllMasters()" style="height:40px">⚡ Add All Masters</button>
+            </div>
+          </div>
+        </div>
+        
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+          <button class="btn btn-secondary" onclick="addDraftRow()">➕ Add Row</button>
+          <button class="btn btn-secondary" onclick="duplicateLastRow()">📋 Duplicate Last</button>
+          <button class="btn btn-secondary" onclick="clearAllDrafts()">🗑️ Clear All</button>
+          <div style="flex:1"></div>
+          <button class="btn btn-success" onclick="saveAllDrafts()" ${state.draftRows.length === 0 ? 'disabled' : ''}>
+            💾 Save All Entries ${state.draftRows.length > 0 ? `(${state.draftRows.length})` : ''}
+          </button>
+        </div>
+        
+        ${state.draftRows.length === 0 ? `
+          <div class="empty">
+            <span class="empty-icon">✂️</span>
+            <div><strong>No draft entries yet</strong></div>
+            <div style="font-size:11px;margin-top:6px">Top par Date + Campaign set karo, phir rows add karo</div>
+            <div style="margin-top:12px">
+              <button class="btn btn-orange" onclick="addDraftRow()">➕ Add First Row</button>
+              <button class="btn btn-secondary" onclick="addAllMasters()">⚡ Add All Masters</button>
+            </div>
+          </div>
+        ` : `
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 40px;gap:10px;padding:8px 12px;background:var(--paper);border-radius:6px;margin-bottom:6px;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:var(--gold-deep);letter-spacing:0.12em;text-transform:uppercase">
+            <div>Master</div>
+            <div>Shift</div>
+            <div style="text-align:center">Qty</div>
+            <div style="text-align:center">Rate</div>
+            <div style="text-align:right">Total</div>
+            <div></div>
+          </div>
+          ${state.draftRows.map((row, idx) => renderDraftRow(row, idx)).join('')}
+        `}
+      </div>
+    </div>
+  `;
+}
+
+function renderDraftRow(row, idx) {
+  const total = (Number(row.quantity) || 0) * (Number(row.rate_per_piece) || 0);
+  const isCash = row.shift === 'ot_cash';
+  return `
+    <div class="draft-row ${isCash ? 'cash-row' : ''}">
+      <select onchange="updateDraftRow(${idx}, 'master_id', this.value)">
+        <option value="">— Select Master —</option>
+        ${state.masters.map(m => `<option value="${m.id}" ${m.id === row.master_id ? 'selected' : ''}>${escapeHtml(m.name)}${m.phone ? ' (' + m.phone + ')' : ''}</option>`).join('')}
+      </select>
+      <select onchange="updateDraftRow(${idx}, 'shift', this.value); updateDraftRow(${idx}, 'rate_per_piece', this.value === 'ot_cash' ? ${OT_CASH_RATE} : (state.masters.find(m => m.id === '${row.master_id}')?.rate_per_piece || 15))">
+        <option value="regular" ${row.shift === 'regular' ? 'selected' : ''}>Regular</option>
+        <option value="ot_cash" ${row.shift === 'ot_cash' ? 'selected' : ''}>💵 OT Cash</option>
+      </select>
+      <input type="number" min="0" value="${row.quantity || ''}" placeholder="Qty" onchange="updateDraftRow(${idx}, 'quantity', this.value)">
+      <input type="number" min="0" value="${row.rate_per_piece || ''}" placeholder="Rate" onchange="updateDraftRow(${idx}, 'rate_per_piece', this.value)">
+      <div class="total-display">${fmtINR(total)}</div>
+      <div class="delete-btn" onclick="removeDraftRow(${idx})" title="Delete">🗑️</div>
+    </div>
+  `;
+}
+
+function addDraftRow() {
+  state.draftRows.push({
+    master_id: '',
+    shift: state.entryDefaultShift,
+    quantity: '',
+    rate_per_piece: state.entryDefaultShift === 'ot_cash' ? OT_CASH_RATE : 15
+  });
+  renderTab();
+}
+
+function addAllMasters() {
+  state.masters.forEach(m => {
+    state.draftRows.push({
+      master_id: m.id,
+      shift: state.entryDefaultShift,
+      quantity: '',
+      rate_per_piece: state.entryDefaultShift === 'ot_cash' ? OT_CASH_RATE : (m.rate_per_piece || 15)
+    });
+  });
+  renderTab();
+}
+
+function duplicateLastRow() {
+  if (state.draftRows.length === 0) return;
+  state.draftRows.push({...state.draftRows[state.draftRows.length - 1]});
+  renderTab();
+}
+
+function clearAllDrafts() {
+  if (!confirm('Clear all ' + state.draftRows.length + ' drafts?')) return;
+  state.draftRows = [];
+  renderTab();
+}
+
+function updateDraftRow(idx, field, value) {
+  if (state.draftRows[idx]) {
+    state.draftRows[idx][field] = (field === 'quantity' || field === 'rate_per_piece') ? Number(value) : value;
+    renderTab();
+  }
+}
+
+function removeDraftRow(idx) {
+  state.draftRows.splice(idx, 1);
+  renderTab();
+}
+
+async function saveAllDrafts() {
+  if (state.draftRows.length === 0) return;
+  
+  // Validate
+  const valid = state.draftRows.filter(r => r.master_id && r.quantity > 0 && r.rate_per_piece > 0);
+  if (valid.length === 0) {
+    alert('No valid rows. Please fill Master + Qty + Rate.');
+    return;
+  }
+  
+  if (valid.length < state.draftRows.length) {
+    if (!confirm(`Only ${valid.length}/${state.draftRows.length} rows are valid. Save valid ones?`)) return;
+  }
+  
+  if (!confirm(`Save ${valid.length} entries for ${state.entryDate}?`)) return;
+  
+  try {
+    const campaign = state.campaigns.find(c => c.id === state.entryCampaignId);
+    const campaignName = campaign ? (campaign.campaign_name || campaign.name || null) : null;
+    
+    const payload = valid.map(r => {
+      const master = state.masters.find(m => m.id === r.master_id);
+      const shiftType = r.shift === 'ot_cash' ? 'ot_cash' : 'regular';
+      return {
+        log_date: state.entryDate,
+        master_id: r.master_id,
+        master_name: master?.name || '',
+        campaign_id: state.entryCampaignId || null,
+        campaign_name: campaignName,
+        shift_type: shiftType,
+        quantity: Number(r.quantity),
+        rate_per_piece: Number(r.rate_per_piece),
+        recorded_by: state.user.name || state.user.phone || 'system'
+        // total_amount auto-generated by DB
+      };
+    });
+    
+    const result = await api('/rest/v1/prajapati_stitching_log', {
+      method: 'POST',
+      headers: { 'Prefer': 'return=representation' },
+      body: JSON.stringify(payload)
+    });
+    
+    // For OT cash entries, auto-create payment records
+    const otCashEntries = (result || []).filter(e => e.shift_type === 'ot_cash');
+    if (otCashEntries.length > 0) {
+      const cashPayments = otCashEntries.map(e => ({
+        master_id: e.master_id,
+        master_name: e.master_name,
+        payment_date: e.log_date,
+        payment_type: 'payment',
+        amount: Number(e.total_amount),
+        payment_mode: 'cash',
+        notes: `Auto OT cash · ${e.quantity} pcs × ₹${e.rate_per_piece}`,
+        linked_log_id: e.id,
+        is_auto_ot_cash: true,
+        recorded_by: state.user.name || state.user.phone || 'system'
+      }));
+      
+      await api('/rest/v1/prajapati_stitching_payments', {
+        method: 'POST',
+        headers: { 'Prefer': 'return=minimal' },
+        body: JSON.stringify(cashPayments)
+      });
+    }
+    
+    alert(`✅ ${valid.length} entries saved!${otCashEntries.length > 0 ? `\n${otCashEntries.length} OT cash auto-paid.` : ''}`);
+    state.draftRows = [];
+    await loadData();
+  } catch (e) {
+    alert('Save failed: ' + e.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TAB 2: HISTORY
+// ═══════════════════════════════════════════════════════════════
+function renderHistoryTab() {
+  // Defaults
+  if (!state.histFromDate) state.histFromDate = nDaysAgoISO(7);
+  if (!state.histToDate) state.histToDate = todayISO();
+  
+  return `
+    <div class="section">
+      <div class="filter-bar">
+        <span class="flabel">📅 Period:</span>
+        <input type="date" value="${state.histFromDate}" onchange="state.histFromDate = this.value; renderTab()">
+        <span class="text-muted">to</span>
+        <input type="date" value="${state.histToDate}" onchange="state.histToDate = this.value; renderTab()">
+        
+        <div class="chip-group" style="margin-left:6px">
+          <div class="chip" onclick="setHistPeriod('today')">Today</div>
+          <div class="chip" onclick="setHistPeriod('yesterday')">Yesterday</div>
+          <div class="chip" onclick="setHistPeriod('week')">7 days</div>
+          <div class="chip" onclick="setHistPeriod('month')">30 days</div>
+          <div class="chip" onclick="setHistPeriod('monthly')">This Month</div>
+        </div>
+      </div>
+      <div class="filter-bar" style="border-top:1px solid var(--rule)">
+        <span class="flabel">🎯 Filters:</span>
+        <select onchange="state.histMasterId = this.value; renderTab()">
+          <option value="">All Masters</option>
+          ${state.masters.map(m => `<option value="${m.id}" ${m.id === state.histMasterId ? 'selected' : ''}>${escapeHtml(m.name)}</option>`).join('')}
+        </select>
+        <select onchange="state.histCampaignId = this.value; renderTab()">
+          <option value="">All Campaigns</option>
+          ${state.campaigns.map(c => `<option value="${c.id}" ${c.id === state.histCampaignId ? 'selected' : ''}>${escapeHtml(c.campaign_name || c.name)}</option>`).join('')}
+        </select>
+        <select onchange="state.histShiftFilter = this.value; renderTab()">
+          <option value="all">All Shifts</option>
+          <option value="regular" ${state.histShiftFilter === 'regular' ? 'selected' : ''}>Regular Only</option>
+          <option value="ot_cash" ${state.histShiftFilter === 'ot_cash' ? 'selected' : ''}>💵 OT Cash Only</option>
+        </select>
+        
+        <div style="flex:1"></div>
+        
+        <div class="view-toggle">
+          <div class="vt ${state.histView === 'table' ? 'active' : ''}" onclick="state.histView = 'table'; renderTab()">📋 Entries</div>
+          <div class="vt ${state.histView === 'master' ? 'active' : ''}" onclick="state.histView = 'master'; renderTab()">👤 By Master</div>
+          <div class="vt ${state.histView === 'campaign' ? 'active' : ''}" onclick="state.histView = 'campaign'; renderTab()">🎯 By Campaign</div>
+          <div class="vt ${state.histView === 'date' ? 'active' : ''}" onclick="state.histView = 'date'; renderTab()">📅 By Date</div>
+        </div>
+      </div>
+      
+      ${renderHistoryView()}
+    </div>
+  `;
+}
+
+function setHistPeriod(p) {
+  const today = todayISO();
+  if (p === 'today') { state.histFromDate = today; state.histToDate = today; }
+  else if (p === 'yesterday') { state.histFromDate = nDaysAgoISO(1); state.histToDate = nDaysAgoISO(1); }
+  else if (p === 'week') { state.histFromDate = nDaysAgoISO(6); state.histToDate = today; }
+  else if (p === 'month') { state.histFromDate = nDaysAgoISO(30); state.histToDate = today; }
+  else if (p === 'monthly') {
+    const d = new Date();
+    state.histFromDate = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+    state.histToDate = today;
+  }
+  renderTab();
+}
+
+function getFilteredEntries() {
+  return state.entries.filter(e => {
+    // Date range
+    if (state.histFromDate && e.log_date < state.histFromDate) return false;
+    if (state.histToDate && e.log_date > state.histToDate) return false;
+    
+    // Master
+    if (state.histMasterId && e.master_id !== state.histMasterId) return false;
+    
+    // Campaign
+    if (state.histCampaignId && e.campaign_id !== state.histCampaignId) return false;
+    
+    // Shift type
+    if (state.histShiftFilter === 'regular' && (e.shift_type === 'ot_cash')) return false;
+    if (state.histShiftFilter === 'ot_cash' && !(e.shift_type === 'ot_cash')) return false;
+    
+    // Search
+    const master = state.masters.find(m => m.id === e.master_id);
+    const campaign = state.campaigns.find(c => c.id === e.campaign_id);
+    if (!matchesSearch(master?.name, master?.phone, campaign?.campaign_name, campaign?.name, e.log_date)) return false;
+    
+    return true;
+  });
+}
+
+function renderHistoryView() {
+  const entries = getFilteredEntries();
+  
+  if (entries.length === 0) {
+    return `<div class="section-body"><div class="empty"><span class="empty-icon">📋</span> No entries match filters</div></div>`;
+  }
+  
+  // Summary stats
+  const totalQty = entries.reduce((s, e) => s + Number(e.quantity || 0), 0);
+  const totalAmt = entries.reduce((s, e) => s + Number(e.total_amount || 0), 0);
+  const regularEntries = entries.filter(e => !(e.shift_type === 'ot_cash'));
+  const cashEntries = entries.filter(e => (e.shift_type === 'ot_cash'));
+  
+  const summary = `
+    <div style="padding:14px 18px;background:var(--paper);border-bottom:1px solid var(--rule);display:flex;flex-wrap:wrap;gap:18px;font-family:'JetBrains Mono',monospace;font-size:11px">
+      <div><strong style="color:var(--gold-deep)">${entries.length}</strong> entries</div>
+      <div><strong style="color:var(--gold-deep)">${fmtNum(totalQty)}</strong> pcs total</div>
+      <div><strong class="text-success">${fmtINR(totalAmt)}</strong> total earned</div>
+      <div class="text-muted">Regular: ${regularEntries.length} entries · ${fmtNum(regularEntries.reduce((s,e) => s + Number(e.quantity||0), 0))} pcs · ${fmtINR(regularEntries.reduce((s,e) => s + Number(e.total_amount||0), 0))}</div>
+      <div class="text-emerald">💵 Cash: ${cashEntries.length} entries · ${fmtNum(cashEntries.reduce((s,e) => s + Number(e.quantity||0), 0))} pcs · ${fmtINR(cashEntries.reduce((s,e) => s + Number(e.total_amount||0), 0))}</div>
+    </div>
+  `;
+  
+  if (state.histView === 'table') {
+    const sortedEntries = [...entries].sort((a,b) => (b.log_date || '').localeCompare(a.log_date || ''));
+    return summary + `
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead>
+            <tr><th>Date</th><th>Master</th><th>Campaign</th><th>Shift</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Total</th><th></th></tr>
+          </thead>
+          <tbody>
+            ${sortedEntries.slice(0, 200).map(e => {
+              const master = state.masters.find(m => m.id === e.master_id);
+              const campaign = state.campaigns.find(c => c.id === e.campaign_id);
+              return `
+                <tr>
+                  <td>${escapeHtml(e.log_date)}</td>
+                  <td>
+                    <div class="master-pill">
+                      <div class="avatar" style="background:${avatarColor(master?.name)};color:#fff">${getInitials(master?.name)}</div>
+                      <div>
+                        <div class="name">${escapeHtml(master?.name || '?')}</div>
+                        ${master?.phone ? `<div class="phone">${escapeHtml(master.phone)}</div>` : ''}
+                      </div>
+                    </div>
+                  </td>
+                  <td class="text-muted">${escapeHtml(campaign?.campaign_name || campaign?.name || '—')}</td>
+                  <td>${(e.shift_type === 'ot_cash') ? '<span class="tag ot-cash">💵 OT Cash</span>' : '<span class="tag regular">Regular</span>'}</td>
+                  <td class="num">${fmtNum(e.quantity)}</td>
+                  <td class="num">₹${e.rate_per_piece}</td>
+                  <td class="num"><strong>${fmtINR(e.total_amount)}</strong></td>
+                  <td><button class="btn-icon" onclick="deleteEntry('${e.id}')" style="background:var(--danger-bg);color:var(--danger);border-radius:4px" title="Delete">🗑️</button></td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+        ${sortedEntries.length > 200 ? `<div class="empty" style="padding:14px">Showing first 200 of ${sortedEntries.length} entries. Use filters to narrow down.</div>` : ''}
+      </div>
+    `;
+  }
+  
+  if (state.histView === 'master') {
+    // Group by master
+    const byMaster = {};
+    entries.forEach(e => {
+      if (!byMaster[e.master_id]) byMaster[e.master_id] = { entries: [], qty: 0, amount: 0, regularQty: 0, cashQty: 0 };
+      byMaster[e.master_id].entries.push(e);
+      byMaster[e.master_id].qty += Number(e.quantity || 0);
+      byMaster[e.master_id].amount += Number(e.total_amount || 0);
+      if ((e.shift_type === 'ot_cash')) byMaster[e.master_id].cashQty += Number(e.quantity || 0);
+      else byMaster[e.master_id].regularQty += Number(e.quantity || 0);
+    });
+    
+    const rows = Object.entries(byMaster)
+      .map(([mid, d]) => ({ ...d, master: state.masters.find(m => m.id === mid) }))
+      .sort((a, b) => b.amount - a.amount);
+    
+    return summary + `
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead><tr><th>Master</th><th class="num">Entries</th><th class="num">Regular Pcs</th><th class="num">Cash Pcs</th><th class="num">Total Pcs</th><th class="num">Earned</th></tr></thead>
+          <tbody>
+            ${rows.map(r => `
+              <tr>
+                <td>
+                  <div class="master-pill">
+                    <div class="avatar" style="background:${avatarColor(r.master?.name)};color:#fff">${getInitials(r.master?.name)}</div>
+                    <div>
+                      <div class="name">${escapeHtml(r.master?.name || '?')}</div>
+                      ${r.master?.phone ? `<div class="phone">${escapeHtml(r.master.phone)}</div>` : ''}
+                    </div>
+                  </div>
+                </td>
+                <td class="num">${r.entries.length}</td>
+                <td class="num">${fmtNum(r.regularQty)}</td>
+                <td class="num text-emerald">${fmtNum(r.cashQty)}</td>
+                <td class="num"><strong>${fmtNum(r.quantity)}</strong></td>
+                <td class="num"><strong class="text-success">${fmtINR(r.amount)}</strong></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+  
+  if (state.histView === 'campaign') {
+    // Group by campaign
+    const byCamp = {};
+    entries.forEach(e => {
+      const key = e.campaign_id || 'none';
+      if (!byCamp[key]) byCamp[key] = { entries: [], qty: 0, amount: 0 };
+      byCamp[key].entries.push(e);
+      byCamp[key].qty += Number(e.quantity || 0);
+      byCamp[key].amount += Number(e.total_amount || 0);
+    });
+    
+    const rows = Object.entries(byCamp)
+      .map(([cid, d]) => ({ ...d, campaign: state.campaigns.find(c => c.id === cid) }))
+      .sort((a, b) => b.amount - a.amount);
+    
+    return summary + `
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead><tr><th>Campaign</th><th class="num">Entries</th><th class="num">Total Pcs</th><th class="num">Total Earned</th></tr></thead>
+          <tbody>
+            ${rows.map(r => `
+              <tr>
+                <td><strong>${escapeHtml(r.campaign?.campaign_name || r.campaign?.name || 'No Campaign')}</strong></td>
+                <td class="num">${r.entries.length}</td>
+                <td class="num"><strong>${fmtNum(r.quantity)}</strong></td>
+                <td class="num"><strong class="text-success">${fmtINR(r.amount)}</strong></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+  
+  if (state.histView === 'date') {
+    // Group by date
+    const byDate = {};
+    entries.forEach(e => {
+      const key = e.log_date;
+      if (!byDate[key]) byDate[key] = { entries: [], qty: 0, amount: 0, masters: new Set() };
+      byDate[key].entries.push(e);
+      byDate[key].qty += Number(e.quantity || 0);
+      byDate[key].amount += Number(e.total_amount || 0);
+      byDate[key].masters.add(e.master_id);
+    });
+    
+    const rows = Object.entries(byDate)
+      .map(([date, d]) => ({ date, ...d, mastersCount: d.masters.size }))
+      .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    
+    return summary + `
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead><tr><th>Date</th><th class="num">Masters</th><th class="num">Entries</th><th class="num">Total Pcs</th><th class="num">Total Earned</th></tr></thead>
+          <tbody>
+            ${rows.map(r => `
+              <tr>
+                <td><strong>${escapeHtml(r.date)}</strong> <span class="text-muted">${fmtDate(r.date)}</span></td>
+                <td class="num">${r.mastersCount}</td>
+                <td class="num">${r.entries.length}</td>
+                <td class="num"><strong>${fmtNum(r.quantity)}</strong></td>
+                <td class="num"><strong class="text-success">${fmtINR(r.amount)}</strong></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+}
+
+async function deleteEntry(id) {
+  if (!confirm('Delete this entry? This cannot be undone.')) return;
+  try {
+    await api(`/rest/v1/prajapati_stitching_log?id=eq.${id}`, { method: 'DELETE', headers: { 'Prefer': 'return=minimal' } });
+    // Also delete auto OT cash payment if exists
+    await api(`/rest/v1/prajapati_stitching_payments?linked_log_id=eq.${id}&is_auto_ot_cash=eq.true`, { method: 'DELETE', headers: { 'Prefer': 'return=minimal' } }).catch(() => {});
+    await loadData();
+  } catch (e) {
+    alert('Delete failed: ' + e.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TAB 3: PERFORMANCE
+// ═══════════════════════════════════════════════════════════════
+function renderPerformanceTab() {
+  // Set defaults
+  if (!state.perfFromDate) {
+    const d = new Date();
+    state.perfFromDate = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+    state.perfToDate = todayISO();
+    state.perfPeriod = 'monthly';
+  }
+  
+  return `
+    <div class="section">
+      <div class="filter-bar">
+        <span class="flabel">⏱️ Period:</span>
+        <div class="chip-group">
+          <div class="chip ${state.perfPeriod === 'today' ? 'active' : ''}" onclick="setPerfPeriod('today')">Today</div>
+          <div class="chip ${state.perfPeriod === 'yesterday' ? 'active' : ''}" onclick="setPerfPeriod('yesterday')">Yesterday</div>
+          <div class="chip ${state.perfPeriod === 'week' ? 'active' : ''}" onclick="setPerfPeriod('week')">This Week</div>
+          <div class="chip ${state.perfPeriod === 'monthly' ? 'active' : ''}" onclick="setPerfPeriod('monthly')">This Month</div>
+          <div class="chip ${state.perfPeriod === '30days' ? 'active' : ''}" onclick="setPerfPeriod('30days')">30 days</div>
+          <div class="chip ${state.perfPeriod === 'custom' ? 'active' : ''}" onclick="setPerfPeriod('custom')">Custom</div>
+        </div>
+        
+        ${state.perfPeriod === 'custom' ? `
+          <input type="date" value="${state.perfFromDate}" onchange="state.perfFromDate = this.value; renderTab()">
+          <span class="text-muted">to</span>
+          <input type="date" value="${state.perfToDate}" onchange="state.perfToDate = this.value; renderTab()">
+        ` : `<span class="text-muted" style="font-size:11px;font-family:'JetBrains Mono',monospace">${state.perfFromDate} → ${state.perfToDate}</span>`}
+        
+        <div style="flex:1"></div>
+        
+        <span class="flabel">📊 Sort:</span>
+        <select onchange="state.perfSortBy = this.value; renderTab()">
+          <option value="earned" ${state.perfSortBy === 'earned' ? 'selected' : ''}>Earnings</option>
+          <option value="qty" ${state.perfSortBy === 'qty' ? 'selected' : ''}>Quantity</option>
+          <option value="days" ${state.perfSortBy === 'days' ? 'selected' : ''}>Days Worked</option>
+        </select>
+      </div>
+      
+      <div class="section-body">
+        ${renderPerformanceCards()}
+      </div>
+    </div>
+  `;
+}
+
+function setPerfPeriod(p) {
+  state.perfPeriod = p;
+  const today = todayISO();
+  if (p === 'today') { state.perfFromDate = today; state.perfToDate = today; }
+  else if (p === 'yesterday') { state.perfFromDate = nDaysAgoISO(1); state.perfToDate = nDaysAgoISO(1); }
+  else if (p === 'week') { state.perfFromDate = nDaysAgoISO(6); state.perfToDate = today; }
+  else if (p === 'monthly') {
+    const d = new Date();
+    state.perfFromDate = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+    state.perfToDate = today;
+  }
+  else if (p === '30days') { state.perfFromDate = nDaysAgoISO(30); state.perfToDate = today; }
+  renderTab();
+}
+
+function renderPerformanceCards() {
+  // Compute performance per master for date range
+  const performance = state.masters.map(m => {
+    const myEntries = state.entries.filter(e => 
+      e.master_id === m.id && 
+      e.log_date >= state.perfFromDate && 
+      e.log_date <= state.perfToDate
+    );
+    
+    const regularPcs = myEntries.filter(e => !(e.shift_type === 'ot_cash')).reduce((s, e) => s + Number(e.quantity || 0), 0);
+    const cashPcs = myEntries.filter(e => (e.shift_type === 'ot_cash')).reduce((s, e) => s + Number(e.quantity || 0), 0);
+    const regularEarned = myEntries.filter(e => !(e.shift_type === 'ot_cash')).reduce((s, e) => s + Number(e.total_amount || 0), 0);
+    const cashEarned = myEntries.filter(e => (e.shift_type === 'ot_cash')).reduce((s, e) => s + Number(e.total_amount || 0), 0);
+    const totalPcs = regularPcs + cashPcs;
+    const totalEarned = regularEarned + cashEarned;
+    const days = new Set(myEntries.map(e => e.log_date)).size;
+    
+    return {
+      master: m,
+      regularPcs, cashPcs, totalPcs,
+      regularEarned, cashEarned, totalEarned,
+      entries: myEntries.length,
+      days,
+      otPct: totalPcs > 0 ? Math.round((cashPcs / totalPcs) * 100) : 0
+    };
+  }).filter(p => {
+    // Search filter
+    return matchesSearch(p.master.name, p.master.phone);
+  }).sort((a, b) => {
+    if (state.perfSortBy === 'qty') return b.totalPcs - a.totalPcs;
+    if (state.perfSortBy === 'days') return b.days - a.days;
+    return b.totalEarned - a.totalEarned;
+  });
+  
+  const withWork = performance.filter(p => p.totalPcs > 0);
+  
+  if (withWork.length === 0) {
+    return `<div class="empty"><span class="empty-icon">📊</span>No work logged in this period</div>`;
+  }
+  
+  return `
+    <div class="performance-grid">
+      ${withWork.map(p => `
+        <div class="perf-card">
+          <div class="perf-card-head">
+            <div class="avatar" style="background:${avatarColor(p.master.name)};color:#fff;width:42px;height:42px;font-size:13px">${getInitials(p.master.name)}</div>
+            <div style="flex:1;min-width:0">
+              <div class="perf-card-name">${escapeHtml(p.master.name)}</div>
+              <div class="perf-card-phone">${escapeHtml(p.master.phone || '')}</div>
+            </div>
+          </div>
+          <div class="perf-stats">
+            <div class="perf-stat">
+              <div class="perf-stat-label">Regular</div>
+              <div class="perf-stat-value">${fmtNum(p.regularPcs)} <span style="font-size:9px;color:var(--text-dim)">pcs</span></div>
+              <div class="perf-stat-sub">${fmtINR(p.regularEarned)}</div>
+            </div>
+            <div class="perf-stat cash">
+              <div class="perf-stat-label">💵 OT Cash</div>
+              <div class="perf-stat-value">${fmtNum(p.cashPcs)} <span style="font-size:9px;color:var(--text-dim)">pcs</span></div>
+              <div class="perf-stat-sub">${fmtINR(p.cashEarned)}</div>
+            </div>
+          </div>
+          <div class="perf-card-total">
+            <div>
+              <div class="label">Total ${fmtNum(p.totalPcs)} pcs</div>
+              <div style="font-size:9.5px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;margin-top:2px">${p.otPct}% via OT cash</div>
+            </div>
+            <div class="value">${fmtINR(p.totalEarned)}</div>
+          </div>
+          <div class="perf-card-foot">
+            <div>${p.entries} entries · ${p.days} days</div>
+            <div>${state.perfFromDate.slice(5)} → ${state.perfToDate.slice(5)}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TAB 4: PAYMENTS
+// ═══════════════════════════════════════════════════════════════
+function renderPaymentsTab() {
+  // Sort by outstanding desc
+  const balances = [...state.balances]
+    .filter(b => matchesSearch(b.master_name, b.master_phone))
+    .sort((a, b) => b.outstanding - a.outstanding);
+  
+  const positiveBalances = balances.filter(b => b.outstanding > 0);
+  const totalOutstanding = balances.reduce((s, b) => s + b.outstanding, 0);
+  
+  // Filter payments
+  const filteredPayments = getFilteredPayments();
+  
+  return `
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">💸 <em>Outstanding</em> by Master</div>
+        <div class="section-meta">Total: ${fmtINR(totalOutstanding)}</div>
+      </div>
+      <div class="section-body">
+        ${positiveBalances.length === 0 ? '<div class="empty">🎉 No pending payouts</div>' : `
+          <div class="outstanding-grid">
+            ${positiveBalances.map(b => `
+              <div class="out-card" onclick="quickPayMaster('${b.master_id}', ${b.outstanding})">
+                <div class="out-card-info">
+                  <div class="out-card-name">
+                    <div class="avatar" style="background:${avatarColor(b.master_name)};color:#fff">${getInitials(b.master_name)}</div>
+                    <span>${escapeHtml(b.master_name)}</span>
+                  </div>
+                  <div class="out-card-phone">${escapeHtml(b.master_phone || '')}</div>
+                  <div class="out-card-meta">
+                    <span>Earned ${fmtINR(b.regular_earned)}</span>
+                    <span>Paid ${fmtINR(b.total_paid - (state.payments.filter(p => p.master_id === b.master_id && p.is_auto_ot_cash).reduce((s,p) => s + Number(p.amount||0), 0)))}</span>
+                  </div>
+                </div>
+                <div class="out-card-amount">
+                  <div class="val">${fmtINR(b.outstanding)}</div>
+                  <div class="label">Pending</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `}
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="filter-bar">
+        <span class="flabel">📅 Period:</span>
+        <div class="chip-group">
+          <div class="chip ${state.payPeriod === 'all' ? 'active' : ''}" onclick="setPayPeriod('all')">All</div>
+          <div class="chip ${state.payPeriod === 'today' ? 'active' : ''}" onclick="setPayPeriod('today')">Today</div>
+          <div class="chip ${state.payPeriod === 'yesterday' ? 'active' : ''}" onclick="setPayPeriod('yesterday')">Yesterday</div>
+          <div class="chip ${state.payPeriod === 'week' ? 'active' : ''}" onclick="setPayPeriod('week')">7 days</div>
+          <div class="chip ${state.payPeriod === 'monthly' ? 'active' : ''}" onclick="setPayPeriod('monthly')">This Month</div>
+          <div class="chip ${state.payPeriod === 'custom' ? 'active' : ''}" onclick="setPayPeriod('custom')">Custom</div>
+        </div>
+        ${state.payPeriod === 'custom' ? `
+          <input type="date" value="${state.payFromDate}" onchange="state.payFromDate = this.value; renderTab()">
+          <span class="text-muted">to</span>
+          <input type="date" value="${state.payToDate}" onchange="state.payToDate = this.value; renderTab()">
+        ` : ''}
+        <select onchange="state.payMasterFilter = this.value; renderTab()">
+          <option value="">All Masters</option>
+          ${state.masters.map(m => `<option value="${m.id}" ${m.id === state.payMasterFilter ? 'selected' : ''}>${escapeHtml(m.name)}</option>`).join('')}
+        </select>
+        <div style="flex:1"></div>
+        <button class="btn btn-orange sm" onclick="openPaymentModal()">➕ Record Payment</button>
+      </div>
+      
+      <div style="padding:14px 18px;background:var(--paper);border-bottom:1px solid var(--rule);display:flex;flex-wrap:wrap;gap:18px;font-family:'JetBrains Mono',monospace;font-size:11px">
+        <div><strong style="color:var(--gold-deep)">${filteredPayments.length}</strong> payment records</div>
+        <div><strong class="text-success">${fmtINR(filteredPayments.reduce((s, p) => s + Number(p.amount || 0), 0))}</strong> total paid</div>
+        <div class="text-emerald">💵 Auto OT cash: ${filteredPayments.filter(p => p.is_auto_ot_cash).length} entries</div>
+      </div>
+      
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead><tr><th>Date</th><th>Master</th><th class="num">Amount</th><th>Mode</th><th>Reference</th><th>Notes</th><th>By</th><th></th></tr></thead>
+          <tbody>
+            ${filteredPayments.length === 0 ? '<tr><td colspan="8"><div class="empty">No payments match filters</div></td></tr>' : 
+              filteredPayments.slice(0, 200).map(p => {
+                const master = state.masters.find(m => m.id === p.master_id);
+                const modeIcon = { cash: '💵', bank_transfer: '🏦', upi: '📱', cheque: '📝', other: '📦' }[p.payment_mode] || '💰';
+                return `
+                  <tr>
+                    <td>${escapeHtml(p.payment_date)}</td>
+                    <td>
+                      <div class="master-pill">
+                        <div class="avatar" style="background:${avatarColor(master?.name || p.master_name)};color:#fff">${getInitials(master?.name || p.master_name)}</div>
+                        <div class="name">${escapeHtml(master?.name || p.master_name || '?')}</div>
+                      </div>
+                    </td>
+                    <td class="num"><strong class="text-success">${fmtINR(p.amount)}</strong></td>
+                    <td>${modeIcon} ${escapeHtml(p.payment_mode || 'cash')}</td>
+                    <td class="text-muted" style="font-size:11px">${escapeHtml(p.reference_number || '—')}</td>
+                    <td class="text-muted" style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(p.notes || '')}">
+                      ${p.is_auto_ot_cash ? '<span class="tag ot-cash">AUTO OT</span> ' : ''}${escapeHtml(p.notes || '—')}
+                    </td>
+                    <td class="text-muted" style="font-size:11px">${escapeHtml(p.recorded_by || '—')}</td>
+                    <td>${!p.is_auto_ot_cash ? `<button class="btn-icon" onclick="deletePayment('${p.id}')" style="background:var(--danger-bg);color:var(--danger);border-radius:4px" title="Reverse">↩️</button>` : ''}</td>
+                  </tr>
+                `;
+              }).join('')
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function getFilteredPayments() {
+  return state.payments.filter(p => {
+    if (state.payPeriod === 'today' && p.payment_date !== todayISO()) return false;
+    if (state.payPeriod === 'yesterday' && p.payment_date !== nDaysAgoISO(1)) return false;
+    if (state.payPeriod === 'week' && p.payment_date < nDaysAgoISO(6)) return false;
+    if (state.payPeriod === 'monthly') {
+      const d = new Date();
+      const startOfMonth = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+      if (p.payment_date < startOfMonth) return false;
+    }
+    if (state.payPeriod === 'custom') {
+      if (state.payFromDate && p.payment_date < state.payFromDate) return false;
+      if (state.payToDate && p.payment_date > state.payToDate) return false;
+    }
+    if (state.payMasterFilter && p.master_id !== state.payMasterFilter) return false;
+    
+    const master = state.masters.find(m => m.id === p.master_id);
+    if (!matchesSearch(master?.name, master?.phone, p.payment_mode, p.reference_number, p.notes)) return false;
+    
+    return true;
+  });
+}
+
+function setPayPeriod(p) {
+  state.payPeriod = p;
+  if (p === 'custom' && !state.payFromDate) {
+    state.payFromDate = nDaysAgoISO(30);
+    state.payToDate = todayISO();
+  }
+  renderTab();
+}
+
+async function deletePayment(id) {
+  if (!confirm('Reverse this payment? Outstanding will increase.')) return;
+  try {
+    await api(`/rest/v1/prajapati_stitching_payments?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: { 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ 
+        deleted_at: new Date().toISOString()
+      })
+    });
+    await loadData();
+  } catch (e) {
+    alert('Reverse failed: ' + e.message);
+  }
+}
+
+function quickPayMaster(masterId, amount) {
+  openPaymentModal();
+  setTimeout(() => {
+    document.getElementById('payMaster').value = masterId;
+    document.getElementById('payAmount').value = amount;
+    onPayMasterChange();
+  }, 50);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TAB 5: ADVANCES / LOANS (Simple version)
+// ═══════════════════════════════════════════════════════════════
+function renderAdvancesTab() {
+  return `
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">🪙 <em>Advances</em> & Loans</div>
+      </div>
+      <div class="section-body">
+        <div class="callout info">
+          <span>ℹ️</span>
+          <div>
+            <strong>Advances/Loans coming in next update.</strong><br>
+            For now, you can record advances as a payment in the Payments tab with notes "Advance" or "Loan".
+            <br>This separates the data and lets you track it via the notes field.
+          </div>
+        </div>
+        
+        <div class="callout warn">
+          <span>💡</span>
+          <div>
+            <strong>Workflow suggestion:</strong><br>
+            1. When giving an advance, click "Record Payment" → Mode: Cash → Notes: "Advance"<br>
+            2. Outstanding will reduce by advance amount<br>
+            3. Master then "earns back" the advance via future work logged
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PAYMENT MODAL
+// ═══════════════════════════════════════════════════════════════
+function openPaymentModal() {
+  document.getElementById('payMaster').innerHTML = '<option value="">— Select master —</option>' +
+    state.masters.map(m => `<option value="${m.id}">${escapeHtml(m.name)}${m.phone ? ' (' + m.phone + ')' : ''}</option>`).join('');
+  
+  document.getElementById('payAmount').value = '';
+  document.getElementById('payDate').value = todayISO();
+  document.getElementById('payMode').value = 'cash';
+  document.getElementById('payRef').value = '';
+  document.getElementById('payNotes').value = '';
+  document.getElementById('payOutstandingHint').textContent = '';
+  document.getElementById('payStatus').innerHTML = '';
+  
+  document.getElementById('paymentModal').style.display = 'flex';
+}
+
+function closePaymentModal() {
+  document.getElementById('paymentModal').style.display = 'none';
+}
+
+function onPayMasterChange() {
+  const mid = document.getElementById('payMaster').value;
+  const hint = document.getElementById('payOutstandingHint');
+  if (!mid) { hint.textContent = ''; return; }
+  const bal = state.balances.find(b => b.master_id === mid);
+  if (bal) {
+    hint.innerHTML = `Outstanding: <strong class="text-danger">${fmtINR(bal.outstanding)}</strong> · Earned: ${fmtINR(bal.regular_earned)} · Paid: ${fmtINR(bal.total_paid - (state.payments.filter(p => p.master_id === mid && p.is_auto_ot_cash).reduce((s,p) => s + Number(p.amount||0), 0)))}`;
+    if (bal.outstanding > 0 && !document.getElementById('payAmount').value) {
+      document.getElementById('payAmount').value = bal.outstanding;
+    }
+  }
+}
+
+async function savePayment() {
+  const masterId = document.getElementById('payMaster').value;
+  const amount = Number(document.getElementById('payAmount').value);
+  const date = document.getElementById('payDate').value;
+  const mode = document.getElementById('payMode').value;
+  const ref = document.getElementById('payRef').value.trim() || null;
+  const notes = document.getElementById('payNotes').value.trim() || null;
+  
+  if (!masterId || !(amount > 0) || !date) {
+    document.getElementById('payStatus').innerHTML = '<div class="callout error"><span>⚠️</span><div>Master, Amount and Date required</div></div>';
+    return;
+  }
+  
+  const master = state.masters.find(m => m.id === masterId);
+  const btn = document.getElementById('paySaveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Saving…';
+  
+  try {
+    await api('/rest/v1/prajapati_stitching_payments', {
+      method: 'POST',
+      headers: { 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        master_id: masterId,
+        master_name: master?.name || '',
+        payment_date: date,
+        payment_type: 'payment',
+        amount: amount,
+        payment_mode: mode,
+        reference_number: ref,
+        notes: notes,
+        is_auto_ot_cash: false,
+        recorded_by: state.user.name || state.user.phone || 'system'
+      })
+    });
+    
+    document.getElementById('payStatus').innerHTML = '<div class="callout success"><span>✅</span><div>Payment recorded!</div></div>';
+    setTimeout(() => {
+      closePaymentModal();
+      loadData();
+    }, 700);
+  } catch (e) {
+    document.getElementById('payStatus').innerHTML = `<div class="callout error"><span>❌</span><div>${escapeHtml(e.message)}</div></div>`;
+    btn.disabled = false;
+    btn.innerHTML = '💾 Record Payment';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  autoLogin();
+  document.getElementById('loginPhone').addEventListener('keypress', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+  document.getElementById('loginPhone').addEventListener('input', e => {
+    e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
+  });
+});
+</script>
+
+</body>
+</html>
