@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Campaign Status · Prajapati Advertising</title>
+<meta name="theme-color" content="#0B1957">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght,ital@9..144,300..900,0..1&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+:root{
+  --navy:#0B1957;--navy-deep:#050B2E;
+  --gold:#B89B4E;--gold-bright:#D4B45F;--gold-deep:#8B7430;--gold-soft:#F4E4B0;
+  --cream:#FAF8F3;--paper:#F7F4EC;--rule:#E5E0D2;
+  --ink-950:#0F172A;--ink-700:#475569;--text-dim:#94A3B8;
+  --success:#047857;--success-bg:#D1FAE5;
+  --warn:#C2410C;--warn-bg:#FED7AA;
+  --danger:#BE123C;--danger-bg:#FECACA;
+  --info:#1E40AF;--info-bg:#DBEAFE;
+  --purple:#7C3AED;--purple-bg:#EDE9FE;
+  --slate:#64748B;--slate-bg:#F1F5F9;
+}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--cream);color:var(--ink-950);font-size:14px;line-height:1.5;min-height:100vh}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+a{color:inherit;text-decoration:none}
+
+.topbar{background:var(--navy);color:#fff;padding:14px 32px;border-bottom:3px solid var(--gold);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.tb-brand{display:flex;align-items:center;gap:12px}
+.tb-logo{width:36px;height:36px;background:var(--gold);color:var(--navy);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:20px}
+.tb-name{font-size:14px;font-weight:700}
+.tb-tag{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--gold-bright);letter-spacing:0.16em;text-transform:uppercase;margin-top:2px}
+.tb-user{display:flex;align-items:center;gap:10px;padding:4px 14px 4px 4px;background:rgba(255,255,255,0.08);border:1px solid rgba(212,180,95,0.3);border-radius:999px}
+.tb-ava{width:30px;height:30px;border-radius:50%;background:var(--gold);color:var(--navy);display:flex;align-items:center;justify-content:center;font-style:italic;font-weight:700;font-size:14px}
+.tb-info .name{font-size:12px;font-weight:700;line-height:1.1}
+.tb-info .role{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--gold-bright);letter-spacing:0.14em;text-transform:uppercase}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.15s;font-family:inherit}
+.btn:hover{transform:translateY(-1px)}
+.btn-primary{background:var(--navy);color:#fff}
+.btn-gold{background:var(--gold);color:var(--navy)}
+.btn-success{background:var(--success);color:#fff}
+.btn-secondary{background:#fff;color:var(--navy);border:1px solid var(--rule)}
+.btn-info{background:var(--info);color:#fff}
+.btn-warn{background:var(--warn);color:#fff}
+.btn-danger{background:var(--danger);color:#fff}
+.btn.sm{padding:6px 10px;font-size:10.5px}
+.btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+
+.main{padding:28px;max-width:1400px;margin:0 auto;padding-bottom:60px}
+
+.login-bg{position:fixed;inset:0;background:linear-gradient(135deg, var(--navy), var(--navy-deep));display:flex;align-items:center;justify-content:center;padding:20px;z-index:200}
+.login-card{background:#fff;padding:36px 32px;border-radius:14px;max-width:380px;width:100%;border:1px solid var(--gold)}
+.login-logo{width:64px;height:64px;background:var(--gold);color:var(--navy);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 18px}
+.login-title{font-family:'Fraunces',serif;font-size:22px;font-weight:500;text-align:center;color:var(--navy);margin-bottom:6px}
+.login-sub{font-family:'JetBrains Mono',monospace;font-size:9.5px;text-align:center;color:var(--text-dim);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:24px}
+.login-input{width:100%;padding:12px 14px;border:1px solid var(--rule);font-family:inherit;font-size:14px;border-radius:8px;outline:none;margin-bottom:10px}
+.login-input:focus{border-color:var(--gold)}
+.login-btn{width:100%;padding:13px;background:var(--navy);color:#fff;border-radius:8px;font-weight:700;font-size:13px}
+.login-err{color:var(--danger);font-size:12px;text-align:center;margin-top:10px;display:none}
+.login-err.show{display:block}
+
+.page-head{margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.page-title{font-family:'Fraunces',serif;font-size:26px;font-weight:500;color:var(--navy);letter-spacing:-0.02em}
+.page-title em{color:var(--gold);font-style:italic}
+.page-sub{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:0.12em;text-transform:uppercase;margin-top:4px}
+
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));gap:12px;margin-bottom:24px}
+.stat-card{background:#fff;border:1px solid var(--rule);border-radius:10px;padding:16px;cursor:pointer;transition:all 0.15s;text-align:left}
+.stat-card:hover{border-color:var(--gold);transform:translateY(-2px)}
+.stat-card.active{border-color:var(--navy);background:linear-gradient(135deg, var(--gold-soft), #fff)}
+.stat-card.in-prod{border-left:4px solid var(--info)}
+.stat-card.locked{border-left:4px solid var(--gold)}
+.stat-card.pending{border-left:4px solid var(--warn)}
+.stat-card.completed{border-left:4px solid var(--success)}
+.stat-card.hold{border-left:4px solid var(--purple)}
+.stat-card.cancelled{border-left:4px solid var(--danger)}
+.stat-card.archived{border-left:4px solid var(--slate)}
+.stat-label{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--gold-deep);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:6px}
+.stat-value{font-family:'Fraunces',serif;font-size:28px;font-weight:600;color:var(--navy);line-height:1}
+.stat-meta{font-size:10.5px;color:var(--text-dim);margin-top:4px}
+
+.filter-bar{background:#fff;border:1px solid var(--rule);border-radius:10px;padding:14px 18px;margin-bottom:18px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.filter-bar .label{font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:var(--navy);letter-spacing:0.12em;text-transform:uppercase}
+.filter-bar select,.filter-bar input{padding:8px 12px;border:1px solid var(--rule);background:var(--cream);font-family:inherit;font-size:13px;border-radius:6px;outline:none}
+.filter-bar select:focus,.filter-bar input:focus{border-color:var(--gold);background:#fff}
+
+.section{background:#fff;border:1px solid var(--rule);border-radius:10px;margin-bottom:18px;overflow:hidden}
+.section-head{padding:14px 20px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg, var(--paper), #fff);flex-wrap:wrap;gap:10px}
+.section-title{font-family:'Fraunces',serif;font-size:15px;font-weight:600;color:var(--navy)}
+.section-title em{color:var(--gold);font-style:italic}
+.section-meta{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--gold-deep);letter-spacing:0.14em;text-transform:uppercase}
+
+.campaign-card{background:#fff;border:1.5px solid var(--rule);border-radius:12px;padding:16px;margin-bottom:12px;transition:all 0.15s;position:relative}
+.campaign-card:hover{border-color:var(--gold-soft)}
+.campaign-card.urgent{border-left:4px solid var(--danger)}
+.campaign-card.in_production{border-left:4px solid var(--info)}
+.campaign-card.completed{border-left:4px solid var(--success);background:linear-gradient(90deg, var(--success-bg) 0%, #fff 10%);opacity:0.85}
+.campaign-card.on_hold{border-left:4px solid var(--purple);background:linear-gradient(90deg, var(--purple-bg) 0%, #fff 10%)}
+.campaign-card.cancelled{border-left:4px solid var(--danger);opacity:0.6}
+.campaign-card.archived{border-left:4px solid var(--slate);opacity:0.6}
+.campaign-card.stale{border-left:4px dashed var(--warn)}
+
+.cc-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+.cc-title{font-family:'Fraunces',serif;font-size:17px;font-weight:600;color:var(--navy);margin-bottom:4px}
+.cc-meta{display:flex;flex-wrap:wrap;gap:14px;font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--text-dim);letter-spacing:0.06em}
+.cc-meta strong{color:var(--gold-deep)}
+
+.cc-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.tag{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase}
+.tag.urgent{background:var(--danger);color:#fff}
+.tag.status-in_production{background:var(--info-bg);color:var(--info)}
+.tag.status-plan_locked{background:var(--gold-soft);color:var(--gold-deep)}
+.tag.status-pending_execution_plan{background:var(--warn-bg);color:var(--warn)}
+.tag.status-completed{background:var(--success-bg);color:var(--success)}
+.tag.status-on_hold{background:var(--purple-bg);color:var(--purple)}
+.tag.status-cancelled{background:var(--danger-bg);color:var(--danger)}
+.tag.status-archived{background:var(--slate-bg);color:var(--slate)}
+.tag.stale{background:var(--warn-bg);color:var(--warn)}
+
+.progress-block{display:flex;align-items:center;gap:12px;margin:10px 0;padding:10px;background:var(--paper);border-radius:6px}
+.progress-wrap{flex:1;background:var(--rule);height:10px;border-radius:5px;overflow:hidden;position:relative;min-width:100px}
+.progress-fill{background:linear-gradient(90deg, var(--gold), var(--gold-bright));height:100%;border-radius:5px;transition:width 0.4s}
+.progress-fill.complete{background:linear-gradient(90deg, var(--success), #10B981)}
+.progress-text{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--ink-950);white-space:nowrap}
+
+.stage-pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.stage-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;font-size:10.5px;font-weight:600;background:var(--paper);border:1px solid var(--rule)}
+.stage-pill.done{background:var(--success-bg);color:var(--success);border-color:var(--success)}
+.stage-pill.active{background:var(--info-bg);color:var(--info);border-color:var(--info)}
+.stage-pill.pending{background:var(--warn-bg);color:var(--warn);border-color:var(--warn)}
+
+.cc-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed var(--rule)}
+
+.modal-bg{position:fixed;inset:0;background:rgba(11,25,87,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;backdrop-filter:blur(4px)}
+.modal{background:#fff;border-radius:12px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;border:1px solid var(--gold);box-shadow:0 20px 60px rgba(0,0,0,0.3)}
+.modal-head{padding:18px 22px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg, var(--paper), #fff)}
+.modal-title{font-family:'Fraunces',serif;font-size:18px;font-weight:600;color:var(--navy)}
+.modal-close{width:30px;height:30px;border-radius:50%;background:var(--cream);color:var(--danger);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer}
+.modal-body{padding:18px 22px}
+.modal-foot{padding:14px 22px;border-top:1px solid var(--rule);display:flex;justify-content:flex-end;gap:8px;background:var(--paper)}
+
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.flabel{font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:var(--navy);letter-spacing:0.12em;text-transform:uppercase}
+.input,.textarea{padding:10px 12px;border:1px solid var(--rule);background:var(--cream);font-family:inherit;font-size:13px;color:var(--ink-950);border-radius:6px;outline:none;width:100%}
+.input:focus,.textarea:focus{border-color:var(--gold);background:#fff}
+.textarea{resize:vertical;min-height:70px}
+
+.callout{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:12px}
+.callout.info{background:var(--info-bg);color:var(--info)}
+.callout.success{background:var(--success-bg);color:var(--success)}
+.callout.warn{background:var(--warn-bg);color:var(--warn)}
+.callout.error{background:var(--danger-bg);color:var(--danger)}
+
+.spin{width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:40px 20px;color:var(--text-dim);font-size:13px;font-style:italic}
+
+@media (max-width:768px){
+  .main{padding:18px}
+  .stats-grid{grid-template-columns:repeat(2, 1fr)}
+  .topbar{padding:12px 16px}
+  .cc-head{flex-direction:column}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-bg" id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">📋</div>
+    <div class="login-title">Campaign Status</div>
+    <div class="login-sub">Manager · Lifecycle Board</div>
+    <input id="loginPhone" class="login-input" type="tel" placeholder="10-digit phone" maxlength="10">
+    <button id="loginBtn" class="login-btn" onclick="doLogin()">Access Board →</button>
+    <div id="loginErr" class="login-err"></div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="mainApp" style="display:none">
+  
+  <div class="topbar">
+    <div class="tb-brand">
+      <div class="tb-logo">📋</div>
+      <div>
+        <div class="tb-name">Campaign Status Board</div>
+        <div class="tb-tag">Manager · Lifecycle Control</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <a href="/assign-operators.html" class="btn btn-secondary sm">🎯 Assign</a>
+      <a href="/dashboard.html" class="btn btn-secondary sm">← Dashboard</a>
+      <div class="tb-user">
+        <div class="tb-ava" id="tbAva">?</div>
+        <div class="tb-info"><div class="name" id="tbName">…</div><div class="role" id="tbRole">…</div></div>
+      </div>
+      <button class="btn btn-secondary sm" onclick="logout()">⎋</button>
+    </div>
+  </div>
+  
+  <div class="main">
+    
+    <div class="page-head">
+      <div>
+        <div class="page-title">Campaign <em>Lifecycle</em></div>
+        <div class="page-sub" id="todayDate">…</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary" onclick="loadData()">🔄 Refresh</button>
+      </div>
+    </div>
+    
+    <div id="statsArea"></div>
+    
+    <div class="filter-bar">
+      <span class="label">Filter:</span>
+      <select id="filterStatus" onchange="renderList()">
+        <option value="all">All Statuses</option>
+        <option value="in_production">In Production</option>
+        <option value="plan_locked">Plan Locked</option>
+        <option value="pending_execution_plan">Pending Plan</option>
+        <option value="on_hold">On Hold</option>
+        <option value="completed">Completed</option>
+        <option value="cancelled">Cancelled</option>
+        <option value="archived">Archived</option>
+        <option value="stale">⚠️ Stale (5+ days no work)</option>
+        <option value="urgent">🚨 Urgent Only</option>
+      </select>
+      <select id="filterTime" onchange="renderList()">
+        <option value="active">Active Only (default)</option>
+        <option value="all">Include Completed</option>
+        <option value="full">Show Everything (incl archived)</option>
+      </select>
+      <input type="text" id="filterSearch" placeholder="Search campaign or client..." oninput="renderList()">
+    </div>
+    
+    <div id="contentArea">
+      <div class="empty">Loading…</div>
+    </div>
+    
+  </div>
+</div>
+
+<!-- ACTION MODAL -->
+<div class="modal-bg" id="actionModal" style="display:none">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="actionTitle">Action</div>
+      <button class="modal-close" onclick="closeActionModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="actionInfo" style="margin-bottom:14px"></div>
+      
+      <div class="field" id="reasonField">
+        <div class="flabel">Reason / Notes</div>
+        <textarea class="textarea" id="actionReason" placeholder="Why are you doing this?"></textarea>
+      </div>
+      
+      <div id="actionStatus"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeActionModal()">Cancel</button>
+      <button class="btn btn-primary" id="actionConfirmBtn" onclick="confirmAction()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script src="/lib/access-guard.js"></script>
+
+<script>
+const SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
+
+const state = {
+  user: null,
+  campaigns: [],
+  filteredStatus: 'all',
+  currentAction: null
+};
+
+const HEADERS = {
+  'apikey': SUPABASE_KEY,
+  'Authorization': 'Bearer ' + SUPABASE_KEY,
+  'Content-Type': 'application/json'
+};
+
+async function api(path, opts = {}) {
+  const res = await fetch(SUPABASE_URL + path, { ...opts, headers: { ...HEADERS, ...(opts.headers || {}) } });
+  if (!res.ok) throw new Error('API ' + res.status + ': ' + await res.text());
+  if (res.status === 204 || res.headers.get('content-length') === '0') return null;
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LOGIN
+// ═══════════════════════════════════════════════════════════════
+
+async function doLogin() {
+  const phone = document.getElementById('loginPhone').value.trim();
+  const errEl = document.getElementById('loginErr');
+  const btn = document.getElementById('loginBtn');
+  
+  errEl.classList.remove('show');
+  if (phone.length !== 10) {
+    errEl.textContent = 'Phone 10 digits ka hona chahiye';
+    errEl.classList.add('show');
+    return;
+  }
+  
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Loading…';
+  
+  try {
+    const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
+    if (!members || !members.length) throw new Error('Number registered nahi');
+    
+    const m = members[0];
+    const allowedRoles = ['admin', 'owner', 'operations_manager', 'ops_manager', 'operations'];
+    if (!allowedRoles.includes((m.role || '').toLowerCase())) {
+      throw new Error('Manager-only — Sirf Owner/Admin/Ops Manager');
+    }
+    
+    state.user = m;
+    localStorage.setItem('prajapati_admin_phone', phone);
+    
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    
+    initApp();
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.add('show');
+    btn.disabled = false;
+    btn.innerHTML = 'Access Board →';
+  }
+}
+
+async function autoLogin() {
+  const phone = localStorage.getItem('prajapati_admin_phone');
+  if (!phone) return;
+  try {
+    const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
+    if (!members || !members.length) return;
+    const m = members[0];
+    const allowedRoles = ['admin', 'owner', 'operations_manager', 'ops_manager', 'operations'];
+    if (!allowedRoles.includes((m.role || '').toLowerCase())) return;
+    
+    state.user = m;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    initApp();
+  } catch (e) {}
+}
+
+function logout() {
+  localStorage.removeItem('prajapati_admin_phone');
+  location.reload();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+
+function initApp() {
+  const initial = (state.user.name || '?').charAt(0).toUpperCase();
+  document.getElementById('tbAva').textContent = initial;
+  document.getElementById('tbName').textContent = state.user.name || 'User';
+  document.getElementById('tbRole').textContent = (state.user.role || 'user').replace(/_/g, ' ');
+  
+  document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-IN', {
+    weekday: 'long', day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata'
+  });
+  
+  if (window.AccessGuard) AccessGuard.filterUI(state.user);
+  
+  loadData();
+}
+
+async function loadData() {
+  document.getElementById('contentArea').innerHTML = '<div class="empty">Loading campaigns…</div>';
+  
+  try {
+    const campaigns = await api('/rest/v1/v_campaign_status_board?select=*&limit=500');
+    state.campaigns = campaigns || [];
+    renderUI();
+  } catch (err) {
+    console.error(err);
+    document.getElementById('contentArea').innerHTML = `
+      <div class="callout error">
+        <span>❌</span>
+        <div><strong>Load failed:</strong> ${escapeHtml(err.message)}<br>
+        <small>Make sure SESSION_4_PHASE_A_CAMPAIGN_COMPLETION.sql is applied.</small></div>
+      </div>
+    `;
+  }
+}
+
+function renderUI() {
+  const c = state.campaigns;
+  
+  // Calculate stats per status
+  const byStatus = {};
+  c.forEach(item => {
+    byStatus[item.status] = (byStatus[item.status] || 0) + 1;
+  });
+  
+  const inProd = byStatus['in_production'] || 0;
+  const locked = byStatus['plan_locked'] || 0;
+  const pending = byStatus['pending_execution_plan'] || 0;
+  const completed = byStatus['completed'] || 0;
+  const onHold = byStatus['on_hold'] || 0;
+  const cancelled = byStatus['cancelled'] || 0;
+  const archived = byStatus['archived'] || 0;
+  const stale = c.filter(item => item.days_since_activity && item.days_since_activity >= 5 && item.status === 'in_production').length;
+  
+  document.getElementById('statsArea').innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card in-prod" onclick="quickFilter('in_production')">
+        <div class="stat-label">🔥 In Production</div>
+        <div class="stat-value">${inProd}</div>
+        <div class="stat-meta">active work</div>
+      </div>
+      <div class="stat-card locked" onclick="quickFilter('plan_locked')">
+        <div class="stat-label">🔐 Plan Locked</div>
+        <div class="stat-value">${locked}</div>
+        <div class="stat-meta">ready to start</div>
+      </div>
+      <div class="stat-card pending" onclick="quickFilter('pending_execution_plan')">
+        <div class="stat-label">⏳ Pending Plan</div>
+        <div class="stat-value">${pending}</div>
+        <div class="stat-meta">awaiting lock</div>
+      </div>
+      <div class="stat-card completed" onclick="quickFilter('completed')">
+        <div class="stat-label">✅ Completed</div>
+        <div class="stat-value">${completed}</div>
+        <div class="stat-meta">last 30 days</div>
+      </div>
+      <div class="stat-card hold" onclick="quickFilter('on_hold')">
+        <div class="stat-label">⏸️ On Hold</div>
+        <div class="stat-value">${onHold}</div>
+        <div class="stat-meta">paused</div>
+      </div>
+      ${stale > 0 ? `
+        <div class="stat-card pending" style="border-left-color:var(--warn);background:linear-gradient(135deg, var(--warn-bg), #fff)" onclick="quickFilter('stale')">
+          <div class="stat-label">⚠️ Stale</div>
+          <div class="stat-value">${stale}</div>
+          <div class="stat-meta">5+ days no work</div>
+        </div>
+      ` : ''}
+      ${cancelled > 0 ? `
+        <div class="stat-card cancelled" onclick="quickFilter('cancelled')">
+          <div class="stat-label">❌ Cancelled</div>
+          <div class="stat-value">${cancelled}</div>
+          <div class="stat-meta">killed</div>
+        </div>
+      ` : ''}
+      ${archived > 0 ? `
+        <div class="stat-card archived" onclick="quickFilter('archived')">
+          <div class="stat-label">📦 Archived</div>
+          <div class="stat-value">${archived}</div>
+          <div class="stat-meta">historical</div>
+        </div>
+      ` : ''}
+    </div>
+  `;
+  
+  renderList();
+}
+
+function quickFilter(status) {
+  document.getElementById('filterStatus').value = status;
+  // Set time filter appropriately
+  if (['completed', 'cancelled', 'archived'].includes(status)) {
+    document.getElementById('filterTime').value = 'full';
+  }
+  renderList();
+}
+
+function renderList() {
+  const statusFilter = document.getElementById('filterStatus').value;
+  const timeFilter = document.getElementById('filterTime').value;
+  const search = (document.getElementById('filterSearch').value || '').toLowerCase();
+  
+  let list = state.campaigns;
+  
+  // Time filter
+  if (timeFilter === 'active') {
+    list = list.filter(c => ['in_production', 'plan_locked', 'pending_execution_plan', 'on_hold'].includes(c.status));
+  } else if (timeFilter === 'all') {
+    list = list.filter(c => c.status !== 'archived');
+  }
+  // 'full' shows everything
+  
+  // Status filter
+  if (statusFilter === 'stale') {
+    list = list.filter(c => c.days_since_activity && c.days_since_activity >= 5 && c.status === 'in_production');
+  } else if (statusFilter === 'urgent') {
+    list = list.filter(c => c.is_urgent);
+  } else if (statusFilter !== 'all') {
+    list = list.filter(c => c.status === statusFilter);
+  }
+  
+  // Search
+  if (search) {
+    list = list.filter(c => 
+      (c.campaign_name || '').toLowerCase().includes(search) ||
+      (c.client_name || '').toLowerCase().includes(search)
+    );
+  }
+  
+  if (!list.length) {
+    document.getElementById('contentArea').innerHTML = '<div class="empty">No campaigns match current filter.</div>';
+    return;
+  }
+  
+  document.getElementById('contentArea').innerHTML = list.map(c => renderCampaignCard(c)).join('');
+}
+
+function renderCampaignCard(c) {
+  const pct = c.total_assigned > 0 ? Math.round((c.total_done / c.total_assigned) * 100) : 0;
+  const isStale = c.days_since_activity && c.days_since_activity >= 5 && c.status === 'in_production';
+  const completedDate = c.completed_at ? new Date(c.completed_at).toLocaleDateString('en-IN', { day:'2-digit', month:'short' }) : '';
+  
+  const statusEmoji = {
+    'in_production': '🔥',
+    'plan_locked': '🔐',
+    'pending_execution_plan': '⏳',
+    'completed': '✅',
+    'on_hold': '⏸️',
+    'cancelled': '❌',
+    'archived': '📦'
+  }[c.status] || '📋';
+  
+  return `
+    <div class="campaign-card ${c.is_urgent ? 'urgent' : ''} ${c.status} ${isStale ? 'stale' : ''}">
+      <div class="cc-head">
+        <div style="flex:1;min-width:0">
+          <div class="cc-title">${escapeHtml(c.campaign_name || 'Unnamed Campaign')}</div>
+          <div class="cc-meta">
+            ${c.client_name ? `<span>👤 <strong>${escapeHtml(c.client_name)}</strong></span>` : ''}
+            ${c.start_date ? `<span>📅 Start: ${escapeHtml(c.start_date)}</span>` : ''}
+            ${c.completion_days !== null ? `<span>⏱️ Completed in ${c.completion_days} days</span>` : ''}
+            ${c.days_since_activity !== null ? `<span>📊 ${c.days_since_activity} days since last work</span>` : ''}
+          </div>
+          <div class="cc-tags" style="margin-top:8px">
+            <span class="tag status-${c.status}">${statusEmoji} ${c.status.replace(/_/g, ' ')}</span>
+            ${c.is_urgent ? '<span class="tag urgent">🚨 URGENT</span>' : ''}
+            ${isStale ? `<span class="tag stale">⚠️ STALE ${c.days_since_activity}d</span>` : ''}
+            ${completedDate ? `<span class="tag" style="background:var(--success-bg);color:var(--success)">✅ ${completedDate}</span>` : ''}
+          </div>
+        </div>
+      </div>
+      
+      <div class="progress-block">
+        <div class="progress-wrap">
+          <div class="progress-fill ${pct >= 100 ? 'complete' : ''}" style="width:${Math.min(pct, 100)}%"></div>
+        </div>
+        <div class="progress-text">${(c.total_done || 0).toLocaleString('en-IN')} / ${(c.total_assigned || 0).toLocaleString('en-IN')} (${pct}%)</div>
+      </div>
+      
+      <div class="stage-pills">
+        <div class="stage-pill ${c.pending_assignments > 0 ? 'pending' : ''}">
+          ⏳ ${c.pending_assignments || 0} Pending
+        </div>
+        <div class="stage-pill ${c.active_assignments > 0 ? 'active' : ''}">
+          🔥 ${c.active_assignments || 0} In Progress
+        </div>
+        <div class="stage-pill ${c.completed_assignments > 0 ? 'done' : ''}">
+          ✅ ${c.completed_assignments || 0} Done
+        </div>
+        <div class="stage-pill" style="background:var(--gold-soft);color:var(--gold-deep)">
+          📦 Total: ${c.total_assignments || 0}
+        </div>
+      </div>
+      
+      <div class="cc-actions">
+        ${c.status === 'in_production' || c.status === 'plan_locked' ? `
+          <button class="btn btn-success sm" onclick="openAction('${c.campaign_id}', 'complete')">✅ Mark Complete</button>
+          <button class="btn btn-warn sm" onclick="openAction('${c.campaign_id}', 'hold')">⏸️ On Hold</button>
+          <button class="btn btn-danger sm" onclick="openAction('${c.campaign_id}', 'cancel')">❌ Cancel</button>
+        ` : ''}
+        ${c.status === 'on_hold' ? `
+          <button class="btn btn-info sm" onclick="openAction('${c.campaign_id}', 'resume')">▶️ Resume</button>
+          <button class="btn btn-danger sm" onclick="openAction('${c.campaign_id}', 'cancel')">❌ Cancel</button>
+        ` : ''}
+        ${c.status === 'completed' ? `
+          <button class="btn btn-secondary sm" onclick="openAction('${c.campaign_id}', 'archive')">📦 Archive</button>
+          <button class="btn btn-info sm" onclick="openAction('${c.campaign_id}', 'reopen')">🔁 Reopen</button>
+        ` : ''}
+        ${c.status === 'archived' || c.status === 'cancelled' ? `
+          <button class="btn btn-info sm" onclick="openAction('${c.campaign_id}', 'reopen')">🔁 Reopen</button>
+        ` : ''}
+        <a href="/assign-operators.html" class="btn btn-secondary sm">🎯 Assign</a>
+      </div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ACTION MODAL
+// ═══════════════════════════════════════════════════════════════
+
+const ACTIONS = {
+  complete: { 
+    title: '✅ Mark Campaign Complete', 
+    btnText: 'Mark Complete', 
+    btnClass: 'btn-success',
+    newStatus: 'completed',
+    info: 'Manually close this campaign. All remaining work will be considered done.'
+  },
+  hold: { 
+    title: '⏸️ Put Campaign On Hold', 
+    btnText: 'Confirm On Hold', 
+    btnClass: 'btn-warn',
+    newStatus: 'on_hold',
+    info: 'Pause this campaign. Operators will see jobs greyed out. Work can resume later.'
+  },
+  cancel: { 
+    title: '❌ Cancel Campaign', 
+    btnText: 'Confirm Cancellation', 
+    btnClass: 'btn-danger',
+    newStatus: 'cancelled',
+    info: 'Permanently kill this campaign. Work logs preserved but no further activity allowed.'
+  },
+  resume: { 
+    title: '▶️ Resume Campaign', 
+    btnText: 'Resume Work', 
+    btnClass: 'btn-info',
+    newStatus: 'in_production',
+    info: 'Reactivate this campaign. Operators will see jobs in their active list again.'
+  },
+  archive: { 
+    title: '📦 Archive Campaign', 
+    btnText: 'Archive Now', 
+    btnClass: 'btn-secondary',
+    newStatus: 'archived',
+    info: 'Move to archive. Hidden from default views but data preserved for reports.'
+  },
+  reopen: { 
+    title: '🔁 Reopen Campaign', 
+    btnText: 'Reopen Campaign', 
+    btnClass: 'btn-info',
+    newStatus: 'in_production',
+    info: 'Bring back to active. Use if returns/issues require more work.'
+  }
+};
+
+function openAction(campaignId, action) {
+  const campaign = state.campaigns.find(c => c.campaign_id === campaignId);
+  if (!campaign) return;
+  
+  const actionDef = ACTIONS[action];
+  if (!actionDef) return;
+  
+  state.currentAction = { campaign, action, actionDef };
+  
+  document.getElementById('actionTitle').textContent = actionDef.title;
+  document.getElementById('actionInfo').innerHTML = `
+    <div class="callout info" style="margin-bottom:0">
+      <span>📋</span>
+      <div>
+        <strong>${escapeHtml(campaign.campaign_name)}</strong><br>
+        <small>${actionDef.info}</small>
+      </div>
+    </div>
+  `;
+  
+  const confirmBtn = document.getElementById('actionConfirmBtn');
+  confirmBtn.textContent = actionDef.btnText;
+  confirmBtn.className = 'btn ' + actionDef.btnClass;
+  
+  document.getElementById('actionReason').value = '';
+  document.getElementById('actionStatus').innerHTML = '';
+  
+  document.getElementById('actionModal').style.display = 'flex';
+}
+
+function closeActionModal() {
+  document.getElementById('actionModal').style.display = 'none';
+  state.currentAction = null;
+}
+
+async function confirmAction() {
+  const ctx = state.currentAction;
+  if (!ctx) return;
+  
+  const reason = document.getElementById('actionReason').value.trim() || null;
+  const btn = document.getElementById('actionConfirmBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Saving…';
+  
+  try {
+    const payload = {
+      status: ctx.actionDef.newStatus,
+      updated_at: new Date().toISOString()
+    };
+    
+    if (ctx.action === 'complete') {
+      payload.completed_at = new Date().toISOString();
+      payload.completed_by = state.user.id;
+      payload.completion_notes = reason;
+    } else if (ctx.action === 'archive') {
+      payload.archived_at = new Date().toISOString();
+      payload.archived_by = state.user.id;
+    } else if (ctx.action === 'hold') {
+      payload.on_hold_reason = reason;
+    } else if (ctx.action === 'reopen') {
+      payload.completed_at = null;
+      payload.archived_at = null;
+      payload.completion_notes = (ctx.campaign.completion_notes || '') + '\n[Reopened ' + new Date().toISOString() + ']: ' + (reason || 'No reason given');
+    }
+    
+    await api(`/rest/v1/trial_campaigns?id=eq.${ctx.campaign.campaign_id}`, {
+      method: 'PATCH',
+      headers: { 'Prefer': 'return=minimal' },
+      body: JSON.stringify(payload)
+    });
+    
+    document.getElementById('actionStatus').innerHTML = '<div class="callout success"><span>✅</span><div>Done!</div></div>';
+    setTimeout(() => {
+      closeActionModal();
+      loadData();
+    }, 800);
+    
+  } catch (e) {
+    document.getElementById('actionStatus').innerHTML = `<div class="callout error"><span>❌</span><div>${escapeHtml(e.message)}</div></div>`;
+    btn.disabled = false;
+    btn.innerHTML = ctx.actionDef.btnText;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  autoLogin();
+  document.getElementById('loginPhone').addEventListener('keypress', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+  document.getElementById('loginPhone').addEventListener('input', e => {
+    e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
+  });
+});
+</script>
+
+</body>
+</html>

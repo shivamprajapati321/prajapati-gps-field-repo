@@ -501,9 +501,13 @@ async function loadOperatorData() {
     total_qty_completed: 0, active_assignments: 0, completed_assignments: 0, pending_qty: 0
   };
   
-  // Active jobs from view
+  // Active jobs from view (auto-filtered to active campaigns only)
   const jobs = await api(`/rest/v1/v_operator_active_jobs?operator_id=eq.${state.user.id}&stage=eq.delivery&select=*`);
   state.jobs = jobs || [];
+  
+  // Completed jobs (last 30 days)
+  const completedJobs = await api(`/rest/v1/v_operator_completed_jobs?operator_id=eq.${state.user.id}&stage=eq.delivery&select=*`);
+  state.completedJobs = completedJobs || [];
   
   // Reports: date-wise breakdown last 14 days
   const dateWise = await api(`/rest/v1/trial_work_logs?operator_id=eq.${state.user.id}&stage=eq.delivery&log_date=gte.${nDaysAgo(14)}&select=log_date,qty_done,design_id,campaign_id&order=log_date.desc`);
@@ -550,6 +554,9 @@ function renderOperatorView() {
       <div class="tab ${state.activeTab === 'jobs' ? 'active' : ''}" onclick="switchTab('jobs')">
         🎯 My Active Jobs <span class="count">${state.jobs.length}</span>
       </div>
+      <div class="tab ${state.activeTab === 'completed' ? 'active' : ''}" onclick="switchTab('completed')">
+        ✅ Completed <span class="count">${(state.completedJobs || []).length}</span>
+      </div>
       <div class="tab ${state.activeTab === 'reports' ? 'active' : ''}" onclick="switchTab('reports')">
         📊 My Reports
       </div>
@@ -567,10 +574,8 @@ function renderOperatorView() {
 
 function switchTab(tab) {
   state.activeTab = tab;
-  document.querySelectorAll('.tab').forEach(t => {
-    t.classList.toggle('active', t.textContent.toLowerCase().includes(tab));
-  });
-  renderTab();
+  // Re-render entire operator view to update tab states + content
+  renderOperatorView();
 }
 
 function renderTab() {
@@ -578,6 +583,8 @@ function renderTab() {
   
   if (state.activeTab === 'jobs') {
     el.innerHTML = renderJobsTab();
+  } else if (state.activeTab === 'completed') {
+    el.innerHTML = renderCompletedTab();
   } else if (state.activeTab === 'reports') {
     el.innerHTML = renderReportsTab();
   } else if (state.activeTab === 'history') {
@@ -585,12 +592,64 @@ function renderTab() {
   }
 }
 
+function renderCompletedTab() {
+  const completed = state.completedJobs || [];
+  if (!completed.length) {
+    return `
+      <div class="callout info">
+        <span>🎉</span>
+        <div>No completed jobs in last 30 days. Once you finish work, it appears here!</div>
+      </div>
+    `;
+  }
+  
+  return completed.map(job => {
+    const completedDate = job.completed_at ? new Date(job.completed_at).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : '';
+    return `
+      <div class="job-card completed" style="opacity:0.9">
+        <div class="job-head">
+          <div style="flex:1;min-width:0">
+            <div class="job-title">
+              ${job.job_type_icon || '🚚'} ${escapeHtml(job.design_name || 'Job')}
+            </div>
+            <div class="job-meta">
+              <span>🎟️ <strong>Job #${(job.assignment_id || '').slice(-6).toUpperCase()}</strong></span>
+              ${job.location_name ? `<span>📍 ${escapeHtml(job.location_name)}</span>` : (job.location_city ? `<span>📍 ${escapeHtml(job.location_city)}</span>` : '')}
+              ${completedDate ? `<span>✅ Completed: ${completedDate}</span>` : ''}
+            </div>
+            <div class="job-tags">
+              <span class="tag completed">✅ COMPLETED</span>
+              <span class="tag qty">📦 ${(job.quantity_done || 0).toLocaleString('en-IN')} units done</span>
+              ${job.location_city ? `<span class="tag location">📍 ${escapeHtml(job.location_city)}</span>` : ''}
+            </div>
+          </div>
+          <div class="job-actions">
+            ${(job.drive_url || job.supabase_file_url) ? `
+              <a href="${job.drive_url || job.supabase_file_url}" target="_blank" class="file-link-btn ${job.drive_url ? 'drive' : ''}">
+                ${job.drive_url ? '📂 Drive' : '📄 File'}
+              </a>
+            ` : ''}
+          </div>
+        </div>
+        
+        <div class="progress-wrap">
+          <div class="progress-fill complete" style="width:100%"></div>
+        </div>
+        <div class="progress-text">
+          <span>${(job.quantity_done || 0).toLocaleString('en-IN')} / ${(job.quantity_assigned || 0).toLocaleString('en-IN')} units · ✓ Done</span>
+          <span>100%</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
 function renderJobsTab() {
   if (!state.jobs.length) {
     return `
       <div class="callout info">
         <span>ℹ️</span>
-        <div>No active printing jobs assigned to you. When the operations manager (Ravi) assigns work, it will appear here.</div>
+        <div>No active delivery jobs assigned to you. When the operations manager (Ravi) assigns work, it will appear here.</div>
       </div>
     `;
   }
