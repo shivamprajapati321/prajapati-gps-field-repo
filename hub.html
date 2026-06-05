@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hub · Prajapati Advertising</title>
+<meta name="theme-color" content="#0B1957">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght,ital@9..144,300..900,0..1&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+:root{
+  --navy:#0B1957;--navy-deep:#050B2E;--navy-soft:#1E2A6B;
+  --gold:#B89B4E;--gold-bright:#D4B45F;--gold-deep:#8B7430;--gold-soft:#F4E4B0;--gold-pale:#FBF6E4;
+  --cream:#FAF8F3;--paper:#F7F4EC;--rule:#E5E0D2;--rule-soft:#EDE9DC;
+  --ink-950:#0F172A;--ink-700:#475569;--ink-500:#64748B;--text-dim:#94A3B8;
+  --success:#047857;--success-bg:#D1FAE5;
+  --warn:#C2410C;--warn-bg:#FED7AA;
+  --danger:#BE123C;--danger-bg:#FECACA;
+  --info:#1E40AF;--info-bg:#DBEAFE;
+  --purple:#7C3AED;--purple-bg:#EDE9FE;
+  --teal:#0D9488;--teal-bg:#CCFBF1;
+}
+html,body{height:100%}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--cream);color:var(--ink-950);font-size:14px;line-height:1.55;min-height:100vh}
+button{font-family:inherit;cursor:pointer;border:none;background:none;outline:none}
+a{color:inherit;text-decoration:none}
+input,select,textarea{font-family:inherit;outline:none}
+
+/* ───── LOGIN SCREEN ───── */
+
+.login-bg{position:fixed;inset:0;background:linear-gradient(135deg, var(--navy) 0%, var(--navy-deep) 100%);display:flex;align-items:center;justify-content:center;padding:20px;z-index:200}
+.login-bg::before{content:'';position:absolute;inset:0;background-image:radial-gradient(circle at 20% 30%, rgba(212,180,95,0.08) 0%, transparent 50%), radial-gradient(circle at 80% 70%, rgba(212,180,95,0.05) 0%, transparent 50%);pointer-events:none}
+.login-card{background:#fff;padding:42px 36px;border-radius:16px;max-width:420px;width:100%;border:1px solid var(--gold);box-shadow:0 30px 60px -15px rgba(0,0,0,0.4);position:relative;z-index:1}
+.login-brand{text-align:center;margin-bottom:30px;padding-bottom:24px;border-bottom:1px solid var(--rule)}
+.login-logo{width:68px;height:68px;background:var(--gold);color:var(--navy);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 16px;font-weight:800;font-family:'Fraunces',serif}
+.login-name{font-family:'Fraunces',serif;font-size:24px;font-weight:500;color:var(--navy);letter-spacing:-0.02em}
+.login-tag{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--gold-deep);letter-spacing:0.18em;text-transform:uppercase;margin-top:6px}
+
+.login-title{font-family:'Fraunces',serif;font-size:18px;font-weight:500;text-align:center;color:var(--navy);margin-bottom:6px;font-style:italic}
+.login-sub{font-size:12.5px;text-align:center;color:var(--text-dim);margin-bottom:24px}
+.login-input{width:100%;padding:13px 16px;border:1.5px solid var(--rule);font-family:inherit;font-size:15px;border-radius:10px;margin-bottom:12px;transition:all 0.15s;background:var(--cream)}
+.login-input:focus{border-color:var(--gold);background:#fff}
+.login-btn{width:100%;padding:14px;background:var(--navy);color:#fff;border-radius:10px;font-weight:700;font-size:13.5px;letter-spacing:0.02em;transition:all 0.15s}
+.login-btn:hover:not(:disabled){background:var(--navy-deep);transform:translateY(-1px)}
+.login-btn:disabled{opacity:0.6;cursor:not-allowed}
+.login-err{color:var(--danger);font-size:12.5px;text-align:center;margin-top:12px;padding:8px;background:var(--danger-bg);border-radius:6px;display:none}
+.login-err.show{display:block}
+.login-footer{margin-top:20px;padding-top:18px;border-top:1px solid var(--rule);text-align:center;font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--text-dim);letter-spacing:0.12em;text-transform:uppercase}
+
+/* ───── TOPBAR (MASTHEAD) ───── */
+
+.masthead{background:#fff;border-bottom:3px solid var(--gold);position:sticky;top:0;z-index:100}
+.masthead-inner{max-width:1440px;margin:0 auto;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.brand{display:flex;align-items:center;gap:14px}
+.brand-mark{width:42px;height:42px;background:var(--navy);color:var(--gold);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-size:22px;font-weight:700;font-style:italic;flex-shrink:0}
+.brand-name{font-family:'Fraunces',serif;font-size:20px;font-weight:500;color:var(--navy);letter-spacing:-0.02em;line-height:1}
+.brand-tag{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--gold-deep);letter-spacing:0.18em;text-transform:uppercase;margin-top:3px}
+
+.live-clock{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-500);letter-spacing:0.08em;display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--paper);border:1px solid var(--rule);border-radius:999px}
+.live-dot{width:7px;height:7px;background:var(--success);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+.user-pod{display:flex;align-items:center;gap:10px;padding:5px 14px 5px 5px;background:linear-gradient(135deg, var(--gold-pale), #fff);border:1px solid var(--gold);border-radius:999px}
+.user-avatar{width:32px;height:32px;border-radius:50%;background:var(--gold);color:var(--navy);display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-style:italic;font-weight:600;font-size:15px;flex-shrink:0}
+.user-info{display:flex;flex-direction:column;line-height:1.15}
+.user-name{font-size:12.5px;font-weight:700;color:var(--navy)}
+.user-role{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--gold-deep);letter-spacing:0.14em;text-transform:uppercase;margin-top:2px}
+
+.logout-btn{padding:7px 12px;background:#fff;color:var(--ink-700);border:1px solid var(--rule);border-radius:6px;font-size:11px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;transition:all 0.15s}
+.logout-btn:hover{background:var(--danger-bg);color:var(--danger);border-color:var(--danger)}
+
+/* ───── TICKER (live status bar) ───── */
+
+.ticker{background:var(--navy);color:var(--gold-soft);overflow:hidden;border-bottom:1px solid var(--gold-deep)}
+.ticker-track{display:flex;animation:scroll 60s linear infinite;white-space:nowrap;padding:8px 0}
+.ticker-item{display:inline-flex;align-items:center;gap:8px;padding:0 30px;font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;border-right:1px solid rgba(212,180,95,0.2)}
+.ticker-label{color:var(--gold-bright)}
+.ticker-value{color:#fff;font-weight:700}
+@keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* ───── MAIN ───── */
+
+.main{max-width:1440px;margin:0 auto;padding:32px 28px 80px}
+
+.page-head{margin-bottom:32px;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.page-head-text{flex:1;min-width:280px}
+.greeting{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gold-deep);letter-spacing:0.18em;text-transform:uppercase;margin-bottom:8px}
+.page-title{font-family:'Fraunces',serif;font-size:36px;font-weight:400;color:var(--navy);letter-spacing:-0.025em;line-height:1.1;margin-bottom:6px}
+.page-title em{color:var(--gold);font-style:italic;font-weight:500}
+.page-sub{font-size:13.5px;color:var(--ink-500);font-style:italic}
+
+.quick-stats{display:flex;gap:16px;flex-wrap:wrap}
+.qs{padding:12px 18px;background:#fff;border:1px solid var(--rule);border-radius:10px;text-align:center;min-width:90px}
+.qs-value{font-family:'Fraunces',serif;font-size:26px;font-weight:600;color:var(--navy);line-height:1;letter-spacing:-0.02em}
+.qs-label{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--gold-deep);letter-spacing:0.14em;text-transform:uppercase;margin-top:4px}
+
+/* ───── KPI BENTO GRID ───── */
+
+.kpi-bento{display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:14px;margin-bottom:32px}
+.kpi{background:#fff;border:1px solid var(--rule);border-radius:14px;padding:20px;position:relative;overflow:hidden;transition:all 0.2s}
+.kpi:hover{transform:translateY(-2px);box-shadow:0 12px 24px -8px rgba(11,25,87,0.12);border-color:var(--gold)}
+.kpi.featured{background:linear-gradient(135deg, var(--navy), var(--navy-deep));color:#fff;border-color:var(--gold)}
+.kpi.featured .kpi-label{color:var(--gold-bright)}
+.kpi.featured .kpi-value{color:#fff}
+.kpi.featured .kpi-trend{color:var(--gold-soft)}
+.kpi.warn{background:linear-gradient(135deg, var(--warn-bg), #fff);border-color:var(--warn)}
+.kpi.success{background:linear-gradient(135deg, var(--success-bg), #fff);border-color:var(--success)}
+.kpi.info{background:linear-gradient(135deg, var(--info-bg), #fff);border-color:var(--info)}
+
+.kpi-label{font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:var(--gold-deep);letter-spacing:0.16em;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.kpi-label-icon{font-size:14px}
+.kpi-value{font-family:'Fraunces',serif;font-size:42px;font-weight:600;color:var(--navy);line-height:1;letter-spacing:-0.03em}
+.kpi-meta{font-size:12px;color:var(--ink-500);margin-top:8px;line-height:1.5}
+.kpi-trend{font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:0.08em}
+.kpi-trend.up{color:var(--success)}
+.kpi-trend.down{color:var(--danger)}
+
+/* ───── SECTIONS ───── */
+
+.section{margin-bottom:36px}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--rule)}
+.section-title{font-family:'Fraunces',serif;font-size:22px;font-weight:500;color:var(--navy);display:flex;align-items:center;gap:10px;letter-spacing:-0.02em}
+.section-roman{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold);font-weight:700;letter-spacing:0.15em}
+.section-sub{font-size:12.5px;color:var(--text-dim);font-style:italic}
+
+/* ───── MODULE TILES ───── */
+
+.module-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));gap:14px}
+
+.module{background:#fff;border:1px solid var(--rule);border-radius:12px;padding:20px;text-align:left;cursor:pointer;transition:all 0.2s;position:relative;overflow:hidden;display:flex;flex-direction:column;min-height:140px;color:inherit;text-decoration:none}
+.module:hover{transform:translateY(-2px);border-color:var(--gold);box-shadow:0 16px 32px -12px rgba(11,25,87,0.15)}
+.module:hover .module-arrow{transform:translateX(4px);opacity:1}
+.module::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--gold);transform:scaleX(0);transform-origin:left;transition:transform 0.3s}
+.module:hover::before{transform:scaleX(1)}
+
+.module-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.module-icon{width:42px;height:42px;background:var(--gold-pale);color:var(--gold-deep);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;border:1px solid var(--gold-soft)}
+.module-arrow{font-size:16px;color:var(--gold);opacity:0.5;transition:all 0.2s}
+
+.module-name{font-family:'Fraunces',serif;font-size:17px;font-weight:600;color:var(--navy);margin-bottom:4px;letter-spacing:-0.01em}
+.module-desc{font-size:12px;color:var(--ink-500);line-height:1.5;margin-bottom:12px;flex:1}
+.module-tag{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--gold-deep);letter-spacing:0.14em;text-transform:uppercase;font-weight:700;display:flex;align-items:center;gap:6px}
+.module-tag .badge{padding:2px 6px;background:var(--gold-pale);border:1px solid var(--gold-soft);border-radius:4px;color:var(--gold-deep)}
+.module-tag .badge.new{background:var(--success-bg);color:var(--success);border-color:var(--success)}
+.module-tag .badge.alert{background:var(--danger-bg);color:var(--danger);border-color:var(--danger);animation:pulse 2s infinite}
+
+/* Module variants */
+.module.primary .module-icon{background:var(--navy);color:var(--gold);border-color:var(--gold)}
+.module.success .module-icon{background:var(--success-bg);color:var(--success);border-color:var(--success)}
+.module.info .module-icon{background:var(--info-bg);color:var(--info);border-color:var(--info)}
+.module.warn .module-icon{background:var(--warn-bg);color:var(--warn);border-color:var(--warn)}
+.module.purple .module-icon{background:var(--purple-bg);color:var(--purple);border-color:var(--purple)}
+.module.teal .module-icon{background:var(--teal-bg);color:var(--teal);border-color:var(--teal)}
+
+/* ───── ALERTS ───── */
+
+.alert-strip{background:linear-gradient(90deg, var(--danger-bg), var(--warn-bg));border:1px solid var(--warn);border-radius:10px;padding:14px 18px;margin-bottom:24px;display:flex;align-items:center;gap:12px;font-size:13px;color:var(--ink-950)}
+.alert-strip strong{color:var(--danger)}
+.alert-icon{font-size:24px}
+.alert-cta{margin-left:auto;padding:6px 12px;background:var(--navy);color:#fff;border-radius:6px;font-size:11px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase}
+
+/* ───── RECENT ACTIVITY ───── */
+
+.recent-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:900px){.recent-grid{grid-template-columns:1fr}}
+
+.activity-card{background:#fff;border:1px solid var(--rule);border-radius:12px;padding:20px}
+.activity-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--rule)}
+.activity-title{font-family:'Fraunces',serif;font-size:16px;font-weight:600;color:var(--navy)}
+.activity-link{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--gold-deep);letter-spacing:0.14em;text-transform:uppercase;font-weight:700}
+.activity-link:hover{color:var(--navy)}
+
+.activity-list{display:flex;flex-direction:column;gap:8px}
+.activity-row{display:flex;align-items:center;gap:10px;padding:10px;background:var(--paper);border-radius:8px;border:1px solid var(--rule-soft)}
+.activity-bullet{width:8px;height:8px;border-radius:50%;background:var(--gold);flex-shrink:0}
+.activity-bullet.green{background:var(--success)}
+.activity-bullet.red{background:var(--danger)}
+.activity-bullet.blue{background:var(--info)}
+.activity-body{flex:1;min-width:0}
+.activity-main{font-size:12.5px;font-weight:600;color:var(--ink-950);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.activity-meta{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--text-dim);letter-spacing:0.06em;margin-top:2px}
+
+.empty{text-align:center;padding:30px 20px;color:var(--text-dim);font-style:italic;font-size:12.5px}
+
+/* ───── LOADING ───── */
+
+.spin{width:14px;height:14px;border:2px solid rgba(11,25,87,0.2);border-top-color:var(--navy);border-radius:50%;animation:spinner 0.7s linear infinite;display:inline-block;vertical-align:-3px}
+@keyframes spinner{to{transform:rotate(360deg)}}
+.skel{display:inline-block;width:60px;height:18px;background:linear-gradient(90deg, var(--paper) 0%, var(--rule) 50%, var(--paper) 100%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:4px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* ───── RESPONSIVE ───── */
+
+@media (max-width:900px){
+  .masthead-inner{padding:10px 16px;flex-wrap:wrap;gap:10px}
+  .main{padding:20px 16px 60px}
+  .page-head{flex-direction:column;align-items:flex-start}
+  .page-title{font-size:28px}
+  .kpi-value{font-size:32px}
+  .module-grid{grid-template-columns:repeat(auto-fill, minmax(160px, 1fr));gap:10px}
+  .module{padding:14px;min-height:120px}
+  .module-icon{width:36px;height:36px;font-size:18px}
+  .module-name{font-size:14.5px}
+  .module-desc{font-size:11px}
+  .live-clock{display:none}
+  .ticker{display:none}
+}
+
+.hidden{display:none !important}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     LOGIN
+     ═══════════════════════════════════════════════════════════ -->
+
+<div class="login-bg" id="loginScreen">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="login-logo">P</div>
+      <div class="login-name">Prajapati Advertising</div>
+      <div class="login-tag">Operations Hub</div>
+    </div>
+    
+    <div class="login-title">Welcome back</div>
+    <div class="login-sub">Enter your registered phone to continue</div>
+    
+    <input id="loginPhone" class="login-input" type="tel" inputmode="numeric" placeholder="10-digit phone number" maxlength="10" autocomplete="tel">
+    <button id="loginBtn" class="login-btn" onclick="doLogin()">Enter Hub →</button>
+    <div id="loginErr" class="login-err"></div>
+    
+    <div class="login-footer">
+      Authorized Personnel Only · v1.0
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MAIN APP
+     ═══════════════════════════════════════════════════════════ -->
+
+<div id="mainApp" class="hidden">
+
+  <header class="masthead">
+    <div class="masthead-inner">
+      <div class="brand">
+        <div class="brand-mark">P</div>
+        <div>
+          <div class="brand-name">Prajapati Advertising</div>
+          <div class="brand-tag">Operations Hub</div>
+        </div>
+      </div>
+      
+      <div class="live-clock">
+        <span class="live-dot"></span>
+        <span id="liveClock">--:--</span>
+      </div>
+      
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="user-pod">
+          <div class="user-avatar" id="userAvatar">?</div>
+          <div class="user-info">
+            <div class="user-name" id="userName">…</div>
+            <div class="user-role" id="userRole">…</div>
+          </div>
+        </div>
+        <button class="logout-btn" onclick="doLogout()">Log out</button>
+      </div>
+    </div>
+    
+    <div class="ticker" id="tickerWrap">
+      <div class="ticker-track" id="tickerTrack">
+        <span class="ticker-item"><span class="ticker-label">Loading</span> <span class="ticker-value">…</span></span>
+      </div>
+    </div>
+  </header>
+  
+  <main class="main">
+    
+    <div class="page-head">
+      <div class="page-head-text">
+        <div class="greeting" id="greeting">Good morning</div>
+        <div class="page-title">Welcome, <em id="userFirstName">…</em></div>
+        <div class="page-sub" id="todayDate">…</div>
+      </div>
+      <div class="quick-stats" id="quickStats"></div>
+    </div>
+    
+    <div id="alertsArea"></div>
+    
+    <div id="kpiArea" class="kpi-bento"></div>
+    
+    <!-- Modules will render here, grouped by section -->
+    <div id="modulesArea"></div>
+    
+    <div class="recent-grid">
+      <div class="activity-card">
+        <div class="activity-head">
+          <div class="activity-title">Recently Completed</div>
+          <a href="/archive-viewer.html" class="activity-link">View archive →</a>
+        </div>
+        <div id="recentCompletedList" class="activity-list">
+          <div class="empty">Loading…</div>
+        </div>
+      </div>
+      
+      <div class="activity-card">
+        <div class="activity-head">
+          <div class="activity-title">In Production</div>
+          <a href="/campaign-status.html" class="activity-link">View all →</a>
+        </div>
+        <div id="inProductionList" class="activity-list">
+          <div class="empty">Loading…</div>
+        </div>
+      </div>
+    </div>
+    
+  </main>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════════
+
+const SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
+
+const HEADERS = {
+  'apikey': SUPABASE_KEY,
+  'Authorization': 'Bearer ' + SUPABASE_KEY,
+  'Content-Type': 'application/json'
+};
+
+const state = {
+  user: null,
+  counts: null,
+  recent: [],
+  inProd: []
+};
+
+// ═══════════════════════════════════════════════════════════════
+// MODULE DEFINITIONS — Role-based access matrix
+// ═══════════════════════════════════════════════════════════════
+//
+// Each module: { id, name, desc, icon, url, variant, roles, badge, section }
+// Sections grouped under Roman-numeral headings.
+// roles: array of role names that can see this module. 'all' = everyone.
+
+const MODULES = [
+  // ─── I. Executive ───
+  { id:'owner', name:'Owner Terminal', desc:'Editorial wealth terminal · KPIs, P&L, team', icon:'👑', url:'/owner.html', variant:'primary', section:'I. Executive', roles:['owner','admin'] },
+  { id:'dashboard', name:'Operations Dashboard', desc:'Daily ops overview · campaigns, team, status', icon:'📊', url:'/dashboard.html', variant:'info', section:'I. Executive', roles:['owner','admin','operations_manager','ops_manager','operations'] },
+  
+  // ─── II. Campaign Pipeline ───
+  { id:'launch-campaign', name:'Launch Campaign', desc:'Create new campaign · designs, locations, pricing', icon:'🚀', url:'/launch-campaign.html', variant:'success', section:'II. Campaign Pipeline', roles:['owner','admin','sales','operations_manager','ops_manager','operations'] },
+  { id:'designer-uploads', name:'Designer Uploads', desc:'Upload design files · Drive 500MB or Supabase 50MB', icon:'🎨', url:'/designer-uploads.html', variant:'purple', section:'II. Campaign Pipeline', roles:['owner','admin','designer','operations_manager','ops_manager'], badge:'New' },
+  { id:'execution-plan', name:'Execution Plan', desc:'Campaign-level operator planning', icon:'📋', url:'/execution-plan.html', variant:'info', section:'II. Campaign Pipeline', roles:['owner','admin','operations_manager','ops_manager','operations'] },
+  { id:'assign-operators', name:'Assign Operators', desc:'Per-design assignment · WhatsApp notify', icon:'🎯', url:'/assign-operators.html', variant:'warn', section:'II. Campaign Pipeline', roles:['owner','admin','operations_manager','ops_manager','operations'], badge:'New' },
+  { id:'campaign-status', name:'Campaign Status', desc:'Lifecycle board · pending, locked, in production', icon:'🗂️', url:'/campaign-status.html', variant:'teal', section:'II. Campaign Pipeline', roles:['owner','admin','operations_manager','ops_manager','operations'] },
+  
+  // ─── III. Production Operators ───
+  { id:'printing-v2', name:'Printing', desc:'Daily work logs · operator + manager modes', icon:'🖨️', url:'/printing-v2.html', variant:'info', section:'III. Production', roles:['owner','admin','printing','printer','operations_manager','ops_manager','operations'] },
+  { id:'stitching-v2', name:'Stitching', desc:'Stitching workspace · masters, payments, OT', icon:'🧵', url:'/stitching-v2.html', variant:'success', section:'III. Production', roles:['owner','admin','stitching','tailor','operations_manager','ops_manager','operations'] },
+  { id:'delivery-v2', name:'Delivery', desc:'Delivery tracking · proof photos, route logs', icon:'🚚', url:'/delivery-v2.html', variant:'warn', section:'III. Production', roles:['owner','admin','delivery','driver','operations_manager','ops_manager','operations'] },
+  { id:'field', name:'Field App (PWA)', desc:'GPS-stamped photo capture · field execution', icon:'📍', url:'/field.html', variant:'purple', section:'III. Production', roles:['owner','admin','field','field_worker','operations_manager','ops_manager','operations'] },
+  { id:'verifier', name:'Verifier', desc:'Photo verification · quality control', icon:'✅', url:'/verifier.html', variant:'teal', section:'III. Production', roles:['owner','admin','verifier','operations_manager','ops_manager','operations'] },
+  
+  // ─── IV. Reports & Reassignment ───
+  { id:'reassignment-history', name:'Reassignment Log', desc:'Audit trail · all job transfers', icon:'🔄', url:'/reassignment-history.html', variant:'warn', section:'IV. Reports', roles:['owner','admin','operations_manager','ops_manager','operations'], badge:'New' },
+  { id:'archive-viewer', name:'Archive Viewer', desc:'Completed campaigns · search by date', icon:'📦', url:'/archive-viewer.html', variant:'info', section:'IV. Reports', roles:['owner','admin','operations_manager','ops_manager','operations','sales'], badge:'New' },
+  { id:'report-daily', name:'Daily Report', desc:'Today + yesterday production summary', icon:'📅', url:'/report-daily.html', variant:'info', section:'IV. Reports', roles:['owner','admin','operations_manager','ops_manager','operations'] },
+  { id:'report-team', name:'Team Report', desc:'Per-operator performance · weekly view', icon:'👥', url:'/report-team.html', variant:'info', section:'IV. Reports', roles:['owner','admin','operations_manager','ops_manager','operations'] },
+  { id:'report-campaign', name:'Campaign Report', desc:'Detailed per-campaign metrics', icon:'📈', url:'/report-campaign.html', variant:'info', section:'IV. Reports', roles:['owner','admin','operations_manager','ops_manager','operations','sales'] },
+  
+  // ─── V. Finance ───
+  { id:'payments', name:'Payments', desc:'Track payments received from clients', icon:'💰', url:'/payments.html', variant:'success', section:'V. Finance', roles:['owner','admin','accountant','sales'] },
+  { id:'outstanding', name:'Outstanding', desc:'Pending payments per client', icon:'⏳', url:'/outstanding.html', variant:'warn', section:'V. Finance', roles:['owner','admin','accountant','sales'] },
+  { id:'rates-master', name:'Rates Master', desc:'Pricing matrix · per material, per design type', icon:'💵', url:'/rates-master.html', variant:'success', section:'V. Finance', roles:['owner','admin'] },
+  
+  // ─── VI. Sales & Clients ───
+  { id:'sales-leads', name:'Sales Leads (CRM)', desc:'Lead pipeline · IndiaMART import', icon:'📞', url:'/leads.html', variant:'teal', section:'VI. Sales', roles:['owner','admin','sales'] },
+  { id:'ppt', name:'PPT Generator', desc:'Photo proof presentations for clients', icon:'🎬', url:'/ppt.html', variant:'purple', section:'VI. Sales', roles:['owner','admin','sales','operations_manager','ops_manager'] },
+  
+  // ─── VII. Admin & Settings ───
+  { id:'admin', name:'Admin Console', desc:'Team, roles, system settings', icon:'⚙️', url:'/admin-v2.html', variant:'primary', section:'VII. Admin', roles:['owner','admin'] },
+  { id:'master-cache', name:'Master Cache', desc:'API cost dashboard · SurePass, Wati', icon:'💾', url:'/master-cache.html', variant:'info', section:'VII. Admin', roles:['owner','admin'] }
+];
+
+const SECTION_ORDER = ['I. Executive', 'II. Campaign Pipeline', 'III. Production', 'IV. Reports', 'V. Finance', 'VI. Sales', 'VII. Admin'];
+
+// ═══════════════════════════════════════════════════════════════
+// API
+// ═══════════════════════════════════════════════════════════════
+
+async function api(path, opts = {}) {
+  const res = await fetch(SUPABASE_URL + path, { ...opts, headers: { ...HEADERS, ...(opts.headers || {}) } });
+  if (!res.ok) throw new Error('API ' + res.status);
+  if (res.status === 204) return null;
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LOGIN
+// ═══════════════════════════════════════════════════════════════
+
+async function doLogin() {
+  const phone = document.getElementById('loginPhone').value.trim();
+  const errEl = document.getElementById('loginErr');
+  const btn = document.getElementById('loginBtn');
+  
+  errEl.classList.remove('show');
+  if (phone.length !== 10) {
+    errEl.textContent = 'Please enter a valid 10-digit phone number';
+    errEl.classList.add('show');
+    return;
+  }
+  
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Verifying…';
+  
+  try {
+    const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
+    if (!members || !members.length) throw new Error('Number not registered or inactive');
+    
+    const m = members[0];
+    state.user = m;
+    localStorage.setItem('prajapati_admin_phone', phone);
+    
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('mainApp').classList.remove('hidden');
+    
+    initApp();
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.add('show');
+    btn.disabled = false;
+    btn.innerHTML = 'Enter Hub →';
+  }
+}
+
+async function autoLogin() {
+  const phone = localStorage.getItem('prajapati_admin_phone');
+  if (!phone) return false;
+  try {
+    const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
+    if (!members || !members.length) return false;
+    state.user = members[0];
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('mainApp').classList.remove('hidden');
+    initApp();
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function doLogout() {
+  if (!confirm('Log out?')) return;
+  localStorage.removeItem('prajapati_admin_phone');
+  location.reload();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+
+function initApp() {
+  const user = state.user;
+  const firstName = (user.name || 'User').split(' ')[0];
+  const initial = (user.name || '?').charAt(0).toUpperCase();
+  
+  document.getElementById('userAvatar').textContent = initial;
+  document.getElementById('userName').textContent = user.name || 'User';
+  document.getElementById('userRole').textContent = (user.role || 'user').replace(/_/g, ' ');
+  document.getElementById('userFirstName').textContent = firstName;
+  
+  // Greeting based on time
+  const hour = new Date().getHours();
+  let greet = 'Good morning';
+  if (hour >= 12 && hour < 17) greet = 'Good afternoon';
+  else if (hour >= 17) greet = 'Good evening';
+  document.getElementById('greeting').textContent = greet;
+  
+  document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-IN', {
+    weekday: 'long', day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata'
+  });
+  
+  // Live clock
+  startClock();
+  
+  // Render modules based on role
+  renderModules();
+  
+  // Load live data
+  loadDashboardData();
+}
+
+function startClock() {
+  function tick() {
+    const now = new Date();
+    const time = now.toLocaleTimeString('en-IN', { 
+      hour: '2-digit', minute: '2-digit', second: '2-digit', 
+      hour12: false, timeZone: 'Asia/Kolkata' 
+    });
+    document.getElementById('liveClock').textContent = time + ' IST';
+  }
+  tick();
+  setInterval(tick, 1000);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ROLE-BASED MODULE RENDERING
+// ═══════════════════════════════════════════════════════════════
+
+function getUserRoles(user) {
+  const baseRole = (user.role || '').toLowerCase();
+  const roles = [baseRole];
+  
+  // Check departments array (multi-role users)
+  if (user.departments) {
+    try {
+      const depts = typeof user.departments === 'string' ? JSON.parse(user.departments) : user.departments;
+      if (Array.isArray(depts)) {
+        depts.forEach(d => roles.push(d.toLowerCase()));
+      }
+    } catch (e) {}
+  }
+  
+  // Check module_access (granular per-feature)
+  if (user.module_access) {
+    try {
+      const access = typeof user.module_access === 'string' ? JSON.parse(user.module_access) : user.module_access;
+      // module_access can override role-based filtering
+      user._moduleAccess = access;
+    } catch (e) {}
+  }
+  
+  return roles;
+}
+
+function canAccess(module, user) {
+  // Explicit module access overrides
+  if (user._moduleAccess && user._moduleAccess[module.id] === true) return true;
+  if (user._moduleAccess && user._moduleAccess[module.id] === false) return false;
+  
+  const userRoles = getUserRoles(user);
+  if (module.roles.includes('all')) return true;
+  return module.roles.some(r => userRoles.includes(r));
+}
+
+function renderModules() {
+  const accessibleModules = MODULES.filter(m => canAccess(m, state.user));
+  
+  // Group by section
+  const grouped = {};
+  accessibleModules.forEach(m => {
+    if (!grouped[m.section]) grouped[m.section] = [];
+    grouped[m.section].push(m);
+  });
+  
+  const container = document.getElementById('modulesArea');
+  
+  if (!accessibleModules.length) {
+    container.innerHTML = `
+      <div class="empty" style="padding:60px 20px;background:#fff;border-radius:12px;border:1px solid var(--rule)">
+        <div style="font-size:36px;margin-bottom:10px">🔒</div>
+        <div style="font-size:14px;color:var(--text-dim)">No modules available for your role. Please contact admin.</div>
+      </div>
+    `;
+    return;
+  }
+  
+  container.innerHTML = SECTION_ORDER
+    .filter(s => grouped[s] && grouped[s].length)
+    .map((sectionName, idx) => {
+      const modules = grouped[sectionName];
+      const [roman, ...rest] = sectionName.split('. ');
+      const title = rest.join('. ');
+      
+      return `
+        <div class="section">
+          <div class="section-head">
+            <div class="section-title">
+              <span class="section-roman">${roman}</span>
+              ${escapeHtml(title)}
+            </div>
+            <div class="section-sub">${modules.length} module${modules.length > 1 ? 's' : ''}</div>
+          </div>
+          <div class="module-grid">
+            ${modules.map(m => renderModule(m)).join('')}
+          </div>
+        </div>
+      `;
+    }).join('');
+}
+
+function renderModule(m) {
+  const variant = m.variant || '';
+  const badge = m.badge ? `<span class="badge ${m.badge.toLowerCase() === 'new' ? 'new' : (m.badge.toLowerCase() === 'alert' ? 'alert' : '')}">${escapeHtml(m.badge)}</span>` : '';
+  
+  return `
+    <a href="${m.url}" class="module ${variant}">
+      <div class="module-head">
+        <div class="module-icon">${m.icon}</div>
+        <div class="module-arrow">→</div>
+      </div>
+      <div class="module-name">${escapeHtml(m.name)}</div>
+      <div class="module-desc">${escapeHtml(m.desc)}</div>
+      <div class="module-tag">
+        <span>${m.id}</span>
+        ${badge}
+      </div>
+    </a>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LIVE DATA — KPI + Activity
+// ═══════════════════════════════════════════════════════════════
+
+async function loadDashboardData() {
+  try {
+    // Parallel load
+    const [counts, recentCompleted, inProduction] = await Promise.all([
+      api('/rest/v1/v_dashboard_counts?select=*').catch(() => null),
+      api('/rest/v1/v_recently_completed_campaigns?select=*&limit=5').catch(() => []),
+      api('/rest/v1/v_active_campaigns?status=eq.in_production&select=id,campaign_name,client_name,total_done,total_assigned,is_stale,days_in_status&limit=5').catch(() => [])
+    ]);
+    
+    state.counts = counts && counts[0] ? counts[0] : null;
+    state.recent = recentCompleted || [];
+    state.inProd = inProduction || [];
+    
+    renderKPIs();
+    renderActivity();
+    renderTicker();
+    renderAlerts();
+    renderQuickStats();
+  } catch (err) {
+    console.error('Dashboard load error:', err);
+    document.getElementById('kpiArea').innerHTML = `
+      <div style="grid-column:1/-1;padding:20px;background:var(--warn-bg);border-radius:10px;color:var(--warn);text-align:center">
+        ⚠️ Unable to load live data. Check that SESSION_4 SQL is deployed.
+      </div>
+    `;
+  }
+}
+
+function renderQuickStats() {
+  const c = state.counts;
+  if (!c) {
+    document.getElementById('quickStats').innerHTML = '';
+    return;
+  }
+  
+  document.getElementById('quickStats').innerHTML = `
+    <div class="qs">
+      <div class="qs-value">${c.today_logs || 0}</div>
+      <div class="qs-label">Today's Logs</div>
+    </div>
+    <div class="qs">
+      <div class="qs-value">${(c.today_units_done || 0).toLocaleString('en-IN')}</div>
+      <div class="qs-label">Units Today</div>
+    </div>
+  `;
+}
+
+function renderKPIs() {
+  const c = state.counts;
+  if (!c) {
+    document.getElementById('kpiArea').innerHTML = '';
+    return;
+  }
+  
+  const kpis = [
+    { 
+      label: 'Active Campaigns', 
+      icon: '🎯',
+      value: c.active_campaigns || 0,
+      meta: `${c.in_production || 0} in production`,
+      variant: 'featured'
+    },
+    { 
+      label: 'In Production', 
+      icon: '🖨️',
+      value: c.in_production || 0,
+      meta: c.stale_campaigns ? `<span class="kpi-trend down">⚠️ ${c.stale_campaigns} stale</span>` : 'all moving',
+      variant: 'info'
+    },
+    { 
+      label: 'Pending Plan', 
+      icon: '📋',
+      value: c.pending_plan || 0,
+      meta: 'awaiting Ravi',
+      variant: c.pending_plan > 5 ? 'warn' : ''
+    },
+    { 
+      label: 'Completed (7d)', 
+      icon: '✅',
+      value: c.recently_completed || 0,
+      meta: 'last week',
+      variant: 'success'
+    },
+    { 
+      label: 'Active Team', 
+      icon: '👥',
+      value: c.active_team || 0,
+      meta: `${c.active_assignments || 0} assignments`,
+      variant: ''
+    },
+    { 
+      label: 'Today Units Done', 
+      icon: '📦',
+      value: (c.today_units_done || 0).toLocaleString('en-IN'),
+      meta: `${c.today_logs || 0} log entries`,
+      variant: ''
+    }
+  ];
+  
+  document.getElementById('kpiArea').innerHTML = kpis.map(k => `
+    <div class="kpi ${k.variant}">
+      <div class="kpi-label">
+        <span>${k.label}</span>
+        <span class="kpi-label-icon">${k.icon}</span>
+      </div>
+      <div class="kpi-value">${k.value}</div>
+      <div class="kpi-meta">${k.meta}</div>
+    </div>
+  `).join('');
+}
+
+function renderAlerts() {
+  const c = state.counts;
+  if (!c) {
+    document.getElementById('alertsArea').innerHTML = '';
+    return;
+  }
+  
+  const alerts = [];
+  
+  if (c.stale_campaigns > 0) {
+    alerts.push(`<strong>${c.stale_campaigns}</strong> campaign${c.stale_campaigns > 1 ? 's' : ''} in production with no movement in 7+ days`);
+  }
+  
+  if (c.pending_plan > 5) {
+    alerts.push(`<strong>${c.pending_plan}</strong> campaigns awaiting execution plan`);
+  }
+  
+  if (!alerts.length) {
+    document.getElementById('alertsArea').innerHTML = '';
+    return;
+  }
+  
+  document.getElementById('alertsArea').innerHTML = alerts.map(a => `
+    <div class="alert-strip">
+      <span class="alert-icon">⚠️</span>
+      <div>${a}</div>
+      <a href="/campaign-status.html" class="alert-cta">View →</a>
+    </div>
+  `).join('');
+}
+
+function renderActivity() {
+  // Recent completed
+  const recent = state.recent;
+  const recentList = document.getElementById('recentCompletedList');
+  
+  if (!recent.length) {
+    recentList.innerHTML = '<div class="empty">No completions in the last 7 days</div>';
+  } else {
+    recentList.innerHTML = recent.map(r => `
+      <div class="activity-row">
+        <div class="activity-bullet green"></div>
+        <div class="activity-body">
+          <div class="activity-main">${escapeHtml(r.campaign_name || 'Unnamed')}</div>
+          <div class="activity-meta">${(r.total_units || 0).toLocaleString('en-IN')} units · ${r.days_ago === 0 ? 'today' : (r.days_ago === 1 ? 'yesterday' : r.days_ago + ' days ago')}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+  
+  // In production
+  const inProd = state.inProd;
+  const inProdList = document.getElementById('inProductionList');
+  
+  if (!inProd.length) {
+    inProdList.innerHTML = '<div class="empty">No active production campaigns</div>';
+  } else {
+    inProdList.innerHTML = inProd.map(p => {
+      const pct = p.total_assigned > 0 ? Math.round((p.total_done / p.total_assigned) * 100) : 0;
+      const bulletClass = p.is_stale ? 'red' : (pct > 50 ? 'green' : 'blue');
+      return `
+        <div class="activity-row">
+          <div class="activity-bullet ${bulletClass}"></div>
+          <div class="activity-body">
+            <div class="activity-main">${escapeHtml(p.campaign_name || 'Unnamed')}${p.is_stale ? ' ⚠️' : ''}</div>
+            <div class="activity-meta">${(p.total_done || 0).toLocaleString('en-IN')}/${(p.total_assigned || 0).toLocaleString('en-IN')} · ${pct}% · ${p.days_in_status}d</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+}
+
+function renderTicker() {
+  const c = state.counts;
+  if (!c) return;
+  
+  const items = [
+    { label: 'Active Campaigns', value: c.active_campaigns || 0 },
+    { label: 'In Production', value: c.in_production || 0 },
+    { label: 'Pending Plan', value: c.pending_plan || 0 },
+    { label: 'Active Team', value: c.active_team || 0 },
+    { label: 'Today Units', value: (c.today_units_done || 0).toLocaleString('en-IN') },
+    { label: 'Recently Done', value: c.recently_completed || 0 },
+    { label: 'Stale Alerts', value: c.stale_campaigns || 0 },
+    { label: 'Archived', value: c.archived || 0 }
+  ];
+  
+  const html = items.map(i => `
+    <span class="ticker-item">
+      <span class="ticker-label">${escapeHtml(i.label)}</span>
+      <span class="ticker-value">${i.value}</span>
+    </span>
+  `).join('');
+  
+  // Duplicate for seamless scroll
+  document.getElementById('tickerTrack').innerHTML = html + html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════════════════
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const ok = await autoLogin();
+  if (!ok) {
+    // Show login
+    setTimeout(() => document.getElementById('loginPhone').focus(), 100);
+  }
+  
+  document.getElementById('loginPhone').addEventListener('keypress', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+  document.getElementById('loginPhone').addEventListener('input', e => {
+    e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
+  });
+});
+</script>
+
+</body>
+</html>
