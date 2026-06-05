@@ -5,11 +5,12 @@
 // All other URLs pass through to network without interception.
 // ════════════════════════════════════════════════════════════════════
 
-const VERSION = 'field-v15.4.4-no-update-loop-20260517';
+const VERSION = 'field-v15.5.1-speed-20260605';
 const CACHE_NAME = 'prajapati-field-' + VERSION;
 
 const FIELD_FILES = [
   '/field.html',
+  '/app.js',                           // v15.5.1: precache for fast first-load
   '/manifest-field.json',
   '/icon-field-192.png',
   '/icon-field-512.png',

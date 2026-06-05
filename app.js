@@ -6,7 +6,7 @@
 //        + Strong PWA install + Aggressive auto-update
 // ═════════════════════════════════════════════════════════════════
 
-var APP_VERSION = 'v15.4.5';
+var APP_VERSION = 'v15.5.1';
 var BUILD_DATE = '2026-05-17';
 
 var CONFIG = {
@@ -22,6 +22,7 @@ var CONFIG = {
 
 var state = {
   member: null, campaign: null, assignment: null,
+  memberOverride: null,  // v15.5: Per-member GPS override (trial_member_gps_overrides row)
   todayPhotos: [], todayVehicles: [], todayCount: 0,
   slots: [], photos: {}, vehicleNumber: '',
   plateOcrScore: null, ocrInFlight: false, ocrAttempted: false,
@@ -672,7 +673,7 @@ function logout(skipConfirm){
   if (!skipConfirm && !confirm('Logout?')) return;
   clearSessionStorage();
   if (typeof stopHomeAutoRefresh === 'function') stopHomeAutoRefresh();
-  state = { member:null, campaign:null, assignment:null, todayPhotos:[], todayVehicles:[], todayCount:0, slots:[], photos:{}, vehicleNumber:'', plateOcrScore:null, ocrInFlight:false, ocrAttempted:false, sessionId:'', resumeMode:false, serverPhotoUrls:{}, sessionCaptures:[], gps:{} };
+  state = { member:null, campaign:null, assignment:null, memberOverride:null, todayPhotos:[], todayVehicles:[], todayCount:0, slots:[], photos:{}, vehicleNumber:'', plateOcrScore:null, ocrInFlight:false, ocrAttempted:false, sessionId:'', resumeMode:false, serverPhotoUrls:{}, sessionCaptures:[], gps:{} };
   showScreen('screen-login');
   $('inp-mobile').value = '';
 }
@@ -715,11 +716,29 @@ function loadAssignment(){
   var date = todayStr();
   api('/rest/v1/trial_daily_assignments?member_phone=eq.'+state.member.phone+'&assignment_date=eq.'+date+'&select=*')
     .then(function(rows){
-      if (!rows || !rows.length){ state.assignment = null; state.campaign = null; renderHome(); loader(false); return null; }
+      if (!rows || !rows.length){ state.assignment = null; state.campaign = null; state.memberOverride = null; renderHome(); loader(false); return null; }
       state.assignment = rows[0];
-      return api('/rest/v1/trial_campaigns?key=eq.'+rows[0].campaign_key+'&select=*');
+      var campaignKey = rows[0].campaign_key;
+      // v15.5.1 SPEED: Fetch campaign + override IN PARALLEL (saves ~400ms vs sequential)
+      // Photos fetch needs campaign data first (slot counts), so it stays after
+      return Promise.all([
+        api('/rest/v1/trial_campaigns?key=eq.'+encodeURIComponent(campaignKey)+'&select=*'),
+        api('/rest/v1/trial_member_gps_overrides?member_phone=eq.'+encodeURIComponent(state.member.phone)+'&campaign_key=eq.'+encodeURIComponent(campaignKey)+'&active=eq.true&select=*').catch(function(e){ console.warn('[GPS Override] Fetch failed (using real GPS):', e); return []; })
+      ]);
     })
-    .then(function(rows){ if (rows && rows.length){ state.campaign = rows[0]; return loadTodayPhotos(); } })
+    .then(function(results){
+      if (!results) return;
+      var campRows = results[0];
+      var ovRows = results[1];
+      if (campRows && campRows.length){
+        state.campaign = campRows[0];
+      }
+      state.memberOverride = (ovRows && ovRows.length) ? ovRows[0] : null;
+      if (state.memberOverride){
+        console.log('[GPS Override] Active for member', state.member.phone, '→', state.memberOverride);
+      }
+      if (state.campaign) return loadTodayPhotos();
+    })
     .then(function(){ renderHome(); loader(false); })
     .catch(function(err){ console.error(err); loader(false); toast('Load error','error'); });
 }
@@ -894,6 +913,9 @@ function handleGpsError(err){
 }
 
 function hasCampaignAnchor(){
+  // v15.5: per-member override OR campaign anchor counts as available anchor for fallback
+  var ov = getActiveMemberOverride && getActiveMemberOverride();
+  if (ov && ov.anchor_lat != null && ov.anchor_lng != null) return true;
   return !!(state.campaign && state.campaign.anchor_lat != null && state.campaign.anchor_lng != null);
 }
 
@@ -902,8 +924,12 @@ function enableManualFallback(){
   // Treat as manual mode temporarily for this session
   state._manualFallback = true;
   applyManualGps();
+  // v15.5: Show override badge if it's a per-member override
+  var ov = getActiveMemberOverride();
+  var src = ov || state.campaign;
+  var label = ov ? '👤 Member-specific manual GPS' : '📍 Manual GPS (fallback)';
   $('gps-strip').className = 'gps';
-  $('gps-strip').innerHTML = '<div class="live"></div><span>📍 Manual GPS (fallback) · ±'+(state.campaign.gps_radius_m||50)+'m</span>';
+  $('gps-strip').innerHTML = '<div class="live"></div><span>'+label+' · ±'+(src.gps_radius_m||50)+'m</span>';
   return true;
 }
 
@@ -913,10 +939,19 @@ var _originalIsManualMode = function(){
 };
 
 function setGpsFromPosition(pos){
+  // v15.5: If per-member override is active for today, IGNORE real GPS and use manual anchor
+  if (getActiveMemberOverride()){
+    applyManualGps();
+    var ov = getActiveMemberOverride();
+    $('gps-strip').className = 'gps';
+    $('gps-strip').innerHTML = '<div class="live"></div><span>👤 Member-specific manual · '+ (ov.anchor_address ? (ov.anchor_address.length > 40 ? ov.anchor_address.slice(0,40)+'…' : ov.anchor_address) : 'anchor set') +' · ±'+(ov.gps_radius_m||50)+'m</span>';
+    return;
+  }
   state.gps.lat = pos.coords.latitude;
   state.gps.lng = pos.coords.longitude;
   state.gps.accuracy = pos.coords.accuracy;
   state.gps._timestamp = Date.now();
+  state.gps._isMemberOverride = false;
   $('gps-strip').className = 'gps';
   $('gps-strip').innerHTML = '<div class="live"></div><span>GPS locked · '+pos.coords.latitude.toFixed(5)+', '+pos.coords.longitude.toFixed(5)+' · ±'+Math.round(pos.coords.accuracy)+'m</span>';
   if (!state.gps.address || hasMovedSignificantly(pos.coords)){
@@ -967,16 +1002,38 @@ function fetchReverseGeocode(lat, lng){
 }
 
 function stopGps(){ if (gpsWatchId !== null){ navigator.geolocation.clearWatch(gpsWatchId); gpsWatchId = null; } }
+
+// v15.5: Get active per-member override (returns null if expired/inactive/missing)
+function getActiveMemberOverride(){
+  var ov = state.memberOverride;
+  if (!ov) return null;
+  if (ov.active === false) return null;
+  if (ov.anchor_lat == null || ov.anchor_lng == null) return null;
+  // Check date validity (treat null/missing as always valid)
+  var today = todayStr();
+  if (ov.valid_from && today < ov.valid_from) return null;
+  if (ov.valid_to && today > ov.valid_to) return null;
+  return ov;
+}
+
 function isManualMode(){
+  // v15.5 PRIORITY 1: Per-member override (today within valid range)
+  if (getActiveMemberOverride()) return true;
   // v15.4.3: Include fallback mode (when permission denied but campaign has anchor)
   if (state._manualFallback && hasCampaignAnchor()) return true;
+  // LEGACY: campaign-wide manual GPS (only if NO per-member overrides exist anywhere on this campaign)
+  // To respect strict per-member-only mode, set campaign.manual_gps_enabled=false on campaigns using overrides.
   return !!(state.campaign && state.campaign.manual_gps_enabled && state.campaign.anchor_lat != null && state.campaign.anchor_lng != null);
 }
+
 function applyManualGps(){
   if (!isManualMode()) return false;
-  var anchorLat = parseFloat(state.campaign.anchor_lat);
-  var anchorLng = parseFloat(state.campaign.anchor_lng);
-  var radiusM = parseInt(state.campaign.gps_radius_m) || 50;
+  // v15.5 PRIORITY: Use per-member override if active, else fall back to campaign settings
+  var override = getActiveMemberOverride();
+  var src = override || state.campaign;
+  var anchorLat = parseFloat(src.anchor_lat);
+  var anchorLng = parseFloat(src.anchor_lng);
+  var radiusM = parseInt(src.gps_radius_m) || 50;
   var radiusDeg = radiusM / 111320;
   var lngScale = 1 / Math.cos(anchorLat * Math.PI / 180);
   var angle = Math.random() * 2 * Math.PI;
@@ -986,8 +1043,9 @@ function applyManualGps(){
   state.gps.accuracy = Math.max(8, Math.round(radiusM / 5));
   state.gps._timestamp = Date.now();
   state.gps._isManual = true;
+  state.gps._isMemberOverride = !!override;  // tag for UI/debugging
   if (!state.gps.address){
-    if (state.campaign.anchor_address) state.gps.address = state.campaign.anchor_address;
+    if (src.anchor_address) state.gps.address = src.anchor_address;
     fetchReverseGeocode(anchorLat, anchorLng);
   }
   return true;
