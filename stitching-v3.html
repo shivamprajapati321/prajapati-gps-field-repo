@@ -244,6 +244,13 @@ input,select,textarea{font-family:inherit}
 .view-toggle .vt{padding:5px 10px;font-size:11px;font-weight:700;color:var(--text-dim);cursor:pointer;border-radius:4px;transition:all 0.15s}
 .view-toggle .vt.active{background:#fff;color:var(--navy);box-shadow:0 1px 2px rgba(0,0,0,0.06)}
 
+/* SEARCHABLE COMBOBOX (datalist input) */
+.combo-wrap{position:relative;display:flex;align-items:stretch}
+.combo-wrap input[list]{padding-right:30px;background:#fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>") no-repeat right 10px center;background-size:12px}
+.combo-clear{position:absolute;right:28px;top:50%;transform:translateY(-50%);width:18px;height:18px;border-radius:50%;background:var(--paper);color:var(--text-dim);display:none;align-items:center;justify-content:center;font-size:11px;cursor:pointer;line-height:1}
+.combo-clear:hover{background:var(--danger-bg);color:var(--danger)}
+.combo-wrap.has-value .combo-clear{display:flex}
+
 .text-success{color:var(--success)}
 .text-danger{color:var(--danger)}
 .text-warn{color:var(--warn)}
@@ -426,6 +433,91 @@ input,select,textarea{font-family:inherit}
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closePaymentModal()">Cancel</button>
       <button class="btn btn-success" id="paySaveBtn" onclick="savePayment()">💾 Record Payment</button>
+    </div>
+  </div>
+</div>
+
+<!-- GLOBAL CAMPAIGN DATALIST (populated after data load) -->
+<datalist id="campaigns-datalist"></datalist>
+<datalist id="masters-datalist"></datalist>
+
+<!-- EDIT ENTRY MODAL -->
+<div class="modal-bg" id="editEntryModal" style="display:none">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">✏️ Edit Entry</div>
+      <button class="modal-close" onclick="closeEditEntry()">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editEntryId">
+      <input type="hidden" id="editEntryLinkedPaymentId">
+      <input type="hidden" id="editEntryOriginalShift">
+      <input type="hidden" id="editEntryOriginalTotal">
+      
+      <div class="callout warn" style="margin-bottom:14px">
+        <span>⚠️</span>
+        <div><strong>Edit galti se hui entry.</strong> Sab fields update ho sakte hain. Agar shift type change karoge (Regular ↔ OT Cash), linked payment record bhi automatically adjust hoga.</div>
+      </div>
+      
+      <div class="row-grid">
+        <div class="field">
+          <div class="flabel">📅 Date <span class="req">*</span></div>
+          <input class="input" type="date" id="editLogDate">
+        </div>
+        <div class="field">
+          <div class="flabel">⏱️ Shift Type <span class="req">*</span></div>
+          <select class="input" id="editShiftType">
+            <option value="regular">Regular</option>
+            <option value="ot_cash">💵 OT Cash (auto-paid)</option>
+            <option value="overtime">Overtime (1.5×, legacy)</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="field">
+        <div class="flabel">👤 Master <span class="req">*</span></div>
+        <select class="input" id="editMasterId">
+          <option value="">— Select Master —</option>
+        </select>
+      </div>
+      
+      <div class="field">
+        <div class="flabel">🎯 Campaign <span class="hint">type to search · optional</span></div>
+        <div class="combo-wrap" id="editCampaignWrap">
+          <input class="input" type="text" id="editCampaignInput"
+                 list="campaigns-datalist"
+                 placeholder="Search or select campaign…"
+                 oninput="onEditCampaignInput(this.value)">
+          <div class="combo-clear" onclick="clearEditCampaign()" title="Clear">×</div>
+        </div>
+      </div>
+      
+      <div class="row-grid">
+        <div class="field">
+          <div class="flabel">📦 Quantity <span class="req">*</span></div>
+          <input class="input" type="number" min="1" id="editQuantity">
+        </div>
+        <div class="field">
+          <div class="flabel">💰 Rate / pc <span class="req">*</span></div>
+          <input class="input" type="number" min="0" id="editRate">
+        </div>
+      </div>
+      
+      <div class="callout info" id="editTotalPreview" style="margin:8px 0">
+        <span>🧮</span>
+        <div><strong>New Total:</strong> <span id="editTotalDisplay">₹0</span> <span class="text-muted" id="editTotalDelta"></span></div>
+      </div>
+      
+      <div class="field">
+        <div class="flabel">📝 Notes <span class="hint">Optional</span></div>
+        <textarea class="textarea" id="editNotes" placeholder="Any remarks…"></textarea>
+      </div>
+      
+      <div id="editEntryStatus"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeEditEntry()">Cancel</button>
+      <button class="btn btn-success" id="editSaveBtn" onclick="saveEditEntry()">💾 Save Changes</button>
     </div>
   </div>
 </div>
@@ -721,6 +813,327 @@ function updateStats() {
   
   document.getElementById('histCount').textContent = fmtNum(state.entries.length);
   document.getElementById('payCount').textContent = fmtNum(state.payments.length);
+  
+  // Populate datalists for searchable dropdowns
+  populateDatalists();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SEARCHABLE PICKERS (Campaign + Master)
+// ═══════════════════════════════════════════════════════════════
+function populateDatalists() {
+  const campaignsList = document.getElementById('campaigns-datalist');
+  const mastersList = document.getElementById('masters-datalist');
+  if (campaignsList) {
+    campaignsList.innerHTML = state.campaigns
+      .map(c => `<option value="${escapeHtml(c.campaign_name || c.name || '')}"></option>`)
+      .join('');
+  }
+  if (mastersList) {
+    mastersList.innerHTML = state.masters
+      .map(m => `<option value="${escapeHtml(m.name || '')}"></option>`)
+      .join('');
+  }
+}
+
+function getCampaignNameById(id) {
+  if (!id) return '';
+  const c = state.campaigns.find(c => c.id === id);
+  return c ? (c.campaign_name || c.name || '') : '';
+}
+
+function findCampaignByName(name) {
+  if (!name || !name.trim()) return null;
+  const target = name.trim().toLowerCase();
+  return state.campaigns.find(c => 
+    (c.campaign_name || c.name || '').trim().toLowerCase() === target
+  ) || null;
+}
+
+function getMasterNameById(id) {
+  if (!id) return '';
+  const m = state.masters.find(m => m.id === id);
+  return m ? (m.name || '') : '';
+}
+
+function findMasterByName(name) {
+  if (!name || !name.trim()) return null;
+  const target = name.trim().toLowerCase();
+  return state.masters.find(m => 
+    (m.name || '').trim().toLowerCase() === target
+  ) || null;
+}
+
+// Daily Entry — Campaign picker handlers
+function onEntryCampaignInput(value) {
+  const c = findCampaignByName(value);
+  state.entryCampaignId = c ? c.id : '';
+  const wrap = document.getElementById('entryCampaignWrap');
+  if (wrap) wrap.classList.toggle('has-value', !!state.entryCampaignId);
+}
+
+function clearEntryCampaign() {
+  state.entryCampaignId = '';
+  const input = document.getElementById('entryCampaignInput');
+  if (input) input.value = '';
+  const wrap = document.getElementById('entryCampaignWrap');
+  if (wrap) wrap.classList.remove('has-value');
+}
+
+// History — Campaign filter handlers
+function onHistCampaignInput(value) {
+  const c = findCampaignByName(value);
+  // Only filter if a valid campaign is matched OR input is empty
+  if (!value || !value.trim()) {
+    state.histCampaignId = '';
+    renderTab();
+  } else if (c) {
+    state.histCampaignId = c.id;
+    renderTab();
+  }
+  // If text entered but no match, don't filter yet (user still typing)
+}
+
+function clearHistCampaign() {
+  state.histCampaignId = '';
+  renderTab();
+}
+
+// History — Master filter handlers
+function onHistMasterInput(value) {
+  const m = findMasterByName(value);
+  if (!value || !value.trim()) {
+    state.histMasterId = '';
+    renderTab();
+  } else if (m) {
+    state.histMasterId = m.id;
+    renderTab();
+  }
+}
+
+function clearHistMaster() {
+  state.histMasterId = '';
+  renderTab();
+}
+
+// Edit Entry modal — Campaign picker
+function onEditCampaignInput(value) {
+  const c = findCampaignByName(value);
+  const wrap = document.getElementById('editCampaignWrap');
+  if (wrap) wrap.classList.toggle('has-value', !!(c || value));
+}
+
+function clearEditCampaign() {
+  const input = document.getElementById('editCampaignInput');
+  if (input) input.value = '';
+  const wrap = document.getElementById('editCampaignWrap');
+  if (wrap) wrap.classList.remove('has-value');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EDIT ENTRY MODAL
+// ═══════════════════════════════════════════════════════════════
+function openEditEntry(entryId) {
+  const entry = state.entries.find(e => e.id === entryId);
+  if (!entry) {
+    alert('Entry not found');
+    return;
+  }
+  
+  // Populate masters dropdown
+  const masterSel = document.getElementById('editMasterId');
+  masterSel.innerHTML = '<option value="">— Select Master —</option>' +
+    state.masters.map(m => 
+      `<option value="${m.id}" ${m.id === entry.master_id ? 'selected' : ''}>${escapeHtml(m.name)}${m.phone ? ' (' + m.phone + ')' : ''}</option>`
+    ).join('');
+  
+  // Populate all fields
+  document.getElementById('editEntryId').value = entry.id;
+  document.getElementById('editLogDate').value = entry.log_date || '';
+  document.getElementById('editShiftType').value = entry.shift_type || 'regular';
+  document.getElementById('editEntryOriginalShift').value = entry.shift_type || 'regular';
+  document.getElementById('editEntryOriginalTotal').value = entry.total_amount || 0;
+  document.getElementById('editQuantity').value = entry.quantity || '';
+  document.getElementById('editRate').value = entry.rate_per_piece || '';
+  document.getElementById('editNotes').value = entry.notes || '';
+  
+  // Campaign input
+  const campaignInput = document.getElementById('editCampaignInput');
+  const campaignName = getCampaignNameById(entry.campaign_id);
+  campaignInput.value = campaignName;
+  document.getElementById('editCampaignWrap').classList.toggle('has-value', !!campaignName);
+  
+  // Find linked payment for OT cash entries (for cascade update)
+  if (entry.shift_type === 'ot_cash') {
+    const linkedPayment = state.payments.find(p => p.linked_log_id === entry.id && p.is_auto_ot_cash);
+    document.getElementById('editEntryLinkedPaymentId').value = linkedPayment ? linkedPayment.id : '';
+  } else {
+    document.getElementById('editEntryLinkedPaymentId').value = '';
+  }
+  
+  // Wire up live total calculation
+  ['editQuantity', 'editRate'].forEach(id => {
+    document.getElementById(id).oninput = updateEditTotalPreview;
+  });
+  document.getElementById('editShiftType').onchange = function() {
+    // Auto-set rate to 15 when switching to OT cash
+    if (this.value === 'ot_cash') {
+      document.getElementById('editRate').value = OT_CASH_RATE;
+    }
+    updateEditTotalPreview();
+  };
+  
+  updateEditTotalPreview();
+  document.getElementById('editEntryStatus').innerHTML = '';
+  document.getElementById('editEntryModal').style.display = 'flex';
+}
+
+function updateEditTotalPreview() {
+  const qty = Number(document.getElementById('editQuantity').value) || 0;
+  const rate = Number(document.getElementById('editRate').value) || 0;
+  const shiftType = document.getElementById('editShiftType').value;
+  const original = Number(document.getElementById('editEntryOriginalTotal').value) || 0;
+  
+  // Calculate new total based on shift_type (matching DB GENERATED column logic)
+  let newTotal;
+  if (shiftType === 'overtime') {
+    newTotal = qty * rate * 1.5;
+  } else {
+    newTotal = qty * rate;
+  }
+  
+  document.getElementById('editTotalDisplay').textContent = fmtINR(newTotal);
+  
+  const delta = newTotal - original;
+  const deltaEl = document.getElementById('editTotalDelta');
+  if (Math.abs(delta) > 0.01) {
+    deltaEl.textContent = delta > 0 ? `(was ${fmtINR(original)}, +${fmtINR(delta)})` : `(was ${fmtINR(original)}, ${fmtINR(delta)})`;
+    deltaEl.style.color = delta > 0 ? 'var(--success)' : 'var(--danger)';
+  } else {
+    deltaEl.textContent = '(unchanged)';
+    deltaEl.style.color = 'var(--text-dim)';
+  }
+}
+
+function closeEditEntry() {
+  document.getElementById('editEntryModal').style.display = 'none';
+}
+
+async function saveEditEntry() {
+  const entryId = document.getElementById('editEntryId').value;
+  const linkedPaymentId = document.getElementById('editEntryLinkedPaymentId').value;
+  const originalShift = document.getElementById('editEntryOriginalShift').value;
+  
+  const logDate = document.getElementById('editLogDate').value;
+  const newShift = document.getElementById('editShiftType').value;
+  const masterId = document.getElementById('editMasterId').value;
+  const quantity = Number(document.getElementById('editQuantity').value);
+  const rate = Number(document.getElementById('editRate').value);
+  const notes = document.getElementById('editNotes').value.trim() || null;
+  
+  const campaignName = document.getElementById('editCampaignInput').value.trim();
+  const matchedCampaign = findCampaignByName(campaignName);
+  const campaignId = matchedCampaign ? matchedCampaign.id : null;
+  const campaignNameOut = matchedCampaign ? (matchedCampaign.campaign_name || matchedCampaign.name) : null;
+  
+  // Validate
+  if (!logDate || !masterId || !(quantity > 0) || !(rate > 0)) {
+    document.getElementById('editEntryStatus').innerHTML = 
+      '<div class="callout error"><span>⚠️</span><div>Date, Master, Quantity and Rate are required (all must be positive)</div></div>';
+    return;
+  }
+  
+  // If campaign name typed but no match found
+  if (campaignName && !matchedCampaign) {
+    if (!confirm(`Campaign "${campaignName}" exact match nahi mila. Save without campaign?`)) return;
+  }
+  
+  const master = state.masters.find(m => m.id === masterId);
+  if (!master) {
+    document.getElementById('editEntryStatus').innerHTML = 
+      '<div class="callout error"><span>⚠️</span><div>Invalid master selected</div></div>';
+    return;
+  }
+  
+  const btn = document.getElementById('editSaveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Saving…';
+  
+  try {
+    // 1. Update the log entry (total_amount auto-recalculates via GENERATED column)
+    await api(`/rest/v1/prajapati_stitching_log?id=eq.${entryId}`, {
+      method: 'PATCH',
+      headers: { 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        log_date: logDate,
+        master_id: masterId,
+        master_name: master.name,
+        campaign_id: campaignId,
+        campaign_name: campaignNameOut,
+        shift_type: newShift,
+        quantity: quantity,
+        rate_per_piece: rate,
+        notes: notes
+      })
+    });
+    
+    // 2. Handle linked payment record cascade
+    const newTotal = newShift === 'overtime' ? quantity * rate * 1.5 : quantity * rate;
+    
+    if (originalShift === 'ot_cash' && newShift !== 'ot_cash') {
+      // Was OT cash, no longer is — DELETE linked payment
+      if (linkedPaymentId) {
+        await api(`/rest/v1/prajapati_stitching_payments?id=eq.${linkedPaymentId}`, {
+          method: 'DELETE',
+          headers: { 'Prefer': 'return=minimal' }
+        });
+      }
+    } else if (originalShift !== 'ot_cash' && newShift === 'ot_cash') {
+      // Was not OT cash, now is — CREATE new auto payment
+      await api('/rest/v1/prajapati_stitching_payments', {
+        method: 'POST',
+        headers: { 'Prefer': 'return=minimal' },
+        body: JSON.stringify({
+          master_id: masterId,
+          master_name: master.name,
+          payment_date: logDate,
+          payment_type: 'payment',
+          amount: newTotal,
+          payment_mode: 'cash',
+          notes: `Auto OT cash (edited) · ${quantity} pcs × ₹${rate}`,
+          linked_log_id: entryId,
+          is_auto_ot_cash: true,
+          recorded_by: state.user.name || state.user.phone || 'system'
+        })
+      });
+    } else if (originalShift === 'ot_cash' && newShift === 'ot_cash' && linkedPaymentId) {
+      // Still OT cash — UPDATE linked payment amount and date
+      await api(`/rest/v1/prajapati_stitching_payments?id=eq.${linkedPaymentId}`, {
+        method: 'PATCH',
+        headers: { 'Prefer': 'return=minimal' },
+        body: JSON.stringify({
+          master_id: masterId,
+          master_name: master.name,
+          payment_date: logDate,
+          amount: newTotal,
+          notes: `Auto OT cash (edited) · ${quantity} pcs × ₹${rate}`
+        })
+      });
+    }
+    
+    document.getElementById('editEntryStatus').innerHTML = 
+      '<div class="callout success"><span>✅</span><div>Entry updated successfully!</div></div>';
+    setTimeout(() => {
+      closeEditEntry();
+      loadData();
+    }, 700);
+    
+  } catch (e) {
+    document.getElementById('editEntryStatus').innerHTML = 
+      `<div class="callout error"><span>❌</span><div>Save failed: ${escapeHtml(e.message)}</div></div>`;
+    btn.disabled = false;
+    btn.innerHTML = '💾 Save Changes';
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -785,11 +1198,15 @@ function renderEntryTab() {
               <input class="input" type="date" id="entryDate" value="${state.entryDate}" onchange="state.entryDate = this.value">
             </div>
             <div class="field">
-              <div class="flabel">🎯 Campaign (Optional)</div>
-              <select class="input" id="entryCampaign" onchange="state.entryCampaignId = this.value">
-                <option value="">No specific campaign</option>
-                ${state.campaigns.map(c => `<option value="${c.id}" ${c.id === state.entryCampaignId ? 'selected' : ''}>${escapeHtml(c.campaign_name || c.name)}</option>`).join('')}
-              </select>
+              <div class="flabel">🎯 Campaign <span class="hint">type to search · optional</span></div>
+              <div class="combo-wrap ${state.entryCampaignId ? 'has-value' : ''}" id="entryCampaignWrap">
+                <input class="input" type="text" id="entryCampaignInput"
+                       list="campaigns-datalist"
+                       placeholder="Search or select campaign…"
+                       value="${escapeHtml(getCampaignNameById(state.entryCampaignId))}"
+                       oninput="onEntryCampaignInput(this.value)">
+                <div class="combo-clear" onclick="clearEntryCampaign()" title="Clear">×</div>
+              </div>
             </div>
             <div class="field">
               <div class="flabel">⏱️ Default Shift for New Rows</div>
@@ -1007,14 +1424,22 @@ function renderHistoryTab() {
       </div>
       <div class="filter-bar" style="border-top:1px solid var(--rule)">
         <span class="flabel">🎯 Filters:</span>
-        <select onchange="state.histMasterId = this.value; renderTab()">
-          <option value="">All Masters</option>
-          ${state.masters.map(m => `<option value="${m.id}" ${m.id === state.histMasterId ? 'selected' : ''}>${escapeHtml(m.name)}</option>`).join('')}
-        </select>
-        <select onchange="state.histCampaignId = this.value; renderTab()">
-          <option value="">All Campaigns</option>
-          ${state.campaigns.map(c => `<option value="${c.id}" ${c.id === state.histCampaignId ? 'selected' : ''}>${escapeHtml(c.campaign_name || c.name)}</option>`).join('')}
-        </select>
+        <div class="combo-wrap ${state.histMasterId ? 'has-value' : ''}" style="min-width:170px">
+          <input class="input" type="text" id="histMasterInput"
+                 list="masters-datalist"
+                 placeholder="All Masters…"
+                 value="${escapeHtml(getMasterNameById(state.histMasterId))}"
+                 oninput="onHistMasterInput(this.value)">
+          <div class="combo-clear" onclick="clearHistMaster()" title="Clear">×</div>
+        </div>
+        <div class="combo-wrap ${state.histCampaignId ? 'has-value' : ''}" style="min-width:200px">
+          <input class="input" type="text" id="histCampaignInput"
+                 list="campaigns-datalist"
+                 placeholder="All Campaigns…"
+                 value="${escapeHtml(getCampaignNameById(state.histCampaignId))}"
+                 oninput="onHistCampaignInput(this.value)">
+          <div class="combo-clear" onclick="clearHistCampaign()" title="Clear">×</div>
+        </div>
         <select onchange="state.histShiftFilter = this.value; renderTab()">
           <option value="all">All Shifts</option>
           <option value="regular" ${state.histShiftFilter === 'regular' ? 'selected' : ''}>Regular Only</option>
@@ -1104,7 +1529,7 @@ function renderHistoryView() {
       <div style="overflow-x:auto">
         <table class="data-table">
           <thead>
-            <tr><th>Date</th><th>Master</th><th>Campaign</th><th>Shift</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Total</th><th></th></tr>
+            <tr><th>Date</th><th>Master</th><th>Campaign</th><th>Shift</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Total</th><th>Actions</th></tr>
           </thead>
           <tbody>
             ${sortedEntries.slice(0, 200).map(e => {
@@ -1127,7 +1552,10 @@ function renderHistoryView() {
                   <td class="num">${fmtNum(e.quantity)}</td>
                   <td class="num">₹${e.rate_per_piece}</td>
                   <td class="num"><strong>${fmtINR(e.total_amount)}</strong></td>
-                  <td><button class="btn-icon" onclick="deleteEntry('${e.id}')" style="background:var(--danger-bg);color:var(--danger);border-radius:4px" title="Delete">🗑️</button></td>
+                  <td style="white-space:nowrap">
+                    <button class="btn-icon" onclick="openEditEntry('${e.id}')" style="background:var(--info-bg);color:var(--info);border-radius:4px;margin-right:3px" title="Edit">✏️</button>
+                    <button class="btn-icon" onclick="deleteEntry('${e.id}')" style="background:var(--danger-bg);color:var(--danger);border-radius:4px" title="Delete">🗑️</button>
+                  </td>
                 </tr>
               `;
             }).join('')}
