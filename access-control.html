@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Access Control · Prajapati Advertising</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght,ital@9..144,300..900,0..1&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+:root{
+  --navy:#0B1957;--gold:#B89B4E;--gold-deep:#8B7430;--gold-soft:#F4E4B0;--gold-pale:#FBF6E4;
+  --cream:#FAF8F3;--paper:#F7F4EC;--rule:#E5E0D2;
+  --ink-950:#0F172A;--ink-500:#64748B;--text-dim:#94A3B8;
+  --success:#047857;--success-bg:#D1FAE5;
+  --warn:#C2410C;--warn-bg:#FED7AA;
+  --danger:#BE123C;--danger-bg:#FECACA;
+  --info:#1E40AF;--info-bg:#DBEAFE;
+  --purple:#7C3AED;--purple-bg:#EDE9FE;
+}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--cream);color:var(--ink-950);font-size:14px;line-height:1.55}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+a{color:inherit;text-decoration:none}
+input,select{font-family:inherit;outline:none}
+
+.topbar{background:var(--navy);color:#fff;padding:14px 32px;border-bottom:3px solid var(--gold);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.tb-brand{display:flex;align-items:center;gap:12px}
+.tb-logo{width:36px;height:36px;background:var(--gold);color:var(--navy);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.tb-name{font-size:14px;font-weight:700}
+.tb-tag{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--gold-soft);letter-spacing:0.16em;text-transform:uppercase;margin-top:2px}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;border:none;transition:all 0.15s}
+.btn-secondary{background:#fff;color:var(--navy);border:1px solid var(--rule)}
+.btn-success{background:var(--success);color:#fff}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-info{background:var(--info);color:#fff}
+.btn.sm{padding:5px 10px;font-size:10.5px}
+
+.main{max-width:1640px;margin:0 auto;padding:24px}
+
+.page-head{margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--rule);display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:14px}
+.page-title{font-family:'Fraunces',serif;font-size:28px;font-weight:500;color:var(--navy);letter-spacing:-0.02em}
+.page-title em{color:var(--gold);font-style:italic}
+.page-sub{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:0.14em;text-transform:uppercase;margin-top:6px}
+
+.toolbar{background:#fff;border:1px solid var(--rule);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.toolbar input,.toolbar select{padding:8px 12px;border:1px solid var(--rule);background:var(--cream);font-size:13px;border-radius:6px;min-width:160px}
+.toolbar input:focus,.toolbar select:focus{border-color:var(--gold);background:#fff}
+.toolbar .label{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--gold-deep);letter-spacing:0.14em;text-transform:uppercase}
+
+.callout{display:flex;align-items:flex-start;gap:10px;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:12.5px}
+.callout.info{background:var(--info-bg);color:var(--info)}
+.callout.error{background:var(--danger-bg);color:var(--danger)}
+.callout.success{background:var(--success-bg);color:var(--success)}
+
+/* MATRIX TABLE */
+.matrix-wrap{background:#fff;border:1px solid var(--rule);border-radius:10px;overflow:hidden;overflow-x:auto;max-width:100%}
+.matrix{border-collapse:collapse;width:100%;font-size:12px;min-width:1200px}
+.matrix th,.matrix td{padding:8px 10px;border-bottom:1px solid var(--rule);text-align:center;vertical-align:middle}
+.matrix thead th{background:var(--paper);position:sticky;top:0;z-index:5;font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;color:var(--navy);letter-spacing:0.06em;text-transform:uppercase;padding:10px 6px;border-bottom:2px solid var(--rule);min-width:60px}
+.matrix thead th .icon{display:block;font-size:14px;margin-bottom:3px}
+.matrix thead th.user-col{text-align:left;min-width:200px;width:200px;left:0;background:var(--paper);position:sticky;z-index:10}
+.matrix tbody tr:hover td{background:#FFFCF4}
+.matrix tbody td.user-cell{text-align:left;font-size:12.5px;background:#fff;position:sticky;left:0;z-index:4;border-right:1px solid var(--rule);min-width:200px;width:200px}
+.matrix tbody tr:hover td.user-cell{background:#FFFCF4}
+.matrix tbody td.section-header{background:linear-gradient(90deg, var(--gold-pale), #fff);font-family:'Fraunces',serif;font-style:italic;font-size:13px;color:var(--navy);text-align:left;font-weight:600;padding:8px 12px;letter-spacing:-0.01em}
+
+.user-name-cell{font-weight:600;color:var(--navy)}
+.user-meta{font-size:10px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;margin-top:2px}
+
+/* Toggle pill - 3 states: ON, OFF, DEFAULT */
+.toggle{display:inline-flex;align-items:center;justify-content:center;width:36px;height:22px;border-radius:999px;cursor:pointer;font-size:10px;font-weight:700;transition:all 0.15s;border:1px solid var(--rule);font-family:'JetBrains Mono',monospace}
+.toggle:hover{transform:scale(1.1)}
+.toggle.on{background:var(--success);color:#fff;border-color:var(--success)}
+.toggle.off{background:var(--danger);color:#fff;border-color:var(--danger)}
+.toggle.default{background:var(--paper);color:var(--text-dim);border-color:var(--rule)}
+.toggle.default::before{content:'—'}
+.toggle.on::before{content:'✓'}
+.toggle.off::before{content:'✗'}
+
+.dirty-row{background:linear-gradient(90deg, var(--warn-bg) 0%, #fff 8%);border-left:3px solid var(--warn) !important}
+.dirty-row .user-cell{background:var(--warn-bg) !important}
+
+.save-bar{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:14px 24px;border-radius:12px;display:none;align-items:center;gap:14px;box-shadow:0 10px 30px rgba(0,0,0,0.3);z-index:50;border:2px solid var(--gold)}
+.save-bar.show{display:flex}
+.save-bar-text{font-size:13px;font-weight:600}
+.save-bar-count{background:var(--gold);color:var(--navy);padding:2px 8px;border-radius:999px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700}
+
+.stats-bar{display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));gap:12px;margin-bottom:16px}
+.stat{background:#fff;border:1px solid var(--rule);border-radius:10px;padding:14px}
+.stat-label{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--gold-deep);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:6px}
+.stat-value{font-family:'Fraunces',serif;font-size:24px;font-weight:600;color:var(--navy);line-height:1}
+
+.empty{text-align:center;padding:60px 20px;color:var(--text-dim);font-style:italic}
+
+.spin{width:13px;height:13px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;vertical-align:-2px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media (max-width:768px){
+  .main{padding:14px}
+  .topbar{padding:12px 16px}
+  .matrix{font-size:11px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="tb-brand">
+    <div class="tb-logo">🔐</div>
+    <div>
+      <div class="tb-name">Access Control</div>
+      <div class="tb-tag">Admin · User × Feature Matrix</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="/hub.html" class="btn btn-secondary">← Hub</a>
+    <a href="/admin-v2.html" class="btn btn-secondary">⚙️ Admin</a>
+  </div>
+</div>
+
+<div class="main">
+  
+  <div class="page-head">
+    <div>
+      <div class="page-title">Feature <em>Access Control</em></div>
+      <div class="page-sub" id="todayDate">…</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-secondary" onclick="resetView()">↻ Refresh</button>
+    </div>
+  </div>
+  
+  <div class="callout info">
+    <span>ℹ️</span>
+    <div>
+      <strong>How it works:</strong> 
+      <span class="toggle on" style="margin:0 4px"></span> grant access · 
+      <span class="toggle off" style="margin:0 4px"></span> deny access · 
+      <span class="toggle default" style="margin:0 4px"></span> use role default
+      <br><small>Click any cell to toggle. Changes are pending until you click "Save Changes".</small>
+    </div>
+  </div>
+  
+  <div id="statsArea" class="stats-bar"></div>
+  
+  <div class="toolbar">
+    <span class="label">Search User:</span>
+    <input type="text" id="filterUser" placeholder="Name or phone..." oninput="renderMatrix()">
+    <span class="label">Role:</span>
+    <select id="filterRole" onchange="renderMatrix()">
+      <option value="">All Roles</option>
+    </select>
+    <div style="margin-left:auto;display:flex;gap:6px">
+      <button class="btn btn-info sm" onclick="quickGrantOps()">⚡ Quick: Make Ops Manager</button>
+      <button class="btn btn-info sm" onclick="quickGrantOperator()">🔨 Quick: Make Operator</button>
+    </div>
+  </div>
+  
+  <div id="matrixArea">
+    <div class="empty">Loading…</div>
+  </div>
+  
+</div>
+
+<div class="save-bar" id="saveBar">
+  <span class="save-bar-text">Unsaved changes</span>
+  <span class="save-bar-count" id="dirtyCount">0</span>
+  <button class="btn btn-secondary" onclick="discardChanges()">Discard</button>
+  <button class="btn btn-success" id="saveBtn" onclick="saveAll()">💾 Save Changes</button>
+</div>
+
+<script src="/lib/access-guard.js"></script>
+<script>
+const SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
+const HEADERS = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' };
+
+// MODULES — must match hub.html
+const MODULES = [
+  // I. Executive
+  { id:'owner', name:'Owner Terminal', icon:'👑', section:'I. Executive', roles:['owner','admin'] },
+  { id:'dashboard', name:'Operations Dashboard', icon:'📊', section:'I. Executive', roles:['owner','admin','operations_manager','ops_manager','operations'] },
+  // II. Campaign Pipeline
+  { id:'launch-campaign', name:'Launch Campaign', icon:'🚀', section:'II. Campaign Pipeline', roles:['owner','admin','sales','operations_manager','ops_manager','operations'] },
+  { id:'designer-uploads', name:'Designer Uploads', icon:'🎨', section:'II. Campaign Pipeline', roles:['owner','admin','designer','operations_manager','ops_manager'] },
+  { id:'execution-plan', name:'Execution Plan', icon:'📋', section:'II. Campaign Pipeline', roles:['owner','admin','operations_manager','ops_manager','operations'] },
+  { id:'assign-operators', name:'Assign Operators', icon:'🎯', section:'II. Campaign Pipeline', roles:['owner','admin','operations_manager','ops_manager','operations'] },
+  { id:'campaign-status', name:'Campaign Status', icon:'🗂️', section:'II. Campaign Pipeline', roles:['owner','admin','operations_manager','ops_manager','operations'] },
+  // III. Production
+  { id:'printing-v2', name:'Printing', icon:'🖨️', section:'III. Production', roles:['owner','admin','printing','printer','operations_manager','ops_manager','operations'] },
+  { id:'stitching-v2', name:'Stitching', icon:'🧵', section:'III. Production', roles:['owner','admin','stitching','tailor','operations_manager','ops_manager','operations'] },
+  { id:'delivery-v2', name:'Delivery', icon:'🚚', section:'III. Production', roles:['owner','admin','delivery','driver','operations_manager','ops_manager','operations'] },
+  { id:'field', name:'Field App (PWA)', icon:'📍', section:'III. Production', roles:['owner','admin','field','field_worker','operations_manager','ops_manager','operations'] },
+  { id:'verifier', name:'Verifier', icon:'✅', section:'III. Production', roles:['owner','admin','verifier','operations_manager','ops_manager','operations'] },
+  // IV. Reports
+  { id:'reassignment-history', name:'Reassign Log', icon:'🔄', section:'IV. Reports', roles:['owner','admin','operations_manager','ops_manager','operations'] },
+  { id:'archive-viewer', name:'Archive', icon:'📦', section:'IV. Reports', roles:['owner','admin','operations_manager','ops_manager','operations','sales'] },
+  { id:'report-daily', name:'Daily Report', icon:'📅', section:'IV. Reports', roles:['owner','admin','operations_manager','ops_manager','operations'] },
+  { id:'report-team', name:'Team Report', icon:'👥', section:'IV. Reports', roles:['owner','admin','operations_manager','ops_manager','operations'] },
+  { id:'report-campaign', name:'Campaign Report', icon:'📈', section:'IV. Reports', roles:['owner','admin','operations_manager','ops_manager','operations','sales'] },
+  // V. Finance
+  { id:'payments', name:'Payments', icon:'💰', section:'V. Finance', roles:['owner','admin','accountant','sales'] },
+  { id:'outstanding', name:'Outstanding', icon:'⏳', section:'V. Finance', roles:['owner','admin','accountant','sales'] },
+  { id:'rates-master', name:'Rates Master', icon:'💵', section:'V. Finance', roles:['owner','admin'] },
+  // VI. Sales
+  { id:'ppt', name:'PPT Generator', icon:'🎬', section:'VI. Sales', roles:['owner','admin','sales','operations_manager','ops_manager'] },
+  // VII. Admin
+  { id:'admin', name:'Admin Console', icon:'⚙️', section:'VII. Admin', roles:['owner','admin'] },
+  { id:'master-cache', name:'Master Cache', icon:'💾', section:'VII. Admin', roles:['owner','admin'] },
+  { id:'access-control', name:'Access Control', icon:'🔐', section:'VII. Admin', roles:['owner','admin'] }
+];
+
+const state = {
+  user: null,
+  teamMembers: [],
+  pendingChanges: {}, // {userId: {moduleId: true/false/null}}
+};
+
+async function api(path, opts = {}) {
+  const res = await fetch(SUPABASE_URL + path, { ...opts, headers: { ...HEADERS, ...(opts.headers || {}) } });
+  if (!res.ok) throw new Error('API ' + res.status + ': ' + await res.text());
+  if (res.status === 204) return null;
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function checkAccess() {
+  const phone = localStorage.getItem('prajapati_admin_phone');
+  if (!phone) { location.href = '/hub.html'; return null; }
+  
+  const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
+  if (!members || !members.length) { location.href = '/hub.html'; return null; }
+  
+  const m = members[0];
+  const role = (m.role || '').toLowerCase();
+  if (!['owner', 'admin'].includes(role)) {
+    document.getElementById('matrixArea').innerHTML = '<div class="callout error"><span>🔒</span><div>Owner/Admin only. Your role: ' + role + '</div></div>';
+    return null;
+  }
+  return m;
+}
+
+async function loadData() {
+  state.user = await checkAccess();
+  if (!state.user) return;
+  
+  document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-IN', {
+    weekday: 'long', day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata'
+  });
+  
+  try {
+    const team = await api('/rest/v1/v_team_access_matrix?select=*');
+    state.teamMembers = team || [];
+    
+    // Parse module_access if it's a string
+    state.teamMembers.forEach(m => {
+      if (typeof m.module_access === 'string') {
+        try { m.module_access = JSON.parse(m.module_access); } catch(e) { m.module_access = {}; }
+      }
+      if (!m.module_access) m.module_access = {};
+    });
+    
+    // Populate role filter
+    const roles = [...new Set(state.teamMembers.map(m => m.role).filter(Boolean))];
+    document.getElementById('filterRole').innerHTML = '<option value="">All Roles</option>' + 
+      roles.map(r => `<option value="${r}">${escapeHtml(r)}</option>`).join('');
+    
+    renderStats();
+    renderMatrix();
+  } catch (e) {
+    document.getElementById('matrixArea').innerHTML = '<div class="callout error"><span>❌</span><div>Load failed: ' + escapeHtml(e.message) + '<br><small>Run SESSION_5_ACCESS_CONTROL.sql first.</small></div></div>';
+  }
+}
+
+function renderStats() {
+  const total = state.teamMembers.length;
+  const withOverrides = state.teamMembers.filter(m => Object.keys(m.module_access || {}).length > 0).length;
+  const roleBreakdown = {};
+  state.teamMembers.forEach(m => {
+    const r = m.role || 'unknown';
+    roleBreakdown[r] = (roleBreakdown[r] || 0) + 1;
+  });
+  
+  document.getElementById('statsArea').innerHTML = `
+    <div class="stat">
+      <div class="stat-label">Total Users</div>
+      <div class="stat-value">${total}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Custom Access</div>
+      <div class="stat-value">${withOverrides}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Default Access</div>
+      <div class="stat-value">${total - withOverrides}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Total Modules</div>
+      <div class="stat-value">${MODULES.length}</div>
+    </div>
+  `;
+}
+
+function renderMatrix() {
+  const search = (document.getElementById('filterUser').value || '').toLowerCase();
+  const roleFilter = document.getElementById('filterRole').value;
+  
+  let users = state.teamMembers;
+  if (search) users = users.filter(u => 
+    (u.name || '').toLowerCase().includes(search) || 
+    (u.phone || '').includes(search)
+  );
+  if (roleFilter) users = users.filter(u => u.role === roleFilter);
+  
+  if (!users.length) {
+    document.getElementById('matrixArea').innerHTML = '<div class="empty">No users match filter</div>';
+    return;
+  }
+  
+  // Group modules by section
+  const sectionOrder = ['I. Executive', 'II. Campaign Pipeline', 'III. Production', 'IV. Reports', 'V. Finance', 'VI. Sales', 'VII. Admin'];
+  
+  const headerCells = MODULES.map(m => `
+    <th title="${escapeHtml(m.name)} (${m.id})">
+      <span class="icon">${m.icon}</span>
+      ${escapeHtml(m.name.split(' ')[0])}
+    </th>
+  `).join('');
+  
+  const bodyRows = users.map(u => {
+    const isDirty = state.pendingChanges[u.id] && Object.keys(state.pendingChanges[u.id]).length > 0;
+    
+    const cells = MODULES.map(m => {
+      const pendingValue = state.pendingChanges[u.id] && (m.id in state.pendingChanges[u.id]) 
+        ? state.pendingChanges[u.id][m.id] 
+        : undefined;
+      
+      const currentValue = pendingValue !== undefined 
+        ? pendingValue 
+        : (u.module_access && (m.id in u.module_access) ? u.module_access[m.id] : null);
+      
+      let cls = 'default';
+      if (currentValue === true) cls = 'on';
+      else if (currentValue === false) cls = 'off';
+      
+      // Indicator if role default would have allowed
+      const roleAllowed = m.roles.includes((u.role || '').toLowerCase());
+      const dot = currentValue === null && roleAllowed ? ' style="box-shadow:inset 0 0 0 1px var(--success)"' : '';
+      
+      return `<td><span class="toggle ${cls}" onclick="cycleToggle('${u.id}', '${m.id}')"${dot} title="${roleAllowed ? 'Role default: ALLOWED' : 'Role default: DENIED'}"></span></td>`;
+    }).join('');
+    
+    return `
+      <tr class="${isDirty ? 'dirty-row' : ''}" data-user-id="${u.id}">
+        <td class="user-cell">
+          <div class="user-name-cell">${escapeHtml(u.name || 'Unknown')}</div>
+          <div class="user-meta">${escapeHtml(u.phone || '—')} · ${escapeHtml(u.role || '—')}</div>
+        </td>
+        ${cells}
+      </tr>
+    `;
+  }).join('');
+  
+  document.getElementById('matrixArea').innerHTML = `
+    <div class="matrix-wrap">
+      <table class="matrix">
+        <thead>
+          <tr>
+            <th class="user-col">User</th>
+            ${headerCells}
+          </tr>
+        </thead>
+        <tbody>
+          ${bodyRows}
+        </tbody>
+      </table>
+    </div>
+  `;
+  
+  updateSaveBar();
+}
+
+function cycleToggle(userId, moduleId) {
+  // Get current value
+  const user = state.teamMembers.find(u => u.id === userId);
+  if (!user) return;
+  
+  const pendingValue = state.pendingChanges[userId] && (moduleId in state.pendingChanges[userId]) 
+    ? state.pendingChanges[userId][moduleId] 
+    : undefined;
+  
+  const currentValue = pendingValue !== undefined 
+    ? pendingValue 
+    : (user.module_access && (moduleId in user.module_access) ? user.module_access[moduleId] : null);
+  
+  // Cycle: null → true → false → null
+  let next;
+  if (currentValue === null) next = true;
+  else if (currentValue === true) next = false;
+  else next = null;
+  
+  // Compare with original
+  const originalValue = user.module_access && (moduleId in user.module_access) ? user.module_access[moduleId] : null;
+  
+  if (!state.pendingChanges[userId]) state.pendingChanges[userId] = {};
+  
+  if (next === originalValue) {
+    delete state.pendingChanges[userId][moduleId];
+    if (Object.keys(state.pendingChanges[userId]).length === 0) {
+      delete state.pendingChanges[userId];
+    }
+  } else {
+    state.pendingChanges[userId][moduleId] = next;
+  }
+  
+  renderMatrix();
+}
+
+function updateSaveBar() {
+  const dirtyUsers = Object.keys(state.pendingChanges).length;
+  const totalChanges = Object.values(state.pendingChanges).reduce((sum, m) => sum + Object.keys(m).length, 0);
+  
+  const bar = document.getElementById('saveBar');
+  if (totalChanges > 0) {
+    document.getElementById('dirtyCount').textContent = totalChanges + ' change' + (totalChanges > 1 ? 's' : '') + ' · ' + dirtyUsers + ' user' + (dirtyUsers > 1 ? 's' : '');
+    bar.classList.add('show');
+  } else {
+    bar.classList.remove('show');
+  }
+}
+
+function discardChanges() {
+  if (!confirm('Discard all unsaved changes?')) return;
+  state.pendingChanges = {};
+  renderMatrix();
+}
+
+async function saveAll() {
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Saving…';
+  
+  try {
+    const updates = [];
+    
+    for (const [userId, changes] of Object.entries(state.pendingChanges)) {
+      const user = state.teamMembers.find(u => u.id === userId);
+      if (!user) continue;
+      
+      const newAccess = { ...(user.module_access || {}) };
+      
+      for (const [moduleId, value] of Object.entries(changes)) {
+        if (value === null) {
+          delete newAccess[moduleId];
+        } else {
+          newAccess[moduleId] = value;
+        }
+        
+        // Audit log
+        updates.push({
+          user_id: userId,
+          changed_by: state.user.id,
+          module_id: moduleId,
+          old_value: user.module_access && (moduleId in user.module_access) ? user.module_access[moduleId] : null,
+          new_value: value
+        });
+      }
+      
+      // Update user
+      await api('/rest/v1/trial_team_members?id=eq.' + userId, {
+        method: 'PATCH',
+        headers: { 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ module_access: newAccess })
+      });
+      
+      // Update local cache
+      user.module_access = newAccess;
+    }
+    
+    // Bulk audit log
+    if (updates.length) {
+      try {
+        await api('/rest/v1/trial_access_change_log', {
+          method: 'POST',
+          headers: { 'Prefer': 'return=minimal' },
+          body: JSON.stringify(updates)
+        });
+      } catch (e) {
+        console.warn('Audit log failed:', e);
+      }
+    }
+    
+    state.pendingChanges = {};
+    renderStats();
+    renderMatrix();
+    
+    // Success flash
+    const successBar = document.createElement('div');
+    successBar.className = 'save-bar show';
+    successBar.style.background = 'var(--success)';
+    successBar.innerHTML = '<span class="save-bar-text">✅ Changes saved successfully!</span>';
+    document.body.appendChild(successBar);
+    setTimeout(() => successBar.remove(), 2500);
+    
+  } catch (e) {
+    alert('Save failed: ' + e.message);
+    btn.disabled = false;
+    btn.innerHTML = '💾 Save Changes';
+  }
+}
+
+function resetView() {
+  if (Object.keys(state.pendingChanges).length > 0) {
+    if (!confirm('You have unsaved changes. Reload anyway?')) return;
+  }
+  state.pendingChanges = {};
+  loadData();
+}
+
+// Quick action: Grant all "operations" modules to selected role
+function quickGrantOps() {
+  alert('Quick Grant Ops: Pick a user first by hovering. Coming in next update — for now, manually click their row toggles.');
+}
+
+function quickGrantOperator() {
+  alert('Quick Grant Operator: Pick a user first. For now, manually click toggles for printing-v2/stitching-v2/delivery-v2.');
+}
+
+// Warn on unsaved changes
+window.addEventListener('beforeunload', (e) => {
+  if (Object.keys(state.pendingChanges).length > 0) {
+    e.preventDefault();
+    e.returnValue = 'Unsaved changes';
+  }
+});
+
+document.addEventListener('DOMContentLoaded', loadData);
+</script>
+</body>
+</html>

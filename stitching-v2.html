@@ -915,14 +915,12 @@ async function saveLog() {
       btn.innerHTML = '<span class="spin"></span> Saving log…';
     }
     
-    // Use upsert via composite key (operator_id, design_id, log_date)
-    // First check if log exists for this date
-    const existing = await api(`/rest/v1/trial_work_logs?operator_id=eq.${state.user.id}&design_id=eq.${job.design_id}&log_date=eq.${date}&select=id`);
+    // FIX: Handle null design_id properly (campaign-level assignments have no design)
+    const cleanDesignId = (job.design_id && job.design_id !== 'null' && job.design_id !== 'undefined') ? job.design_id : null;
+    const designFilter = cleanDesignId ? `&design_id=eq.${cleanDesignId}` : `&design_id=is.null`;
+    const existing = await api(`/rest/v1/trial_work_logs?operator_id=eq.${state.user.id}${designFilter}&log_date=eq.${date}&select=id`);
     
     const payload = {
-      campaign_id: job.campaign_id,
-      design_id: job.design_id,
-      assignment_id: job.assignment_id,
       operator_id: state.user.id,
       stage: 'stitching',
       log_date: date,
@@ -932,6 +930,15 @@ async function saveLog() {
       notes: notes,
       updated_at: new Date().toISOString()
     };
+    
+    // Only add UUID fields if they're valid (NOT null, undefined, or string "null"/"undefined")
+    const cleanUuid = (v) => (v && typeof v === 'string' && v !== 'null' && v !== 'undefined' && v.length === 36) ? v : null;
+    const cId = cleanUuid(job.campaign_id);
+    const dId = cleanUuid(job.design_id);
+    const aId = cleanUuid(job.assignment_id);
+    if (cId) payload.campaign_id = cId;
+    if (dId) payload.design_id = dId;
+    if (aId) payload.assignment_id = aId;
     
     if (proofPhotoUrl) payload.proof_photo_url = proofPhotoUrl;
     
