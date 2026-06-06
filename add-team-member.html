@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Add Team Member · Prajapati Advertising</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght,ital@9..144,300..900,0..1&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+:root{
+  --navy:#0B1957;--navy-deep:#050B2E;
+  --gold:#B89B4E;--gold-deep:#8B7430;--gold-soft:#F4E4B0;--gold-pale:#FBF6E4;
+  --cream:#FAF8F3;--paper:#F7F4EC;--rule:#E5E0D2;
+  --ink-950:#0F172A;--ink-500:#64748B;--text-dim:#94A3B8;
+  --success:#047857;--success-bg:#D1FAE5;
+  --warn:#C2410C;--warn-bg:#FED7AA;
+  --danger:#BE123C;--danger-bg:#FECACA;
+  --info:#1E40AF;--info-bg:#DBEAFE;
+  --purple:#7C3AED;--purple-bg:#EDE9FE;
+  --teal:#0D9488;--teal-bg:#CCFBF1;
+}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--cream);color:var(--ink-950);font-size:14px;line-height:1.55}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+a{color:inherit;text-decoration:none}
+input,select,textarea{font-family:inherit;outline:none}
+
+.topbar{background:var(--navy);color:#fff;padding:14px 32px;border-bottom:3px solid var(--gold);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.tb-brand{display:flex;align-items:center;gap:12px}
+.tb-logo{width:36px;height:36px;background:var(--gold);color:var(--navy);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.tb-name{font-size:14px;font-weight:700}
+.tb-tag{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--gold-soft);letter-spacing:0.16em;text-transform:uppercase;margin-top:2px}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:8px;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer;border:none;transition:all 0.15s}
+.btn-secondary{background:#fff;color:var(--navy);border:1px solid var(--rule)}
+.btn-secondary:hover{background:var(--paper)}
+.btn-primary{background:var(--navy);color:#fff}
+.btn-primary:hover{background:var(--navy-deep)}
+.btn-success{background:var(--success);color:#fff}
+.btn-info{background:var(--info);color:#fff}
+.btn.sm{padding:6px 12px;font-size:11px}
+.btn:disabled{opacity:0.5;cursor:not-allowed}
+
+.main{max-width:1100px;margin:0 auto;padding:32px 24px 80px}
+
+.page-head{margin-bottom:28px;padding-bottom:18px;border-bottom:1px solid var(--rule)}
+.page-title{font-family:'Fraunces',serif;font-size:32px;font-weight:500;color:var(--navy);letter-spacing:-0.02em}
+.page-title em{color:var(--gold);font-style:italic}
+.page-sub{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:0.14em;text-transform:uppercase;margin-top:6px}
+
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+
+.card{background:#fff;border:1px solid var(--rule);border-radius:14px;overflow:hidden}
+.card-head{padding:18px 22px;background:linear-gradient(180deg, var(--paper), #fff);border-bottom:1px solid var(--rule)}
+.card-title{font-family:'Fraunces',serif;font-size:18px;font-weight:600;color:var(--navy);display:flex;align-items:center;gap:8px}
+.card-sub{font-size:12px;color:var(--text-dim);margin-top:3px}
+.card-body{padding:22px}
+
+.field{margin-bottom:18px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+@media(max-width:600px){.field-row{grid-template-columns:1fr}}
+.label{display:block;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:var(--navy);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:7px}
+.label .req{color:var(--danger);margin-left:2px}
+.label .hint{color:var(--text-dim);font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;margin-left:6px}
+
+.input,.select{width:100%;padding:11px 14px;border:1.5px solid var(--rule);background:var(--cream);font-size:13.5px;border-radius:8px;color:var(--ink-950);transition:all 0.15s}
+.input:focus,.select:focus{border-color:var(--gold);background:#fff}
+.input.valid{border-color:var(--success);background:#fff}
+.input.invalid{border-color:var(--danger);background:#fff}
+
+.input-hint{font-size:11px;color:var(--text-dim);margin-top:5px;font-family:'JetBrains Mono',monospace}
+.input-hint.success{color:var(--success)}
+.input-hint.error{color:var(--danger)}
+
+.role-info{background:var(--gold-pale);border:1px solid var(--gold-soft);padding:12px 14px;border-radius:8px;margin-top:8px;font-size:12px;color:var(--ink-950)}
+.role-info strong{color:var(--gold-deep);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase}
+.role-info .modules{margin-top:5px;color:var(--ink-500);font-size:11.5px}
+
+.callout{display:flex;align-items:flex-start;gap:10px;padding:12px 16px;border-radius:8px;margin-bottom:14px;font-size:12.5px}
+.callout.success{background:var(--success-bg);color:var(--success)}
+.callout.error{background:var(--danger-bg);color:var(--danger)}
+.callout.info{background:var(--info-bg);color:var(--info)}
+.callout.warn{background:var(--warn-bg);color:var(--warn)}
+
+.team-list{max-height:540px;overflow-y:auto;padding:6px 22px 22px}
+.team-row{display:flex;align-items:center;gap:12px;padding:10px;border-radius:8px;border:1px solid var(--rule);margin-bottom:6px;background:var(--cream);transition:all 0.1s}
+.team-row:hover{border-color:var(--gold);background:#fff}
+.team-avatar{width:34px;height:34px;border-radius:50%;background:var(--gold);color:var(--navy);font-family:'Fraunces',serif;font-style:italic;font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.team-info{flex:1;min-width:0}
+.team-name{font-size:13px;font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.team-meta{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--text-dim);letter-spacing:0.04em;margin-top:1px}
+.role-badge{font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 7px;border-radius:999px;background:var(--gold-pale);color:var(--gold-deep);letter-spacing:0.08em;text-transform:uppercase;font-weight:700;flex-shrink:0}
+.role-badge.owner,.role-badge.admin{background:var(--navy);color:var(--gold)}
+.role-badge.manager,.role-badge.operations_manager,.role-badge.ops_manager{background:var(--info-bg);color:var(--info)}
+.role-badge.designer{background:var(--purple-bg);color:var(--purple)}
+.role-badge.printing,.role-badge.stitching,.role-badge.delivery,.role-badge.field{background:var(--success-bg);color:var(--success)}
+
+.search-box{padding:0 22px 12px}
+.search-input{width:100%;padding:9px 12px;border:1px solid var(--rule);background:var(--cream);border-radius:6px;font-size:12.5px}
+
+.actions{display:flex;gap:10px;margin-top:24px;padding-top:20px;border-top:1px solid var(--rule)}
+
+.role-select-wrap{position:relative}
+.role-select{appearance:none;background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3e%3cpath fill='%238B7430' d='M3 4l3 3 3-3' stroke='%238B7430' stroke-width='1.5' fill='none'/%3e%3c/svg%3e");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px;cursor:pointer}
+
+.spin{width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;vertical-align:-2px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.empty{text-align:center;padding:40px 20px;color:var(--text-dim);font-style:italic}
+
+@media(max-width:768px){
+  .main{padding:20px 16px}
+  .topbar{padding:12px 16px}
+  .page-title{font-size:24px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="tb-brand">
+    <div class="tb-logo">👤</div>
+    <div>
+      <div class="tb-name">Add Team Member</div>
+      <div class="tb-tag">Owner · All Roles Available</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="/hub.html" class="btn btn-secondary">← Hub</a>
+    <a href="/access-control.html" class="btn btn-secondary">🔐 Access Control</a>
+  </div>
+</div>
+
+<div class="main">
+
+  <div class="page-head">
+    <div class="page-title">Add <em>Team Member</em></div>
+    <div class="page-sub" id="todayDate">…</div>
+  </div>
+
+  <div class="grid">
+    
+    <!-- LEFT: Add Form -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">👤 New Member Details</div>
+        <div class="card-sub">Add a new person to the operations system</div>
+      </div>
+      <div class="card-body">
+        
+        <div id="statusArea"></div>
+        
+        <div class="field-row">
+          <div class="field">
+            <label class="label">Full Name <span class="req">*</span></label>
+            <input class="input" id="memberName" type="text" placeholder="e.g. Mahima Nagolkar" autocomplete="off">
+          </div>
+          <div class="field">
+            <label class="label">Phone <span class="req">*</span><span class="hint">10 digits</span></label>
+            <input class="input" id="memberPhone" type="tel" inputmode="numeric" placeholder="9999999999" maxlength="10" autocomplete="off">
+            <div class="input-hint" id="phoneHint">Will be used for login</div>
+          </div>
+        </div>
+        
+        <div class="field-row">
+          <div class="field">
+            <label class="label">City <span class="hint">Optional</span></label>
+            <input class="input" id="memberCity" type="text" placeholder="e.g. Pune" autocomplete="off">
+          </div>
+          <div class="field">
+            <label class="label">Department <span class="hint">Optional</span></label>
+            <input class="input" id="memberDept" type="text" placeholder="e.g. Design / Operations" autocomplete="off">
+          </div>
+        </div>
+        
+        <div class="field">
+          <label class="label">Role <span class="req">*</span></label>
+          <div class="role-select-wrap">
+            <select class="select role-select" id="memberRole" onchange="updateRoleInfo()">
+              <option value="">— Select role —</option>
+              
+              <optgroup label="🏢 Executive">
+                <option value="owner">Owner — Full system access</option>
+                <option value="admin">Admin — Full system access</option>
+              </optgroup>
+              
+              <optgroup label="📋 Management">
+                <option value="operations_manager">Operations Manager — Full ops oversight</option>
+                <option value="ops_manager">Ops Manager — Same as above</option>
+                <option value="operations">Operations — Same as above</option>
+              </optgroup>
+              
+              <optgroup label="🎨 Creative">
+                <option value="designer">Designer — Design file uploads</option>
+              </optgroup>
+              
+              <optgroup label="🔨 Production">
+                <option value="printing">Printing Operator</option>
+                <option value="printer">Printer — Same as Printing</option>
+                <option value="stitching">Stitching Master</option>
+                <option value="tailor">Tailor — Same as Stitching</option>
+                <option value="delivery">Delivery Driver</option>
+                <option value="driver">Driver — Same as Delivery</option>
+                <option value="field">Field Worker — GPS PWA</option>
+                <option value="field_worker">Field Worker — Same as Field</option>
+                <option value="verifier">Verifier — Photo QC</option>
+              </optgroup>
+              
+              <optgroup label="💼 Business">
+                <option value="sales">Sales — Leads, payments, reports</option>
+                <option value="accountant">Accountant — Payments, outstanding</option>
+              </optgroup>
+            </select>
+          </div>
+          
+          <div class="role-info" id="roleInfo" style="display:none">
+            <strong id="roleInfoTitle">—</strong>
+            <div class="modules" id="roleInfoModules">—</div>
+          </div>
+        </div>
+        
+        <div class="callout info">
+          <span>ℹ️</span>
+          <div>
+            After adding, you can fine-tune their specific module access via
+            <a href="/access-control.html" style="text-decoration:underline;color:inherit"><strong>/access-control.html</strong></a> page.
+          </div>
+        </div>
+        
+        <div class="actions">
+          <button class="btn btn-secondary" onclick="clearForm()">Clear</button>
+          <button class="btn btn-primary" id="addBtn" onclick="addMember()" style="margin-left:auto">
+            👤 Add Member
+          </button>
+          <button class="btn btn-success" id="addAndAccessBtn" onclick="addMember(true)">
+            ➕ Add & Open Access Control
+          </button>
+        </div>
+        
+      </div>
+    </div>
+    
+    <!-- RIGHT: Existing Team -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">👥 Existing Team <span style="color:var(--text-dim);font-weight:400" id="teamCount">…</span></div>
+        <div class="card-sub">Active members currently in system</div>
+      </div>
+      <div class="search-box">
+        <input class="search-input" type="text" placeholder="🔍 Search by name / phone / role…" id="searchTeam" oninput="renderTeamList()">
+      </div>
+      <div class="team-list" id="teamList">
+        <div class="empty">Loading team…</div>
+      </div>
+    </div>
+    
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
+const HEADERS = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' };
+
+const state = { user: null, team: [] };
+
+// Role info - what modules each gets by default in hub.html
+const ROLE_INFO = {
+  'owner': { title: '👑 Owner', modules: 'ALL 24 modules · Full system access · Can manage Access Control' },
+  'admin': { title: '🛡️ Admin', modules: 'ALL 24 modules · Same as Owner' },
+  'operations_manager': { title: '📋 Operations Manager', modules: '20 modules · Campaign + Production + Reports + Sales (no rates-master, master-cache, access-control)' },
+  'ops_manager': { title: '📋 Ops Manager', modules: 'Same as Operations Manager · 20 modules' },
+  'operations': { title: '📋 Operations', modules: 'Same as Operations Manager · 20 modules' },
+  'designer': { title: '🎨 Designer', modules: '2 modules · Designer Uploads + PPT Generator' },
+  'printing': { title: '🖨️ Printing Operator', modules: '1 module · Printing-v2 workspace only (privacy-filtered)' },
+  'printer': { title: '🖨️ Printer', modules: 'Same as Printing · 1 module' },
+  'stitching': { title: '🧵 Stitching Master', modules: '1 module · Stitching-v2 workspace only (privacy-filtered)' },
+  'tailor': { title: '🧵 Tailor', modules: 'Same as Stitching · 1 module' },
+  'delivery': { title: '🚚 Delivery', modules: '1 module · Delivery-v2 workspace only (privacy-filtered)' },
+  'driver': { title: '🚚 Driver', modules: 'Same as Delivery · 1 module' },
+  'field': { title: '📍 Field Worker', modules: '1 module · Field PWA (GPS-stamped photos)' },
+  'field_worker': { title: '📍 Field Worker', modules: 'Same as Field · 1 module' },
+  'verifier': { title: '✅ Verifier', modules: '1 module · Verifier (photo QC)' },
+  'sales': { title: '💼 Sales', modules: '6 modules · Launch Campaign + Archive + Reports + Payments + Outstanding + PPT' },
+  'accountant': { title: '💰 Accountant', modules: '2 modules · Payments + Outstanding' }
+};
+
+async function api(path, opts = {}) {
+  const res = await fetch(SUPABASE_URL + path, { ...opts, headers: { ...HEADERS, ...(opts.headers || {}) } });
+  if (!res.ok) throw new Error('API ' + res.status + ': ' + await res.text());
+  if (res.status === 204) return null;
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function checkAccess() {
+  const phone = localStorage.getItem('prajapati_admin_phone');
+  if (!phone) { location.href = '/hub.html'; return null; }
+  const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
+  if (!members || !members.length) { location.href = '/hub.html'; return null; }
+  const role = (members[0].role || '').toLowerCase();
+  if (!['owner', 'admin'].includes(role)) {
+    document.body.innerHTML = '<div style="padding:60px;text-align:center"><h2>🔒 Owner / Admin Only</h2><p>Your role: ' + role + '</p><a href="/hub.html">← Back to Hub</a></div>';
+    return null;
+  }
+  return members[0];
+}
+
+async function loadData() {
+  state.user = await checkAccess();
+  if (!state.user) return;
+  
+  document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-IN', {
+    weekday: 'long', day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata'
+  });
+  
+  try {
+    const team = await api('/rest/v1/trial_team_members?active=eq.true&select=*&order=name.asc');
+    state.team = team || [];
+    document.getElementById('teamCount').textContent = '(' + state.team.length + ')';
+    renderTeamList();
+  } catch (e) {
+    document.getElementById('teamList').innerHTML = '<div class="callout error"><span>❌</span><div>' + escapeHtml(e.message) + '</div></div>';
+  }
+}
+
+function renderTeamList() {
+  const search = (document.getElementById('searchTeam').value || '').toLowerCase();
+  let list = state.team;
+  if (search) list = list.filter(m => 
+    (m.name || '').toLowerCase().includes(search) ||
+    (m.phone || '').includes(search) ||
+    (m.role || '').toLowerCase().includes(search)
+  );
+  
+  if (!list.length) {
+    document.getElementById('teamList').innerHTML = '<div class="empty">No members match</div>';
+    return;
+  }
+  
+  document.getElementById('teamList').innerHTML = list.map(m => {
+    const initial = (m.name || '?').charAt(0).toUpperCase();
+    const roleBadge = (m.role || 'no-role').toLowerCase();
+    return `
+      <div class="team-row">
+        <div class="team-avatar">${initial}</div>
+        <div class="team-info">
+          <div class="team-name">${escapeHtml(m.name || 'Unnamed')}</div>
+          <div class="team-meta">${escapeHtml(m.phone || '—')}${m.city ? ' · ' + escapeHtml(m.city) : ''}</div>
+        </div>
+        <span class="role-badge ${roleBadge}">${escapeHtml(m.role || 'no role')}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+function updateRoleInfo() {
+  const role = document.getElementById('memberRole').value;
+  const info = ROLE_INFO[role];
+  if (!info) {
+    document.getElementById('roleInfo').style.display = 'none';
+    return;
+  }
+  document.getElementById('roleInfoTitle').textContent = info.title;
+  document.getElementById('roleInfoModules').textContent = info.modules;
+  document.getElementById('roleInfo').style.display = 'block';
+}
+
+function clearForm() {
+  document.getElementById('memberName').value = '';
+  document.getElementById('memberPhone').value = '';
+  document.getElementById('memberCity').value = '';
+  document.getElementById('memberDept').value = '';
+  document.getElementById('memberRole').value = '';
+  document.getElementById('phoneHint').textContent = 'Will be used for login';
+  document.getElementById('phoneHint').className = 'input-hint';
+  document.getElementById('memberPhone').className = 'input';
+  document.getElementById('roleInfo').style.display = 'none';
+  document.getElementById('statusArea').innerHTML = '';
+}
+
+async function addMember(thenOpenAccess) {
+  const name = document.getElementById('memberName').value.trim();
+  const phone = document.getElementById('memberPhone').value.trim();
+  const city = document.getElementById('memberCity').value.trim() || null;
+  const dept = document.getElementById('memberDept').value.trim() || null;
+  const role = document.getElementById('memberRole').value;
+  
+  const statusArea = document.getElementById('statusArea');
+  statusArea.innerHTML = '';
+  
+  if (!name) {
+    statusArea.innerHTML = '<div class="callout error"><span>⚠️</span><div>Name is required</div></div>';
+    return;
+  }
+  if (phone.length !== 10 || !/^\d{10}$/.test(phone)) {
+    statusArea.innerHTML = '<div class="callout error"><span>⚠️</span><div>Phone must be exactly 10 digits</div></div>';
+    return;
+  }
+  if (!role) {
+    statusArea.innerHTML = '<div class="callout error"><span>⚠️</span><div>Please select a role</div></div>';
+    return;
+  }
+  
+  const btn = thenOpenAccess ? document.getElementById('addAndAccessBtn') : document.getElementById('addBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Adding…';
+  
+  try {
+    const payload = {
+      name: name,
+      phone: phone,
+      role: role,
+      active: true,
+      created_at: new Date().toISOString()
+    };
+    if (city) payload.city = city;
+    if (dept) payload.departments = JSON.stringify([dept]);
+    
+    // Use POST with ON CONFLICT logic via Prefer header
+    await api('/rest/v1/trial_team_members', {
+      method: 'POST',
+      headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify(payload)
+    });
+    
+    statusArea.innerHTML = `
+      <div class="callout success">
+        <span>✅</span>
+        <div>
+          <strong>${escapeHtml(name)}</strong> added successfully as <strong>${escapeHtml(role)}</strong>!<br>
+          <small>They can now log into /hub.html using ${phone}</small>
+        </div>
+      </div>
+    `;
+    
+    if (thenOpenAccess) {
+      setTimeout(() => { location.href = '/access-control.html'; }, 1200);
+    } else {
+      clearForm();
+      loadData();
+    }
+    
+  } catch (e) {
+    let msg = e.message;
+    if (msg.includes('duplicate') || msg.includes('unique')) {
+      msg = 'This phone number is already registered. Use Access Control to update their access.';
+    }
+    statusArea.innerHTML = '<div class="callout error"><span>❌</span><div>' + escapeHtml(msg) + '</div></div>';
+    btn.disabled = false;
+    btn.innerHTML = thenOpenAccess ? '➕ Add & Open Access Control' : '👤 Add Member';
+  }
+}
+
+// Phone validation feedback
+document.addEventListener('DOMContentLoaded', () => {
+  const phoneInput = document.getElementById('memberPhone');
+  const phoneHint = document.getElementById('phoneHint');
+  
+  phoneInput.addEventListener('input', (e) => {
+    e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
+    const len = e.target.value.length;
+    if (len === 0) {
+      phoneInput.className = 'input';
+      phoneHint.textContent = 'Will be used for login';
+      phoneHint.className = 'input-hint';
+    } else if (len === 10) {
+      phoneInput.className = 'input valid';
+      phoneHint.textContent = '✓ 10/10 digits — valid phone';
+      phoneHint.className = 'input-hint success';
+    } else {
+      phoneInput.className = 'input invalid';
+      phoneHint.textContent = `${len}/10 digits`;
+      phoneHint.className = 'input-hint error';
+    }
+  });
+  
+  loadData();
+});
+</script>
+
+</body>
+</html>
