@@ -548,35 +548,48 @@
           <h1 class="page-title" id="welcomeText">Dashboard</h1>
           <p class="page-subtitle" id="dateSubtitle">Loading...</p>
         </div>
+        <div class="page-actions">
+          <div class="filter-tabs" id="periodTabs">
+            <button class="filter-tab active" data-period="today" onclick="setPeriod('today')">Today</button>
+            <button class="filter-tab" data-period="yesterday" onclick="setPeriod('yesterday')">Yesterday</button>
+            <button class="filter-tab" data-period="week" onclick="setPeriod('week')">Week</button>
+            <button class="filter-tab" data-period="month" onclick="setPeriod('month')">Month</button>
+            <button class="filter-tab" data-period="custom" onclick="setPeriod('custom')">Custom</button>
+          </div>
+          <span id="customRange" style="display:none;gap:6px;align-items:center;">
+            <input type="date" id="customFrom" class="input" style="width:auto;padding:7px 10px;" onchange="if(state.period==='custom')refreshPeriod()">
+            <input type="date" id="customTo" class="input" style="width:auto;padding:7px 10px;" onchange="if(state.period==='custom')refreshPeriod()">
+          </span>
+        </div>
       </div>
       
       <!-- Stats Row -->
       <div class="stats-row">
         <div class="stat-card teal">
           <div class="header">
-            <span class="label">Today's Quantity</span>
+            <span class="label" id="lblQty">Today's Quantity</span>
             <div class="icon-box">📦</div>
           </div>
           <div class="value" id="statQty">—</div>
-          <div class="delta dim" id="statQtyDelta">vs yesterday</div>
+          <div class="delta dim" id="statQtyDelta">vs previous</div>
         </div>
         
         <div class="stat-card green">
           <div class="header">
-            <span class="label">Today's Earnings</span>
+            <span class="label" id="lblEarnings">Today's Earnings</span>
             <div class="icon-box">💰</div>
           </div>
           <div class="value" id="statEarnings">—</div>
-          <div class="delta dim" id="statEarningsDelta">vs yesterday</div>
+          <div class="delta dim" id="statEarningsDelta">vs previous</div>
         </div>
         
         <div class="stat-card gold">
           <div class="header">
-            <span class="label">Active Members</span>
+            <span class="label" id="lblMembers">Active Members</span>
             <div class="icon-box">👥</div>
           </div>
           <div class="value" id="statMembers">—</div>
-          <div class="delta dim" id="statMembersDelta">working today</div>
+          <div class="delta dim" id="statMembersDelta">working</div>
         </div>
         
         <div class="stat-card rose">
@@ -665,6 +678,32 @@
         </div>
       </div>
       
+      <!-- Team-wise + Campaign Progress -->
+      <div class="charts-row" style="grid-template-columns:1fr 1fr;">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Team-wise Performance</div>
+              <div class="panel-subtitle" id="teamSubtitle">Selected period</div>
+            </div>
+          </div>
+          <div id="teamWise" style="padding:4px 0 8px;max-height:420px;overflow-y:auto;">
+            <div class="empty"><div class="skeleton" style="height:54px;margin:8px 22px;"></div><div class="skeleton" style="height:54px;margin:8px 22px;"></div></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Campaign Progress</div>
+              <div class="panel-subtitle" id="campaignSubtitle">Done vs target quantity</div>
+            </div>
+          </div>
+          <div id="campaignProgress" class="panel-body" style="max-height:420px;overflow-y:auto;">
+            <div class="empty"><div class="skeleton" style="height:64px;margin-bottom:10px;"></div><div class="skeleton" style="height:64px;"></div></div>
+          </div>
+        </div>
+      </div>
+      
       <!-- Recent Entries Table -->
       <div class="panel data-panel">
         <div class="panel-header">
@@ -720,7 +759,8 @@ const MEDIA_TAG_CLASS = {
 
 const state = {
   admin: null,
-  chart: null
+  chart: null,
+  period: 'today'  // today | yesterday | week | month | custom
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -758,16 +798,19 @@ function relativeTime(date) {
   return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
 }
 
-function todayStr() {
-  const d = new Date();
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+// IST-safe date string (YYYY-MM-DD in Asia/Kolkata) — fixes UTC midnight bug
+function istDate(dateObj) {
+  const d = dateObj || new Date();
+  // en-CA gives YYYY-MM-DD; force IST timezone
+  return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 }
-
-function yesterdayStr() {
+function istDateMinus(days) {
   const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  d.setDate(d.getDate() - days);
+  return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 }
+function todayStr() { return istDate(); }
+function yesterdayStr() { return istDateMinus(1); }
 
 function getInitials(name) {
   if (!name) return '?';
@@ -900,7 +943,9 @@ async function initApp() {
   
   // Load all data in parallel
   await Promise.all([
-    loadStats(),
+    loadPeriodData(),
+    loadTeamWise(),
+    loadCampaignProgress(),
     loadTrendChart('7d'),
     loadTopPerformers(),
     loadOutstanding(),
@@ -910,45 +955,186 @@ async function initApp() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  LOAD: STATS
+//  PERIOD SELECTOR
 // ═══════════════════════════════════════════════════════════════
-async function loadStats() {
+const PERIOD_LABEL = { today:"Today's", yesterday:"Yesterday's", week:"Week's", month:"Month's", custom:'Period' };
+
+function periodRange() {
+  // returns {from, to} as IST YYYY-MM-DD strings, inclusive
+  const p = state.period;
+  if (p === 'today') { const t = istDate(); return { from:t, to:t }; }
+  if (p === 'yesterday') { const y = istDateMinus(1); return { from:y, to:y }; }
+  if (p === 'week') return { from: istDateMinus(6), to: istDate() };
+  if (p === 'month') {
+    const now = new Date();
+    const first = new Date(now.getFullYear(), now.getMonth(), 1);
+    return { from: first.toLocaleDateString('en-CA', { timeZone:'Asia/Kolkata' }), to: istDate() };
+  }
+  if (p === 'custom') {
+    const f = document.getElementById('customFrom').value;
+    const t = document.getElementById('customTo').value;
+    if (f && t) return { from:f, to:t };
+    return { from: istDate(), to: istDate() };
+  }
+  return { from: istDate(), to: istDate() };
+}
+// previous comparable range (same length, immediately before)
+function prevRange(range) {
+  const from = new Date(range.from + 'T00:00:00');
+  const to = new Date(range.to + 'T00:00:00');
+  const days = Math.round((to - from) / 86400000) + 1;
+  const pTo = new Date(from); pTo.setDate(pTo.getDate() - 1);
+  const pFrom = new Date(pTo); pFrom.setDate(pFrom.getDate() - (days - 1));
+  const fmt = d => d.toLocaleDateString('en-CA', { timeZone:'Asia/Kolkata' });
+  return { from: fmt(pFrom), to: fmt(pTo) };
+}
+
+function setPeriod(p) {
+  state.period = p;
+  document.querySelectorAll('#periodTabs .filter-tab').forEach(b => b.classList.toggle('active', b.dataset.period === p));
+  document.getElementById('customRange').style.display = p === 'custom' ? 'inline-flex' : 'none';
+  // dynamic stat labels
+  document.getElementById('lblQty').textContent = PERIOD_LABEL[p] + ' Quantity';
+  document.getElementById('lblEarnings').textContent = PERIOD_LABEL[p] + ' Earnings';
+  if (p !== 'custom') refreshPeriod();
+}
+function refreshPeriod() {
+  loadPeriodData();
+  loadTeamWise();
+  loadCampaignProgress();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LOAD: PERIOD STATS (period-aware)
+// ═══════════════════════════════════════════════════════════════
+async function loadPeriodData() {
   try {
-    const today = todayStr();
-    const yesterday = yesterdayStr();
-    
-    // Today's totals
-    const todayLogs = await api('/rest/v1/execution_daily_log?log_date=eq.' + today + '&deleted_at=is.null&select=quantity,total_amount,member_phone');
-    
-    const todayQty = todayLogs.reduce((s, l) => s + (Number(l.quantity) || 0), 0);
-    const todayAmt = todayLogs.reduce((s, l) => s + (Number(l.total_amount) || 0), 0);
-    const todayMembers = new Set(todayLogs.map(l => l.member_phone)).size;
-    
-    // Yesterday's totals
-    const yestLogs = await api('/rest/v1/execution_daily_log?log_date=eq.' + yesterday + '&deleted_at=is.null&select=quantity,total_amount');
-    const yestQty = yestLogs.reduce((s, l) => s + (Number(l.quantity) || 0), 0);
-    const yestAmt = yestLogs.reduce((s, l) => s + (Number(l.total_amount) || 0), 0);
-    
-    // Update UI
-    document.getElementById('statQty').textContent = todayQty.toLocaleString('en-IN');
-    document.getElementById('statEarnings').textContent = inrFull(todayAmt);
-    document.getElementById('statMembers').textContent = todayMembers;
-    
-    // Delta calculations
-    const qtyDelta = yestQty > 0 ? ((todayQty - yestQty) / yestQty * 100).toFixed(1) : 0;
-    const amtDelta = yestAmt > 0 ? ((todayAmt - yestAmt) / yestAmt * 100).toFixed(1) : 0;
-    
-    setDelta('statQtyDelta', qtyDelta, 'vs yesterday');
-    setDelta('statEarningsDelta', amtDelta, 'vs yesterday');
-    
-    document.getElementById('statMembersDelta').textContent = todayMembers > 0 ? 'working today' : 'no work today';
+    const r = periodRange();
+    const logs = await api('/rest/v1/execution_daily_log?log_date=gte.' + r.from + '&log_date=lte.' + r.to + '&deleted_at=is.null&select=quantity,total_amount,member_phone');
+    const qty = logs.reduce((s,l)=>s+(Number(l.quantity)||0),0);
+    const amt = logs.reduce((s,l)=>s+(Number(l.total_amount)||0),0);
+    const members = new Set(logs.map(l=>l.member_phone)).size;
+
+    const pr = prevRange(r);
+    const prevLogs = await api('/rest/v1/execution_daily_log?log_date=gte.' + pr.from + '&log_date=lte.' + pr.to + '&deleted_at=is.null&select=quantity,total_amount');
+    const pQty = prevLogs.reduce((s,l)=>s+(Number(l.quantity)||0),0);
+    const pAmt = prevLogs.reduce((s,l)=>s+(Number(l.total_amount)||0),0);
+
+    document.getElementById('statQty').textContent = qty.toLocaleString('en-IN');
+    document.getElementById('statEarnings').textContent = inrFull(amt);
+    document.getElementById('statMembers').textContent = members;
+
+    setDelta('statQtyDelta', pQty>0 ? ((qty-pQty)/pQty*100).toFixed(1) : 0, 'vs previous');
+    setDelta('statEarningsDelta', pAmt>0 ? ((amt-pAmt)/pAmt*100).toFixed(1) : 0, 'vs previous');
+    document.getElementById('statMembersDelta').textContent = members>0 ? 'in period' : 'no work';
+
+    // subtitle update
+    document.getElementById('dateSubtitle').textContent = (state.period==='today')
+      ? new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})
+      : (r.from === r.to ? r.from : r.from + '  →  ' + r.to);
   } catch (err) {
-    console.error('Stats load error:', err);
-    document.getElementById('statQty').textContent = '0';
-    document.getElementById('statEarnings').textContent = '₹0';
-    document.getElementById('statMembers').textContent = '0';
+    console.error('Period stats error:', err);
   }
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  LOAD: TEAM-WISE
+// ═══════════════════════════════════════════════════════════════
+async function loadTeamWise() {
+  const box = document.getElementById('teamWise');
+  try {
+    const r = periodRange();
+    const logs = await api('/rest/v1/execution_daily_log?log_date=gte.' + r.from + '&log_date=lte.' + r.to + '&deleted_at=is.null&select=member_phone,member_name,quantity,total_amount,log_date');
+    document.getElementById('teamSubtitle').textContent = (r.from===r.to ? r.from : r.from+' → '+r.to);
+    const by = {};
+    logs.forEach(l => {
+      const k = l.member_phone || l.member_name;
+      if (!by[k]) by[k] = { name:l.member_name, qty:0, amt:0, days:new Set() };
+      by[k].qty += Number(l.quantity)||0;
+      by[k].amt += Number(l.total_amount)||0;
+      by[k].days.add(l.log_date);
+    });
+    const sorted = Object.values(by).sort((a,b)=>b.qty-a.qty);
+    if (!sorted.length) { box.innerHTML = '<div class="empty"><div class="icon-big">👥</div><p>No team activity in this period</p></div>'; return; }
+    const maxQty = Math.max(...sorted.map(m=>m.qty), 1);
+    box.innerHTML = sorted.map(m => {
+      const pct = Math.round(m.qty/maxQty*100);
+      return `<div style="padding:12px 22px;border-bottom:1px solid var(--line-soft);">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:7px;">
+          <div class="avatar-mini"><div class="ball" style="background:linear-gradient(135deg,${getColorForName(m.name)});">${getInitials(m.name)}</div></div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:700;font-size:13.5px;color:var(--ink-900);">${esc(m.name)}</div>
+            <div style="font-size:11px;color:var(--text-mid);">${m.days.size} day${m.days.size===1?'':'s'} active</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="mono" style="font-weight:800;font-size:14px;color:var(--ink-900);">${m.qty.toLocaleString('en-IN')}</div>
+            <div class="mono" style="font-size:11px;color:var(--mint);font-weight:700;">${inrFull(m.amt)}</div>
+          </div>
+        </div>
+        <div style="height:6px;background:var(--line-soft);border-radius:4px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--teal),var(--teal-glow));border-radius:4px;"></div></div>
+      </div>`;
+    }).join('');
+  } catch (err) {
+    console.error('Team-wise error:', err);
+    box.innerHTML = '<div class="empty">Failed to load team data</div>';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LOAD: CAMPAIGN PROGRESS (done vs total_quantity target)
+// ═══════════════════════════════════════════════════════════════
+async function loadCampaignProgress() {
+  const box = document.getElementById('campaignProgress');
+  try {
+    const r = periodRange();
+    // done qty per campaign (by work_name match) within period
+    const logs = await api('/rest/v1/execution_daily_log?log_date=gte.' + r.from + '&log_date=lte.' + r.to + '&deleted_at=is.null&select=work_name,quantity,campaign_id');
+    // campaign targets
+    const campaigns = await api('/rest/v1/trial_campaigns?select=id,campaign_name,name,total_quantity,status&status=in.(active,in_production,plan_locked,pending_execution_plan,draft)&order=created_at.desc&limit=100');
+
+    // done per campaign id and per name (fallback)
+    const doneById = {}, doneByName = {};
+    logs.forEach(l => {
+      const q = Number(l.quantity)||0;
+      if (l.campaign_id) doneById[l.campaign_id] = (doneById[l.campaign_id]||0)+q;
+      if (l.work_name) doneByName[(l.work_name||'').toLowerCase()] = (doneByName[(l.work_name||'').toLowerCase()]||0)+q;
+    });
+
+    const rows = (campaigns||[]).map(c => {
+      const cname = c.campaign_name || c.name || 'Campaign';
+      const target = Number(c.total_quantity)||0;
+      const done = (doneById[c.id]||0) || (doneByName[cname.toLowerCase()]||0);
+      return { cname, target, done };
+    }).filter(c => c.target > 0 || c.done > 0)
+      .sort((a,b)=> (b.done) - (a.done));
+
+    document.getElementById('campaignSubtitle').textContent = (r.from===r.to ? r.from : r.from+' → '+r.to) + ' · done vs target';
+    if (!rows.length) { box.innerHTML = '<div class="empty"><div class="icon-big">🚩</div><p>No campaign data in this period</p></div>'; return; }
+
+    box.innerHTML = rows.map(c => {
+      const pct = c.target>0 ? Math.min(100, Math.round(c.done/c.target*100)) : 0;
+      const outstanding = Math.max(0, c.target - c.done);
+      const barColor = pct>=100 ? 'var(--mint)' : 'var(--teal)';
+      return `<div style="padding:14px 0;border-bottom:1px solid var(--line-soft);">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;gap:10px;">
+          <div style="font-weight:700;font-size:13.5px;color:var(--ink-900);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(c.cname)}</div>
+          <div class="mono" style="font-weight:800;font-size:13px;color:${pct>=100?'var(--mint)':'var(--ink-900)'};flex-shrink:0;">${pct}%</div>
+        </div>
+        <div style="height:9px;background:var(--line-soft);border-radius:5px;overflow:hidden;margin-bottom:7px;"><div style="height:100%;width:${pct}%;background:${barColor};border-radius:5px;transition:width .8s;"></div></div>
+        <div style="display:flex;gap:16px;font-size:11.5px;">
+          <span style="color:var(--mint);font-weight:700;">✓ Done ${c.done.toLocaleString('en-IN')}</span>
+          <span style="color:var(--text-mid);">Target ${c.target.toLocaleString('en-IN')}</span>
+          <span style="color:var(--rose);font-weight:700;margin-left:auto;">Outstanding ${outstanding.toLocaleString('en-IN')}</span>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (err) {
+    console.error('Campaign progress error:', err);
+    box.innerHTML = '<div class="empty">Failed to load campaigns<br><small style="color:var(--text-dim)">'+esc(err.message).slice(0,120)+'</small></div>';
+  }
+}
+
+async function loadStats() { return loadPeriodData(); }
 
 function setDelta(id, percent, label) {
   const el = document.getElementById(id);
@@ -973,18 +1159,14 @@ function setDelta(id, percent, label) {
 async function loadTrendChart(range) {
   try {
     const days = range === '30d' ? 30 : range === '90d' ? 90 : 7;
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - (days - 1));
-    const startStr = startDate.toISOString().split('T')[0];
+    const startStr = istDateMinus(days - 1);
     
     const logs = await api('/rest/v1/execution_daily_log?log_date=gte.' + startStr + '&deleted_at=is.null&select=log_date,quantity,total_amount&order=log_date.asc');
     
     // Group by date
     const byDate = {};
     for (let i = 0; i < days; i++) {
-      const d = new Date();
-      d.setDate(d.getDate() - (days - 1 - i));
-      const key = d.toISOString().split('T')[0];
+      const key = istDateMinus(days - 1 - i);
       byDate[key] = { qty: 0, amt: 0 };
     }
     
@@ -1066,9 +1248,7 @@ function setTrendRange(range) {
 // ═══════════════════════════════════════════════════════════════
 async function loadTopPerformers() {
   try {
-    const start = new Date();
-    start.setDate(start.getDate() - 30);
-    const startStr = start.toISOString().split('T')[0];
+    const startStr = istDateMinus(30);
     
     const logs = await api('/rest/v1/execution_daily_log?log_date=gte.' + startStr + '&deleted_at=is.null&select=member_phone,member_name,quantity,total_amount,log_date');
     
@@ -1288,7 +1468,9 @@ document.addEventListener('DOMContentLoaded', () => {
 // Auto-refresh every 60 seconds
 setInterval(() => {
   if (state.admin) {
-    loadStats();
+    loadPeriodData();
+    loadTeamWise();
+    loadCampaignProgress();
     loadRecentActivity();
   }
 }, 60000);
