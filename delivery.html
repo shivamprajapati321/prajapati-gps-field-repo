@@ -24,6 +24,7 @@
       <button onclick="showView('dispatch',this)">🚚 New Dispatch <span class="count">+</span></button>
       <button onclick="showView('progress',this)">📦 Delivery Progress</button>
       <button onclick="showView('payments',this)">💳 Payment Records</button>
+      <button onclick="showView('vpay',this)">🧾 Vendor Payments</button>
       <button onclick="showView('reports',this)">📊 Reports</button>
       <button onclick="showView('vendors',this)">🏢 Vendors</button>
     </div>
@@ -60,15 +61,137 @@
         <div class="span4 pill-row"><button class="btn primary" onclick="saveDispatch()">💾 Save Dispatch</button><button class="btn" onclick="clearForm()">Clear</button></div>
       </div></div></div></section>
 
-      <section id="progress" class="view"><div class="card section"><div class="head"><h3>Delivery Progress</h3><div class="pill-row"><button class="pill active" onclick="filterPeriod('today')">Today</button><button class="pill" onclick="filterPeriod('yesterday')">Yesterday</button><button class="pill" onclick="filterPeriod('week')">Week</button><button class="pill" onclick="filterPeriod('month')">Monthly</button><button class="pill" onclick="filterPeriod('custom')">Custom Date</button></div></div><div class="body table-wrap"><table class="table" id="progressTable"></table></div></div></section>
+      <section id="progress" class="view">
+        <div class="grid stats" style="grid-template-columns:repeat(4,minmax(150px,1fr));margin-bottom:16px">
+          <div class="card stat"><div class="label">📦 Booked</div><div class="value" id="pgBooked">0</div><div class="meta">awaiting pickup</div></div>
+          <div class="card stat"><div class="label">🚚 In Transit</div><div class="value" id="pgTransit">0</div><div class="meta">on the way</div></div>
+          <div class="card stat"><div class="label">✅ Delivered</div><div class="value" id="pgDelivered">0</div><div class="meta">completed</div></div>
+          <div class="card stat"><div class="label">⏸️ Hold</div><div class="value" id="pgHold">0</div><div class="meta">on hold</div></div>
+        </div>
+        <div class="card section">
+          <div class="head"><h3>Delivery Progress</h3>
+            <div class="pill-row" id="progressPills">
+              <button class="pill" data-p="today" onclick="filterPeriod('today',this)">Today</button>
+              <button class="pill" data-p="yesterday" onclick="filterPeriod('yesterday',this)">Yesterday</button>
+              <button class="pill" data-p="week" onclick="filterPeriod('week',this)">Week</button>
+              <button class="pill" data-p="month" onclick="filterPeriod('month',this)">Monthly</button>
+              <button class="pill active" data-p="all" onclick="filterPeriod('all',this)">All</button>
+              <button class="pill" data-p="custom" onclick="filterPeriod('custom',this)">Custom</button>
+              <span id="progCustom" style="display:none;gap:6px"><input class="input" type="date" id="progFrom" style="padding:7px 10px" onchange="renderTables()"><input class="input" type="date" id="progTo" style="padding:7px 10px" onchange="renderTables()"></span>
+            </div>
+          </div>
+          <div class="body table-wrap"><table class="table" id="progressTable"></table></div>
+        </div>
+      </section>
 
       <section id="payments" class="view"><div class="card section"><div class="head"><h3>Payment Record</h3><button class="btn success" onclick="markSelectedPaid()">Mark Outstanding Paid</button></div><div class="body table-wrap"><table class="table" id="paymentTable"></table></div></div></section>
 
-      <section id="reports" class="view"><div class="card section"><div class="head"><h3>Reports</h3><button class="btn" onclick="window.print()">Print Report</button></div><div class="body"><div class="kpi-line"><div class="kpi"><span class="label">Today</span><b id="rToday">0</b></div><div class="kpi"><span class="label">Yesterday</span><b id="rYesterday">0</b></div><div class="kpi"><span class="label">Week</span><b id="rWeek">0</b></div><div class="kpi"><span class="label">Monthly</span><b id="rMonth">0</b></div></div><br><div class="table-wrap"><table class="table" id="reportTable"></table></div></div></div></section>
+      <section id="vpay" class="view">
+        <div class="grid two" style="align-items:start">
+          <div class="card section">
+            <div class="head"><h3>Record Vendor Payment</h3></div>
+            <div class="body">
+              <div class="form-grid" style="grid-template-columns:1fr 1fr">
+                <div class="field span2"><label>Select Vendor</label><input class="input" id="vpVendor" list="vendorsList" placeholder="Search vendor"></div>
+                <div class="field"><label>Amount ₹</label><input class="input" type="number" id="vpAmount" min="0" placeholder="e.g. 5000"></div>
+                <div class="field"><label>Payment Date</label><input class="input" type="date" id="vpDate"></div>
+                <div class="field"><label>Mode</label><select class="input" id="vpMode"><option>Cash</option><option>UPI</option><option>Bank Transfer</option><option>Cheque</option><option>NEFT</option><option>RTGS</option><option>Credit</option></select></div>
+                <div class="field"><label>Paid By</label><select class="input" id="vpPaidBy"><option>Prajapati Advertising</option><option>Company</option><option>Direct Agency</option></select></div>
+                <div class="field span2"><label>Reference / Txn ID</label><input class="input" id="vpRef" placeholder="UTR / cheque no / txn id"></div>
+                <div class="field span2"><label>Upload Receipt</label><div class="upload"><input type="file" id="vpReceipt" accept="image/*,.pdf"> <div>Receipt / proof (optional)</div></div></div>
+                <div class="field span2"><label>Notes</label><textarea class="textarea" id="vpNotes" placeholder="Optional notes"></textarea></div>
+                <div class="span2 pill-row"><button class="btn primary" onclick="saveVendorPayment()">💾 Record Payment</button><button class="btn" onclick="clearVpForm()">Clear</button></div>
+                <div class="span2" id="vpStatus"></div>
+              </div>
+            </div>
+          </div>
+          <div class="card section">
+            <div class="head"><h3>Payment Summary</h3></div>
+            <div class="body">
+              <div class="kpi-line" style="grid-template-columns:1fr 1fr">
+                <div class="kpi"><span class="label">Period Total</span><b id="vpTotal">₹0</b></div>
+                <div class="kpi"><span class="label">Records</span><b id="vpCount">0</b></div>
+              </div>
+              <br>
+              <div id="vpByVendor" class="mini-list"></div>
+            </div>
+          </div>
+        </div>
+        <div class="card section">
+          <div class="head"><h3>Vendor Payment History</h3>
+            <div class="pill-row" id="vpPills">
+              <button class="pill" data-p="today" onclick="setVpPeriod('today',this)">Today</button>
+              <button class="pill" data-p="yesterday" onclick="setVpPeriod('yesterday',this)">Yesterday</button>
+              <button class="pill" data-p="week" onclick="setVpPeriod('week',this)">Week</button>
+              <button class="pill" data-p="month" onclick="setVpPeriod('month',this)">Monthly</button>
+              <button class="pill active" data-p="all" onclick="setVpPeriod('all',this)">All</button>
+              <button class="pill" data-p="custom" onclick="setVpPeriod('custom',this)">Custom</button>
+              <span id="vpCustom" style="display:none;gap:6px"><input class="input" type="date" id="vpFrom" style="padding:7px 10px" onchange="renderVpay()"><input class="input" type="date" id="vpTo" style="padding:7px 10px" onchange="renderVpay()"></span>
+              <button class="btn" onclick="exportVpayCsv()">Export CSV</button>
+            </div>
+          </div>
+          <div class="body table-wrap"><table class="table" id="vpayTable"></table></div>
+        </div>
+      </section>
 
-      <section id="vendors" class="view"><div class="card section"><div class="head"><h3>Vendor Master</h3><button class="btn primary" onclick="addVendorPrompt()">+ Add Vendor</button></div><div class="body"><div id="vendorCards" class="mini-list"></div></div></div></section>
+      <section id="reports" class="view">
+        <div class="card section">
+          <div class="head"><h3>Reports</h3>
+            <div class="pill-row" id="repPills">
+              <button class="pill" data-p="today" onclick="setRepPeriod('today',this)">Today</button>
+              <button class="pill" data-p="yesterday" onclick="setRepPeriod('yesterday',this)">Yesterday</button>
+              <button class="pill" data-p="week" onclick="setRepPeriod('week',this)">Week</button>
+              <button class="pill" data-p="month" onclick="setRepPeriod('month',this)">Monthly</button>
+              <button class="pill active" data-p="all" onclick="setRepPeriod('all',this)">All</button>
+              <button class="pill" data-p="custom" onclick="setRepPeriod('custom',this)">Custom</button>
+              <span id="repCustom" style="display:none;gap:6px"><input class="input" type="date" id="repFrom" style="padding:7px 10px" onchange="renderReports()"><input class="input" type="date" id="repTo" style="padding:7px 10px" onchange="renderReports()"></span>
+              <button class="btn" onclick="window.print()">🖨️ Print</button>
+              <button class="btn" onclick="exportCsv()">CSV</button>
+            </div>
+          </div>
+          <div class="body">
+            <div class="kpi-line">
+              <div class="kpi"><span class="label">Dispatches</span><b id="rcDisp">0</b></div>
+              <div class="kpi"><span class="label">Total Qty</span><b id="rcQty">0</b></div>
+              <div class="kpi"><span class="label">Total Value</span><b id="rcValue">₹0</b></div>
+              <div class="kpi"><span class="label">Outstanding</span><b id="rcOut">₹0</b></div>
+            </div>
+          </div>
+        </div>
+        <div class="grid two" style="align-items:start">
+          <div class="card section"><div class="head"><h3>Vendor-wise</h3></div><div class="body table-wrap"><table class="table" id="repVendor"></table></div></div>
+          <div class="card section"><div class="head"><h3>Location-wise</h3></div><div class="body table-wrap"><table class="table" id="repLocation"></table></div></div>
+        </div>
+        <div class="grid two" style="align-items:start">
+          <div class="card section"><div class="head"><h3>Campaign-wise</h3></div><div class="body table-wrap"><table class="table" id="repCampaign"></table></div></div>
+          <div class="card section"><div class="head"><h3>Payment Status</h3></div><div class="body table-wrap"><table class="table" id="repPayment"></table></div></div>
+        </div>
+      </section>
+
+      <section id="vendors" class="view"><div class="card section"><div class="head"><h3>Vendor Master</h3><button class="btn primary" onclick="openVendorModal()">+ Add Vendor</button></div><div class="body"><div id="vendorCards" class="mini-list"></div></div></div></section>
     </div>
   </main>
+</div>
+
+<!-- VENDOR MODAL -->
+<div id="vendorModal" style="display:none;position:fixed;inset:0;background:rgba(7,16,54,.55);backdrop-filter:blur(5px);z-index:99999;align-items:center;justify-content:center;padding:18px">
+  <div class="card" style="max-width:560px;width:100%;max-height:92vh;overflow:auto">
+    <div class="head"><h3 id="vmTitle">Add Vendor</h3><button class="btn" onclick="closeVendorModal()">✕</button></div>
+    <div class="body">
+      <div class="form-grid" style="grid-template-columns:1fr 1fr">
+        <div class="field span2"><label>Vendor Name *</label><input class="input" id="vmName"></div>
+        <div class="field"><label>Type</label><select class="input" id="vmType"><option value="transport">Transport</option><option value="courier">Courier</option><option value="agency">Agency</option><option value="direct">Direct Vendor</option><option value="own">Own Vehicle</option></select></div>
+        <div class="field"><label>Phone</label><input class="input" id="vmPhone" maxlength="10"></div>
+        <div class="field"><label>Contact Person</label><input class="input" id="vmContact"></div>
+        <div class="field"><label>City</label><input class="input" id="vmCity"></div>
+        <div class="field"><label>State</label><input class="input" id="vmState"></div>
+        <div class="field"><label>Rate / Bundle ₹</label><input class="input" type="number" id="vmRate"></div>
+        <div class="field span2"><label>Notes</label><textarea class="textarea" id="vmNotes"></textarea></div>
+        <div class="span2" id="vmStatus"></div>
+        <div class="span2 pill-row"><button class="btn primary" onclick="saveVendorModal()">💾 Save Vendor</button><button class="btn" onclick="closeVendorModal()">Cancel</button></div>
+      </div>
+    </div>
+  </div>
 </div>
 <script>
 const SUPABASE_URL='https://fpbktcgtspqsqpaytslv.supabase.co';
@@ -81,7 +204,7 @@ const fmt=n=>'₹'+Number(n||0).toLocaleString('en-IN');
 const todayISO=()=>new Date().toISOString().slice(0,10);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=()=>Math.random().toString(36).slice(2)+Date.now().toString(36);
-const state={campaigns:[],teams:[],vendors:[],rows:[],period:'all',offline:false};
+const state={campaigns:[],teams:[],vendors:[],rows:[],payments:[],period:'all',vpPeriod:'all',repPeriod:'all',editVendor:null,offline:false};
 async function api(path,opts={}){const r=await fetch(SUPABASE_URL+path,{...opts,headers:{...HEADERS,...(opts.headers||{})}});if(!r.ok)throw new Error(await r.text()||('API '+r.status));let t=await r.text();return t?JSON.parse(t):null}
 function val(id){return document.getElementById(id)?.value?.trim()||''}
 function setVal(id,v){let el=document.getElementById(id);if(el)el.value=v??''}
@@ -117,14 +240,15 @@ async function loadVendorMaster(){
   }
   return data || [];
 }
-async function initLive(){setVal('dispatchDate',todayISO());try{
- const [campaigns,teams,vendors,dispatches]=await Promise.all([
+async function initLive(){setVal('dispatchDate',todayISO());setVal('vpDate',todayISO());try{
+ const [campaigns,teams,vendors,dispatches,payments]=await Promise.all([
   loadCampaignMaster(),
   loadTeamMaster(),
   loadVendorMaster(),
-  api('/rest/v1/'+DISPATCH_TABLE+'?select=*&order=dispatch_date.desc,created_at.desc&limit=500').catch(e=>{console.warn('Dispatch table missing, fallback local',e);state.offline=true;return JSON.parse(localStorage.pa_dispatch_live||'[]')})
+  api('/rest/v1/'+DISPATCH_TABLE+'?select=*&order=dispatch_date.desc,created_at.desc&limit=500').catch(e=>{console.warn('Dispatch table missing, fallback local',e);state.offline=true;return JSON.parse(localStorage.pa_dispatch_live||'[]')}),
+  api('/rest/v1/prajapati_dispatch_payments?select=*&order=pay_date.desc&limit=1000').catch(()=>[])
  ]);
- state.campaigns=(campaigns||[]).map(normalCampaign);state.teams=(teams||[]).map(normalTeam);state.vendors=(vendors||[]).map(normalVendor);state.rows=(dispatches||[]).map(fromDbRow);
+ state.campaigns=(campaigns||[]).map(normalCampaign);state.teams=(teams||[]).map(normalTeam);state.vendors=(vendors||[]).map(normalVendor);state.rows=(dispatches||[]).map(fromDbRow);state.payments=payments||[];
  fillList('campaigns',state.campaigns,x=>x._label);fillList('teams',state.teams,x=>x._label);fillList('vendorsList',state.vendors,x=>x._label);
  updateSearchList();renderTables();
  document.querySelector('.chip').innerHTML='<span class="dot"></span> '+(state.offline?'Local Fallback':'Supabase Connected');
@@ -143,12 +267,149 @@ async function saveDispatch(){const c=selectedCampaign(),t=selectedTeam(),v=sele
  try{r.lr_url=await uploadFile(document.getElementById('lrFile')?.files?.[0],'lr'); if(state.offline){state.rows.unshift(r);localStorage.pa_dispatch_live=JSON.stringify(state.rows)} else {let saved=await api('/rest/v1/'+DISPATCH_TABLE,{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(toDbRow(r))});r=fromDbRow(saved[0]||r);state.rows.unshift(r)} if(!state.vendors.some(x=>(x.name||x.vendor_name)===r.vendor)){state.vendors.push(normalVendor({name:r.vendor,city:r.location}))} clearForm();renderTables();showView('dashboard');alert('Dispatch saved successfully') }catch(e){alert('Save failed. Supabase SQL/table check karein: '+e.message)}finally{if(btn){btn.disabled=false;btn.textContent='💾 Save Dispatch'}}}
 function clearForm(){['campaign','team','locationSearch','address','latitude','longitude','vendor','qty','bundle','cost','total','lr','ref'].forEach(id=>setVal(id,''));setVal('dispatchDate',todayISO());let f=document.getElementById('lrFile');if(f)f.value=''}
 function showView(id,btn){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.getElementById(id).classList.add('active');if(btn){document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));btn.classList.add('active')}renderTables()}
-function periodData(data){const d=todayISO(),y=new Date(Date.now()-86400000).toISOString().slice(0,10);if(state.period==='today')return data.filter(r=>r.date===d);if(state.period==='yesterday')return data.filter(r=>r.date===y);if(state.period==='week')return data.filter(r=>new Date(r.date)>=new Date(Date.now()-6*86400000));if(state.period==='month'){let m=d.slice(0,7);return data.filter(r=>(r.date||'').slice(0,7)===m)}return data}
-function filterPeriod(p){state.period=p==='custom'?'all':p;document.querySelectorAll('.pill').forEach(x=>x.classList.remove('active'));renderTables()}
+function rangeFilter(data,period,fromId,toId){
+  const d=todayISO(),y=new Date(Date.now()-86400000).toISOString().slice(0,10);
+  if(period==='today')return data.filter(r=>r.date===d);
+  if(period==='yesterday')return data.filter(r=>r.date===y);
+  if(period==='week')return data.filter(r=>new Date(r.date)>=new Date(Date.now()-6*86400000));
+  if(period==='month'){let m=d.slice(0,7);return data.filter(r=>(r.date||'').slice(0,7)===m)}
+  if(period==='custom'){const f=document.getElementById(fromId)?.value,t=document.getElementById(toId)?.value;if(!f||!t)return data;return data.filter(r=>r.date>=f&&r.date<=t)}
+  return data;
+}
+function periodData(data){return rangeFilter(data,state.period,'progFrom','progTo')}
+function filterPeriod(p,btn){
+  state.period=p;
+  document.querySelectorAll('#progressPills .pill').forEach(x=>x.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  const cust=document.getElementById('progCustom');if(cust)cust.style.display=p==='custom'?'inline-flex':'none';
+  renderTables();
+}
 function rowHtml(data){return `<tr><th>Campaign</th><th>Vendor / Location</th><th>Qty</th><th>Bundle</th><th>Total</th><th>Paid By</th><th>Status</th><th>Progress</th></tr>`+data.map(r=>`<tr><td><b>${esc(r.campaign)}</b><div class="meta">${esc(r.team)} · ${esc(r.date)}</div></td><td>${esc(r.vendor)}<div class="meta">${esc(r.location)} · LR: ${esc(r.lr||'-')}</div>${r.lr_url?`<a class="meta" target="_blank" href="${esc(r.lr_url)}">Open LR</a>`:''}</td><td>${Number(r.qty).toLocaleString('en-IN')}</td><td>${r.bundle}</td><td><b>${fmt(r.total)}</b></td><td>${esc(r.paidBy)}<div class="meta">${esc(r.payMode)}</div></td><td><span class="badge ${r.payStatus==='Paid'?'paid':'unpaid'}">${esc(r.payStatus)}</span><div class="meta">${esc(r.status)}</div></td><td><div class="progress"><div class="bar" style="width:${r.status==='Delivered'?100:r.status==='In Transit'?65:r.status==='Booked'?35:15}%"></div></div></td></tr>`).join('')}
-function renderTables(){let q=(document.getElementById('globalSearch')?.value||'').toLowerCase();let data=periodData(state.rows).filter(r=>JSON.stringify(r).toLowerCase().includes(q));let totalQty=data.reduce((s,r)=>s+r.qty,0),paid=data.filter(r=>r.payStatus==='Paid').reduce((s,r)=>s+r.total,0),out=data.filter(r=>r.payStatus!=='Paid').reduce((s,r)=>s+r.total,0),today=data.filter(r=>r.date===todayISO()).reduce((s,r)=>s+r.bundle,0);sToday.textContent=today;sQty.textContent=totalQty.toLocaleString('en-IN');sOut.textContent=fmt(out);sPaid.textContent=fmt(paid);sVendors.textContent=state.vendors.length;if(window.recentTable)recentTable.innerHTML=rowHtml(data.slice(0,8));if(window.progressTable)progressTable.innerHTML=rowHtml(data);if(window.paymentTable)paymentTable.innerHTML=rowHtml(data.filter(r=>r.payStatus!=='Paid'));if(window.reportTable)reportTable.innerHTML=rowHtml(data);rToday.textContent=state.rows.filter(r=>r.date===todayISO()).length;rYesterday.textContent=state.rows.filter(r=>r.date===new Date(Date.now()-86400000).toISOString().slice(0,10)).length;rWeek.textContent=state.rows.filter(r=>new Date(r.date)>=new Date(Date.now()-6*86400000)).length;rMonth.textContent=state.rows.filter(r=>(r.date||'').slice(0,7)===todayISO().slice(0,7)).length;renderVendors(data);updateSearchList()}
-function renderVendors(data=state.rows){let by={};data.forEach(r=>{by[r.vendor]??={qty:0,total:0,out:0,loc:new Set(),kiosk:0};by[r.vendor].qty+=r.qty;by[r.vendor].total+=r.total;if(r.payStatus!=='Paid')by[r.vendor].out+=r.total;by[r.vendor].loc.add(r.location);if(r.kiosk==='Yes')by[r.vendor].kiosk++});if(window.vendorMini)vendorMini.innerHTML=Object.entries(by).map(([v,d])=>`<div class="mini"><div><b>${esc(v)}</b><div class="meta">${esc([...d.loc].filter(Boolean).join(', '))} · Qty: ${d.qty}</div></div><div><b>${fmt(d.out)}</b><div class="meta">Outstanding</div></div></div>`).join('')||'<div class="meta">No data</div>';if(window.vendorCards)vendorCards.innerHTML=state.vendors.map(v=>{let name=v.name||v.vendor_name||v._label;let d=by[name]||{out:0,qty:0,loc:new Set(),kiosk:0};return `<div class="mini"><div><b>${esc(name)}</b><div class="meta">${esc(v.phone||'')} ${esc(v.city||'')} · Qty ${d.qty}</div></div><span class="badge ${d.out?'unpaid':'paid'}">${d.out?fmt(d.out):'No Due'}</span></div>`}).join('')}
-async function addVendorPrompt(){let name=prompt('Vendor name');if(!name)return;let city=prompt('City / location','')||'';let row={name,type:'transport',city,active:true,created_at:new Date().toISOString(),updated_at:new Date().toISOString()};try{let saved=await api('/rest/v1/prajapati_delivery_vendors',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(row)});state.vendors.push(normalVendor(saved[0]||row));fillList('vendorsList',state.vendors,x=>x._label);renderTables()}catch(e){state.vendors.push(normalVendor(row));alert('Vendor local add hua. Supabase vendor table check karein: '+e.message);renderTables()}}
+function renderTables(){
+  let q=(document.getElementById('globalSearch')?.value||'').toLowerCase();
+  let data=periodData(state.rows).filter(r=>JSON.stringify(r).toLowerCase().includes(q));
+  let totalQty=data.reduce((s,r)=>s+r.qty,0),
+      paid=data.filter(r=>r.payStatus==='Paid').reduce((s,r)=>s+r.total,0),
+      out=data.filter(r=>r.payStatus!=='Paid').reduce((s,r)=>s+r.total,0),
+      today=data.filter(r=>r.date===todayISO()).reduce((s,r)=>s+r.bundle,0);
+  sToday.textContent=today;sQty.textContent=totalQty.toLocaleString('en-IN');sOut.textContent=fmt(out);sPaid.textContent=fmt(paid);sVendors.textContent=state.vendors.length;
+  if(window.recentTable)recentTable.innerHTML=rowHtml(data.slice(0,8));
+  if(window.progressTable)progressTable.innerHTML=rowHtml(data);
+  if(window.paymentTable)paymentTable.innerHTML=rowHtml(data.filter(r=>r.payStatus!=='Paid'));
+  // progress summary cards
+  const cnt=s=>data.filter(r=>(r.status||'')===s).length;
+  if(window.pgBooked)pgBooked.textContent=cnt('Booked');
+  if(window.pgTransit)pgTransit.textContent=cnt('In Transit');
+  if(window.pgDelivered)pgDelivered.textContent=cnt('Delivered');
+  if(window.pgHold)pgHold.textContent=cnt('Hold');
+  renderVendors(data);updateSearchList();
+  renderReports();renderVpay();
+}
+function renderVendors(data=state.rows){let by={};data.forEach(r=>{by[r.vendor]??={qty:0,total:0,out:0,loc:new Set(),kiosk:0};by[r.vendor].qty+=r.qty;by[r.vendor].total+=r.total;if(r.payStatus!=='Paid')by[r.vendor].out+=r.total;by[r.vendor].loc.add(r.location);if(r.kiosk==='Yes')by[r.vendor].kiosk++});if(window.vendorMini)vendorMini.innerHTML=Object.entries(by).map(([v,d])=>`<div class="mini"><div><b>${esc(v)}</b><div class="meta">${esc([...d.loc].filter(Boolean).join(', '))} · Qty: ${d.qty}</div></div><div><b>${fmt(d.out)}</b><div class="meta">Outstanding</div></div></div>`).join('')||'<div class="meta">No data</div>';if(window.vendorCards)vendorCards.innerHTML=state.vendors.map(v=>{let name=v.name||v.vendor_name||v._label;let d=by[name]||{out:0,qty:0,loc:new Set(),kiosk:0};return `<div class="mini"><div><b>${esc(name)}</b><div class="meta">${esc(v.phone||'')} ${esc(v.city||'')}${v.state?', '+esc(v.state):''} · Qty ${d.qty}</div></div><div style="display:flex;align-items:center;gap:8px"><span class="badge ${d.out?'unpaid':'paid'}">${d.out?fmt(d.out):'No Due'}</span>${v.id?`<button class="btn" style="padding:7px 10px" onclick="openVendorModal('${v.id}')">✏️</button><button class="btn danger" style="padding:7px 10px" onclick="deleteVendor('${v.id}')">🗑️</button>`:''}</div></div>`}).join('')}
+/* ── VENDOR MODAL (create + edit) ── */
+function openVendorModal(id){
+  state.editVendor=id||null;
+  const v=id?state.vendors.find(x=>x.id===id):null;
+  document.getElementById('vmTitle').textContent=v?'Edit Vendor':'Add Vendor';
+  setVal('vmName',v?.name||v?.vendor_name||'');
+  document.getElementById('vmType').value=v?.type||'transport';
+  setVal('vmPhone',v?.phone||'');setVal('vmContact',v?.contact_person||'');
+  setVal('vmCity',v?.city||'');setVal('vmState',v?.state||'');setVal('vmRate',v?.default_rate||'');
+  setVal('vmNotes',v?.notes||'');document.getElementById('vmStatus').innerHTML='';
+  document.getElementById('vendorModal').style.display='flex';
+}
+function closeVendorModal(){document.getElementById('vendorModal').style.display='none';state.editVendor=null}
+async function saveVendorModal(){
+  const name=val('vmName');if(!name){document.getElementById('vmStatus').innerHTML='<div class="badge unpaid">Name required</div>';return}
+  const phone=val('vmPhone');if(phone&&!/^\d{10}$/.test(phone)){document.getElementById('vmStatus').innerHTML='<div class="badge unpaid">Phone 10 digits</div>';return}
+  const payload={name,type:document.getElementById('vmType').value,phone:phone||null,contact_person:val('vmContact')||null,city:val('vmCity')||null,state:val('vmState')||null,default_rate:+val('vmRate')||0,notes:val('vmNotes')||null,active:true,updated_at:new Date().toISOString()};
+  try{
+    if(state.editVendor){
+      await api('/rest/v1/prajapati_delivery_vendors?id=eq.'+state.editVendor,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(payload)});
+      const i=state.vendors.findIndex(x=>x.id===state.editVendor);if(i>=0)state.vendors[i]=normalVendor({...state.vendors[i],...payload});
+    }else{
+      payload.created_at=new Date().toISOString();
+      const saved=await api('/rest/v1/prajapati_delivery_vendors',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(payload)});
+      state.vendors.push(normalVendor((saved&&saved[0])||payload));
+    }
+    fillList('vendorsList',state.vendors,x=>x._label);closeVendorModal();renderTables();
+  }catch(e){document.getElementById('vmStatus').innerHTML='<div class="badge unpaid">Save failed: '+esc(e.message).slice(0,120)+'</div>'}
+}
+async function deleteVendor(id){
+  if(!confirm('Delete this vendor?'))return;
+  try{await api('/rest/v1/prajapati_delivery_vendors?id=eq.'+id,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({active:false})});
+    state.vendors=state.vendors.filter(v=>v.id!==id);fillList('vendorsList',state.vendors,x=>x._label);renderTables();
+  }catch(e){alert('Delete failed: '+e.message)}
+}
+
+/* ── VENDOR PAYMENTS ── */
+function clearVpForm(){['vpVendor','vpAmount','vpRef','vpNotes'].forEach(id=>setVal(id,''));setVal('vpDate',todayISO());const f=document.getElementById('vpReceipt');if(f)f.value='';document.getElementById('vpStatus').innerHTML=''}
+async function saveVendorPayment(){
+  const vname=val('vpVendor');const amt=+val('vpAmount')||0;
+  if(!vname){document.getElementById('vpStatus').innerHTML='<div class="badge unpaid">Vendor select karo</div>';return}
+  if(amt<=0){document.getElementById('vpStatus').innerHTML='<div class="badge unpaid">Amount daalo</div>';return}
+  const v=state.vendors.find(x=>(x._label||'').toLowerCase()===vname.toLowerCase()||String(x.name||x.vendor_name||'').toLowerCase()===vname.toLowerCase());
+  const btn=event?.target;if(btn){btn.disabled=true;btn.textContent='Saving...'}
+  try{
+    let receipt=null;const rf=document.getElementById('vpReceipt')?.files?.[0];
+    if(rf)receipt=await uploadFile(rf,'receipts');
+    const payload={vendor_id:(v&&v.id)||null,vendor_name:(v&&(v.name||v.vendor_name))||vname,amount:amt,mode:document.getElementById('vpMode').value,paid_by:document.getElementById('vpPaidBy').value,pay_date:val('vpDate')||todayISO(),reference:val('vpRef')||null,receipt_url:receipt,notes:val('vpNotes')||null,created_at:new Date().toISOString()};
+    const saved=await api('/rest/v1/prajapati_dispatch_payments',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(payload)});
+    state.payments.unshift((saved&&saved[0])||payload);
+    document.getElementById('vpStatus').innerHTML='<div class="badge paid">✅ Payment recorded</div>';
+    clearVpForm();renderVpay();
+  }catch(e){document.getElementById('vpStatus').innerHTML='<div class="badge unpaid">Save failed: '+esc(e.message).slice(0,140)+'</div>'}
+  finally{if(btn){btn.disabled=false;btn.textContent='💾 Record Payment'}}
+}
+function setVpPeriod(p,btn){state.vpPeriod=p;document.querySelectorAll('#vpPills .pill').forEach(x=>x.classList.remove('active'));if(btn)btn.classList.add('active');document.getElementById('vpCustom').style.display=p==='custom'?'inline-flex':'none';renderVpay()}
+function vpData(){return rangeFilter((state.payments||[]).map(p=>({...p,date:p.pay_date||p.date||todayISO()})),state.vpPeriod||'all','vpFrom','vpTo')}
+function renderVpay(){
+  const data=vpData();
+  const total=data.reduce((s,p)=>s+(+p.amount||0),0);
+  if(window.vpTotal)vpTotal.textContent=fmt(total);
+  if(window.vpCount)vpCount.textContent=data.length;
+  // by vendor
+  const by={};data.forEach(p=>{const k=p.vendor_name||'—';by[k]=(by[k]||0)+(+p.amount||0)});
+  if(window.vpByVendor)vpByVendor.innerHTML=Object.entries(by).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="mini"><div><b>${esc(k)}</b></div><div><b>${fmt(v)}</b><div class="meta">paid</div></div></div>`).join('')||'<div class="meta">No payments in period</div>';
+  // table
+  if(window.vpayTable){
+    vpayTable.innerHTML=`<tr><th>Date</th><th>Vendor</th><th>Amount</th><th>Mode</th><th>Paid By</th><th>Reference</th><th>Receipt</th></tr>`+
+    (data.length?data.map(p=>`<tr><td>${esc(p.pay_date||p.date||'')}</td><td><b>${esc(p.vendor_name||'—')}</b></td><td><b>${fmt(p.amount)}</b></td><td>${esc(p.mode||'')}</td><td>${esc(p.paid_by||'')}</td><td>${esc(p.reference||'-')}</td><td>${p.receipt_url?`<a class="meta" target="_blank" href="${esc(p.receipt_url)}">Open</a>`:'-'}</td></tr>`).join('')
+      +`<tr><td></td><td><b>TOTAL</b></td><td><b>${fmt(total)}</b></td><td colspan="4"></td></tr>`
+    :`<tr><td colspan="7"><div class="meta" style="padding:20px;text-align:center">No vendor payments in this period</div></td></tr>`);
+  }
+}
+function exportVpayCsv(){
+  const data=vpData();
+  let csv=['Date,Vendor,Amount,Mode,Paid By,Reference,Notes'];
+  data.forEach(p=>csv.push([p.pay_date||p.date,p.vendor_name,p.amount,p.mode,p.paid_by,p.reference,p.notes].map(x=>'"'+String(x||'').replaceAll('"','""')+'"').join(',')));
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv.join('\n')],{type:'text/csv'}));a.download='vendor-payments.csv';a.click();
+}
+
+/* ── REPORTS (deep) ── */
+function setRepPeriod(p,btn){state.repPeriod=p;document.querySelectorAll('#repPills .pill').forEach(x=>x.classList.remove('active'));if(btn)btn.classList.add('active');document.getElementById('repCustom').style.display=p==='custom'?'inline-flex':'none';renderReports()}
+function repData(){return rangeFilter(state.rows,state.repPeriod||'all','repFrom','repTo')}
+function aggTable(map,cols){
+  let rows=Object.entries(map).sort((a,b)=>b[1].total-a[1].total);
+  let head=`<tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr>`;
+  let body=rows.map(([k,d])=>`<tr><td><b>${esc(k)}</b></td><td>${d.n}</td><td>${d.qty.toLocaleString('en-IN')}</td><td><b>${fmt(d.total)}</b></td><td>${fmt(d.out)}</td></tr>`).join('');
+  let tQty=rows.reduce((s,[,d])=>s+d.qty,0),tTot=rows.reduce((s,[,d])=>s+d.total,0),tOut=rows.reduce((s,[,d])=>s+d.out,0);
+  let foot=rows.length?`<tr><td><b>TOTAL</b></td><td>${rows.reduce((s,[,d])=>s+d.n,0)}</td><td><b>${tQty.toLocaleString('en-IN')}</b></td><td><b>${fmt(tTot)}</b></td><td><b>${fmt(tOut)}</b></td></tr>`:'';
+  return head+(body||`<tr><td colspan="${cols.length}"><div class="meta" style="padding:14px;text-align:center">No data</div></td></tr>`)+foot;
+}
+function renderReports(){
+  const data=repData();
+  const tQty=data.reduce((s,r)=>s+r.qty,0),tVal=data.reduce((s,r)=>s+r.total,0),tOut=data.filter(r=>r.payStatus!=='Paid').reduce((s,r)=>s+r.total,0);
+  if(window.rcDisp)rcDisp.textContent=data.length;
+  if(window.rcQty)rcQty.textContent=tQty.toLocaleString('en-IN');
+  if(window.rcValue)rcValue.textContent=fmt(tVal);
+  if(window.rcOut)rcOut.textContent=fmt(tOut);
+  const build=keyFn=>{const m={};data.forEach(r=>{const k=keyFn(r)||'—';m[k]??={n:0,qty:0,total:0,out:0};m[k].n++;m[k].qty+=r.qty;m[k].total+=r.total;if(r.payStatus!=='Paid')m[k].out+=r.total});return m};
+  if(window.repVendor)repVendor.innerHTML=aggTable(build(r=>r.vendor),['Vendor','Disp','Qty','Value','Outstanding']);
+  if(window.repLocation)repLocation.innerHTML=aggTable(build(r=>r.location),['Location','Disp','Qty','Value','Outstanding']);
+  if(window.repCampaign)repCampaign.innerHTML=aggTable(build(r=>r.campaign),['Campaign','Disp','Qty','Value','Outstanding']);
+  if(window.repPayment)repPayment.innerHTML=aggTable(build(r=>r.payStatus),['Status','Disp','Qty','Value','Outstanding']);
+}
 async function markSelectedPaid(){let data=state.rows.filter(r=>r.payStatus!=='Paid');if(!confirm(data.length+' outstanding entries paid mark karna hai?'))return;for(const r of data){r.payStatus='Paid';if(!state.offline&&r.id)await api('/rest/v1/'+DISPATCH_TABLE+'?id=eq.'+r.id,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({payment_status:'Paid',updated_at:new Date().toISOString()})}).catch(console.warn)}localStorage.pa_dispatch_live=JSON.stringify(state.rows);renderTables()}
 function exportCsv(){let csv=['Campaign,Team,Location,Address,Latitude,Longitude,Vendor,Qty,Bundle,Cost,Total,Payment Status,Paid By,Mode,Date,LR,Kiosk,Status,Reference'];state.rows.forEach(r=>csv.push([r.campaign,r.team,r.location,r.address,r.lat,r.lng,r.vendor,r.qty,r.bundle,r.cost,r.total,r.payStatus,r.paidBy,r.payMode,r.date,r.lr,r.kiosk,r.status,r.ref].map(x=>'"'+String(x||'').replaceAll('"','""')+'"').join(',')));let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv.join('\n')],{type:'text/csv'}));a.download='dispatch-report.csv';a.click()}
 
