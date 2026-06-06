@@ -2,9 +2,23 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Hub · Prajapati Advertising</title>
 <meta name="theme-color" content="#0B1957">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Prajapati Hub">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="Prajapati Hub">
+<meta name="description" content="Prajapati Advertising Operations Hub — Campaign tracking, team workflow, daily logs">
+
+<!-- PWA Manifest -->
+<link rel="manifest" href="/manifest-hub.json">
+<link rel="apple-touch-icon" href="/icons/hub-icon-192.svg">
+<link rel="apple-touch-icon" sizes="192x192" href="/icons/hub-icon-192.svg">
+<link rel="apple-touch-icon" sizes="512x512" href="/icons/hub-icon-512.svg">
+<link rel="icon" type="image/svg+xml" href="/icons/hub-icon-192.svg">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght,ital@9..144,300..900,0..1&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -258,6 +272,14 @@ input,select,textarea{font-family:inherit;outline:none}
         <span class="live-dot"></span>
         <span id="liveClock">--:--</span>
       </div>
+      
+      <button id="installBtn" class="logout-btn" onclick="installPWA()" style="display:none;background:var(--gold);color:var(--navy);border-color:var(--gold);font-weight:700">
+        📲 Install App
+      </button>
+      
+      <button id="refreshBtn" class="logout-btn" onclick="manualRefresh()" title="Refresh access & data">
+        ↻
+      </button>
       
       <div style="display:flex;align-items:center;gap:10px">
         <div class="user-pod">
@@ -837,6 +859,142 @@ function renderTicker() {
   // Duplicate for seamless scroll
   document.getElementById('tickerTrack').innerHTML = html + html;
 }
+
+// ═══════════════════════════════════════════════════════════════
+// PWA INSTALL + AUTO-REFRESH ACCESS
+// ═══════════════════════════════════════════════════════════════
+
+let deferredInstallPrompt = null;
+
+// Capture install prompt
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const btn = document.getElementById('installBtn');
+  if (btn) btn.style.display = 'inline-flex';
+  console.log('[PWA] Install prompt available');
+});
+
+async function installPWA() {
+  if (!deferredInstallPrompt) {
+    alert('App is already installed or your browser does not support installation. Try Chrome / Edge / Safari on iOS.');
+    return;
+  }
+  deferredInstallPrompt.prompt();
+  const { outcome } = await deferredInstallPrompt.userChoice;
+  console.log('[PWA] Install outcome:', outcome);
+  if (outcome === 'accepted') {
+    document.getElementById('installBtn').style.display = 'none';
+  }
+  deferredInstallPrompt = null;
+}
+
+// Detect already-installed mode
+window.addEventListener('appinstalled', () => {
+  console.log('[PWA] App installed');
+  const btn = document.getElementById('installBtn');
+  if (btn) btn.style.display = 'none';
+});
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw-hub.js', { scope: '/hub.html' })
+      .then(reg => console.log('[PWA] SW registered with scope:', reg.scope))
+      .catch(err => console.warn('[PWA] SW registration failed:', err));
+  });
+}
+
+// Manual refresh button
+async function manualRefresh() {
+  const btn = document.getElementById('refreshBtn');
+  btn.innerHTML = '<span class="spin" style="border-color:rgba(11,25,87,0.2);border-top-color:var(--navy)"></span>';
+  btn.disabled = true;
+  
+  await refreshUserAccess();
+  await loadDashboardData();
+  
+  btn.innerHTML = '↻';
+  btn.disabled = false;
+  
+  // Brief success flash
+  btn.style.background = 'var(--success-bg)';
+  btn.style.color = 'var(--success)';
+  setTimeout(() => {
+    btn.style.background = '';
+    btn.style.color = '';
+  }, 600);
+}
+
+// Auto-refresh user access (every 60 sec) — picks up admin's access changes
+async function refreshUserAccess() {
+  if (!state.user || !state.user.phone) return;
+  
+  try {
+    const members = await api('/rest/v1/trial_team_members?phone=eq.' + state.user.phone + '&active=eq.true&select=*');
+    if (members && members.length) {
+      const updated = members[0];
+      
+      // Check if access changed
+      const oldAccess = JSON.stringify(state.user.module_access || {});
+      const newAccess = JSON.stringify(updated.module_access || {});
+      const oldRole = state.user.role;
+      const newRole = updated.role;
+      
+      if (oldAccess !== newAccess || oldRole !== newRole) {
+        console.log('[ACCESS] Detected change — re-rendering modules');
+        state.user = updated;
+        renderModules();
+        
+        // Show subtle notification
+        showAccessChangeNotification();
+      } else {
+        // Silent refresh: just update user state
+        state.user = updated;
+      }
+    }
+  } catch (e) {
+    console.warn('[ACCESS] Refresh failed:', e);
+  }
+}
+
+function showAccessChangeNotification() {
+  // Remove any existing notification
+  const existing = document.getElementById('accessChangeBar');
+  if (existing) existing.remove();
+  
+  const bar = document.createElement('div');
+  bar.id = 'accessChangeBar';
+  bar.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--success);color:#fff;padding:12px 22px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,0.25);z-index:1000;font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px;border:2px solid #fff;animation:slideUp 0.3s ease';
+  bar.innerHTML = '🔄 Your access was updated by admin · Modules refreshed';
+  document.body.appendChild(bar);
+  
+  setTimeout(() => {
+    bar.style.opacity = '0';
+    bar.style.transition = 'opacity 0.3s';
+    setTimeout(() => bar.remove(), 300);
+  }, 4000);
+}
+
+// Auto-refresh every 60 seconds
+setInterval(() => {
+  if (document.visibilityState === 'visible') {
+    refreshUserAccess();
+  }
+}, 60000);
+
+// Refresh on tab focus (user returning to tab)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && state.user) {
+    refreshUserAccess();
+    loadDashboardData();
+  }
+});
+
+// Add slideUp animation
+const slideUpStyle = document.createElement('style');
+slideUpStyle.textContent = '@keyframes slideUp { from { transform:translate(-50%, 20px); opacity:0 } to { transform:translate(-50%, 0); opacity:1 } }';
+document.head.appendChild(slideUpStyle);
 
 // ═══════════════════════════════════════════════════════════════
 // BOOT
