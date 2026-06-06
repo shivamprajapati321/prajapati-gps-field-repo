@@ -623,14 +623,44 @@ function openAssignModal(designId, stage) {
   // Populate operators
   const sel = document.getElementById('assignOperator');
   const ops = state.operators[stage] || [];
-  sel.innerHTML = '<option value="">— Select operator —</option>' +
-    ops.map(o => `<option value="${o.id}" ${o.id === currentOpId ? 'selected' : ''}>${escapeHtml(o.name)} (${escapeHtml(o.phone || '')})</option>`).join('');
+  
+  if (!ops.length) {
+    // FIX: Helpful message when no operators for this stage
+    sel.innerHTML = `<option value="">⚠️ No ${stageInfo.label.toLowerCase()} operators found</option>`;
+    sel.disabled = true;
+  } else {
+    sel.disabled = false;
+    sel.innerHTML = '<option value="">— Select operator —</option>' +
+      ops.map(o => `<option value="${o.id}" ${o.id === currentOpId ? 'selected' : ''}>${escapeHtml(o.name)} (${escapeHtml(o.phone || '')})</option>`).join('');
+  }
   
   document.getElementById('assignQuantity').value = design.design_quantity || '';
   document.getElementById('assignDueDate').value = '';
   document.getElementById('assignNotes').value = '';
   document.getElementById('assignNotify').checked = true;
   document.getElementById('assignStatus').innerHTML = '';
+  
+  // FIX: Reset save button state (was getting stuck after save)
+  const saveBtn = document.getElementById('assignSaveBtn');
+  if (saveBtn) {
+    saveBtn.disabled = !ops.length;
+    saveBtn.innerHTML = ops.length 
+      ? '💾 Assign & Notify' 
+      : `⚠️ Add ${stageInfo.label} operators first`;
+  }
+  
+  // Show helpful hint if no operators
+  if (!ops.length) {
+    document.getElementById('assignStatus').innerHTML = `
+      <div class="callout warn">
+        <span>⚠️</span>
+        <div>
+          <strong>No ${stageInfo.label.toLowerCase()} operators in team.</strong><br>
+          <small>Add operators via <a href="/add-team-member.html" style="text-decoration:underline;color:inherit">Add Team Member</a> with role: <strong>${stageInfo.roles.join(' or ')}</strong></small>
+        </div>
+      </div>
+    `;
+  }
   
   document.getElementById('assignModal').style.display = 'flex';
 }
