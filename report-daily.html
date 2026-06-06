@@ -266,13 +266,15 @@
       </section>
       
       <div class="date-bar">
-        <label>📅 Date:</label>
-        <input type="date" id="reportDate" onchange="loadData()">
+        <label>📅 Range:</label>
+        <input type="date" id="dateFrom" onchange="onCustomDate()">
+        <span style="color:var(--text-mid);font-weight:600;">to</span>
+        <input type="date" id="dateTo" onchange="onCustomDate()">
         <div class="date-shortcuts">
           <button class="date-shortcut active" data-shortcut="today" onclick="setShortcut('today')">Today</button>
           <button class="date-shortcut" data-shortcut="yesterday" onclick="setShortcut('yesterday')">Yesterday</button>
-          <button class="date-shortcut" data-shortcut="2days" onclick="setShortcut('2days')">2 days ago</button>
-          <button class="date-shortcut" data-shortcut="3days" onclick="setShortcut('3days')">3 days ago</button>
+          <button class="date-shortcut" data-shortcut="week" onclick="setShortcut('week')">Week</button>
+          <button class="date-shortcut" data-shortcut="month" onclick="setShortcut('month')">Month</button>
         </div>
         <div style="margin-left:auto;font-size:11px;color:var(--text-mid);">All times in IST</div>
       </div>
@@ -383,15 +385,15 @@
 "use strict";
 
 const CONFIG = { url: 'https://fpbktcgtspqsqpaytslv.supabase.co', key: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j' };
-const state = { admin: null, entries: [], date: '', editing: null };
+const state = { admin: null, entries: [], from: '', to: '', editing: null };
 
 function esc(s) { if (s == null) return ''; return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function inr(n) { if (!n || isNaN(n)) return '₹0'; return '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 }); }
 function inrShort(n) { if (!n || isNaN(n)) return '₹0'; const num = Number(n); if (num >= 100000) return '₹' + (num/100000).toFixed(2) + 'L'; if (num >= 1000) return '₹' + (num/1000).toFixed(1) + 'k'; return '₹' + num.toLocaleString('en-IN', { maximumFractionDigits: 0 }); }
 function getInitials(name) { if (!name) return '?'; return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase(); }
 function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
-function todayStr() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
-function daysAgoStr(n) { const d = new Date(); d.setDate(d.getDate() - n); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function todayStr() { return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); }
+function daysAgoStr(n) { const d = new Date(); d.setDate(d.getDate() - n); return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); }
 
 function showToast(msg, type) {
   try {
@@ -457,32 +459,44 @@ async function autoLogin() {
 function initApp() {
   setText('userAvatar', getInitials(state.admin.name));
   setText('userName', state.admin.name.split(' ')[0]);
-  document.getElementById('reportDate').value = todayStr();
-  loadData();
+  setShortcut('today');
 }
 
 function setShortcut(key) {
   document.querySelectorAll('.date-shortcut').forEach(b => b.classList.remove('active'));
-  document.querySelector(`.date-shortcut[data-shortcut="${key}"]`).classList.add('active');
-  let date;
-  if (key === 'today') date = todayStr();
-  else if (key === 'yesterday') date = daysAgoStr(1);
-  else if (key === '2days') date = daysAgoStr(2);
-  else if (key === '3days') date = daysAgoStr(3);
-  document.getElementById('reportDate').value = date;
+  const btn = document.querySelector(`.date-shortcut[data-shortcut="${key}"]`);
+  if (btn) btn.classList.add('active');
+  let from, to;
+  to = todayStr();
+  if (key === 'today') { from = todayStr(); to = todayStr(); }
+  else if (key === 'yesterday') { from = daysAgoStr(1); to = daysAgoStr(1); }
+  else if (key === 'week') { from = daysAgoStr(6); }
+  else if (key === 'month') { from = todayStr().slice(0,8) + '01'; }
+  document.getElementById('dateFrom').value = from;
+  document.getElementById('dateTo').value = to;
+  loadData();
+}
+
+function onCustomDate() {
+  // user manually picked dates → clear shortcut highlight
+  document.querySelectorAll('.date-shortcut').forEach(b => b.classList.remove('active'));
   loadData();
 }
 
 async function loadData() {
-  const date = document.getElementById('reportDate').value;
-  if (!date) return;
-  state.date = date;
-  setText('heroDate', new Date(date).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}));
+  const from = document.getElementById('dateFrom').value;
+  const to = document.getElementById('dateTo').value;
+  if (!from || !to) return;
+  state.from = from; state.to = to;
+  const sameDay = from === to;
+  setText('heroDate', sameDay
+    ? new Date(from).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'})
+    : new Date(from).toLocaleDateString('en-IN',{day:'numeric',month:'short'}) + ' – ' + new Date(to).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}));
   
   document.getElementById('tableBody').innerHTML = '<div class="loading"><div class="spinner"></div><div style="margin-top:14px;font-weight:600;">Loading entries...</div></div>';
   
   try {
-    const entries = await api(`/rest/v1/execution_daily_log?log_date=eq.${date}&select=*&order=created_at.desc`);
+    const entries = await api(`/rest/v1/execution_daily_log?log_date=gte.${from}&log_date=lte.${to}&select=*&order=log_date.desc,created_at.desc`);
     state.entries = entries || [];
     renderTable();
     updateSummary();
@@ -612,7 +626,7 @@ function exportCSV() {
   const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = `daily_${state.date}.csv`;
+  a.href = url; a.download = `daily_${state.from}_to_${state.to}.csv`;
   a.click();
   URL.revokeObjectURL(url);
   showToast('✓ CSV downloaded', 'success');

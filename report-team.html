@@ -257,6 +257,7 @@
         <input type="date" id="dateTo" onchange="loadData()">
         <div class="range-shortcuts">
           <button class="range-shortcut" data-r="today" onclick="setRange('today')">Today</button>
+          <button class="range-shortcut" data-r="yesterday" onclick="setRange('yesterday')">Yesterday</button>
           <button class="range-shortcut" data-r="7days" onclick="setRange('7days')">7 days</button>
           <button class="range-shortcut active" data-r="30days" onclick="setRange('30days')">30 days</button>
           <button class="range-shortcut" data-r="month" onclick="setRange('month')">This Month</button>
@@ -294,8 +295,8 @@ function inr(n) { if (!n || isNaN(n)) return '₹0'; return '₹' + Number(n).to
 function inrShort(n) { if (!n || isNaN(n)) return '₹0'; const num = Number(n); if (num >= 100000) return '₹' + (num/100000).toFixed(2) + 'L'; if (num >= 1000) return '₹' + (num/1000).toFixed(1) + 'k'; return '₹' + num.toLocaleString('en-IN', { maximumFractionDigits: 0 }); }
 function getInitials(name) { if (!name) return '?'; return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase(); }
 function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
-function todayStr() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
-function daysAgoStr(n) { const d = new Date(); d.setDate(d.getDate() - n); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function todayStr() { return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); }
+function daysAgoStr(n) { const d = new Date(); d.setDate(d.getDate() - n); return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); }
 
 function showToast(msg, type) {
   try {
@@ -372,11 +373,11 @@ function setRange(key) {
   let from, to;
   to = todayStr();
   if (key === 'today') from = todayStr();
+  else if (key === 'yesterday') { from = daysAgoStr(1); to = daysAgoStr(1); }
   else if (key === '7days') from = daysAgoStr(6);
   else if (key === '30days') from = daysAgoStr(29);
   else if (key === 'month') {
-    const d = new Date();
-    from = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-01';
+    from = todayStr().slice(0,8) + '01';
   }
   else if (key === 'all') { from = '2020-01-01'; }
   
