@@ -837,6 +837,43 @@ input,select,textarea{font-family:inherit;outline:none}
 </div>
 
 <script>
+// ═══════════════════════════════════════════════════════════════
+// 🔧 DIAGNOSTIC MODE — on-screen debug (remove once fixed)
+// Activate by adding #debug to URL: delivery.html#debug
+// ═══════════════════════════════════════════════════════════════
+const DEBUG = location.hash.indexOf('debug') !== -1;
+function dbg(msg, type) {
+  console.log('[DBG]', msg);
+  if (!DEBUG) return;
+  let box = document.getElementById('__dbgbox');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = '__dbgbox';
+    box.style.cssText = 'position:fixed;bottom:0;left:0;right:0;max-height:40vh;overflow:auto;background:#0B1957;color:#7CFC9A;font:11px/1.5 monospace;padding:8px 12px;z-index:99999;border-top:3px solid #B89B4E;white-space:pre-wrap';
+    const hd = document.createElement('div');
+    hd.style.cssText = 'color:#D4B45F;font-weight:700;margin-bottom:4px';
+    hd.textContent = '🔧 DEBUG LOG (tap to clear)';
+    hd.onclick = () => { box.querySelectorAll('.dl').forEach(e => e.remove()); };
+    box.appendChild(hd);
+    document.body.appendChild(box);
+  }
+  const line = document.createElement('div');
+  line.className = 'dl';
+  line.style.color = type === 'err' ? '#FF6B6B' : type === 'ok' ? '#7CFC9A' : '#cfd8ff';
+  const t = new Date().toLocaleTimeString('en-IN', { hour12: false });
+  line.textContent = t + '  ' + msg;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+// Global error trap — catches boot-time JS errors that kill all functions
+window.addEventListener('error', (e) => {
+  dbg('💥 JS ERROR: ' + e.message + ' @ ' + (e.filename || '').split('/').pop() + ':' + e.lineno, 'err');
+});
+window.addEventListener('unhandledrejection', (e) => {
+  dbg('💥 PROMISE REJECT: ' + (e.reason && e.reason.message ? e.reason.message : e.reason), 'err');
+});
+dbg('Script booting…');
+
 const SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
 const HEADERS = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' };
@@ -1818,9 +1855,11 @@ async function sendDispatchWati(id) {
 }
 
 async function updateDispatchStatus(id, newStatus) {
+  dbg('updateDispatchStatus(' + id.slice(0, 8) + ', ' + newStatus + ')');
   const labels = { in_transit: 'In Transit', out_for_delivery: 'Out for Delivery', delivered: 'Delivered', hold: 'Hold' };
   const msg = newStatus === 'delivered' ? 'Mark as DELIVERED?' : 'Update status to ' + (labels[newStatus] || newStatus) + '?';
-  if (!confirm(msg)) return;
+  if (!confirm(msg)) { dbg('user cancelled confirm'); return; }
+  dbg('confirm OK, sending PATCH…');
   const now = new Date().toISOString();
   // Full payload (with timestamp columns)
   const full = { status: newStatus, updated_at: now };
@@ -1833,18 +1872,19 @@ async function updateDispatchStatus(id, newStatus) {
     await api('/rest/v1/prajapati_dispatches?id=eq.' + id, {
       method: 'PATCH', headers: { 'Prefer': 'return=minimal' }, body: JSON.stringify(full)
     });
+    dbg('✅ PATCH success (full) → reloading', 'ok');
     await loadAllData();
   } catch (e) {
-    // FALLBACK: if a timestamp column is missing (SQL not run / cache stale),
-    // retry with just status so the update still works.
+    dbg('⚠️ full PATCH failed: ' + e.message + ' — retrying minimal', 'err');
     console.warn('Full status update failed, retrying minimal:', e.message);
     try {
       await api('/rest/v1/prajapati_dispatches?id=eq.' + id, {
         method: 'PATCH', headers: { 'Prefer': 'return=minimal' }, body: JSON.stringify({ status: newStatus, updated_at: now })
       });
+      dbg('✅ PATCH success (minimal) → reloading', 'ok');
       await loadAllData();
-      console.log('Status updated (minimal mode — run SESSION_8 SQL for timestamps)');
     } catch (e2) {
+      dbg('❌ minimal PATCH also failed: ' + e2.message, 'err');
       alert('Update failed: ' + e2.message + '\n\nAgar "column" error hai to SESSION_8_DELIVERY.sql run karo + 20 sec ruko (schema reload).');
     }
   }
@@ -2509,7 +2549,8 @@ document.addEventListener('click', (e) => {
   if (!btn) return;
   const act = btn.dataset.act;
   const id = btn.dataset.id;
-  if (!id) return;
+  dbg('🖱️ click act=' + act + ' id=' + (id || '').slice(0, 8) + ' to=' + (btn.dataset.to || '-'));
+  if (!id) { dbg('no data-id on button', 'err'); return; }
   if (act === 'status') {
     updateDispatchStatus(id, btn.dataset.to);
   } else if (act === 'wati') {
@@ -2518,6 +2559,7 @@ document.addEventListener('click', (e) => {
     generatePdfFor(id);
   }
 });
+dbg('✅ click delegation attached');
 
 // Close search results when clicking outside
 document.addEventListener('click', (e) => {
