@@ -887,6 +887,28 @@ function fmtTime(iso) {
   } catch (e) { return ''; }
 }
 
+// Normalize legacy/raw statuses → canonical 4-stage flow
+// booked → in_transit → out_for_delivery → delivered  (+ hold)
+// Legacy 'pending' & 'dispatched' both mean "already moving" → in_transit
+function normStatus(raw) {
+  const s = String(raw || 'booked').toLowerCase().trim();
+  const map = {
+    pending: 'in_transit',
+    dispatched: 'in_transit',
+    intransit: 'in_transit',
+    'in transit': 'in_transit',
+    out_for_delivery: 'out_for_delivery',
+    ofd: 'out_for_delivery',
+    delivered: 'delivered',
+    completed: 'delivered',
+    hold: 'hold',
+    'on_hold': 'hold',
+    booked: 'booked',
+    cancelled: 'cancelled'
+  };
+  return map[s] || s;
+}
+
 // ⭐ HIDE COMPANY: Extract only work/design name (before · - – | separator)
 // "Arham · Afridi Advertising" → "Arham"
 // "Dr Agarwal - CASH UR DRIVE MARKETING LIMITED" → "Dr Agarwal"
@@ -1732,9 +1754,11 @@ function renderDashboard() {
 }
 
 function renderDispatchRow(d) {
-  const pct = d.status === 'delivered' ? 100 : d.status === 'in_transit' ? 50 : d.status === 'cancelled' ? 0 : 20;
-  const statusTag = d.status === 'delivered' ? 'success' : d.status === 'in_transit' ? 'info' : d.status === 'cancelled' ? 'danger' : 'warn';
-  const statusLabel = (d.status || 'booked').replace(/_/g, ' ').toUpperCase();
+  const st = normStatus(d.status);
+  const PCT = { booked: 20, in_transit: 50, out_for_delivery: 80, delivered: 100, hold: 35, cancelled: 0 };
+  const pct = PCT[st] != null ? PCT[st] : 20;
+  const statusTag = st === 'delivered' ? 'success' : st === 'out_for_delivery' ? 'purple' : st === 'in_transit' ? 'info' : st === 'hold' ? 'danger' : st === 'cancelled' ? 'danger' : 'warn';
+  const statusLabel = st.replace(/_/g, ' ').toUpperCase();
   const workName = getWorkName(d.campaign_name) || 'Direct Dispatch';
   
   return `
@@ -1760,7 +1784,9 @@ function renderDispatchRow(d) {
         <div style="display:flex;gap:4px;flex-wrap:wrap">
           ${d.pdf_url ? `<a href="${d.pdf_url}" target="_blank" class="btn btn-secondary sm">📄 PDF</a>` : `<button class="btn btn-secondary sm" onclick='generatePdfFor("${d.id}")'>📄 PDF</button>`}
           <button class="btn btn-wati sm" onclick='sendDispatchWati("${d.id}")'>📲</button>
-          ${d.status !== 'delivered' && d.status !== 'cancelled' ? `<button class="btn btn-success sm" onclick='updateDispatchStatus("${d.id}", "delivered")'>✅</button>` : ''}
+          ${st === 'booked' ? `<button class="btn btn-info sm" onclick='updateDispatchStatus("${d.id}","in_transit")'>🚛</button>` : ''}
+          ${st === 'in_transit' ? `<button class="btn btn-purple sm" onclick='updateDispatchStatus("${d.id}","out_for_delivery")'>🛵</button>` : ''}
+          ${st === 'out_for_delivery' ? `<button class="btn btn-success sm" onclick='updateDispatchStatus("${d.id}","delivered")'>✅</button>` : ''}
         </div>
       </td>
     </tr>
@@ -1819,12 +1845,12 @@ function setProgressFilter(status) {
 }
 
 function renderProgress() {
-  const all = state.dispatches.filter(d => d.status !== 'cancelled');
-  const booked = all.filter(d => (d.status || 'booked') === 'booked').length;
-  const transit = all.filter(d => d.status === 'in_transit').length;
-  const ofd = all.filter(d => d.status === 'out_for_delivery').length;
-  const delivered = all.filter(d => d.status === 'delivered').length;
-  const hold = all.filter(d => d.status === 'hold').length;
+  const all = state.dispatches.filter(d => normStatus(d.status) !== 'cancelled');
+  const booked = all.filter(d => normStatus(d.status) === 'booked').length;
+  const transit = all.filter(d => normStatus(d.status) === 'in_transit').length;
+  const ofd = all.filter(d => normStatus(d.status) === 'out_for_delivery').length;
+  const delivered = all.filter(d => normStatus(d.status) === 'delivered').length;
+  const hold = all.filter(d => normStatus(d.status) === 'hold').length;
   
   document.getElementById('progressStats').innerHTML = `
     <div class="stat" style="color:var(--warn)">
@@ -1854,9 +1880,9 @@ function renderProgress() {
     </div>
   `;
   
-  let filtered = state.dispatches.filter(d => d.status !== 'cancelled');
+  let filtered = state.dispatches.filter(d => normStatus(d.status) !== 'cancelled');
   if (state.progressFilter !== 'all') {
-    filtered = filtered.filter(d => (d.status || 'booked') === state.progressFilter);
+    filtered = filtered.filter(d => normStatus(d.status) === state.progressFilter);
   }
   
   if (!filtered.length) {
@@ -1868,7 +1894,7 @@ function renderProgress() {
   const PCT = { booked: 20, in_transit: 50, out_for_delivery: 80, delivered: 100, hold: 35 };
   
   document.getElementById('progressBody').innerHTML = filtered.map(d => {
-    const st = d.status || 'booked';
+    const st = normStatus(d.status);
     const pct = PCT[st] != null ? PCT[st] : 20;
     const statusTag = st === 'delivered' ? 'success' : st === 'out_for_delivery' ? 'purple' : st === 'in_transit' ? 'info' : st === 'hold' ? 'danger' : 'warn';
     const statusLabel = st.replace(/_/g, ' ').toUpperCase();
@@ -1925,7 +1951,7 @@ function renderProgress() {
 // PAYMENT RECORDS (client payments)
 // ═══════════════════════════════════════════════════════════════
 function renderPayments() {
-  const dispatches = state.dispatches.filter(d => d.status !== 'cancelled');
+  const dispatches = state.dispatches.filter(d => normStatus(d.status) !== 'cancelled');
   if (!dispatches.length) {
     document.getElementById('paymentBody').innerHTML = '<tr><td colspan="8" class="empty">No payment records</td></tr>';
     return;
@@ -2266,7 +2292,7 @@ function loadReports() {
   
   const filtered = state.dispatches.filter(d => {
     if (!d.dispatch_date) return false;
-    return d.dispatch_date >= fromD && d.dispatch_date <= toD && d.status !== 'cancelled';
+    return d.dispatch_date >= fromD && d.dispatch_date <= toD && normStatus(d.status) !== 'cancelled';
   });
   
   // Stats
