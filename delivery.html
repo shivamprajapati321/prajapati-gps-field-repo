@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght,ital@9..144,300..900,0..1&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
 :root{
@@ -70,6 +71,8 @@ input,select,textarea{font-family:inherit;outline:none}
 .btn-secondary:hover{background:var(--paper)}
 .btn-success{background:var(--success);color:#fff}
 .btn-info{background:var(--info);color:#fff}
+.btn-purple{background:var(--purple);color:#fff}
+.btn-purple:hover{background:#6D28D9}
 .btn-warn{background:var(--warn);color:#fff}
 .btn-danger{background:var(--danger);color:#fff}
 .btn-gradient{background:linear-gradient(135deg,#3B82F6,#06B6D4);color:#fff}
@@ -86,6 +89,22 @@ input,select,textarea{font-family:inherit;outline:none}
 .stat-label{font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:var(--gold-deep);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:8px}
 .stat-value{font-family:'Fraunces',serif;font-size:34px;font-weight:600;color:var(--navy);line-height:1}
 .stat-meta{font-size:11.5px;color:var(--text-dim);margin-top:6px}
+
+/* REPORT CHARTS */
+.report-charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:18px}
+.chart-card{background:#fff;border:1px solid var(--rule);border-radius:14px;padding:16px 18px}
+.chart-title{font-family:'Fraunces',serif;font-size:15px;font-weight:600;color:var(--navy);margin-bottom:12px}
+.chart-box{position:relative;height:220px}
+/* Report hero stats (gradient) */
+#reportStats .stat{color:#fff;border:none}
+#reportStats .stat .stat-label{color:rgba(255,255,255,0.85)}
+#reportStats .stat .stat-value{color:#fff}
+#reportStats .stat .stat-meta{color:rgba(255,255,255,0.75)}
+#reportStats .stat::after{opacity:0.18}
+.hero-disp{background:linear-gradient(135deg,#1E40AF,#3B82F6)}
+.hero-qty{background:linear-gradient(135deg,#0D9488,#14B8A6)}
+.hero-val{background:linear-gradient(135deg,#0B1957,#1E2A6B)}
+.hero-out{background:linear-gradient(135deg,#C2410C,#EA580C)}
 
 /* SECTIONS */
 .section{background:#fff;border:1px solid var(--rule);border-radius:14px;margin-bottom:18px;overflow:hidden}
@@ -453,6 +472,7 @@ input,select,textarea{font-family:inherit;outline:none}
               <button class="pill progress-filter active" data-status="all" onclick="setProgressFilter('all')">All</button>
               <button class="pill progress-filter" data-status="booked" onclick="setProgressFilter('booked')">📋 Booked</button>
               <button class="pill progress-filter" data-status="in_transit" onclick="setProgressFilter('in_transit')">🚛 In Transit</button>
+              <button class="pill progress-filter" data-status="out_for_delivery" onclick="setProgressFilter('out_for_delivery')">🛵 Out for Delivery</button>
               <button class="pill progress-filter" data-status="delivered" onclick="setProgressFilter('delivered')">✅ Delivered</button>
               <button class="pill progress-filter" data-status="hold" onclick="setProgressFilter('hold')">⏸️ Hold</button>
             </div>
@@ -522,13 +542,18 @@ input,select,textarea{font-family:inherit;outline:none}
         <div class="section">
           <div class="section-head">
             <div class="section-title">🧾 Recent Vendor Payments</div>
+            <div class="pill-row">
+              <button class="pill vp-filter active" data-vpf="all" onclick="setVendorPayFilter('all')">All</button>
+              <button class="pill vp-filter" data-vpf="prajapati" onclick="setVendorPayFilter('prajapati')">🏠 Prajapati Paid</button>
+              <button class="pill vp-filter" data-vpf="party" onclick="setVendorPayFilter('party')">🏢 Party Paid</button>
+            </div>
           </div>
           <div style="overflow-x:auto">
             <table class="tbl">
               <thead><tr>
-                <th>Date</th><th>Vendor</th><th>Amount</th><th>Mode</th><th>Reference</th><th>Receipt</th><th>Wati</th>
+                <th>Date</th><th>Vendor</th><th>Amount</th><th>Paid By</th><th>Mode</th><th>Reference</th><th>Receipt</th><th>Wati</th>
               </tr></thead>
-              <tbody id="vendorPaymentBody"><tr><td colspan="7" class="empty">No payments yet</td></tr></tbody>
+              <tbody id="vendorPaymentBody"><tr><td colspan="8" class="empty">No payments yet</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -563,6 +588,21 @@ input,select,textarea{font-family:inherit;outline:none}
         </div>
         
         <div class="stats-grid" id="reportStats"></div>
+        
+        <div class="report-charts" id="reportChartsWrap">
+          <div class="chart-card">
+            <div class="chart-title">🏢 Top Vendors by Value</div>
+            <div class="chart-box"><canvas id="vendorChart"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">📍 Delivery by Location</div>
+            <div class="chart-box"><canvas id="locationChart"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">💰 Payment Status Split</div>
+            <div class="chart-box"><canvas id="paymentChart"></canvas></div>
+          </div>
+        </div>
         
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px" id="reportBreakdowns">
           <div class="section">
@@ -690,7 +730,17 @@ input,select,textarea{font-family:inherit;outline:none}
     <div class="modal-body">
       <div class="callout info">
         <span>ℹ️</span>
-        <div>Record payment made by Prajapati to vendor. Upload receipt and send confirmation via Wati.</div>
+        <div>Record a vendor payment. Choose who paid — Prajapati (affects our outstanding) or Party/Client (info only). Upload receipt and send confirmation via Wati.</div>
+      </div>
+      
+      <!-- WHO PAID toggle -->
+      <div class="field">
+        <label class="label">Who Paid? <span class="req">*</span></label>
+        <div class="pill-row">
+          <button type="button" class="pill vp-paidby active" data-paidby="prajapati" onclick="setVpPaidBy('prajapati')">🏠 Prajapati Advertising</button>
+          <button type="button" class="pill vp-paidby" data-paidby="party" onclick="setVpPaidBy('party')">🏢 Party / Client</button>
+        </div>
+        <div class="hint" id="vpPaidByHint" style="margin-top:6px;color:var(--text-dim)">Prajapati paid the vendor — this reduces our outstanding to the vendor.</div>
       </div>
       
       <div class="field-row">
@@ -807,6 +857,8 @@ const state = {
   progressFilter: 'all',
   currentDispatch: null,
   currentVendorPayment: null,
+  vpPaidBy: 'prajapati',
+  vendorPayFilter: 'all',
   watiPayload: null
 };
 
@@ -828,6 +880,12 @@ function cleanUuid(v) {
 
 function fmt(n) { return Number(n || 0).toLocaleString('en-IN'); }
 function fmtINR(n) { return '₹' + fmt(n); }
+function fmtTime(iso) {
+  if (!iso) return '';
+  try {
+    return new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
+  } catch (e) { return ''; }
+}
 
 // ⭐ HIDE COMPANY: Extract only work/design name (before · - – | separator)
 // "Arham · Afridi Advertising" → "Arham"
@@ -1510,14 +1568,16 @@ function buildDispatchWatiMessage(d) {
 }
 
 function buildVendorPaymentWatiMessage(p) {
-  return `💰 *Payment Sent*\n\n` +
+  const by = (p.paid_by || 'prajapati') === 'party' ? 'Party / Client' : 'Prajapati Advertising';
+  return `💰 *Payment Confirmation*\n\n` +
     `Vendor: ${p.vendor_name}\n` +
     `Amount: ₹${fmt(p.amount)}\n` +
+    `Paid By: ${by}\n` +
     `Mode: ${p.payment_mode}\n` +
     `Reference: ${p.reference_number || '—'}\n` +
     `Date: ${p.payment_date}\n\n` +
     `${p.notes ? p.notes + '\n\n' : ''}` +
-    `📎 Receipt attached.\n\n` +
+    `${p.receipt_url ? '📎 Receipt attached.\n\n' : ''}` +
     `– Prajapati Advertising`;
 }
 
@@ -1732,11 +1792,16 @@ async function sendDispatchWati(id) {
 }
 
 async function updateDispatchStatus(id, newStatus) {
-  const msg = newStatus === 'delivered' ? 'Mark as delivered?' : newStatus === 'in_transit' ? 'Mark in transit?' : 'Update status to ' + newStatus + '?';
+  const labels = { in_transit: 'In Transit', out_for_delivery: 'Out for Delivery', delivered: 'Delivered', hold: 'Hold' };
+  const msg = newStatus === 'delivered' ? 'Mark as DELIVERED?' : 'Update status to ' + (labels[newStatus] || newStatus) + '?';
   if (!confirm(msg)) return;
   try {
-    const payload = { status: newStatus, updated_at: new Date().toISOString() };
-    if (newStatus === 'delivered') payload.delivered_date = new Date().toISOString().slice(0, 10);
+    const now = new Date().toISOString();
+    const payload = { status: newStatus, updated_at: now };
+    if (newStatus === 'in_transit') payload.in_transit_at = now;
+    if (newStatus === 'out_for_delivery') payload.out_for_delivery_at = now;
+    if (newStatus === 'delivered') { payload.delivered_at = now; payload.delivered_date = now.slice(0, 10); }
+    if (newStatus === 'hold') payload.hold_at = now;
     await api('/rest/v1/prajapati_dispatches?id=eq.' + id, {
       method: 'PATCH', headers: { 'Prefer': 'return=minimal' }, body: JSON.stringify(payload)
     });
@@ -1757,6 +1822,7 @@ function renderProgress() {
   const all = state.dispatches.filter(d => d.status !== 'cancelled');
   const booked = all.filter(d => (d.status || 'booked') === 'booked').length;
   const transit = all.filter(d => d.status === 'in_transit').length;
+  const ofd = all.filter(d => d.status === 'out_for_delivery').length;
   const delivered = all.filter(d => d.status === 'delivered').length;
   const hold = all.filter(d => d.status === 'hold').length;
   
@@ -1771,6 +1837,11 @@ function renderProgress() {
       <div class="stat-value">${transit}</div>
       <div class="stat-meta">on the way</div>
     </div>
+    <div class="stat" style="color:var(--purple)">
+      <div class="stat-label">🛵 Out for Delivery</div>
+      <div class="stat-value">${ofd}</div>
+      <div class="stat-meta">last mile</div>
+    </div>
     <div class="stat" style="color:var(--success)">
       <div class="stat-label">✅ Delivered</div>
       <div class="stat-value">${delivered}</div>
@@ -1783,7 +1854,7 @@ function renderProgress() {
     </div>
   `;
   
-  let filtered = state.dispatches;
+  let filtered = state.dispatches.filter(d => d.status !== 'cancelled');
   if (state.progressFilter !== 'all') {
     filtered = filtered.filter(d => (d.status || 'booked') === state.progressFilter);
   }
@@ -1793,17 +1864,39 @@ function renderProgress() {
     return;
   }
   
+  // Status → progress % map (4-stage flow)
+  const PCT = { booked: 20, in_transit: 50, out_for_delivery: 80, delivered: 100, hold: 35 };
+  
   document.getElementById('progressBody').innerHTML = filtered.map(d => {
-    const pct = d.status === 'delivered' ? 100 : d.status === 'in_transit' ? 60 : d.status === 'hold' ? 30 : 15;
-    const statusTag = d.status === 'delivered' ? 'success' : d.status === 'in_transit' ? 'info' : d.status === 'hold' ? 'danger' : 'warn';
-    const statusLabel = (d.status || 'booked').replace(/_/g, ' ').toUpperCase();
+    const st = d.status || 'booked';
+    const pct = PCT[st] != null ? PCT[st] : 20;
+    const statusTag = st === 'delivered' ? 'success' : st === 'out_for_delivery' ? 'purple' : st === 'in_transit' ? 'info' : st === 'hold' ? 'danger' : 'warn';
+    const statusLabel = st.replace(/_/g, ' ').toUpperCase();
+    const barColor = st === 'delivered' ? 'var(--success)' : st === 'out_for_delivery' ? 'var(--purple)' : st === 'hold' ? 'var(--danger)' : 'var(--info)';
     const workName = getWorkName(d.campaign_name) || 'Direct Dispatch';
+    
+    // Mini timeline (timestamps)
+    const tl = [];
+    if (d.dispatch_date) tl.push('📋 ' + d.dispatch_date);
+    if (d.in_transit_at) tl.push('🚛 ' + fmtTime(d.in_transit_at));
+    if (d.out_for_delivery_at) tl.push('🛵 ' + fmtTime(d.out_for_delivery_at));
+    if (d.delivered_at) tl.push('✅ ' + fmtTime(d.delivered_at));
+    const timeline = tl.length ? `<div class="meta" style="margin-top:4px;font-size:9.5px;color:var(--text-dim)">${tl.join(' → ')}</div>` : '';
+    
+    // Next-action buttons follow the 4-stage flow
+    let actions = '';
+    if (st === 'booked') actions += `<button class="btn btn-info sm" onclick='updateDispatchStatus("${d.id}","in_transit")'>🚛 Transit</button>`;
+    if (st === 'in_transit') actions += `<button class="btn btn-purple sm" onclick='updateDispatchStatus("${d.id}","out_for_delivery")'>🛵 Out for Delivery</button>`;
+    if (st === 'out_for_delivery') actions += `<button class="btn btn-success sm" onclick='updateDispatchStatus("${d.id}","delivered")'>✅ Delivered</button>`;
+    if (st !== 'hold' && st !== 'delivered') actions += `<button class="btn btn-danger sm" onclick='updateDispatchStatus("${d.id}","hold")' title="Hold">⏸️</button>`;
+    if (st === 'hold') actions += `<button class="btn btn-info sm" onclick='updateDispatchStatus("${d.id}","in_transit")'>▶️ Resume</button>`;
+    actions += `<button class="btn btn-wati sm" onclick='sendDispatchWati("${d.id}")' title="Send via WhatsApp">📲</button>`;
     
     return `
       <tr>
         <td>
           <div class="name">${escapeHtml(workName)}</div>
-          <div class="meta">${d.dispatch_date || ''}</div>
+          ${timeline}
         </td>
         <td>
           <div class="name">${escapeHtml(d.recipient_name || '—')}</div>
@@ -1817,15 +1910,11 @@ function renderProgress() {
         <td>${d.total_bundles || 0}</td>
         <td><span class="tag ${statusTag}">${statusLabel}</span></td>
         <td>
-          <div class="progress"><div class="progress-fill" style="width:${pct}%;background:${d.status==='delivered'?'var(--success)':'var(--info)'}"></div></div>
+          <div class="progress"><div class="progress-fill" style="width:${pct}%;background:${barColor}"></div></div>
+          <div class="meta" style="text-align:center;margin-top:2px;font-size:9.5px">${pct}%</div>
         </td>
         <td>
-          <div style="display:flex;gap:4px;flex-wrap:wrap">
-            ${(d.status || 'booked') === 'booked' ? `<button class="btn btn-info sm" onclick='updateDispatchStatus("${d.id}", "in_transit")'>🚛 Transit</button>` : ''}
-            ${d.status === 'in_transit' ? `<button class="btn btn-success sm" onclick='updateDispatchStatus("${d.id}", "delivered")'>✅ Delivered</button>` : ''}
-            ${d.status !== 'hold' && d.status !== 'delivered' ? `<button class="btn btn-danger sm" onclick='updateDispatchStatus("${d.id}", "hold")'>⏸️</button>` : ''}
-            <button class="btn btn-wati sm" onclick='sendDispatchWati("${d.id}")'>📲</button>
-          </div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap">${actions}</div>
         </td>
       </tr>
     `;
@@ -1876,46 +1965,56 @@ async function loadVendorPayments() {
   }
 }
 
+function setVendorPayFilter(f) {
+  state.vendorPayFilter = f;
+  document.querySelectorAll('.vp-filter').forEach(b => b.classList.toggle('active', b.dataset.vpf === f));
+  renderVendorPayments();
+}
+
 function renderVendorPayments() {
-  // Stats
+  // Split stats: Prajapati-paid vs Party-paid
+  const prajapatiPaid = state.vendorPayments.filter(p => (p.paid_by || 'prajapati') === 'prajapati').reduce((s, p) => s + (p.amount || 0), 0);
+  const partyPaid = state.vendorPayments.filter(p => p.paid_by === 'party').reduce((s, p) => s + (p.amount || 0), 0);
   const totalOutstanding = state.vendorOutstanding.reduce((s, v) => s + (v.outstanding_amount || 0), 0);
-  const totalPaid = state.vendorOutstanding.reduce((s, v) => s + (v.total_paid_to_vendor || 0), 0);
   const totalDispatched = state.vendorOutstanding.reduce((s, v) => s + (v.total_dispatched_value || 0), 0);
   
   document.getElementById('vendorPaymentStats').innerHTML = `
     <div class="stat" style="color:var(--info)">
       <div class="stat-label">Total Dispatched</div>
       <div class="stat-value">${fmtINR(totalDispatched)}</div>
-      <div class="stat-meta">all-time value</div>
+      <div class="stat-meta">all-time freight value</div>
     </div>
     <div class="stat" style="color:var(--success)">
-      <div class="stat-label">Total Paid</div>
-      <div class="stat-value">${fmtINR(totalPaid)}</div>
-      <div class="stat-meta">to vendors</div>
+      <div class="stat-label">🏠 Prajapati Paid</div>
+      <div class="stat-value">${fmtINR(prajapatiPaid)}</div>
+      <div class="stat-meta">we paid vendors</div>
+    </div>
+    <div class="stat" style="color:var(--teal)">
+      <div class="stat-label">🏢 Party Paid</div>
+      <div class="stat-value">${fmtINR(partyPaid)}</div>
+      <div class="stat-meta">client paid directly</div>
     </div>
     <div class="stat" style="color:var(--warn)">
-      <div class="stat-label">Outstanding</div>
+      <div class="stat-label">⏳ Outstanding</div>
       <div class="stat-value">${fmtINR(totalOutstanding)}</div>
-      <div class="stat-meta">we owe vendors</div>
-    </div>
-    <div class="stat" style="color:var(--purple)">
-      <div class="stat-label">Total Payments</div>
-      <div class="stat-value">${state.vendorPayments.length}</div>
-      <div class="stat-meta">records</div>
+      <div class="stat-meta">we still owe vendors</div>
     </div>
   `;
   
-  // Outstanding
+  // Outstanding table
   if (!state.vendorOutstanding.length) {
     document.getElementById('vendorOutstandingBody').innerHTML = '<tr><td colspan="5" class="empty">No vendor data</td></tr>';
   } else {
-    document.getElementById('vendorOutstandingBody').innerHTML = state.vendorOutstanding.map(v => `
+    document.getElementById('vendorOutstandingBody').innerHTML = state.vendorOutstanding
+      .slice()
+      .sort((a, b) => (b.outstanding_amount || 0) - (a.outstanding_amount || 0))
+      .map(v => `
       <tr>
         <td>
           <div class="name">${escapeHtml(v.vendor_name || '—')}</div>
           <div class="meta">${escapeHtml(v.vendor_type || '')} ${v.vendor_city ? '· ' + escapeHtml(v.vendor_city) : ''}</div>
         </td>
-        <td>${fmtINR(v.total_dispatched_value)}</td>
+        <td>${fmtINR(v.prajapati_liable_value != null ? v.prajapati_liable_value : v.total_dispatched_value)}</td>
         <td>${fmtINR(v.total_paid_to_vendor)}</td>
         <td><strong style="color:${(v.outstanding_amount || 0) > 0 ? 'var(--warn)' : 'var(--success)'}">${fmtINR(v.outstanding_amount)}</strong></td>
         <td>
@@ -1925,28 +2024,57 @@ function renderVendorPayments() {
     `).join('');
   }
   
-  // Recent payments
-  if (!state.vendorPayments.length) {
-    document.getElementById('vendorPaymentBody').innerHTML = '<tr><td colspan="7" class="empty">No payments yet</td></tr>';
+  // Recent payments (filtered)
+  let pays = state.vendorPayments;
+  if (state.vendorPayFilter !== 'all') {
+    pays = pays.filter(p => (p.paid_by || 'prajapati') === state.vendorPayFilter);
+  }
+  
+  if (!pays.length) {
+    document.getElementById('vendorPaymentBody').innerHTML = '<tr><td colspan="8" class="empty">No payments match this filter</td></tr>';
   } else {
-    document.getElementById('vendorPaymentBody').innerHTML = state.vendorPayments.map(p => `
+    document.getElementById('vendorPaymentBody').innerHTML = pays.map(p => {
+      const src = (p.paid_by || 'prajapati');
+      const srcTag = src === 'party' ? '<span class="tag teal">🏢 PARTY</span>' : '<span class="tag success">🏠 PRAJAPATI</span>';
+      // Receipt preview: image thumbnail or doc link
+      let receiptCell = '—';
+      if (p.receipt_url) {
+        const isImg = /\.(jpg|jpeg|png|webp|gif)$/i.test(p.receipt_url) || /image/i.test(p.receipt_file_name || '');
+        receiptCell = isImg
+          ? `<a href="${p.receipt_url}" target="_blank" title="View receipt"><img src="${p.receipt_url}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid var(--rule)"></a>`
+          : `<a href="${p.receipt_url}" target="_blank" class="btn btn-secondary sm">📄 View</a>`;
+      }
+      // Wati: party-paid usually doesn't need vendor confirmation, but still allow
+      const watiCell = p.wati_sent_at
+        ? '<span class="tag success">✓ SENT</span>'
+        : `<button class="btn btn-wati sm" onclick='resendVendorPaymentWati("${p.id}")'>📲</button>`;
+      return `
       <tr>
         <td>${p.payment_date || '—'}</td>
         <td><div class="name">${escapeHtml(p.vendor_name || '—')}</div></td>
         <td><strong>${fmtINR(p.amount)}</strong></td>
+        <td>${srcTag}</td>
         <td><span class="tag info">${escapeHtml(p.payment_mode || '—').toUpperCase()}</span></td>
         <td><small>${escapeHtml(p.reference_number || '—')}</small></td>
-        <td>${p.receipt_url ? `<a href="${p.receipt_url}" target="_blank" class="btn btn-secondary sm">📄</a>` : '—'}</td>
-        <td>
-          ${p.wati_sent_at ? '<span class="tag success">✓ SENT</span>' : `<button class="btn btn-wati sm" onclick='resendVendorPaymentWati("${p.id}")'>📲</button>`}
-        </td>
+        <td>${receiptCell}</td>
+        <td>${watiCell}</td>
       </tr>
-    `).join('');
+    `;
+    }).join('');
   }
+}
+
+function setVpPaidBy(who) {
+  state.vpPaidBy = who;
+  document.querySelectorAll('.vp-paidby').forEach(b => b.classList.toggle('active', b.dataset.paidby === who));
+  document.getElementById('vpPaidByHint').textContent = who === 'prajapati'
+    ? 'Prajapati paid the vendor — this reduces our outstanding to the vendor.'
+    : 'Client/Party paid the vendor directly — recorded for tracking, does NOT affect our outstanding.';
 }
 
 function openVendorPaymentModal(vendorId) {
   state.currentVendorPayment = null;
+  setVpPaidBy('prajapati');
   document.getElementById('vpVendor').value = vendorId || '';
   document.getElementById('vpAmount').value = '';
   document.getElementById('vpDate').value = new Date().toISOString().slice(0, 10);
@@ -2020,6 +2148,7 @@ async function saveVendorPayment(sendWatiAfter) {
       vendor_id: vendorId,
       vendor_name: vendor?.name || null,
       amount: amount,
+      paid_by: state.vpPaidBy,
       payment_date: date,
       payment_mode: mode,
       reference_number: ref,
@@ -2147,22 +2276,22 @@ function loadReports() {
   const outstanding = filtered.filter(d => d.payment_status === 'unpaid').reduce((s, d) => s + (d.total_freight || 0), 0);
   
   document.getElementById('reportStats').innerHTML = `
-    <div class="stat" style="color:var(--info)">
+    <div class="stat hero-disp">
       <div class="stat-label">Dispatches</div>
       <div class="stat-value">${totalDisp}</div>
       <div class="stat-meta">in period</div>
     </div>
-    <div class="stat" style="color:var(--teal)">
+    <div class="stat hero-qty">
       <div class="stat-label">Total Qty</div>
       <div class="stat-value">${fmt(totalQty)}</div>
       <div class="stat-meta">units</div>
     </div>
-    <div class="stat" style="color:var(--gold-deep)">
+    <div class="stat hero-val">
       <div class="stat-label">Total Value</div>
       <div class="stat-value">${fmtINR(totalValue)}</div>
       <div class="stat-meta">freight</div>
     </div>
-    <div class="stat" style="color:var(--warn)">
+    <div class="stat hero-out">
       <div class="stat-label">Outstanding</div>
       <div class="stat-value">${fmtINR(outstanding)}</div>
       <div class="stat-meta">unpaid</div>
@@ -2224,6 +2353,87 @@ function loadReports() {
   document.getElementById('paymentStatusBody').innerHTML = Object.entries(byPay).map(([p, s]) => `
     <tr><td><strong>${escapeHtml(p)}</strong></td><td>${s.disp}</td><td>${fmt(s.qty)}</td><td><strong>${fmtINR(s.value)}</strong></td><td>${fmtINR(s.outstanding)}</td></tr>
   `).join('') + `<tr style="background:var(--paper);font-weight:700"><td>TOTAL</td><td>${totalDisp}</td><td>${fmt(totalQty)}</td><td>${fmtINR(totalValue)}</td><td>${fmtINR(outstanding)}</td></tr>`;
+  
+  // Charts
+  renderReportCharts(byVendor, byLoc, byPay);
+}
+
+// ── Chart.js renderers ──
+let _charts = {};
+function destroyChart(key) {
+  if (_charts[key]) { try { _charts[key].destroy(); } catch (e) {} _charts[key] = null; }
+}
+function renderReportCharts(byVendor, byLoc, byPay) {
+  if (typeof Chart === 'undefined') return;
+  Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+  Chart.defaults.font.size = 11;
+  
+  // Top 6 vendors by value (horizontal bar)
+  const vendors = Object.entries(byVendor).sort((a, b) => b[1].value - a[1].value).slice(0, 6);
+  destroyChart('vendor');
+  const vc = document.getElementById('vendorChart');
+  if (vc && vendors.length) {
+    _charts.vendor = new Chart(vc, {
+      type: 'bar',
+      data: {
+        labels: vendors.map(v => v[0]),
+        datasets: [{
+          label: 'Freight Value (₹)',
+          data: vendors.map(v => v[1].value),
+          backgroundColor: '#1E40AF', borderRadius: 6, barThickness: 18
+        }]
+      },
+      options: {
+        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => '₹' + Number(c.raw).toLocaleString('en-IN') } } },
+        scales: { x: { ticks: { callback: v => '₹' + (v >= 1000 ? (v / 1000) + 'k' : v) } } }
+      }
+    });
+  } else if (vc) { destroyChart('vendor'); vc.getContext('2d').clearRect(0, 0, vc.width, vc.height); }
+  
+  // Top 6 locations by qty (vertical bar)
+  const locs = Object.entries(byLoc).sort((a, b) => b[1].qty - a[1].qty).slice(0, 6);
+  destroyChart('location');
+  const lc = document.getElementById('locationChart');
+  if (lc && locs.length) {
+    _charts.location = new Chart(lc, {
+      type: 'bar',
+      data: {
+        labels: locs.map(l => l[0]),
+        datasets: [{
+          label: 'Units', data: locs.map(l => l[1].qty),
+          backgroundColor: '#0D9488', borderRadius: 6, barThickness: 26
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } }
+      }
+    });
+  } else if (lc) { destroyChart('location'); lc.getContext('2d').clearRect(0, 0, lc.width, lc.height); }
+  
+  // Payment status (doughnut)
+  const payEntries = Object.entries(byPay);
+  destroyChart('payment');
+  const pc = document.getElementById('paymentChart');
+  if (pc && payEntries.length) {
+    const colorMap = { PAID: '#047857', UNPAID: '#C2410C', COD: '#1E40AF' };
+    _charts.payment = new Chart(pc, {
+      type: 'doughnut',
+      data: {
+        labels: payEntries.map(p => p[0]),
+        datasets: [{
+          data: payEntries.map(p => p[1].value),
+          backgroundColor: payEntries.map(p => colorMap[p[0]] || '#7C3AED'),
+          borderWidth: 2, borderColor: '#fff'
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '62%',
+        plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: c => c.label + ': ₹' + Number(c.raw).toLocaleString('en-IN') } } }
+      }
+    });
+  } else if (pc) { destroyChart('payment'); pc.getContext('2d').clearRect(0, 0, pc.width, pc.height); }
 }
 
 function exportDispatchCSV() {
