@@ -1087,6 +1087,52 @@ label {
 .photos-filter-bar input[type="date"] { min-width: 130px; }
 .photos-filter-bar input[type="search"] { min-width: 180px; }
 
+/* ── Searchable dropdown ── */
+.search-dd {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 200;
+  background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+  margin-top: 3px; max-height: 240px; overflow-y: auto; display: none;
+  box-shadow: 0 8px 24px rgba(11,25,87,0.14);
+}
+.search-dd.open { display: block; }
+.search-dd-item {
+  padding: 9px 12px; font-size: 12.5px; cursor: pointer; border-bottom: 1px solid var(--bg);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.search-dd-item:last-child { border-bottom: none; }
+.search-dd-item:hover, .search-dd-item.hl { background: var(--accent-soft, #e6fbfb); color: var(--primary); }
+.search-dd-item.sel { font-weight: 700; color: var(--primary); }
+.search-dd-empty { padding: 10px 12px; font-size: 12px; color: var(--text-3); font-style: italic; }
+
+/* ── Clickable stat chips ── */
+.stat-chips { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.stat-chip {
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 9px 16px; cursor: pointer; transition: all 0.15s; box-shadow: var(--shadow-sm);
+  display: flex; align-items: baseline; gap: 7px; user-select: none;
+}
+.stat-chip:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(11,25,87,0.12); border-color: var(--accent-deep); }
+.stat-chip strong { font-family: 'JetBrains Mono', monospace; font-size: 16px; line-height: 1; }
+.stat-chip span { font-size: 11.5px; color: var(--text-2); }
+.stat-chip.active { border-color: var(--primary); background: linear-gradient(180deg, var(--card), #f0f4ff); box-shadow: 0 0 0 2px rgba(11,25,87,0.12); }
+
+/* ── Polished action buttons ── */
+.photo-action-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.pbtn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 9px 15px;
+  border: none; border-radius: 9px; font-size: 12.5px; font-weight: 700; cursor: pointer;
+  font-family: inherit; color: #fff; transition: all 0.15s; box-shadow: var(--shadow-sm);
+}
+.pbtn i { font-size: 15px; }
+.pbtn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.18); filter: brightness(1.05); }
+.pbtn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+.pbtn-zip { background: linear-gradient(135deg,#10b981,#059669); }
+.pbtn-excel { background: linear-gradient(135deg,#22c55e,#16a34a); }
+.pbtn-excel2 { background: linear-gradient(135deg,#0B1957,#1E3A8A); color: #26d0ce; }
+.pbtn-ppt { background: linear-gradient(135deg,#ef4444,#dc2626); }
+.pbtn-owners { background: linear-gradient(135deg,#26d0ce,#0fa6a4); color: #0B1957; }
+.pbtn-bulk { background: linear-gradient(135deg,#8b5cf6,#7c3aed); }
+
 /* View toggle pills */
 .view-toggle {
   display: inline-flex;
@@ -2545,15 +2591,19 @@ label {
           <label>To</label>
           <input type="date" id="photosDateTo" onchange="loadPhotos()">
         </div>
-        <div>
+        <div style="position:relative;">
           <label>Campaign</label>
-          <select id="photosCampaign" onchange="loadPhotos()">
+          <input type="text" id="photosCampaignSearch" placeholder="Search campaign..." autocomplete="off" oninput="filterDropdown('campaign')" onfocus="filterDropdown('campaign')" style="width:100%;">
+          <div id="photosCampaignDD" class="search-dd"></div>
+          <select id="photosCampaign" onchange="loadPhotos()" style="display:none;">
             <option value="">All campaigns</option>
           </select>
         </div>
-        <div>
+        <div style="position:relative;">
           <label>Team member</label>
-          <select id="photosMember" onchange="loadPhotos()">
+          <input type="text" id="photosMemberSearch" placeholder="Search member..." autocomplete="off" oninput="filterDropdown('member')" onfocus="filterDropdown('member')" style="width:100%;">
+          <div id="photosMemberDD" class="search-dd"></div>
+          <select id="photosMember" onchange="loadPhotos()" style="display:none;">
             <option value="">All members</option>
           </select>
         </div>
@@ -2586,37 +2636,39 @@ label {
         </div>
       </div>
 
-      <!-- Stat row: Photos · Vehicles · Hood · Back Panel (+ verified/pending) -->
-      <div style="display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
-        <div style="background:var(--card); border:1px solid var(--border); border-radius:8px; padding:8px 14px; font-size:12px; box-shadow:var(--shadow-sm);">
-          <strong style="color:var(--primary); font-family:'JetBrains Mono', monospace; font-size:15px;" id="pTotal">0</strong> <span style="color:var(--text-2);">photos</span>
+      <!-- Stat row: clickable filter chips -->
+      <div class="stat-chips" id="photoStatChips">
+        <div class="stat-chip active" data-filter="all" onclick="applyStatFilter('all')">
+          <strong style="color:var(--primary);" id="pTotal">0</strong><span>photos</span>
         </div>
-        <div style="background:var(--card); border:1px solid var(--border); border-radius:8px; padding:8px 14px; font-size:12px; box-shadow:var(--shadow-sm);">
-          <strong style="color:var(--accent-deep); font-family:'JetBrains Mono', monospace; font-size:15px;" id="pVehicles">0</strong> <span style="color:var(--text-2);">total vehicles</span>
+        <div class="stat-chip" data-filter="vehicles" onclick="applyStatFilter('vehicles')">
+          <strong style="color:var(--accent-deep);" id="pVehicles">0</strong><span>total vehicles</span>
         </div>
-        <div style="background:var(--card); border:1px solid var(--border); border-radius:8px; padding:8px 14px; font-size:12px; box-shadow:var(--shadow-sm);">
-          <strong style="color:#0EA5E9; font-family:'JetBrains Mono', monospace; font-size:15px;" id="pHood">0</strong> <span style="color:var(--text-2);">auto hood</span>
+        <div class="stat-chip" data-filter="hood" onclick="applyStatFilter('hood')">
+          <strong style="color:#0EA5E9;" id="pHood">0</strong><span>auto hood</span>
         </div>
-        <div style="background:var(--card); border:1px solid var(--border); border-radius:8px; padding:8px 14px; font-size:12px; box-shadow:var(--shadow-sm);">
-          <strong style="color:#F5B800; font-family:'JetBrains Mono', monospace; font-size:15px;" id="pBack">0</strong> <span style="color:var(--text-2);">back panel</span>
+        <div class="stat-chip" data-filter="back_panel" onclick="applyStatFilter('back_panel')">
+          <strong style="color:#F5B800;" id="pBack">0</strong><span>back panel</span>
         </div>
-        <div style="background:var(--card); border:1px solid var(--border); border-radius:8px; padding:8px 14px; font-size:12px; box-shadow:var(--shadow-sm);">
-          <strong style="color:var(--success); font-family:'JetBrains Mono', monospace; font-size:15px;" id="pVerified">0</strong> <span style="color:var(--text-2);">verified</span>
+        <div class="stat-chip" data-filter="verified" onclick="applyStatFilter('verified')">
+          <strong style="color:var(--success);" id="pVerified">0</strong><span>verified</span>
         </div>
-        <div style="background:var(--card); border:1px solid var(--border); border-radius:8px; padding:8px 14px; font-size:12px; box-shadow:var(--shadow-sm);">
-          <strong style="color:var(--warn); font-family:'JetBrains Mono', monospace; font-size:15px;" id="pPending">0</strong> <span style="color:var(--text-2);">pending</span>
+        <div class="stat-chip" data-filter="pending" onclick="applyStatFilter('pending')">
+          <strong style="color:var(--warn);" id="pPending">0</strong><span>pending</span>
+        </div>
+        <div class="stat-chip" data-filter="rejected" onclick="applyStatFilter('rejected')">
+          <strong style="color:var(--danger);" id="pRejected">0</strong><span>rejected</span>
         </div>
       </div>
 
-      <!-- Action buttons (V1 feature parity) -->
-      <div id="photoActionBar" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
-        <button class="btn btn-sm" style="background:#10b981; color:#fff;" id="zipDownloadBtn" onclick="downloadPhotosZip()"><i class="ti ti-package"></i> Download ZIP</button>
-        <button class="btn btn-sm" style="background:#22c55e; color:#fff;" onclick="downloadExcelReport()" title="Standalone Excel report — campaign/date/team/location"><i class="ti ti-file-spreadsheet"></i> Excel Report</button>
-        <button class="btn btn-sm" style="background:#0B1957; color:#26d0ce;" onclick="downloadExcelReportV2()" title="Approved format — verified vehicles with owner details"><i class="ti ti-sparkles"></i> Excel V2</button>
-        <button class="btn btn-sm" style="background:#ef4444; color:#fff;" onclick="openPPTGenerator()" title="Generate PowerPoint presentation"><i class="ti ti-presentation"></i> Generate PPT</button>
-        <button class="btn btn-sm" style="background:#f59e0b; color:#fff;" onclick="configFindrServer()" title="Configure Findr server URL"><i class="ti ti-settings"></i> Findr</button>
-        <button class="btn btn-sm" style="background:#26d0ce; color:#0B1957; font-weight:700;" onclick="bulkFetchSurepass()" title="Fetch owner+contact from Verified Database"><i class="ti ti-search"></i> Get Vehicle Owners</button>
-        <button class="btn btn-sm" style="background:#8b5cf6; color:#fff;" onclick="openBulkUpload()" title="Upload existing vehicle data (Excel/CSV)"><i class="ti ti-upload"></i> Bulk Import</button>
+      <!-- Action buttons (Findr removed) -->
+      <div id="photoActionBar" class="photo-action-bar">
+        <button class="pbtn pbtn-zip" id="zipDownloadBtn" onclick="downloadPhotosZip()"><i class="ti ti-package"></i> Download ZIP</button>
+        <button class="pbtn pbtn-excel" onclick="downloadExcelReport()" title="Standalone Excel report — campaign/date/team/location"><i class="ti ti-file-spreadsheet"></i> Excel Report</button>
+        <button class="pbtn pbtn-excel2" onclick="downloadExcelReportV2()" title="Approved format — verified vehicles with owner details"><i class="ti ti-sparkles"></i> Excel V2</button>
+        <button class="pbtn pbtn-ppt" onclick="openPPTGenerator()" title="Generate PowerPoint presentation"><i class="ti ti-presentation"></i> Generate PPT</button>
+        <button class="pbtn pbtn-owners" onclick="bulkFetchSurepass()" title="Fetch owner+contact from Verified Database"><i class="ti ti-search"></i> Get Vehicle Owners</button>
+        <button class="pbtn pbtn-bulk" onclick="openBulkUpload()" title="Upload existing vehicle data (Excel/CSV)"><i class="ti ti-upload"></i> Bulk Import</button>
       </div>
 
       <!-- Photos containers -->
@@ -5904,6 +5956,96 @@ function getPhotosDateRange() {
   return { from: from, to: to };
 }
 
+// ── Searchable dropdown helpers (campaign + member) ──
+function buildPhotoDropdowns() {
+  // Campaign hidden select
+  var cSel = $('photosCampaign');
+  if (cSel && cSel.options.length <= 1 && state.campaigns.length > 0) {
+    var co = '<option value="">All campaigns</option>';
+    state.campaigns.forEach(function(c){ co += '<option value="' + escapeHtml(c.key) + '">' + escapeHtml(c.name || c.key) + '</option>'; });
+    cSel.innerHTML = co;
+  }
+  // Member hidden select — ALL active members (no role restriction)
+  var mSel = $('photosMember');
+  if (mSel && mSel.options.length <= 1 && state.members.length > 0) {
+    var mo = '<option value="">All members</option>';
+    state.members.filter(function(m){ return m.active !== false; }).forEach(function(m){
+      mo += '<option value="' + escapeHtml(m.phone) + '">' + escapeHtml(m.name) + (m.role ? ' (' + m.role + ')' : '') + '</option>';
+    });
+    mSel.innerHTML = mo;
+  }
+}
+
+function filterDropdown(which) {
+  var inp = $('photos' + (which === 'campaign' ? 'Campaign' : 'Member') + 'Search');
+  var dd = $('photos' + (which === 'campaign' ? 'Campaign' : 'Member') + 'DD');
+  var sel = $('photos' + (which === 'campaign' ? 'Campaign' : 'Member'));
+  if (!inp || !dd || !sel) return;
+  var q = (inp.value || '').toLowerCase().trim();
+  var opts = Array.prototype.slice.call(sel.options);
+  var matches = opts.filter(function(o){ return o.text.toLowerCase().indexOf(q) !== -1; });
+  if (!matches.length) {
+    dd.innerHTML = '<div class="search-dd-empty">No matches</div>';
+  } else {
+    dd.innerHTML = matches.map(function(o){
+      var selCls = (o.value === sel.value) ? ' sel' : '';
+      return '<div class="search-dd-item' + selCls + '" data-val="' + escapeHtml(o.value) + '" onmousedown="pickDropdown(\'' + which + '\', this)">' + escapeHtml(o.text) + '</div>';
+    }).join('');
+  }
+  dd.classList.add('open');
+}
+
+function pickDropdown(which, el) {
+  var key = which === 'campaign' ? 'Campaign' : 'Member';
+  var inp = $('photos' + key + 'Search');
+  var dd = $('photos' + key + 'DD');
+  var sel = $('photos' + key);
+  sel.value = el.getAttribute('data-val');
+  inp.value = el.getAttribute('data-val') === '' ? '' : el.textContent;
+  dd.classList.remove('open');
+  loadPhotos();
+}
+
+// Close dropdowns on outside click
+document.addEventListener('click', function(e){
+  ['Campaign','Member'].forEach(function(k){
+    var dd = document.getElementById('photos'+k+'DD');
+    var inp = document.getElementById('photos'+k+'Search');
+    if (dd && inp && !dd.contains(e.target) && e.target !== inp) dd.classList.remove('open');
+  });
+});
+
+// ── Clickable stat chip filter ──
+function applyStatFilter(kind) {
+  // highlight active chip
+  document.querySelectorAll('#photoStatChips .stat-chip').forEach(function(c){
+    c.classList.toggle('active', c.getAttribute('data-filter') === kind);
+  });
+  var modeSel = $('photosMode');
+  var statusSel = $('photosStatus');
+  // reset both, then set per kind
+  if (kind === 'all' || kind === 'photos' || kind === 'vehicles') {
+    if (modeSel) modeSel.value = '';
+    if (statusSel) statusSel.value = '';
+  } else if (kind === 'hood') {
+    if (modeSel) modeSel.value = 'hood';
+    if (statusSel) statusSel.value = '';
+  } else if (kind === 'back_panel') {
+    if (modeSel) modeSel.value = 'back_panel';
+    if (statusSel) statusSel.value = '';
+  } else if (kind === 'verified') {
+    if (statusSel) statusSel.value = 'verified';
+    if (modeSel) modeSel.value = '';
+  } else if (kind === 'pending') {
+    if (statusSel) statusSel.value = 'pending';
+    if (modeSel) modeSel.value = '';
+  } else if (kind === 'rejected') {
+    if (statusSel) statusSel.value = 'rejected';
+    if (modeSel) modeSel.value = '';
+  }
+  loadPhotos();
+}
+
 function loadPhotos() {
   if ($('tab-photos') && !$('tab-photos').classList.contains('active')) return;
   
@@ -5911,21 +6053,20 @@ function loadPhotos() {
   $('photosGridContainer').innerHTML = '<div class="spinner"></div>';
   $('photosLoadMore').style.display = 'none';
   
-  // Populate filter dropdowns once
-  if ($('photosCampaign').options.length <= 1 && state.campaigns.length > 0) {
-    var campOpts = '<option value="">All campaigns</option>';
-    state.campaigns.forEach(function(c) {
-      campOpts += '<option value="' + escapeHtml(c.key) + '">' + escapeHtml(c.name || c.key) + '</option>';
-    });
-    $('photosCampaign').innerHTML = campOpts;
+  // Populate filter dropdowns once — ensure data loaded first
+  if (state.members.length === 0 && typeof loadMembers === 'function') {
+    // members not loaded yet (Photos tab opened before Members tab) — fetch now
+    api('/rest/v1/trial_team_members?select=id,name,phone,role,active&order=name.asc')
+      .then(function(m){ state.members = m || []; buildPhotoDropdowns(); }).catch(function(){});
   }
-  if ($('photosMember').options.length <= 1 && state.members.length > 0) {
-    var memOpts = '<option value="">All members</option>';
-    state.members.filter(function(m){ return m.role === 'field' || m.role === 'owner'; }).forEach(function(m) {
-      memOpts += '<option value="' + escapeHtml(m.phone) + '">' + escapeHtml(m.name) + '</option>';
-    });
-    $('photosMember').innerHTML = memOpts;
+  if (state.campaigns.length === 0) {
+    api('/rest/v1/trial_campaigns?select=id,campaign_key,name,campaign_name&order=created_at.desc')
+      .then(function(c){
+        state.campaigns = (c||[]).map(function(x){ return { key: x.campaign_key || x.id, name: x.name || x.campaign_name || x.campaign_key }; });
+        buildPhotoDropdowns();
+      }).catch(function(){});
   }
+  buildPhotoDropdowns();
   
   var range = getPhotosDateRange();
   var campaign = $('photosCampaign').value;
@@ -6046,6 +6187,7 @@ function updatePhotoStats() {
   var pending = photos.filter(function(p){ return !p.is_verified && !p.rejected; }).length;
   var hood = photos.filter(function(p){ return (p.mode || '').toLowerCase() === 'hood'; }).length;
   var back = photos.filter(function(p){ return (p.mode || '').toLowerCase() === 'back_panel'; }).length;
+  var rejected = photos.filter(function(p){ return p.rejected; }).length;
   var vehicles = new Set();
   photos.forEach(function(p){ if (p.vehicle_number) vehicles.add(p.vehicle_number.toUpperCase()); });
   
@@ -6056,6 +6198,7 @@ function updatePhotoStats() {
   $('pVehicles').textContent = vehicles.size;
   if ($('pHood')) $('pHood').textContent = hood;
   if ($('pBack')) $('pBack').textContent = back;
+  if ($('pRejected')) $('pRejected').textContent = rejected;
   $('navPhotosCount').textContent = serverTotal;
   
   // Subtitle: clear distinction between loaded vs total
