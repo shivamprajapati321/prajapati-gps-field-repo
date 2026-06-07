@@ -472,15 +472,30 @@ async function loadSalesTeam() {
     .eq('active', true)
     .in('role', ['owner', 'admin', 'sales', 'hr_sales', 'sales_admin'])
     .order('name');
-  
+
   allSales = data || [];
-  renderSalesOptions(allSales);
-  
-  const myRole = String(user.role || '').toLowerCase();
-  if (['sales', 'hr_sales', 'sales_admin'].includes(myRole)) {
-    const self = allSales.find(s => s.id === user.id);
-    if (self) selectSales(self);
+
+  // Ensure the current user is always selectable as the salesperson for their
+  // own campaign — even if their role isn't in the sales set (e.g. planner,
+  // operations_manager). If they're missing from the list, fetch + prepend them.
+  if (user && user.id && !allSales.some(s => s.id === user.id)) {
+    try {
+      const { data: me } = await db.from('trial_team_members')
+        .select('id, name, phone, role, lead_sources, hr_role')
+        .eq('id', user.id)
+        .single();
+      if (me) allSales = [me, ...allSales];
+    } catch (e) {
+      // fallback: use the session user object we already have
+      allSales = [{ id: user.id, name: user.name, phone: user.phone, role: user.role, lead_sources: [], hr_role: null }, ...allSales];
+    }
   }
+
+  renderSalesOptions(allSales);
+
+  // Auto-select self for any role that opened the page (their campaign → their credit)
+  const self = allSales.find(s => s.id === user.id);
+  if (self) selectSales(self);
 }
 
 function renderSalesOptions(arr) {
