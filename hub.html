@@ -226,6 +226,40 @@ input,select,textarea{font-family:inherit;outline:none}
 }
 
 .hidden{display:none !important}
+
+/* ═══ SIDEBAR SHELL LAYOUT (admin-v2 style) ═══ */
+.shell{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+.sidebar{background:linear-gradient(180deg,var(--navy) 0%,#091547 100%);color:rgba(255,255,255,0.85);padding:18px 13px;position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column}
+.sidebar::-webkit-scrollbar{width:6px}
+.sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:3px}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:4px 7px 16px;margin-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.08)}
+.sb-logo{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),var(--accent-deep));border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--navy);font-weight:800;font-size:17px;flex-shrink:0}
+.sb-brand-name{font-weight:700;font-size:14px;color:#fff;line-height:1.1}
+.sb-brand-sub{font-size:9.5px;color:rgba(255,255,255,0.55);margin-top:2px}
+.sb-nav{flex:1}
+.sb-section{margin-top:14px}
+.sb-section-title{font-size:9.5px;text-transform:uppercase;letter-spacing:0.8px;color:rgba(255,255,255,0.4);padding:0 9px;margin-bottom:5px;font-weight:600}
+.sb-item{display:flex;align-items:center;gap:10px;padding:8px 10px;font-size:12.5px;border-radius:7px;cursor:pointer;color:rgba(255,255,255,0.78);transition:all 0.15s;position:relative;margin-bottom:2px;font-weight:500;text-decoration:none}
+.sb-item i{font-size:17px;flex-shrink:0;width:18px;text-align:center}
+.sb-item .sb-emoji{font-size:15px;width:18px;text-align:center;flex-shrink:0}
+.sb-item:hover{background:rgba(255,255,255,0.06);color:#fff}
+.sb-item.active{background:linear-gradient(90deg,rgba(38,208,206,0.18),rgba(38,208,206,0.04));color:#fff;font-weight:600}
+.sb-item.active::before{content:'';position:absolute;left:-13px;top:7px;bottom:7px;width:3px;background:var(--accent);border-radius:0 3px 3px 0}
+.sb-item .sb-badge{margin-left:auto;background:rgba(38,208,206,0.2);color:var(--accent);font-size:8.5px;padding:1px 6px;border-radius:4px;font-weight:700;letter-spacing:0.3px}
+.sb-footer{margin-top:auto;padding-top:16px;border-top:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:9px}
+.sb-ava{width:32px;height:32px;border-radius:50%;background:var(--gold);color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0}
+.sb-uname{font-size:12px;font-weight:700;color:#fff;line-height:1.15}
+.sb-urole{font-size:9px;color:var(--gold);text-transform:uppercase;letter-spacing:0.4px}
+.sb-logout{background:rgba(255,255,255,0.08);border:none;color:rgba(255,255,255,0.7);width:30px;height:30px;border-radius:7px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center}
+.sb-logout:hover{background:rgba(255,255,255,0.15);color:#fff}
+.content-area{overflow-x:hidden;background:var(--cream)}
+.sb-toggle{display:none}
+@media(max-width:880px){
+  .shell{grid-template-columns:1fr}
+  .sidebar{position:fixed;left:0;top:0;width:240px;z-index:300;transform:translateX(-100%);transition:transform 0.25s}
+  .sidebar.open{transform:translateX(0)}
+  .sb-toggle{display:flex;align-items:center;justify-content:center;width:38px;height:38px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:18px;cursor:pointer}
+}
 </style>
 </head>
 <body>
@@ -260,9 +294,32 @@ input,select,textarea{font-family:inherit;outline:none}
      ═══════════════════════════════════════════════════════════ -->
 
 <div id="mainApp" class="hidden">
+ <div class="shell">
 
+  <!-- ═══ SIDEBAR (access-filtered) ═══ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-brand">
+      <div class="sb-logo">P</div>
+      <div>
+        <div class="sb-brand-name">Prajapati GPS</div>
+        <div class="sb-brand-sub">Operations Hub</div>
+      </div>
+    </div>
+    <nav class="sb-nav" id="sidebarNav"></nav>
+    <div class="sb-footer">
+      <div class="sb-ava" id="sbAvatar">?</div>
+      <div style="flex:1;min-width:0">
+        <div class="sb-uname" id="sbUserName">…</div>
+        <div class="sb-urole" id="sbUserRole">…</div>
+      </div>
+      <button class="sb-logout" onclick="doLogout()" title="Log out">⏻</button>
+    </div>
+  </aside>
+
+  <div class="content-area">
   <header class="masthead">
     <div class="masthead-inner">
+      <button class="sb-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
       <div class="brand">
         <div class="brand-mark">P</div>
         <div>
@@ -344,7 +401,9 @@ input,select,textarea{font-family:inherit;outline:none}
     </div>
     
   </main>
-</div>
+  </div><!-- /content-area -->
+ </div><!-- /shell -->
+</div><!-- /mainApp -->
 
 <script>
 // ═══════════════════════════════════════════════════════════════
@@ -627,6 +686,35 @@ function renderModules() {
         </div>
       `;
     }).join('');
+
+  // ─── Render access-filtered SIDEBAR nav ───
+  renderSidebar(grouped);
+}
+
+function renderSidebar(grouped) {
+  const nav = document.getElementById('sidebarNav');
+  if (!nav) return;
+  const html = SECTION_ORDER
+    .filter(s => grouped[s] && grouped[s].length)
+    .map(sectionName => {
+      const modules = grouped[sectionName];
+      const [, ...rest] = sectionName.split('. ');
+      const title = rest.join('. ');
+      const items = modules.map(m => {
+        const badge = m.badge ? `<span class="sb-badge">${escapeHtml(m.badge)}</span>` : '';
+        const emoji = m.icon ? `<span class="sb-emoji">${m.icon}</span>` : '<i class="ti ti-circle"></i>';
+        return `<a class="sb-item" href="${m.url}">${emoji}<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(m.name)}</span>${badge}</a>`;
+      }).join('');
+      return `<div class="sb-section"><div class="sb-section-title">${escapeHtml(title)}</div>${items}</div>`;
+    }).join('');
+  nav.innerHTML = html || '<div style="padding:20px;color:rgba(255,255,255,0.5);font-size:12px;text-align:center">No modules available</div>';
+
+  // Sidebar footer user info
+  const u = state.user || {};
+  const initial = (u.name || '?').charAt(0).toUpperCase();
+  const sbA = document.getElementById('sbAvatar'); if (sbA) sbA.textContent = initial;
+  const sbN = document.getElementById('sbUserName'); if (sbN) sbN.textContent = u.name || 'User';
+  const sbR = document.getElementById('sbUserRole'); if (sbR) sbR.textContent = (u.role || '').replace(/_/g, ' ');
 }
 
 function renderModule(m) {
