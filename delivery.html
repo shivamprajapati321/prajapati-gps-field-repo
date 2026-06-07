@@ -849,7 +849,7 @@ function dbg(msg, type) {
   if (!box) {
     box = document.createElement('div');
     box.id = '__dbgbox';
-    box.style.cssText = 'position:fixed;bottom:0;left:0;right:0;max-height:40vh;overflow:auto;background:#0B1957;color:#7CFC9A;font:11px/1.5 monospace;padding:8px 12px;z-index:99999;border-top:3px solid #B89B4E;white-space:pre-wrap';
+    box.style.cssText = 'position:fixed;top:0;left:0;right:0;max-height:35vh;overflow:auto;background:#0B1957;color:#7CFC9A;font:11px/1.5 monospace;padding:8px 12px;z-index:99999;border-bottom:3px solid #B89B4E;white-space:pre-wrap';
     const hd = document.createElement('div');
     hd.style.cssText = 'color:#D4B45F;font-weight:700;margin-bottom:4px';
     hd.textContent = '🔧 DEBUG LOG (tap to clear)';
@@ -1819,11 +1819,11 @@ function renderDispatchRow(d) {
       <td><span class="tag ${statusTag}">${statusLabel}</span></td>
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
-          ${d.pdf_url ? `<a href="${d.pdf_url}" target="_blank" class="btn btn-secondary sm">📄 PDF</a>` : `<button class="btn btn-secondary sm" data-act="pdf" data-id="${d.id}">📄 PDF</button>`}
-          <button class="btn btn-wati sm" data-act="wati" data-id="${d.id}">📲</button>
-          ${st === 'booked' ? `<button class="btn btn-info sm" data-act="status" data-id="${d.id}" data-to="in_transit">🚛</button>` : ''}
-          ${st === 'in_transit' ? `<button class="btn btn-purple sm" data-act="status" data-id="${d.id}" data-to="out_for_delivery">🛵</button>` : ''}
-          ${st === 'out_for_delivery' ? `<button class="btn btn-success sm" data-act="status" data-id="${d.id}" data-to="delivered">✅</button>` : ''}
+          ${d.pdf_url ? `<a href="${d.pdf_url}" target="_blank" class="btn btn-secondary sm">📄 PDF</a>` : `<button class="btn btn-secondary sm" data-act="pdf" data-id="${d.id}" onclick="window.generatePdfFor('${d.id}')">📄 PDF</button>`}
+          <button class="btn btn-wati sm" data-act="wati" data-id="${d.id}" onclick="window.sendDispatchWati('${d.id}')">📲</button>
+          ${st === 'booked' ? `<button class="btn btn-info sm" data-act="status" data-id="${d.id}" data-to="in_transit" onclick="window.updateDispatchStatus('${d.id}','in_transit')">🚛</button>` : ''}
+          ${st === 'in_transit' ? `<button class="btn btn-purple sm" data-act="status" data-id="${d.id}" data-to="out_for_delivery" onclick="window.updateDispatchStatus('${d.id}','out_for_delivery')">🛵</button>` : ''}
+          ${st === 'out_for_delivery' ? `<button class="btn btn-success sm" data-act="status" data-id="${d.id}" data-to="delivered" onclick="window.updateDispatchStatus('${d.id}','delivered')">✅</button>` : ''}
         </div>
       </td>
     </tr>
@@ -1964,14 +1964,14 @@ function renderProgress() {
     if (d.delivered_at) tl.push('✅ ' + fmtTime(d.delivered_at));
     const timeline = tl.length ? `<div class="meta" style="margin-top:4px;font-size:9.5px;color:var(--text-dim)">${tl.join(' → ')}</div>` : '';
     
-    // Next-action buttons follow the 4-stage flow (data-attr based — robust)
+    // Next-action buttons — BOTH inline onclick AND data-attr (belt + suspenders)
     let actions = '';
-    if (st === 'booked') actions += `<button class="btn btn-info sm" data-act="status" data-id="${d.id}" data-to="in_transit">🚛 Transit</button>`;
-    if (st === 'in_transit') actions += `<button class="btn btn-purple sm" data-act="status" data-id="${d.id}" data-to="out_for_delivery">🛵 Out for Delivery</button>`;
-    if (st === 'out_for_delivery') actions += `<button class="btn btn-success sm" data-act="status" data-id="${d.id}" data-to="delivered">✅ Delivered</button>`;
-    if (st !== 'hold' && st !== 'delivered') actions += `<button class="btn btn-danger sm" data-act="status" data-id="${d.id}" data-to="hold" title="Hold">⏸️</button>`;
-    if (st === 'hold') actions += `<button class="btn btn-info sm" data-act="status" data-id="${d.id}" data-to="in_transit">▶️ Resume</button>`;
-    actions += `<button class="btn btn-wati sm" data-act="wati" data-id="${d.id}" title="Send via WhatsApp">📲</button>`;
+    if (st === 'booked') actions += `<button class="btn btn-info sm" data-act="status" data-id="${d.id}" data-to="in_transit" onclick="window.updateDispatchStatus('${d.id}','in_transit')">🚛 Transit</button>`;
+    if (st === 'in_transit') actions += `<button class="btn btn-purple sm" data-act="status" data-id="${d.id}" data-to="out_for_delivery" onclick="window.updateDispatchStatus('${d.id}','out_for_delivery')">🛵 Out for Delivery</button>`;
+    if (st === 'out_for_delivery') actions += `<button class="btn btn-success sm" data-act="status" data-id="${d.id}" data-to="delivered" onclick="window.updateDispatchStatus('${d.id}','delivered')">✅ Delivered</button>`;
+    if (st !== 'hold' && st !== 'delivered') actions += `<button class="btn btn-danger sm" data-act="status" data-id="${d.id}" data-to="hold" onclick="window.updateDispatchStatus('${d.id}','hold')" title="Hold">⏸️</button>`;
+    if (st === 'hold') actions += `<button class="btn btn-info sm" data-act="status" data-id="${d.id}" data-to="in_transit" onclick="window.updateDispatchStatus('${d.id}','in_transit')">▶️ Resume</button>`;
+    actions += `<button class="btn btn-wati sm" data-act="wati" data-id="${d.id}" onclick="window.sendDispatchWati('${d.id}')" title="Send via WhatsApp">📲</button>`;
     
     return `
       <tr>
@@ -2543,23 +2543,21 @@ function exportDispatchCSV() {
   link.click();
 }
 
-// Event delegation for progress action buttons (robust — survives re-render)
+// Event delegation FALLBACK — only fires if inline onclick somehow missing.
+// Guards against double-fire by checking the button has no inline handler.
 document.addEventListener('click', (e) => {
   const btn = e.target.closest('[data-act]');
   if (!btn) return;
+  if (btn.getAttribute('onclick')) return; // inline handler will fire instead
   const act = btn.dataset.act;
   const id = btn.dataset.id;
-  dbg('🖱️ click act=' + act + ' id=' + (id || '').slice(0, 8) + ' to=' + (btn.dataset.to || '-'));
-  if (!id) { dbg('no data-id on button', 'err'); return; }
-  if (act === 'status') {
-    updateDispatchStatus(id, btn.dataset.to);
-  } else if (act === 'wati') {
-    sendDispatchWati(id);
-  } else if (act === 'pdf') {
-    generatePdfFor(id);
-  }
+  dbg('🖱️ delegation click act=' + act + ' id=' + (id || '').slice(0, 8));
+  if (!id) return;
+  if (act === 'status') updateDispatchStatus(id, btn.dataset.to);
+  else if (act === 'wati') sendDispatchWati(id);
+  else if (act === 'pdf') generatePdfFor(id);
 });
-dbg('✅ click delegation attached');
+dbg('✅ click delegation attached (fallback mode)');
 
 // Close search results when clicking outside
 document.addEventListener('click', (e) => {
@@ -2580,6 +2578,17 @@ document.addEventListener('DOMContentLoaded', () => {
     e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
   });
 });
+
+// Expose key functions on window so inline onclick always resolves them
+window.updateDispatchStatus = updateDispatchStatus;
+window.sendDispatchWati = sendDispatchWati;
+window.generatePdfFor = generatePdfFor;
+window.switchView = switchView;
+window.setProgressFilter = setProgressFilter;
+window.openVendorPaymentModal = openVendorPaymentModal;
+window.setVpPaidBy = setVpPaidBy;
+window.setVendorPayFilter = setVendorPayFilter;
+dbg('✅ window functions exposed — typeof updateDispatchStatus = ' + typeof window.updateDispatchStatus);
 </script>
 
 </body>
