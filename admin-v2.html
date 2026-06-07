@@ -2636,7 +2636,7 @@ label {
         </div>
       </div>
 
-      <!-- Stat row: clickable filter chips -->
+      <!-- Stat row: clickable filter chips. Photos=photo count; rest=UNIQUE VEHICLE count -->
       <div class="stat-chips" id="photoStatChips">
         <div class="stat-chip active" data-filter="all" onclick="applyStatFilter('all')">
           <strong style="color:var(--primary);" id="pTotal">0</strong><span>photos</span>
@@ -6183,23 +6183,38 @@ function updatePhotoStats() {
   var photos = p4state.filteredPhotos;
   var loaded = p4state.photos.length;
   var serverTotal = p4state.totalPhotos || loaded;
-  var verified = photos.filter(function(p){ return p.is_verified; }).length;
-  var pending = photos.filter(function(p){ return !p.is_verified && !p.rejected; }).length;
-  var hood = photos.filter(function(p){ return (p.mode || '').toLowerCase() === 'hood'; }).length;
-  var back = photos.filter(function(p){ return (p.mode || '').toLowerCase() === 'back_panel'; }).length;
-  var rejected = photos.filter(function(p){ return p.rejected; }).length;
-  var vehicles = new Set();
-  photos.forEach(function(p){ if (p.vehicle_number) vehicles.add(p.vehicle_number.toUpperCase()); });
-  
-  // Show SERVER total in pTotal (not just loaded)
+
+  // Helper: count UNIQUE vehicles matching a predicate
+  function uniqVehicles(pred) {
+    var s = new Set();
+    photos.forEach(function(p){
+      if (p.vehicle_number && pred(p)) s.add(p.vehicle_number.toUpperCase());
+    });
+    return s.size;
+  }
+
+  // Total unique vehicles
+  var allVehicles = new Set();
+  photos.forEach(function(p){ if (p.vehicle_number) allVehicles.add(p.vehicle_number.toUpperCase()); });
+
+  // Per-category UNIQUE VEHICLE counts (not photo counts)
+  var hoodV     = uniqVehicles(function(p){ return (p.mode || '').toLowerCase() === 'hood'; });
+  var backV     = uniqVehicles(function(p){ return (p.mode || '').toLowerCase() === 'back_panel'; });
+  var verifiedV = uniqVehicles(function(p){ return p.is_verified; });
+  var pendingV  = uniqVehicles(function(p){ return !p.is_verified && !p.rejected; });
+  var rejectedV = uniqVehicles(function(p){ return p.rejected; });
+
+  // Photos card = total PHOTO count (server total). Rest = unique vehicle counts.
   $('pTotal').textContent = serverTotal;
-  $('pVerified').textContent = verified;
-  $('pPending').textContent = pending;
-  $('pVehicles').textContent = vehicles.size;
-  if ($('pHood')) $('pHood').textContent = hood;
-  if ($('pBack')) $('pBack').textContent = back;
-  if ($('pRejected')) $('pRejected').textContent = rejected;
+  $('pVehicles').textContent = allVehicles.size;
+  if ($('pHood')) $('pHood').textContent = hoodV;
+  if ($('pBack')) $('pBack').textContent = backV;
+  $('pVerified').textContent = verifiedV;
+  $('pPending').textContent = pendingV;
+  if ($('pRejected')) $('pRejected').textContent = rejectedV;
   $('navPhotosCount').textContent = serverTotal;
+
+  var vehicles = allVehicles; // for subtitle below
   
   // Subtitle: clear distinction between loaded vs total
   if (loaded < serverTotal) {
