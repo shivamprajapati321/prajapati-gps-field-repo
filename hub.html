@@ -632,11 +632,33 @@ function getUserRoles(user) {
   return roles;
 }
 
+function getModuleAccess(user) {
+  // Robustly parse module_access whether it's an object, JSON string, or missing.
+  if (!user) return {};
+  if (user._moduleAccess && typeof user._moduleAccess === 'object') return user._moduleAccess;
+  let ma = user.module_access;
+  if (!ma) { user._moduleAccess = {}; return {}; }
+  if (typeof ma === 'string') {
+    try { ma = JSON.parse(ma); } catch (e) { ma = {}; }
+  }
+  if (typeof ma !== 'object' || ma === null) ma = {};
+  user._moduleAccess = ma;
+  return ma;
+}
+
 function canAccess(module, user) {
-  // Explicit module access overrides
-  if (user._moduleAccess && user._moduleAccess[module.id] === true) return true;
-  if (user._moduleAccess && user._moduleAccess[module.id] === false) return false;
-  
+  // module_access is the source of truth — parse it up-front (order-independent)
+  const ma = getModuleAccess(user);
+
+  // Explicit per-module override wins over everything
+  if (ma[module.id] === true) return true;
+  if (ma[module.id] === false) return false;
+
+  // owner/admin: full access unless explicitly denied above
+  const baseRole = String(user.role || '').toLowerCase();
+  if (baseRole === 'owner' || baseRole === 'admin') return true;
+
+  // otherwise fall back to role-based defaults
   const userRoles = getUserRoles(user);
   if (module.roles.includes('all')) return true;
   return module.roles.some(r => userRoles.includes(r));
