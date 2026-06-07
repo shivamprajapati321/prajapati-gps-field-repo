@@ -1782,11 +1782,11 @@ function renderDispatchRow(d) {
       <td><span class="tag ${statusTag}">${statusLabel}</span></td>
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
-          ${d.pdf_url ? `<a href="${d.pdf_url}" target="_blank" class="btn btn-secondary sm">📄 PDF</a>` : `<button class="btn btn-secondary sm" onclick='generatePdfFor("${d.id}")'>📄 PDF</button>`}
-          <button class="btn btn-wati sm" onclick='sendDispatchWati("${d.id}")'>📲</button>
-          ${st === 'booked' ? `<button class="btn btn-info sm" onclick='updateDispatchStatus("${d.id}","in_transit")'>🚛</button>` : ''}
-          ${st === 'in_transit' ? `<button class="btn btn-purple sm" onclick='updateDispatchStatus("${d.id}","out_for_delivery")'>🛵</button>` : ''}
-          ${st === 'out_for_delivery' ? `<button class="btn btn-success sm" onclick='updateDispatchStatus("${d.id}","delivered")'>✅</button>` : ''}
+          ${d.pdf_url ? `<a href="${d.pdf_url}" target="_blank" class="btn btn-secondary sm">📄 PDF</a>` : `<button class="btn btn-secondary sm" data-act="pdf" data-id="${d.id}">📄 PDF</button>`}
+          <button class="btn btn-wati sm" data-act="wati" data-id="${d.id}">📲</button>
+          ${st === 'booked' ? `<button class="btn btn-info sm" data-act="status" data-id="${d.id}" data-to="in_transit">🚛</button>` : ''}
+          ${st === 'in_transit' ? `<button class="btn btn-purple sm" data-act="status" data-id="${d.id}" data-to="out_for_delivery">🛵</button>` : ''}
+          ${st === 'out_for_delivery' ? `<button class="btn btn-success sm" data-act="status" data-id="${d.id}" data-to="delivered">✅</button>` : ''}
         </div>
       </td>
     </tr>
@@ -1821,18 +1821,33 @@ async function updateDispatchStatus(id, newStatus) {
   const labels = { in_transit: 'In Transit', out_for_delivery: 'Out for Delivery', delivered: 'Delivered', hold: 'Hold' };
   const msg = newStatus === 'delivered' ? 'Mark as DELIVERED?' : 'Update status to ' + (labels[newStatus] || newStatus) + '?';
   if (!confirm(msg)) return;
+  const now = new Date().toISOString();
+  // Full payload (with timestamp columns)
+  const full = { status: newStatus, updated_at: now };
+  if (newStatus === 'in_transit') full.in_transit_at = now;
+  if (newStatus === 'out_for_delivery') full.out_for_delivery_at = now;
+  if (newStatus === 'delivered') { full.delivered_at = now; full.delivered_date = now.slice(0, 10); }
+  if (newStatus === 'hold') full.hold_at = now;
+  
   try {
-    const now = new Date().toISOString();
-    const payload = { status: newStatus, updated_at: now };
-    if (newStatus === 'in_transit') payload.in_transit_at = now;
-    if (newStatus === 'out_for_delivery') payload.out_for_delivery_at = now;
-    if (newStatus === 'delivered') { payload.delivered_at = now; payload.delivered_date = now.slice(0, 10); }
-    if (newStatus === 'hold') payload.hold_at = now;
     await api('/rest/v1/prajapati_dispatches?id=eq.' + id, {
-      method: 'PATCH', headers: { 'Prefer': 'return=minimal' }, body: JSON.stringify(payload)
+      method: 'PATCH', headers: { 'Prefer': 'return=minimal' }, body: JSON.stringify(full)
     });
-    loadAllData();
-  } catch (e) { alert('Update failed: ' + e.message); }
+    await loadAllData();
+  } catch (e) {
+    // FALLBACK: if a timestamp column is missing (SQL not run / cache stale),
+    // retry with just status so the update still works.
+    console.warn('Full status update failed, retrying minimal:', e.message);
+    try {
+      await api('/rest/v1/prajapati_dispatches?id=eq.' + id, {
+        method: 'PATCH', headers: { 'Prefer': 'return=minimal' }, body: JSON.stringify({ status: newStatus, updated_at: now })
+      });
+      await loadAllData();
+      console.log('Status updated (minimal mode — run SESSION_8 SQL for timestamps)');
+    } catch (e2) {
+      alert('Update failed: ' + e2.message + '\n\nAgar "column" error hai to SESSION_8_DELIVERY.sql run karo + 20 sec ruko (schema reload).');
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1909,14 +1924,14 @@ function renderProgress() {
     if (d.delivered_at) tl.push('✅ ' + fmtTime(d.delivered_at));
     const timeline = tl.length ? `<div class="meta" style="margin-top:4px;font-size:9.5px;color:var(--text-dim)">${tl.join(' → ')}</div>` : '';
     
-    // Next-action buttons follow the 4-stage flow
+    // Next-action buttons follow the 4-stage flow (data-attr based — robust)
     let actions = '';
-    if (st === 'booked') actions += `<button class="btn btn-info sm" onclick='updateDispatchStatus("${d.id}","in_transit")'>🚛 Transit</button>`;
-    if (st === 'in_transit') actions += `<button class="btn btn-purple sm" onclick='updateDispatchStatus("${d.id}","out_for_delivery")'>🛵 Out for Delivery</button>`;
-    if (st === 'out_for_delivery') actions += `<button class="btn btn-success sm" onclick='updateDispatchStatus("${d.id}","delivered")'>✅ Delivered</button>`;
-    if (st !== 'hold' && st !== 'delivered') actions += `<button class="btn btn-danger sm" onclick='updateDispatchStatus("${d.id}","hold")' title="Hold">⏸️</button>`;
-    if (st === 'hold') actions += `<button class="btn btn-info sm" onclick='updateDispatchStatus("${d.id}","in_transit")'>▶️ Resume</button>`;
-    actions += `<button class="btn btn-wati sm" onclick='sendDispatchWati("${d.id}")' title="Send via WhatsApp">📲</button>`;
+    if (st === 'booked') actions += `<button class="btn btn-info sm" data-act="status" data-id="${d.id}" data-to="in_transit">🚛 Transit</button>`;
+    if (st === 'in_transit') actions += `<button class="btn btn-purple sm" data-act="status" data-id="${d.id}" data-to="out_for_delivery">🛵 Out for Delivery</button>`;
+    if (st === 'out_for_delivery') actions += `<button class="btn btn-success sm" data-act="status" data-id="${d.id}" data-to="delivered">✅ Delivered</button>`;
+    if (st !== 'hold' && st !== 'delivered') actions += `<button class="btn btn-danger sm" data-act="status" data-id="${d.id}" data-to="hold" title="Hold">⏸️</button>`;
+    if (st === 'hold') actions += `<button class="btn btn-info sm" data-act="status" data-id="${d.id}" data-to="in_transit">▶️ Resume</button>`;
+    actions += `<button class="btn btn-wati sm" data-act="wati" data-id="${d.id}" title="Send via WhatsApp">📲</button>`;
     
     return `
       <tr>
@@ -2487,6 +2502,22 @@ function exportDispatchCSV() {
   link.download = 'dispatches_' + new Date().toISOString().slice(0, 10) + '.csv';
   link.click();
 }
+
+// Event delegation for progress action buttons (robust — survives re-render)
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-act]');
+  if (!btn) return;
+  const act = btn.dataset.act;
+  const id = btn.dataset.id;
+  if (!id) return;
+  if (act === 'status') {
+    updateDispatchStatus(id, btn.dataset.to);
+  } else if (act === 'wati') {
+    sendDispatchWati(id);
+  } else if (act === 'pdf') {
+    generatePdfFor(id);
+  }
+});
 
 // Close search results when clicking outside
 document.addEventListener('click', (e) => {
