@@ -761,15 +761,21 @@ function onCampaignChange() {
 
 async function loadCitiesForCampaign(key) {
   try {
-    const photos = await api('/rest/v1/trial_photos?campaign_key=eq.' + encodeURIComponent(key) + '&select=city,member_name,member_phone&limit=10000');
+    // Use select=* so we never 400 on a column-name mismatch; detect fields client-side.
+    const photos = await api('/rest/v1/trial_photos?campaign_key=eq.' + encodeURIComponent(key) + '&select=*&limit=10000');
     const cities = {};
-    const members = {}; // phone -> name
+    const members = {}; // identifier -> name
     (photos || []).forEach(p => {
       if (p.city) cities[p.city] = true;
-      // key members by phone (reliable); fall back to name if no phone
-      const ph = p.member_phone || ('name:' + (p.member_name || ''));
-      if (p.member_name || p.member_phone) {
-        members[ph] = p.member_name || p.member_phone || 'Unknown';
+      // Detect member name + identifier across possible field names
+      const name = p.member_name || p.captured_by_name || p.uploaded_by_name || p.member || '';
+      const phone = p.member_phone || p.phone || p.captured_by || p.uploaded_by || '';
+      if (name || phone) {
+        const idv = phone ? String(phone) : ('name:' + name);
+        // prefer a real name as label; fall back to phone
+        if (!members[idv] || (name && members[idv] === idv)) {
+          members[idv] = name || String(phone) || 'Unknown';
+        }
       }
     });
     const list = Object.keys(cities).sort();
@@ -779,8 +785,8 @@ async function loadCitiesForCampaign(key) {
 
     // Populate Team Member dropdown (value = phone-or-namekey, label = name)
     const mEntries = Object.keys(members)
-      .map(ph => ({ val: ph, name: members[ph] }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .map(idv => ({ val: idv, name: members[idv] }))
+      .sort((a, b) => String(a.name).localeCompare(String(b.name)));
     const msel = document.getElementById('memberFilter');
     if (msel) {
       msel.innerHTML = '<option value="">All members (' + mEntries.length + ')</option>' +
@@ -791,8 +797,9 @@ async function loadCitiesForCampaign(key) {
       [{ value: '', label: 'All members (' + mEntries.length + ')', sub: '' }].concat(
         mEntries.map(m => ({ value: m.val, label: m.name, sub: (String(m.val).indexOf('name:') === 0 ? '' : m.val) }))
       ),
-      'All members'
+      mEntries.length ? 'All members' : 'No members found'
     );
+    console.log('[ppt] members detected:', mEntries.length, mEntries.map(m=>m.name));
     // reset member search box on campaign change
     const minp = document.getElementById('memberSearch'); if (minp) minp.value = '';
     if (msel) msel.value = '';
@@ -851,16 +858,21 @@ async function loadVehicles() {
             + '&order=captured_at.asc&limit=10000';
     if (mode !== 'all') url += '&mode=eq.' + mode;
     if (cityFilter) url += '&city=eq.' + encodeURIComponent(cityFilter);
-    // Team Member filter: value is member_phone, or 'name:<name>' fallback
-    if (memberFilter) {
-      if (memberFilter.indexOf('name:') === 0) {
-        url += '&member_name=eq.' + encodeURIComponent(memberFilter.slice(5));
-      } else {
-        url += '&member_phone=eq.' + encodeURIComponent(memberFilter);
-      }
-    }
+    // (Team Member filter applied client-side below — column-name-proof)
     
-    const photos = await api(url);
+    let photos = await api(url);
+
+    // ─── Client-side Team Member filter (matches phone OR name across field variants) ───
+    if (memberFilter && photos && photos.length) {
+      const wantName = memberFilter.indexOf('name:') === 0 ? memberFilter.slice(5) : null;
+      const wantPhone = wantName === null ? String(memberFilter) : null;
+      photos = photos.filter(p => {
+        const name = p.member_name || p.captured_by_name || p.uploaded_by_name || p.member || '';
+        const phone = String(p.member_phone || p.phone || p.captured_by || p.uploaded_by || '');
+        if (wantPhone !== null) return phone === wantPhone;
+        return name === wantName;
+      });
+    }
     
     if (!photos || photos.length === 0) {
       document.getElementById('preview').style.display = 'block';
