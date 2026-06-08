@@ -1182,13 +1182,13 @@ async function loadVendors() {
     const vendorSel = document.getElementById('dVendor');
     if (vendorSel) {
       vendorSel.innerHTML = '<option value="">— Select vendor —</option>' +
-        state.vendors.map(v => `<option value="${v.id}" data-rate="${v.default_rate || 0}">${escapeHtml(v.name)} · ${escapeHtml(v.city || '')} · ₹${v.default_rate || 0}/bundle</option>`).join('');
+        state.vendors.map(v => `<option value="${v.id}" data-rate="${v.default_rate || 0}">${escapeHtml(v.vendor_name || v.name || '')} · ${escapeHtml(v.city || '')} · ₹${v.default_rate || 0}/bundle</option>`).join('');
     }
     // Populate vendor payment dropdown
     const vpVendorSel = document.getElementById('vpVendor');
     if (vpVendorSel) {
       vpVendorSel.innerHTML = '<option value="">— Select vendor —</option>' +
-        state.vendors.map(v => `<option value="${v.id}">${escapeHtml(v.name)}</option>`).join('');
+        state.vendors.map(v => `<option value="${v.id}">${escapeHtml(v.vendor_name || v.name || '')}</option>`).join('');
     }
   } catch (e) { state.vendors = []; }
 }
@@ -1202,16 +1202,16 @@ function renderVendors() {
   }
   area.innerHTML = state.vendors.map(v => `
     <div style="display:flex;align-items:center;gap:14px;padding:14px 16px;border:1px solid var(--rule);border-radius:10px;margin-bottom:10px;background:#fff">
-      <div style="width:42px;height:42px;border-radius:50%;background:var(--purple);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:600;font-style:italic;font-size:15px">${(v.name || '?').charAt(0).toUpperCase()}</div>
+      <div style="width:42px;height:42px;border-radius:50%;background:var(--purple);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:600;font-style:italic;font-size:15px">${((v.vendor_name || v.name) || '?').charAt(0).toUpperCase()}</div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:14px;font-weight:700;color:var(--navy)">${escapeHtml(v.name || '—')}</div>
+        <div style="font-size:14px;font-weight:700;color:var(--navy)">${escapeHtml(v.vendor_name || v.name || '—')}</div>
         <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--text-dim);margin-top:2px">
           ${escapeHtml(v.type || '')} ${v.city ? '· ' + escapeHtml(v.city) : ''} ${v.default_rate ? '· <strong>₹' + v.default_rate + '/bundle</strong>' : ''}
         </div>
         ${v.phone ? '<div style="font-family:JetBrains Mono;font-size:10.5px;color:var(--text-dim);margin-top:2px">📞 ' + escapeHtml(v.phone) + '</div>' : ''}
       </div>
       <button class="btn btn-secondary sm" onclick="openVendorModal('${v.id}')">✏️</button>
-      <button class="btn btn-danger sm" onclick="deleteVendor('${v.id}', '${escapeHtml(v.name).replace(/'/g, "\\'")}')">🗑️</button>
+      <button class="btn btn-danger sm" onclick="deleteVendor('${v.id}', '${escapeHtml(v.vendor_name || v.name || '').replace(/'/g, "\\'")}')">🗑️</button>
     </div>
   `).join('');
 }
@@ -1220,7 +1220,7 @@ function openVendorModal(id) {
   const v = id ? state.vendors.find(x => x.id === id) : null;
   state.currentVendor = id || null;
   document.getElementById('vendorModalTitle').textContent = v ? '✏️ Edit Vendor' : '🏢 Add Vendor';
-  document.getElementById('vName').value = v?.name || '';
+  document.getElementById('vName').value = (v?.vendor_name || v?.name) || '';
   document.getElementById('vType').value = v?.type || 'transport';
   document.getElementById('vContact').value = v?.contact_person || '';
   document.getElementById('vPhone').value = v?.phone || '';
@@ -1250,7 +1250,8 @@ async function saveVendor() {
   btn.innerHTML = '<span class="spin"></span> Saving…';
   try {
     const payload = {
-      name, type: document.getElementById('vType').value,
+      vendor_name: name,           // DB column (NOT NULL, confirmed from error)
+      type: document.getElementById('vType').value,
       contact_person: document.getElementById('vContact').value.trim() || null,
       phone: document.getElementById('vPhone').value.trim() || null,
       city: document.getElementById('vCity').value.trim() || null,
@@ -1281,7 +1282,7 @@ async function saveVendor() {
       const msg = String(e1.message || '');
       // Column-missing errors: strip to core fields and retry once
       if (/PGRST204|42703|column|schema cache|could not find/i.test(msg)) {
-        const core = { name: payload.name, type: payload.type, phone: payload.phone, city: payload.city, active: true };
+        const core = { vendor_name: payload.vendor_name, type: payload.type, phone: payload.phone, city: payload.city, active: true };
         await doSave(core);
         document.getElementById('vStatus').innerHTML = '<div class="callout success"><span>✅</span><div>Saved (core fields). Run DELIVERY_VENDOR_FIX.sql to enable rate/notes/contact.</div></div>';
         setTimeout(() => { closeVendorModal(); loadVendors().then(renderVendors); }, 1400);
@@ -1419,7 +1420,7 @@ async function saveDispatch(sendWatiAfter) {
       campaign_id: state.selectedCampaign?.id || null,
       campaign_name: state.selectedCampaign ? getWorkName(state.selectedCampaign.campaign_name || state.selectedCampaign.name) : null,
       vendor_id: vendorId,
-      vendor_name: vendor?.name || null,
+      vendor_name: (vendor?.vendor_name || vendor?.name) || null,
       quantity_pcs: qty,
       total_bundles: bundles,
       rate_per_bundle: rate,
@@ -2249,7 +2250,7 @@ async function saveVendorPayment(sendWatiAfter) {
     const payload = {
       dispatch_id: dispatchId,
       vendor_id: vendorId,
-      vendor_name: vendor?.name || null,
+      vendor_name: (vendor?.vendor_name || vendor?.name) || null,
       amount: amount,
       paid_by: state.vpPaidBy,
       payment_date: date,
