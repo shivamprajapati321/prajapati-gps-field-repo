@@ -1258,16 +1258,38 @@ async function saveVendor() {
       notes: document.getElementById('vNotes').value.trim() || null,
       active: true, updated_at: new Date().toISOString()
     };
-    if (state.currentVendor) {
-      await api('/rest/v1/prajapati_delivery_vendors?id=eq.' + state.currentVendor, {
-        method: 'PATCH', headers: { 'Prefer': 'return=minimal' }, body: JSON.stringify(payload)
-      });
-    } else {
-      payload.created_at = new Date().toISOString();
-      await api('/rest/v1/prajapati_delivery_vendors', {
-        method: 'POST', headers: { 'Prefer': 'return=minimal' }, body: JSON.stringify(payload)
-      });
+
+    // Resilient save: if a column is missing in the DB (PGRST204/42703),
+    // retry with only the core columns so the vendor still saves.
+    async function doSave(body) {
+      if (state.currentVendor) {
+        await api('/rest/v1/prajapati_delivery_vendors?id=eq.' + state.currentVendor, {
+          method: 'PATCH', headers: { 'Prefer': 'return=minimal' }, body: JSON.stringify(body)
+        });
+      } else {
+        await api('/rest/v1/prajapati_delivery_vendors', {
+          method: 'POST', headers: { 'Prefer': 'return=minimal' }, body: JSON.stringify(body)
+        });
+      }
     }
+
+    if (!state.currentVendor) payload.created_at = new Date().toISOString();
+
+    try {
+      await doSave(payload);
+    } catch (e1) {
+      const msg = String(e1.message || '');
+      // Column-missing errors: strip to core fields and retry once
+      if (/PGRST204|42703|column|schema cache|could not find/i.test(msg)) {
+        const core = { name: payload.name, type: payload.type, phone: payload.phone, city: payload.city, active: true };
+        await doSave(core);
+        document.getElementById('vStatus').innerHTML = '<div class="callout success"><span>✅</span><div>Saved (core fields). Run DELIVERY_VENDOR_FIX.sql to enable rate/notes/contact.</div></div>';
+        setTimeout(() => { closeVendorModal(); loadVendors().then(renderVendors); }, 1400);
+        return;
+      }
+      throw e1;
+    }
+
     document.getElementById('vStatus').innerHTML = '<div class="callout success"><span>✅</span><div>Saved!</div></div>';
     setTimeout(() => { closeVendorModal(); loadVendors().then(renderVendors); }, 800);
   } catch (e) {
