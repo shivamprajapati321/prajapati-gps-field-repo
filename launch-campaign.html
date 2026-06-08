@@ -119,6 +119,23 @@ a{color:inherit;text-decoration:none}
 .dinput:focus{border-color:var(--gold);background:#fff}
 
 .location-input{position:relative}
+
+/* ─── Multi-location rows ─── */
+.loc-list{display:flex;flex-direction:column;gap:8px;margin-bottom:9px}
+.loc-row{display:flex;align-items:center;gap:10px;border:1px solid var(--rule);background:var(--cream);border-radius:8px;padding:9px 12px;transition:all 0.15s}
+.loc-row.has-value{background:linear-gradient(135deg,var(--gold-soft),#fff);border-color:var(--gold)}
+.loc-row .loc-pin{font-size:14px;color:var(--gold-deep);flex-shrink:0}
+.loc-row .loc-info{flex:1;min-width:0}
+.loc-row .loc-name{font-size:13px;font-weight:600;color:var(--ink-950)}
+.loc-row .loc-detail{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--gold-deep);letter-spacing:0.05em;margin-top:2px}
+.loc-row .loc-search-input{width:100%;border:none;background:transparent;outline:none;font-family:inherit;font-size:13px;color:var(--ink-950)}
+.loc-row .loc-qty{width:78px;padding:7px 9px;border:1px solid var(--rule);border-radius:6px;font-family:inherit;font-size:13px;text-align:center;font-weight:700;color:var(--ink-950);outline:none}
+.loc-row.has-value .loc-qty{border-color:var(--gold)}
+.loc-row .loc-qty:focus{border-color:var(--accent)}
+.loc-row .loc-remove{background:transparent;border:none;color:var(--danger);font-size:17px;cursor:pointer;line-height:1;flex-shrink:0;width:22px}
+.loc-row .loc-remove:hover{color:#a30d2b}
+.btn-add-loc{width:100%;padding:9px;border:1px dashed var(--gold);background:transparent;border-radius:8px;color:var(--gold-deep);font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;transition:all 0.15s}
+.btn-add-loc:hover{background:var(--gold-soft)}
 .location-input .input-wrap{display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--rule);background:var(--cream);border-radius:6px;cursor:text;transition:all 0.15s;min-height:42px}
 .location-input .input-wrap:focus-within{border-color:var(--gold);background:#fff}
 .location-input.has-value .input-wrap{background:linear-gradient(135deg, var(--gold-soft), #fff);border-color:var(--gold)}
@@ -461,7 +478,7 @@ function toggleSS(id, ev) {
 }
 
 document.addEventListener('click', (e) => {
-  if (!e.target.closest('.search-select') && !e.target.closest('.location-input')) {
+  if (!e.target.closest('.search-select') && !e.target.closest('.location-input') && !e.target.closest('.loc-row')) {
     document.querySelectorAll('.ss-dropdown, .gp-dropdown').forEach(d => d.classList.remove('open'));
   }
 });
@@ -655,26 +672,26 @@ function addDesign() {
   designs.push({
     tempId: 'd_' + (nextDesignId++),
     design_name: '',
-    location_name: '',
-    location_address: '',
-    location_lat: null,
-    location_lng: null,
-    location_place_id: null,
-    location_city: null,
-    location_state: 'Maharashtra',
-    location_pincode: null,
-    location_type: null,
-    quantity: 0,
+    locations: [],  // [{ name, address, lat, lng, place_id, city, state, pincode, type, quantity }]
     design_url: null,
     design_file_name: null,
     design_file_size: null,
-    design_file_type: null
+    design_file_type: null,
+    locations: [blankLocation()]
   });
   renderDesigns();
   setTimeout(() => {
     const lastRow = document.querySelector('.design-row:last-of-type input[data-field="design_name"]');
     lastRow?.focus();
   }, 100);
+}
+
+function blankLocation() {
+  return {
+    locId: 'L_' + Math.random().toString(36).slice(2, 8),
+    name: '', address: '', lat: null, lng: null, place_id: null,
+    city: null, state: 'Maharashtra', pincode: null, type: null, quantity: 0
+  };
 }
 
 function removeDesign(tempId) {
@@ -686,10 +703,39 @@ function removeDesign(tempId) {
 function renderDesigns() {
   const el = document.getElementById('designsList');
   el.innerHTML = designs.map((d, i) => {
-    const isFilled = d.design_name && d.location_name && d.quantity > 0 && d.design_url;
-    const isExpanded = d.design_name || d.location_name;
+    const locs = d.locations || [];
+    const totalQty = locs.reduce((s, l) => s + (l.quantity || 0), 0);
+    const validLocs = locs.filter(l => l.name && l.quantity > 0);
+    const isFilled = d.design_name && validLocs.length > 0 && d.design_url;
+    const isExpanded = d.design_name || locs.length > 0;
     const stateLabel = isFilled ? 'COMPLETE' : (isExpanded ? 'IN PROGRESS' : 'NEW · INCOMPLETE');
-    
+
+    const locRows = locs.map(l => `
+      <div class="loc-row ${l.name ? 'has-value' : ''}">
+        ${l.name ? `
+          <span class="loc-pin">📍</span>
+          <div class="loc-info">
+            <div class="loc-name">${escapeHtml(l.name)}</div>
+            <div class="loc-detail">${escapeHtml((l.state || '').toUpperCase())}${l.lat ? ' · ' + l.lat.toFixed(4) + '°N, ' + l.lng.toFixed(4) + '°E' : ''}</div>
+          </div>
+          <input class="loc-qty" type="number" min="1" value="${l.quantity || ''}" placeholder="qty"
+                 oninput="updateLocQty('${d.tempId}','${l.locId}', parseInt(this.value)||0)">
+          <button class="loc-remove" onclick="removeLocation('${d.tempId}','${l.locId}')" title="Remove location">×</button>
+        ` : `
+          <span class="loc-pin">🔍</span>
+          <div class="loc-info" style="position:relative">
+            <input type="text" class="loc-search-input" placeholder="Search city, locality, or address..."
+                   oninput="searchLocation('${d.tempId}','${l.locId}', this.value)"
+                   onfocus="searchLocation('${d.tempId}','${l.locId}', this.value)">
+            <div class="gp-dropdown" id="gp-${d.tempId}-${l.locId}"></div>
+          </div>
+          <input class="loc-qty" type="number" min="1" value="${l.quantity || ''}" placeholder="qty"
+                 oninput="updateLocQty('${d.tempId}','${l.locId}', parseInt(this.value)||0)">
+          <button class="loc-remove" onclick="removeLocation('${d.tempId}','${l.locId}')" title="Remove">×</button>
+        `}
+      </div>
+    `).join('');
+
     return `
       <div class="design-row ${isExpanded ? 'expanded' : ''}" id="${d.tempId}">
         <div class="design-row-head">
@@ -706,38 +752,15 @@ function renderDesigns() {
                    oninput="updateDesignField('${d.tempId}', 'design_name', this.value)">
           </div>
           
-          <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px">
-            <div style="position:relative">
-              <div class="dlabel">📍 Location <span class="req">*</span> <span class="hint">City, locality, anywhere</span></div>
-              <div class="location-input ${d.location_name ? 'has-value' : ''}">
-                ${d.location_name ? `
-                  <div class="input-wrap">
-                    <span class="location-pin">📍</span>
-                    <div style="flex:1;min-width:0">
-                      <div class="location-text" style="font-weight:600">${escapeHtml(d.location_name)}</div>
-                      <div class="location-detail">${escapeHtml((d.location_state || '').toUpperCase())}${d.location_lat ? ' · ' + d.location_lat.toFixed(4) + '°N, ' + d.location_lng.toFixed(4) + '°E' : ''}</div>
-                    </div>
-                    <button class="location-change" onclick="clearLocation('${d.tempId}')">Change</button>
-                  </div>
-                ` : `
-                  <div class="input-wrap">
-                    <span class="location-pin">🔍</span>
-                    <div class="location-text" style="flex:1">
-                      <input type="text" placeholder="Search city, locality, or address..." 
-                             oninput="searchLocation('${d.tempId}', this.value)"
-                             onfocus="searchLocation('${d.tempId}', this.value)">
-                    </div>
-                  </div>
-                `}
-                <div class="gp-dropdown" id="gp-${d.tempId}"></div>
-              </div>
+          <div>
+            <div class="dlabel" style="display:flex;justify-content:space-between;align-items:center">
+              <span>📍 Locations <span class="req">*</span> <span class="hint">har location ki apni quantity</span></span>
+              <span style="color:var(--accent-deep);font-weight:700;font-size:11px">${locs.length} location${locs.length!==1?'s':''} · ${totalQty} units</span>
             </div>
-            <div>
-              <div class="dlabel">Quantity <span class="req">*</span></div>
-              <input class="dinput" type="number" min="1" data-field="quantity"
-                     value="${d.quantity || ''}" placeholder="0"
-                     oninput="updateDesignField('${d.tempId}', 'quantity', parseInt(this.value) || 0)">
+            <div class="loc-list">
+              ${locRows}
             </div>
+            <button class="btn-add-loc" onclick="addLocation('${d.tempId}')">+ Add another location</button>
           </div>
           
           <div>
@@ -772,30 +795,38 @@ function renderDesigns() {
   calcPricing();
 }
 
+function addLocation(tempId) {
+  const d = designs.find(x => x.tempId === tempId);
+  if (!d) return;
+  if (!d.locations) d.locations = [];
+  d.locations.push(blankLocation());
+  renderDesigns();
+}
+
+function removeLocation(tempId, locId) {
+  const d = designs.find(x => x.tempId === tempId);
+  if (!d) return;
+  d.locations = (d.locations || []).filter(l => l.locId !== locId);
+  renderDesigns();
+}
+
+function updateLocQty(tempId, locId, qty) {
+  const d = designs.find(x => x.tempId === tempId);
+  if (!d) return;
+  const l = (d.locations || []).find(x => x.locId === locId);
+  if (l) { l.quantity = qty; updateActionBar(); calcPricing(); }
+}
+
 function updateDesignField(tempId, field, value) {
   const d = designs.find(x => x.tempId === tempId);
   if (d) { d[field] = value; updateActionBar(); calcPricing(); }
 }
 
-function clearLocation(tempId) {
-  const d = designs.find(x => x.tempId === tempId);
-  if (d) {
-    d.location_name = '';
-    d.location_lat = null;
-    d.location_lng = null;
-    d.location_address = '';
-    d.location_place_id = null;
-    d.location_city = null;
-    d.location_state = 'Maharashtra';
-    d.location_pincode = null;
-    d.location_type = null;
-    renderDesigns();
-  }
-}
+function _removed_clearLocation() {}
 
 let locTimer = null;
-async function searchLocation(tempId, query) {
-  const dropdown = document.getElementById('gp-' + tempId);
+async function searchLocation(tempId, locId, query) {
+  const dropdown = document.getElementById('gp-' + tempId + '-' + locId);
   if (!dropdown) return;
   
   if (!query || query.length < 2) {
@@ -834,20 +865,20 @@ async function searchLocation(tempId, query) {
             const subLine = [city, state, pincode].filter(x => x && x !== main).join(' · ');
             const icon = r.type === 'railway' || r.class === 'railway' ? '🚉' : (r.class === 'amenity' ? '🏛️' : (r.class === 'place' ? '📍' : '🏙️'));
             
-            window['_loc_' + tempId + '_' + idx] = {
-              location_name: main + (city && city !== main ? ', ' + city : ''),
-              location_address: r.display_name,
-              location_lat: parseFloat(r.lat),
-              location_lng: parseFloat(r.lon),
-              location_place_id: r.place_id ? String(r.place_id) : null,
-              location_city: city || main,
-              location_state: state || 'Maharashtra',
-              location_pincode: pincode,
-              location_type: r.type || r.class
+            window['_loc_' + tempId + '_' + locId + '_' + idx] = {
+              name: main + (city && city !== main ? ', ' + city : ''),
+              address: r.display_name,
+              lat: parseFloat(r.lat),
+              lng: parseFloat(r.lon),
+              place_id: r.place_id ? String(r.place_id) : null,
+              city: city || main,
+              state: state || 'Maharashtra',
+              pincode: pincode,
+              type: r.type || r.class
             };
             
             return `
-              <div class="gp-option" onclick="selectLocation('${tempId}', window['_loc_${tempId}_${idx}'])">
+              <div class="gp-option" onclick="selectLocation('${tempId}', '${locId}', window['_loc_${tempId}_${locId}_${idx}'])">
                 <span class="gp-icon">${icon}</span>
                 <div class="gp-info">
                   <div class="gp-main">${escapeHtml(main + (city && city !== main ? ', ' + city : ''))}</div>
@@ -869,10 +900,12 @@ async function searchLocation(tempId, query) {
   }, 350);
 }
 
-function selectLocation(tempId, locData) {
+function selectLocation(tempId, locId, locData) {
   const d = designs.find(x => x.tempId === tempId);
-  if (d) {
-    Object.assign(d, locData);
+  if (!d) return;
+  const l = (d.locations || []).find(x => x.locId === locId);
+  if (l) {
+    Object.assign(l, locData);
     renderDesigns();
   }
 }
@@ -926,7 +959,7 @@ async function handleFileSelect(tempId, file) {
 }
 
 function calcPricing() {
-  const totalQty = designs.reduce((s, d) => s + (d.quantity || 0), 0);
+  const totalQty = designs.reduce((s, d) => s + (d.locations || []).reduce((t, l) => t + (l.quantity || 0), 0), 0);
   const rate = parseFloat(document.getElementById('rateUnit').value) || 0;
   const disc = parseFloat(document.getElementById('discount').value) || 0;
   const gstPct = parseFloat(document.getElementById('gstPct').value) || 0;
@@ -942,12 +975,13 @@ function calcPricing() {
   document.getElementById('priceTotal').textContent = '₹' + Math.round(total).toLocaleString('en-IN');
   
   const cities = new Set();
-  designs.forEach(d => d.location_city && cities.add(d.location_city));
+  designs.forEach(d => (d.locations || []).forEach(l => l.city && cities.add(l.city)));
+  const locCount = designs.reduce((s, d) => s + (d.locations || []).filter(l => l.name).length, 0);
   const calcEl = document.getElementById('materialCalc');
   if (totalQty > 0) {
     calcEl.style.display = 'flex';
     document.getElementById('materialCalcText').innerHTML = `
-      <strong>Material Calculator:</strong> ${totalQty.toLocaleString('en-IN')} total units across <strong>${cities.size}</strong> location${cities.size !== 1 ? 's' : ''}${cities.size > 0 ? ' (' + Array.from(cities).slice(0, 3).join(', ') + (cities.size > 3 ? '…' : '') + ')' : ''} · Est. wastage allowance: <strong>5%</strong> = ${Math.ceil(totalQty * 0.05).toLocaleString('en-IN')} extra units
+      <strong>Material Calculator:</strong> ${totalQty.toLocaleString('en-IN')} total units across <strong>${locCount}</strong> location${locCount !== 1 ? 's' : ''}${cities.size > 0 ? ' (' + Array.from(cities).slice(0, 3).join(', ') + (cities.size > 3 ? '…' : '') + ')' : ''} · Est. wastage allowance: <strong>5%</strong> = ${Math.ceil(totalQty * 0.05).toLocaleString('en-IN')} extra units
     `;
   } else {
     calcEl.style.display = 'none';
@@ -955,14 +989,15 @@ function calcPricing() {
 }
 
 function updateActionBar() {
-  const totalQty = designs.reduce((s, d) => s + (d.quantity || 0), 0);
-  const validDesigns = designs.filter(d => d.design_name && d.location_name && d.quantity > 0 && d.design_url);
+  const totalQty = designs.reduce((s, d) => s + (d.locations || []).reduce((t, l) => t + (l.quantity || 0), 0), 0);
+  const validDesigns = designs.filter(d => d.design_name && d.design_url && (d.locations || []).some(l => l.name && l.quantity > 0));
   const cities = new Set();
-  designs.forEach(d => d.location_city && cities.add(d.location_city));
+  designs.forEach(d => (d.locations || []).forEach(l => l.city && cities.add(l.city)));
+  const locCount = designs.reduce((s, d) => s + (d.locations || []).filter(l => l.name && l.quantity > 0).length, 0);
   
   const parts = [];
   if (validDesigns.length > 0) parts.push(`<strong>${validDesigns.length}</strong> design${validDesigns.length !== 1 ? 's' : ''}`);
-  if (cities.size > 0) parts.push(`<strong>${cities.size}</strong> location${cities.size !== 1 ? 's' : ''}`);
+  if (locCount > 0) parts.push(`<strong>${locCount}</strong> location${locCount !== 1 ? 's' : ''}`);
   if (totalQty > 0) parts.push(`<strong>${totalQty.toLocaleString('en-IN')}</strong> units`);
   if (selectedJobType) parts.push(`Type: <strong>${escapeHtml(selectedJobType.name)}</strong>`);
   
@@ -985,7 +1020,7 @@ async function saveDraft() { await submitCampaign('draft'); }
 
 async function submitCampaign(targetStatus = 'pending_execution_plan') {
   const campaignName = document.getElementById('campaignName').value.trim();
-  const validDesigns = designs.filter(d => d.design_name && d.location_name && d.quantity > 0 && d.design_url);
+  const validDesigns = designs.filter(d => d.design_name && d.design_url && (d.locations || []).some(l => l.name && l.quantity > 0));
   
   if (targetStatus !== 'draft') {
     if (!selectedSales || !selectedClient || !selectedJobType || !campaignName) {
@@ -994,7 +1029,7 @@ async function submitCampaign(targetStatus = 'pending_execution_plan') {
       return;
     }
     if (validDesigns.length === 0) {
-      document.getElementById('submitStatus').innerHTML = '<div class="callout error"><span class="callout-icon">⚠️</span><div>At least 1 complete design required (name + location + qty + file)</div></div>';
+      document.getElementById('submitStatus').innerHTML = '<div class="callout error"><span class="callout-icon">⚠️</span><div>At least 1 complete design required (name + file + at least 1 location with quantity)</div></div>';
       return;
     }
   }
@@ -1015,7 +1050,7 @@ async function submitCampaign(targetStatus = 'pending_execution_plan') {
       } catch(e) { clientId = null; }
     }
     
-    const totalQty = validDesigns.reduce((s, d) => s + (d.quantity || 0), 0);
+    const totalQty = validDesigns.reduce((s, d) => s + (d.locations || []).reduce((t, l) => t + ((l.name && l.quantity > 0) ? l.quantity : 0), 0), 0);
     const rate = parseFloat(document.getElementById('rateUnit').value) || 0;
     const disc = parseFloat(document.getElementById('discount').value) || 0;
     const gstPct = parseFloat(document.getElementById('gstPct').value) || 0;
@@ -1058,26 +1093,34 @@ async function submitCampaign(targetStatus = 'pending_execution_plan') {
     if (campErr) throw campErr;
     
     if (validDesigns.length > 0) {
-      const designsPayload = validDesigns.map((d, i) => ({
-        campaign_id: campaign.id,
-        sort_order: i,
-        design_name: d.design_name,
-        location_name: d.location_name,
-        location_address: d.location_address,
-        location_lat: d.location_lat,
-        location_lng: d.location_lng,
-        location_place_id: d.location_place_id,
-        location_city: d.location_city,
-        location_state: d.location_state,
-        location_pincode: d.location_pincode,
-        location_type: d.location_type,
-        quantity: d.quantity,
-        design_url: d.design_url,
-        design_file_name: d.design_file_name,
-        design_file_size: d.design_file_size,
-        design_file_type: d.design_file_type,
-        created_by: user.id
-      }));
+      // Flatten: each design × each valid location → one trial_campaign_designs row.
+      // Same design_name + design_url repeated per location (ek design, multi-location).
+      let sortIdx = 0;
+      const designsPayload = [];
+      validDesigns.forEach(d => {
+        (d.locations || []).filter(l => l.name && l.quantity > 0).forEach(l => {
+          designsPayload.push({
+            campaign_id: campaign.id,
+            sort_order: sortIdx++,
+            design_name: d.design_name,
+            location_name: l.name,
+            location_address: l.address,
+            location_lat: l.lat,
+            location_lng: l.lng,
+            location_place_id: l.place_id,
+            location_city: l.city,
+            location_state: l.state,
+            location_pincode: l.pincode,
+            location_type: l.type,
+            quantity: l.quantity,
+            design_url: d.design_url,
+            design_file_name: d.design_file_name,
+            design_file_size: d.design_file_size,
+            design_file_type: d.design_file_type,
+            created_by: user.id
+          });
+        });
+      });
       
       const { error: dErr } = await db.from('trial_campaign_designs').insert(designsPayload);
       if (dErr) throw dErr;
