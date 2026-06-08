@@ -4057,7 +4057,7 @@ function loadDashStats() {
   api('/rest/v1/trial_campaigns?select=*&active=eq.true')
     .then(function(campaigns) {
       campaigns = campaigns || [];
-      state.campaigns = campaigns;
+      state.campaigns = campaigns.map(function(c){ c.key = c.key || c.campaign_key || c.id; return c; });
       window.__dashCampaigns = campaigns.length;
       updateGreetingSub();
     }).catch(function() {});
@@ -4439,7 +4439,7 @@ function loadCampaigns() {
   
   api('/rest/v1/trial_campaigns?select=*&order=active.desc,name.asc')
     .then(function(campaigns) {
-      state.campaigns = campaigns || [];
+      state.campaigns = (campaigns || []).map(function(c){ c.key = c.key || c.campaign_key || c.id; return c; });
       $('navCampaignsCount').textContent = state.campaigns.length;
       var active = state.campaigns.filter(function(c){ return c.active; }).length;
       $('campaignsSubtitle').textContent = state.campaigns.length + ' total · ' + active + ' active';
@@ -6270,7 +6270,11 @@ function buildPhotoDropdowns() {
   var cSel = $('photosCampaign');
   if (cSel && cSel.options.length <= 1 && state.campaigns.length > 0) {
     var co = '<option value="">All campaigns</option>';
-    state.campaigns.forEach(function(c){ co += '<option value="' + escapeHtml(c.key) + '">' + escapeHtml(c.name || c.key) + '</option>'; });
+    state.campaigns.forEach(function(c){
+      var ckey = c.key || c.campaign_key || c.id || '';
+      var cname = c.name || c.campaign_name || ckey;
+      co += '<option value="' + escapeHtml(ckey) + '">' + escapeHtml(cname) + '</option>';
+    });
     cSel.innerHTML = co;
   }
   // Member hidden select — ALL active members (no role restriction)
@@ -7402,8 +7406,44 @@ function sanitizeName(name) {
 }
 // ──── downloadPhotosZip (ported from V1) ────
 
+// ──── Shared: build query string from CURRENT photo filters (same as loadPhotos) ────
+function buildPhotoFilterQS(extra) {
+  var range = (typeof getPhotosDateRange === 'function') ? getPhotosDateRange() : { from:'', to:'' };
+  var campaign = $('photosCampaign') ? $('photosCampaign').value : '';
+  var memberPhone = $('photosMember') ? $('photosMember').value : '';
+  var city = $('photosCity') ? $('photosCity').value : '';
+  var mode = $('photosMode') ? $('photosMode').value : '';
+  var status = $('photosStatus') ? $('photosStatus').value : '';
+
+  // ⭐ DEFENSIVE: if the dropdown value is empty/"undefined" but a campaign is
+  // visibly selected (display text), resolve the real campaign_key from state.
+  if ((!campaign || campaign === 'undefined') && $('photosCampaign')) {
+    var sel = $('photosCampaign');
+    var shownText = (sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : '') ||
+                    ($('photosCampaignSearch') ? $('photosCampaignSearch').value : '');
+    shownText = (shownText || '').trim();
+    if (shownText && shownText !== 'All campaigns' && state.campaigns) {
+      var match = state.campaigns.find(function(c){
+        return (c.name || c.campaign_name || '') === shownText;
+      });
+      if (match) campaign = match.key || match.campaign_key || match.id || '';
+    }
+  }
+
+  var qs = '?select=*&order=captured_at.desc&deleted_at=is.null&limit=5000';
+  if (range.from) qs += '&captured_at=gte.' + new Date(range.from + 'T00:00:00+05:30').toISOString();
+  if (range.to)   qs += '&captured_at=lte.' + new Date(range.to + 'T23:59:59+05:30').toISOString();
+  if (campaign && campaign !== 'undefined') qs += '&campaign_key=eq.' + encodeURIComponent(campaign);
+  if (memberPhone) qs += '&member_phone=eq.' + encodeURIComponent(memberPhone);
+  if (city)       qs += '&city=eq.' + encodeURIComponent(city);
+  if (mode) qs += '&mode=eq.' + encodeURIComponent(mode);
+  if (status === 'verified') qs += '&is_verified=eq.true';
+  else if (status === 'pending') qs += '&is_verified=is.null&or=(rejected.is.null,rejected.eq.false)';
+  else if (status === 'rejected') qs += '&rejected=eq.true';
+  return qs + (extra || '');
+}
+
 function downloadPhotosZip() {
-  if (window.__syncPhotoFilters) window.__syncPhotoFilters();
   var btn = document.getElementById('zipDownloadBtn');
   if (!btn) return;
   
@@ -7413,25 +7453,29 @@ function downloadPhotosZip() {
     return;
   }
   
-  // Read current filters (same as loadPhotos uses)
-  var dateFrom = document.getElementById('photoDate').value;
-  var dateTo = document.getElementById('photoDateEnd').value || dateFrom;
-  var campaign = document.getElementById('photoCampaign').value;
-  var member = document.getElementById('photoMember').value;
-  
-  // ⭐ v16.5 FIX: Limit bumped 500→5000 to match Photos tab + PPT (consistent across pages)
-  var qs = '?select=*&order=captured_at.desc&limit=5000';
-  if (dateFrom) {
-    var istStartLocal = new Date(dateFrom + 'T00:00:00+05:30');
-    qs += '&captured_at=gte.' + istStartLocal.toISOString();
+  // ⭐ FIX: use the SAME filters as the Photos grid (loadPhotos), via shared helper.
+  var qs = buildPhotoFilterQS();
+  console.log('[Download ZIP] FILTERED-v2 query:', qs);
+
+  // Build a human-readable summary of the ACTIVE filters
+  var fSummary = [];
+  var _r = (typeof getPhotosDateRange === 'function') ? getPhotosDateRange() : { from:'', to:'' };
+  if (_r.from) fSummary.push('Date: ' + _r.from + (_r.to && _r.to !== _r.from ? ' → ' + _r.to : ''));
+  var _campSel = $('photosCampaign');
+  if (_campSel && _campSel.value) {
+    var _cn = _campSel.options[_campSel.selectedIndex] ? _campSel.options[_campSel.selectedIndex].text : _campSel.value;
+    fSummary.push('Campaign: ' + _cn);
   }
-  if (dateTo) {
-    var istEndLocal = new Date(dateTo + 'T23:59:59+05:30');
-    qs += '&captured_at=lte.' + istEndLocal.toISOString();
+  var _memSel = $('photosMember');
+  if (_memSel && _memSel.value) {
+    var _mn = _memSel.options[_memSel.selectedIndex] ? _memSel.options[_memSel.selectedIndex].text : _memSel.value;
+    fSummary.push('Member: ' + _mn);
   }
-  if (campaign) qs += '&campaign_key=eq.' + campaign;
-  if (member) qs += '&member_phone=eq.' + member;
-  
+  if ($('photosCity') && $('photosCity').value) fSummary.push('City: ' + $('photosCity').value);
+  if ($('photosMode') && $('photosMode').value) fSummary.push('Mode: ' + $('photosMode').value);
+  if ($('photosStatus') && $('photosStatus').value) fSummary.push('Status: ' + $('photosStatus').value);
+  var filterText = fSummary.length ? fSummary.join('\n• ') : '(no filters — ALL photos)';
+
   btn.disabled = true;
   btn.innerHTML = '⏳ Loading photos...';
   
@@ -7445,12 +7489,12 @@ function downloadPhotosZip() {
         return;
       }
       
-      if (photos.length > 500) {
-        if (!confirm('Found ' + photos.length + ' photos. Download will be large (~' + Math.round(photos.length * 0.3) + ' MB). Continue?')) {
-          btn.disabled = false;
-          btn.innerHTML = '📦 Download ZIP';
-          return;
-        }
+      // Always confirm, showing the filters being applied (transparency)
+      var msg = 'Download ' + photos.length + ' photos (~' + Math.round(photos.length * 0.3) + ' MB)\n\nFilters applied:\n• ' + filterText + '\n\nContinue?';
+      if (!confirm(msg)) {
+        btn.disabled = false;
+        btn.innerHTML = '📦 Download ZIP';
+        return;
       }
       
       buildAndDownloadZip(photos, btn);
@@ -7466,7 +7510,6 @@ function downloadPhotosZip() {
 // ──── downloadExcelReport (ported from V1) ────
 
 async function downloadExcelReport() {
-  if (window.__syncPhotoFilters) window.__syncPhotoFilters();
   // Find button reliably (not via event.target which can fail)
   var btn = document.querySelector('button[onclick="downloadExcelReport()"]');
   var originalText = btn ? btn.innerHTML : '📊 Excel Report';
@@ -7482,25 +7525,8 @@ async function downloadExcelReport() {
       throw new Error('Excel library not loaded. Please refresh page (Ctrl+Shift+R).');
     }
     
-    // Read filters
-    var dateFrom = document.getElementById('photoDate').value;
-    var dateTo = document.getElementById('photoDateEnd').value || dateFrom;
-    var campaign = document.getElementById('photoCampaign').value;
-    var member = document.getElementById('photoMember').value;
-    
-    // Build query
-    var qs = '/rest/v1/trial_photos?select=*&order=captured_at.desc&limit=2000';
-    
-    if (dateFrom) {
-      var istStart = new Date(dateFrom + 'T00:00:00+05:30');
-      qs += '&captured_at=gte.' + istStart.toISOString();
-    }
-    if (dateTo) {
-      var istEnd = new Date(dateTo + 'T23:59:59+05:30');
-      qs += '&captured_at=lte.' + istEnd.toISOString();
-    }
-    if (campaign) qs += '&campaign_key=eq.' + encodeURIComponent(campaign);
-    if (member) qs += '&member_phone=eq.' + encodeURIComponent(member);
+    // ⭐ FIX: use SAME filters as Photos grid via shared helper
+    var qs = '/rest/v1/trial_photos' + buildPhotoFilterQS();
     
     if (btn) btn.innerHTML = '⏳ Loading photos...';
     console.log('[Excel] Query:', qs);
@@ -7510,7 +7536,7 @@ async function downloadExcelReport() {
     console.log('[Excel] Photos loaded:', photos.length);
     
     if (photos.length === 0) {
-      alert('❌ No photos found in selected filters.\n\nTry different date range or campaign.\n\nFrom: ' + dateFrom + '\nTo: ' + dateTo);
+      alert('❌ No photos found in selected filters.\n\nTry different date range or campaign.');
       if (btn) {
         btn.disabled = false;
         btn.innerHTML = originalText;
@@ -9627,10 +9653,11 @@ async function smartBuildAndDownloadZip(photos, btn) {
   });
   
   // STEP 10: Trigger download
-  var dateRange = document.getElementById('photoDate').value || 'all';
-  var endDate = document.getElementById('photoDateEnd').value;
+  var _r = (typeof getPhotosDateRange === 'function') ? getPhotosDateRange() : { from:'all', to:'' };
+  var dateRange = _r.from || 'all';
+  var endDate = _r.to;
   var dateLabel = endDate && endDate !== dateRange ? dateRange + '_to_' + endDate : dateRange;
-  var campaignLabel = document.getElementById('photoCampaign').value || 'all';
+  var campaignLabel = ($('photosCampaign') ? $('photosCampaign').value : '') || 'all';
   var zipName = 'PrajapatiGPS_' + sanitizeName(campaignLabel) + '_' + dateLabel + '_' + Date.now() + '.zip';
   
   saveAs(blob, zipName);
@@ -9654,15 +9681,20 @@ async function smartBuildAndDownloadZip(photos, btn) {
 // ──── openPPTGenerator (ported from V1) ────
 
 function openPPTGenerator() {
-  // Pick up current filter state
-  var campaign = document.getElementById('photoCampaign').value;
-  var fromDate = document.getElementById('photoDate').value;
-  var toDate = document.getElementById('photoDateEnd').value;
+  // Pick up current filter state (correct IDs matching the Photos grid)
+  var range = (typeof getPhotosDateRange === 'function') ? getPhotosDateRange() : { from:'', to:'' };
+  var campaign = $('photosCampaign') ? $('photosCampaign').value : '';
+  var member = $('photosMember') ? $('photosMember').value : '';
+  var city = $('photosCity') ? $('photosCity').value : '';
+  var mode = $('photosMode') ? $('photosMode').value : '';
   
   var params = [];
   if (campaign) params.push('campaign=' + encodeURIComponent(campaign));
-  if (fromDate) params.push('from=' + fromDate);
-  if (toDate) params.push('to=' + toDate);
+  if (range.from) params.push('from=' + range.from);
+  if (range.to) params.push('to=' + range.to);
+  if (member) params.push('member=' + encodeURIComponent(member));
+  if (city) params.push('city=' + encodeURIComponent(city));
+  if (mode && mode !== 'all') params.push('mode=' + encodeURIComponent(mode));
   
   var url = '/ppt.html' + (params.length ? '?' + params.join('&') : '');
   window.open(url, '_blank');
@@ -10228,19 +10260,8 @@ function inferMediaType(hood, back) {
         throw new Error('Excel library not loaded. Refresh page.');
       }
       
-      // Read filters
-      if (window.__syncPhotoFilters) window.__syncPhotoFilters();
-      var dateFrom = document.getElementById('photoDate').value;
-      var dateTo = document.getElementById('photoDateEnd').value || dateFrom;
-      var campaign = document.getElementById('photoCampaign').value;
-      var member = document.getElementById('photoMember').value;
-      
-      // Build query
-      var qs = '/rest/v1/trial_photos?select=*&order=captured_at.desc&limit=5000';
-      if (dateFrom) qs += '&captured_at=gte.' + new Date(dateFrom + 'T00:00:00+05:30').toISOString();
-      if (dateTo) qs += '&captured_at=lte.' + new Date(dateTo + 'T23:59:59+05:30').toISOString();
-      if (campaign) qs += '&campaign_key=eq.' + encodeURIComponent(campaign);
-      if (member) qs += '&member_phone=eq.' + encodeURIComponent(member);
+      // ⭐ FIX: use SAME filters as Photos grid via shared helper
+      var qs = '/rest/v1/trial_photos' + buildPhotoFilterQS();
       
       if (btn) btn.innerHTML = '⏳ Loading photos...';
       var photos = await window.api(qs);
@@ -10393,16 +10414,20 @@ function inferMediaType(hood, back) {
     if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Loading...'; }
     
     try {
-      // Get filter
-      if (window.__syncPhotoFilters) window.__syncPhotoFilters();
-      var dateFrom = document.getElementById('photoDate').value;
-      var dateTo = document.getElementById('photoDateEnd').value || dateFrom;
-      var campaign = document.getElementById('photoCampaign').value;
+      // Get filter (correct IDs matching the Photos grid)
+      var _r = (typeof getPhotosDateRange === 'function') ? getPhotosDateRange() : { from:'', to:'' };
+      var dateFrom = _r.from;
+      var dateTo = _r.to || dateFrom;
+      var campaign = $('photosCampaign') ? $('photosCampaign').value : '';
+      var member = $('photosMember') ? $('photosMember').value : '';
+      var city = $('photosCity') ? $('photosCity').value : '';
       
       var qs = '/rest/v1/trial_photos?select=vehicle_number,verified_plate,is_verified&is_verified=eq.true&order=captured_at.desc&limit=2000';
       if (dateFrom) qs += '&captured_at=gte.' + new Date(dateFrom + 'T00:00:00+05:30').toISOString();
       if (dateTo) qs += '&captured_at=lte.' + new Date(dateTo + 'T23:59:59+05:30').toISOString();
       if (campaign) qs += '&campaign_key=eq.' + encodeURIComponent(campaign);
+      if (member) qs += '&member_phone=eq.' + encodeURIComponent(member);
+      if (city) qs += '&city=eq.' + encodeURIComponent(city);
       
       var photos = await window.api(qs);
       photos = photos || [];
