@@ -41,7 +41,7 @@ const pptxLibPromise = loadPptxLib();
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
   font-family: 'Plus Jakarta Sans', sans-serif;
-  background: #f5f6f8;
+  background: #F7F8FC;
   color: #0B1957;
   min-height: 100vh;
   padding: 24px;
@@ -49,17 +49,17 @@ body {
 .container { max-width: 1200px; margin: 0 auto; }
 
 .header {
-  background: #fff;
+  background: linear-gradient(135deg, #0B1957 0%, #16236b 100%);
   border-radius: 16px;
-  padding: 28px 32px;
-  margin-bottom: 24px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  padding: 26px 30px;
+  margin-bottom: 22px;
+  box-shadow: 0 4px 16px rgba(11,25,87,0.12);
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
-.header-left h1 { font-size: 24px; font-weight: 700; color: #0B1957; margin-bottom: 6px; }
-.header-left p { font-size: 14px; color: #6b7280; }
+.header-left h1 { font-size: 23px; font-weight: 800; color: #fff; margin-bottom: 5px; }
+.header-left p { font-size: 13.5px; color: #B8C0E0; }
 
 .lib-status {
   font-size: 12px;
@@ -96,6 +96,32 @@ body {
   background: #fff; font-family: inherit; color: #0B1957; outline: none;
 }
 .filter-group select:focus, .filter-group input:focus { border-color: #26d0ce; }
+
+/* ═══ SEARCHABLE DROPDOWN ═══ */
+.search-dd { position: relative; }
+.search-dd-input {
+  width: 100%; padding: 11px 13px; border: 1.5px solid #E6E9F2; border-radius: 10px;
+  font-size: 14px; background: #fff; font-family: inherit; color: #0B1957; outline: none;
+  cursor: text;
+}
+.search-dd-input:focus { border-color: #26d0ce; box-shadow: 0 0 0 3px rgba(38,208,206,0.12); }
+.search-dd-input::placeholder { color: #9aa3b8; }
+.search-dd-list {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 50;
+  background: #fff; border: 1px solid #E6E9F2; border-radius: 11px;
+  box-shadow: 0 12px 30px rgba(11,25,87,0.14); max-height: 260px; overflow-y: auto;
+  display: none; padding: 5px;
+}
+.search-dd-list.open { display: block; }
+.search-dd-opt {
+  padding: 9px 12px; font-size: 13.5px; border-radius: 7px; cursor: pointer;
+  color: #0E1942; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.search-dd-opt:hover, .search-dd-opt.active { background: #E1F7F6; color: #0fa6a4; }
+.search-dd-opt .sub { font-size: 11px; color: #8E97B2; font-family: 'JetBrains Mono', monospace; }
+.search-dd-opt.is-all { font-weight: 700; color: #0B1957; border-bottom: 1px solid #EEF1F7; border-radius: 0; margin-bottom: 3px; }
+.search-dd-empty { padding: 14px 12px; font-size: 12.5px; color: #9aa3b8; text-align: center; font-style: italic; }
+.search-dd-caret { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #9aa3b8; pointer-events: none; font-size: 12px; }
 
 .btn {
   padding: 12px 24px; font-size: 14px; font-weight: 600;
@@ -231,7 +257,12 @@ body {
     <div class="filter-row">
       <div class="filter-group">
         <label>Campaign</label>
-        <select id="campaignFilter">
+        <div class="search-dd" id="campaignDD">
+          <input type="text" class="search-dd-input" id="campaignSearch" placeholder="Search campaign…" autocomplete="off" onfocus="openDD('campaign')" oninput="filterDD('campaign')">
+          <span class="search-dd-caret">▾</span>
+          <div class="search-dd-list" id="campaignList"></div>
+        </div>
+        <select id="campaignFilter" style="display:none">
           <option value="">Loading campaigns...</option>
         </select>
       </div>
@@ -239,6 +270,17 @@ body {
         <label>City (optional)</label>
         <select id="cityFilter">
           <option value="">All cities</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Team Member (optional)</label>
+        <div class="search-dd" id="memberDD">
+          <input type="text" class="search-dd-input" id="memberSearch" placeholder="All members" autocomplete="off" onfocus="openDD('member')" oninput="filterDD('member')">
+          <span class="search-dd-caret">▾</span>
+          <div class="search-dd-list" id="memberList"></div>
+        </div>
+        <select id="memberFilter" style="display:none">
+          <option value="">All members</option>
         </select>
       </div>
       <div class="filter-group">
@@ -370,6 +412,81 @@ let state = {
   clientToken: null,
   tokenRow: null
 };
+
+// ═══════════════════════════════════════════════════════════════
+// SEARCHABLE DROPDOWN ENGINE (campaign + member)
+// ═══════════════════════════════════════════════════════════════
+const DD = {
+  campaign: { options: [], inputId: 'campaignSearch', listId: 'campaignList', selectId: 'campaignFilter', onPick: null },
+  member:   { options: [], inputId: 'memberSearch',   listId: 'memberList',   selectId: 'memberFilter',   onPick: null }
+};
+
+// options = [{ value, label, sub }]
+function setDDOptions(name, options, placeholder) {
+  const d = DD[name];
+  d.options = options;
+  const inp = document.getElementById(d.inputId);
+  if (inp && placeholder) inp.placeholder = placeholder;
+  renderDDList(name, '');
+}
+
+function renderDDList(name, query) {
+  const d = DD[name];
+  const list = document.getElementById(d.listId);
+  if (!list) return;
+  const q = (query || '').toLowerCase().trim();
+  const filtered = d.options.filter(o =>
+    !q || o.label.toLowerCase().includes(q) || (o.sub && String(o.sub).toLowerCase().includes(q))
+  );
+  if (!filtered.length) {
+    list.innerHTML = '<div class="search-dd-empty">No match</div>';
+    return;
+  }
+  list.innerHTML = filtered.map(o => {
+    const isAll = o.value === '';
+    const sub = o.sub ? '<span class="sub">' + escapeHtml(String(o.sub)) + '</span>' : '';
+    return '<div class="search-dd-opt' + (isAll ? ' is-all' : '') + '" data-name="' + name + '" data-value="' + String(o.value).replace(/"/g,'&quot;') + '" data-label="' + escapeHtml(o.label).replace(/"/g,'&quot;') + '">' +
+      '<span>' + escapeHtml(o.label) + '</span>' + sub + '</div>';
+  }).join('');
+  // bind clicks
+  list.querySelectorAll('.search-dd-opt').forEach(el => {
+    el.onclick = () => pickDD(name, el.getAttribute('data-value'), el.getAttribute('data-label'));
+  });
+}
+
+function openDD(name) {
+  // close others
+  Object.keys(DD).forEach(k => { const l = document.getElementById(DD[k].listId); if (l) l.classList.remove('open'); });
+  const list = document.getElementById(DD[name].listId);
+  if (list) { renderDDList(name, ''); list.classList.add('open'); }
+}
+
+function filterDD(name) {
+  const inp = document.getElementById(DD[name].inputId);
+  const list = document.getElementById(DD[name].listId);
+  if (list) list.classList.add('open');
+  renderDDList(name, inp ? inp.value : '');
+}
+
+function pickDD(name, value, label) {
+  const d = DD[name];
+  const sel = document.getElementById(d.selectId);
+  const inp = document.getElementById(d.inputId);
+  if (sel) { sel.value = value; }
+  if (inp) { inp.value = (value === '') ? '' : (label || ''); }
+  const list = document.getElementById(d.listId);
+  if (list) list.classList.remove('open');
+  // fire native change so existing handlers run
+  if (sel) sel.dispatchEvent(new Event('change'));
+  if (typeof d.onPick === 'function') d.onPick(value, label);
+}
+
+// close dropdowns on outside click
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.search-dd')) {
+    Object.keys(DD).forEach(k => { const l = document.getElementById(DD[k].listId); if (l) l.classList.remove('open'); });
+  }
+});
 
 // ═══════════════════════════════════════════════════════════════
 //  ROLE DETECTION & ACCESS HELPERS (22-May-2026)
@@ -605,6 +722,16 @@ async function loadCampaigns() {
     });
     
     select.addEventListener('change', onCampaignChange);
+
+    // Feed searchable dropdown
+    setDDOptions('campaign',
+      visibleCampaigns.map(c => ({
+        value: c.key,
+        label: c.name + (c.client_name ? ' (' + c.client_name + ')' : ''),
+        sub: c.key
+      })),
+      'Search campaign…'
+    );
   } catch (err) {
     console.error('Campaign load error:', err);
     showToast('Campaigns load nahi hue', 'error');
@@ -634,15 +761,43 @@ function onCampaignChange() {
 
 async function loadCitiesForCampaign(key) {
   try {
-    const photos = await api('/rest/v1/trial_photos?campaign_key=eq.' + encodeURIComponent(key) + '&select=city&limit=10000');
+    const photos = await api('/rest/v1/trial_photos?campaign_key=eq.' + encodeURIComponent(key) + '&select=city,member_name,member_phone&limit=10000');
     const cities = {};
-    (photos || []).forEach(p => { if (p.city) cities[p.city] = true; });
+    const members = {}; // phone -> name
+    (photos || []).forEach(p => {
+      if (p.city) cities[p.city] = true;
+      // key members by phone (reliable); fall back to name if no phone
+      const ph = p.member_phone || ('name:' + (p.member_name || ''));
+      if (p.member_name || p.member_phone) {
+        members[ph] = p.member_name || p.member_phone || 'Unknown';
+      }
+    });
     const list = Object.keys(cities).sort();
     const sel = document.getElementById('cityFilter');
     sel.innerHTML = '<option value="">All cities (' + list.length + ')</option>' +
       list.map(c => '<option value="' + c.replace(/"/g, '&quot;') + '">' + c + '</option>').join('');
+
+    // Populate Team Member dropdown (value = phone-or-namekey, label = name)
+    const mEntries = Object.keys(members)
+      .map(ph => ({ val: ph, name: members[ph] }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const msel = document.getElementById('memberFilter');
+    if (msel) {
+      msel.innerHTML = '<option value="">All members (' + mEntries.length + ')</option>' +
+        mEntries.map(m => '<option value="' + String(m.val).replace(/"/g, '&quot;') + '">' + escapeHtml(m.name) + '</option>').join('');
+    }
+    // Feed searchable member dropdown
+    setDDOptions('member',
+      [{ value: '', label: 'All members (' + mEntries.length + ')', sub: '' }].concat(
+        mEntries.map(m => ({ value: m.val, label: m.name, sub: (String(m.val).indexOf('name:') === 0 ? '' : m.val) }))
+      ),
+      'All members'
+    );
+    // reset member search box on campaign change
+    const minp = document.getElementById('memberSearch'); if (minp) minp.value = '';
+    if (msel) msel.value = '';
   } catch (err) {
-    console.warn('Cities load failed:', err);
+    console.warn('Cities/members load failed:', err);
   }
 }
 
@@ -680,6 +835,7 @@ async function loadVehicles() {
   const toDate = document.getElementById('toDate').value;
   const mode = document.getElementById('modeFilter').value;
   const cityFilter = document.getElementById('cityFilter').value;
+  const memberFilter = document.getElementById('memberFilter') ? document.getElementById('memberFilter').value : '';
   
   if (!campaignKey) { showToast('Pehle campaign select karo', 'error'); return; }
   if (!fromDate || !toDate) { showToast('Date range select karo', 'error'); return; }
@@ -695,7 +851,14 @@ async function loadVehicles() {
             + '&order=captured_at.asc&limit=10000';
     if (mode !== 'all') url += '&mode=eq.' + mode;
     if (cityFilter) url += '&city=eq.' + encodeURIComponent(cityFilter);
-    if (mode !== 'all') url += '&mode=eq.' + mode;
+    // Team Member filter: value is member_phone, or 'name:<name>' fallback
+    if (memberFilter) {
+      if (memberFilter.indexOf('name:') === 0) {
+        url += '&member_name=eq.' + encodeURIComponent(memberFilter.slice(5));
+      } else {
+        url += '&member_phone=eq.' + encodeURIComponent(memberFilter);
+      }
+    }
     
     const photos = await api(url);
     
