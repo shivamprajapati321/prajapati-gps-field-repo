@@ -454,10 +454,10 @@ let otpExpiresAt = null;
   try{
     const session = WatiClient.getSession();
     if (session && session.member) {
-      let home = '/owner.html';
+      let home = '/app.html#v2';
       try {
         if (typeof AccessGuard !== 'undefined' && AccessGuard.getDefaultHome) {
-          home = AccessGuard.getDefaultHome() || '/owner.html';
+          home = AccessGuard.getDefaultHome() || '/app.html#v2';
         }
       } catch(e) { console.warn('AccessGuard error:', e); }
       console.log('Already logged in, redirecting to', home);
@@ -674,29 +674,30 @@ async function verifyOTP() {
   
   // Route by role - BULLETPROOF version
   setTimeout(() => {
-    let home = '/owner.html';  // Safe default
+    let home = '/app.html#v2';  // Safe default → unified admin wrapper
     try {
       // Try AccessGuard first
       if (typeof AccessGuard !== 'undefined' && AccessGuard.getDefaultHome) {
-        home = AccessGuard.getDefaultHome() || '/owner.html';
+        home = AccessGuard.getDefaultHome() || '/app.html#v2';
       } else {
         // Fallback: route from result directly
         const role = String(result.member && result.member.role || '').toLowerCase();
-        if (role === 'owner' || role === 'admin') home = '/owner.html';
+        if (role === 'owner' || role === 'admin') home = '/app.html#v2';
+        else if (role === 'operations_manager' || role === 'ops_manager') home = '/app.html#v2';
+        else if (role === 'data_manager' || role === 'data_entry' || role === 'deo') home = '/app.html#v2';
         else if (role === 'sales' || role === 'hr_sales' || role === 'sales_admin') home = '/crm.html';
-        else if (role === 'operations_manager') home = '/owner.html';
         else if (role === 'operations' || role === 'execution') home = '/execution-entry.html';
         else if (role === 'field' || role === 'field_worker') home = '/field.html';
-        else if (role === 'printing') home = '/printing.html';
-        else if (role === 'stitching') home = '/stitching.html';
+        else if (role === 'printing') home = '/printing-v2.html';
+        else if (role === 'stitching') home = '/stitching-v2.html';
         else if (role === 'delivery') home = '/delivery.html';
         else if (role === 'verifier') home = '/verifier.html';
-        else if (role === 'data_entry' || role === 'deo') home = '/admin-v2.html';
+        else if (role === 'accountant') home = '/payments.html';
       }
       console.log('[Login] Redirecting to:', home);
     } catch (e) {
       console.error('[Login] Routing error, using default:', e);
-      home = '/owner.html';
+      home = '/app.html#v2';
     }
     
     // Force redirect
