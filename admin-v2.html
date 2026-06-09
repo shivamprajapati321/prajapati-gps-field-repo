@@ -4282,7 +4282,15 @@ function toggleSidebar() {
 }
 
 function openExternal(file) {
-  window.open(file, '_blank');
+  // Open in the SAME tab (not a new tab). admin-v2 runs inside app.html's
+  // iframe, so navigate the TOP window to replace the whole page.
+  try {
+    if (window.top && window.top !== window.self) {
+      window.top.location.href = file;
+      return;
+    }
+  } catch (e) { /* cross-origin guard — fall through */ }
+  window.location.href = file;
 }
 
 // ─── DASHBOARD ───
