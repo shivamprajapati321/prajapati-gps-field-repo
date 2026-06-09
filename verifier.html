@@ -393,11 +393,24 @@ function buildVehicles() {
     var pathParts = url.split('/');
     if (pathParts.length >= 2) vehicleSlug = pathParts[pathParts.length - 2];
     
+    // GROUPING PRIORITY (fixes Verifier↔Excel count mismatch + reassign/merge):
+    //  1. vehicle_group_id  — set by manual Merge / Verify (strongest, survives everything)
+    //  2. verified_plate / vehicle_number — survives Reassign-vehicle (DB-only move)
+    //  3. URL slug          — fallback for un-verified, un-reassigned photos
+    //  4. time bucket       — last resort when nothing identifies the vehicle
+    var verifiedPlate = cleanPlate(p.verified_plate);
+    var ocrPlate = cleanPlate(p.vehicle_number);
     if (state.currentMode === 'back_panel') {
-      groupKey = 'bp_' + p.id;
+      // Back panel = 1 photo/vehicle, but still honour group_id/plate so reassign works
+      if (p.vehicle_group_id) groupKey = 'gid_' + p.vehicle_group_id;
+      else if (verifiedPlate && verifiedPlate.length >= 4) groupKey = p.member_phone + '_' + verifiedPlate;
+      else if (ocrPlate && ocrPlate.length >= 4) groupKey = p.member_phone + '_' + ocrPlate;
+      else groupKey = 'bp_' + p.id;
     } else {
-      if (vehicleSlug && vehicleSlug.length > 1) groupKey = p.member_phone + '_' + vehicleSlug;
-      else if (p.vehicle_number) groupKey = p.member_phone + '_' + cleanPlate(p.vehicle_number);
+      if (p.vehicle_group_id) groupKey = 'gid_' + p.vehicle_group_id;
+      else if (verifiedPlate && verifiedPlate.length >= 4) groupKey = p.member_phone + '_' + verifiedPlate;
+      else if (ocrPlate && ocrPlate.length >= 4) groupKey = p.member_phone + '_' + ocrPlate;
+      else if (vehicleSlug && vehicleSlug.length > 1) groupKey = p.member_phone + '_' + vehicleSlug;
       else { var bucket = Math.floor(new Date(p.captured_at).getTime() / (3 * 60 * 1000)); groupKey = p.member_phone + '_t' + bucket; }
     }
     
