@@ -13,6 +13,9 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
+
+<!-- Access Control (Step 1): unified RBAC + session via login.html -->
+<script src="/lib/access-guard.js"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Prajapati Admin">
 
@@ -2269,13 +2272,15 @@ label {
     <div class="login-logo">P</div>
     <h1>Prajapati GPS</h1>
     <div class="login-version">ADMIN CONSOLE · V2</div>
-    <p>Owner ya Admin number daalo</p>
-    <input type="tel" id="loginPhone" placeholder="10 digit phone number" maxlength="10" inputmode="numeric">
-    <div class="login-helper" id="loginHelper">0/10 digits</div>
-    <button class="btn btn-primary btn-block" id="loginBtn">
-      <span>Login</span>
+    <p id="loginCheckMsg">Checking sign-in…</p>
+    <button class="btn btn-primary btn-block" id="goLoginBtn" onclick="window.location.href='/login.html'" style="margin-top:12px">
+      <span>Go to Login</span>
       <i class="ti ti-arrow-right"></i>
     </button>
+    <!-- Legacy phone fields kept hidden so old listeners don't error -->
+    <input type="tel" id="loginPhone" style="display:none" maxlength="10">
+    <div class="login-helper" id="loginHelper" style="display:none">0/10 digits</div>
+    <button id="loginBtn" style="display:none"></button>
   </div>
 </div>
 
@@ -3842,42 +3847,52 @@ $('loginPhone').addEventListener('keypress', function(e) {
 $('loginBtn').addEventListener('click', loginAdmin);
 
 function loginAdmin() {
-  var phone = $('loginPhone').value.trim();
-  if (phone.length === 0) { showToast('Phone number daalo', 'error'); $('loginPhone').focus(); return; }
-  if (phone.length < 10) { showToast('Phone short — ' + phone.length + ' digits diye, ' + (10-phone.length) + ' aur chahiye', 'error'); return; }
-  
-  var btn = $('loginBtn');
-  btn.disabled = true;
-  btn.innerHTML = '<i class="ti ti-loader"></i> Logging in...';
-  
-  api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*')
-    .then(function(members) {
-      btn.disabled = false;
-      btn.innerHTML = '<span>Login</span><i class="ti ti-arrow-right"></i>';
-      if (!members || members.length === 0) { showToast('Number registered nahi hai', 'error'); return; }
-      var m = members[0];
-      if (m.role !== 'admin' && m.role !== 'owner') { showToast('Sirf Admin/Owner login kar sakte hain', 'error'); return; }
-      state.admin = m;
-      localStorage.setItem('prajapati_admin_phone_v2', phone);
-      enterDashboard();
-    })
-    .catch(function(err) {
-      btn.disabled = false;
-      btn.innerHTML = '<span>Login</span><i class="ti ti-arrow-right"></i>';
-      console.error(err);
-      showToast('Login error: ' + err.message, 'error');
-    });
+  // Login now happens via /login.html (OTP for admin team, password for field).
+  gotoLogin();
+}
+
+// ═══ SESSION-BASED ENTRY (Step 1: unified access control) ═══
+// Reads the session created by login.html (key: prajapati_session).
+// No session → redirect to login. Session present → populate state.admin
+// exactly like the old flow so all downstream code keeps working.
+function bootFromSession() {
+  var session = (window.AccessGuard && AccessGuard.getSession) ? AccessGuard.getSession() : null;
+  if (!session || !session.member) {
+    gotoLogin();
+    return false;
+  }
+  var m = session.member;
+  if (m.active === false) {
+    gotoLogin();
+    return false;
+  }
+  // Normalise module_access (may be a JSON string from DB)
+  if (m.module_access && typeof m.module_access === 'string') {
+    try { m.module_access = JSON.parse(m.module_access); } catch(e) { m.module_access = {}; }
+  }
+  state.admin = m;
+  enterDashboard();
+  return true;
+}
+
+// Redirect to login at TOP window level (admin-v2 runs inside app.html iframe).
+function gotoLogin() {
+  try {
+    if (window.top && window.top !== window.self) {
+      window.top.location.href = '/login.html';
+      return;
+    }
+  } catch (e) { /* cross-origin guard — fall through */ }
+  window.location.href = '/login.html';
 }
 
 function logout() {
   if (!confirm('Logout karna hai?')) return;
   localStorage.removeItem('prajapati_admin_phone_v2');
+  localStorage.removeItem('prajapati_session');
+  try { sessionStorage.clear(); } catch(e){}
   state.admin = null;
-  $('appShell').style.display = 'none';
-  $('loginScreen').style.display = 'flex';
-  $('loginPhone').value = '';
-  $('loginHelper').textContent = '0/10 digits';
-  $('loginHelper').style.color = 'var(--text-3)';
+  gotoLogin();
 }
 
 function enterDashboard() {
@@ -5767,6 +5782,8 @@ $('memberGpsModal').addEventListener('click', function(e){ if (e.target === this
 
 // Initialize assignment date input on load
 document.addEventListener('DOMContentLoaded', function() {
+  // Step 1: unified access control — enter via session (login.html creates it)
+  bootFromSession();
   if (document.getElementById('assignDate') && !document.getElementById('assignDate').value) {
     document.getElementById('assignDate').value = todayStr();
   }
@@ -7537,16 +7554,8 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
-// ─── AUTO-LOGIN IF SAVED ───
-document.addEventListener('DOMContentLoaded', function() {
-  var saved = localStorage.getItem('prajapati_admin_phone_v2');
-  if (saved && saved.length === 10) {
-    $('loginPhone').value = saved;
-    var helper = $('loginHelper');
-    helper.textContent = '10/10 digits ✓';
-    helper.style.color = 'var(--success)';
-  }
-});
+// ─── (obsolete) saved-phone autofill — login now via /login.html session ───
+// Intentionally left as no-op after move to unified access control.
 
 </script>
 
