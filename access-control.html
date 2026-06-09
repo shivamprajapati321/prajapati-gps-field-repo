@@ -2,584 +2,330 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Access Control · Prajapati Advertising</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Team Access · Prajapati Advertising</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght,ital@9..144,300..900,0..1&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<script src="/lib/access-guard.js"></script>
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
 :root{
-  --navy:#0B1957;--gold:#B89B4E;--gold-deep:#8B7430;--gold-soft:#F4E4B0;--gold-pale:#FBF6E4;
-  --cream:#FAF8F3;--paper:#F7F4EC;--rule:#E5E0D2;
-  --ink-950:#0F172A;--ink-500:#64748B;--text-dim:#94A3B8;
-  --success:#047857;--success-bg:#D1FAE5;
-  --warn:#C2410C;--warn-bg:#FED7AA;
-  --danger:#BE123C;--danger-bg:#FECACA;
-  --info:#1E40AF;--info-bg:#DBEAFE;
-  --purple:#7C3AED;--purple-bg:#EDE9FE;
+  --primary:#0B1957; --primary-700:#0E1F6E; --primary-50:#EEF1FB;
+  --accent:#26d0ce; --accent-deep:#0fa6a4; --gold:#F5B800;
+  --bg:#F7F8FC; --card:#FFFFFF; --surface:#FAFBFE; --border:#E6E9F2; --border-strong:#D5DAE9;
+  --text-1:#0E1942; --text-2:#5B6480; --text-3:#8E97B2;
+  --success:#16A34A; --success-bg:#E7F8EE; --danger:#DC2626;
+  --r-md:10px; --r-lg:14px; --r-xl:18px;
+  --shadow-sm:0 1px 2px rgba(11,25,87,.04),0 1px 3px rgba(11,25,87,.06);
+  --shadow-md:0 4px 12px rgba(11,25,87,.06),0 2px 6px rgba(11,25,87,.04);
+  --shadow-lg:0 12px 32px rgba(11,25,87,.10),0 4px 12px rgba(11,25,87,.06);
 }
-body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--cream);color:var(--ink-950);font-size:14px;line-height:1.55}
-button{font-family:inherit;cursor:pointer;border:none;background:none}
-a{color:inherit;text-decoration:none}
-input,select{font-family:inherit;outline:none}
-
-.topbar{background:var(--navy);color:#fff;padding:14px 32px;border-bottom:3px solid var(--gold);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
-.tb-brand{display:flex;align-items:center;gap:12px}
-.tb-logo{width:36px;height:36px;background:var(--gold);color:var(--navy);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px}
-.tb-name{font-size:14px;font-weight:700}
-.tb-tag{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--gold-soft);letter-spacing:0.16em;text-transform:uppercase;margin-top:2px}
-
-.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;border:none;transition:all 0.15s}
-.btn-secondary{background:#fff;color:var(--navy);border:1px solid var(--rule)}
-.btn-success{background:var(--success);color:#fff}
-.btn-danger{background:var(--danger);color:#fff}
-.btn-info{background:var(--info);color:#fff}
-.btn.sm{padding:5px 10px;font-size:10.5px}
-
-.main{max-width:1640px;margin:0 auto;padding:24px}
-
-.page-head{margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--rule);display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:14px}
-.page-title{font-family:'Fraunces',serif;font-size:28px;font-weight:500;color:var(--navy);letter-spacing:-0.02em}
-.page-title em{color:var(--gold);font-style:italic}
-.page-sub{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:0.14em;text-transform:uppercase;margin-top:6px}
-
-.toolbar{background:#fff;border:1px solid var(--rule);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.toolbar input,.toolbar select{padding:8px 12px;border:1px solid var(--rule);background:var(--cream);font-size:13px;border-radius:6px;min-width:160px}
-.toolbar input:focus,.toolbar select:focus{border-color:var(--gold);background:#fff}
-.toolbar .label{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--gold-deep);letter-spacing:0.14em;text-transform:uppercase}
-
-.callout{display:flex;align-items:flex-start;gap:10px;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:12.5px}
-.callout.info{background:var(--info-bg);color:var(--info)}
-.callout.error{background:var(--danger-bg);color:var(--danger)}
-.callout.success{background:var(--success-bg);color:var(--success)}
-
-/* MATRIX TABLE */
-.matrix-wrap{background:#fff;border:1px solid var(--rule);border-radius:10px;overflow:hidden;overflow-x:auto;max-width:100%}
-.matrix{border-collapse:collapse;width:100%;font-size:12px;min-width:1200px}
-.matrix th,.matrix td{padding:8px 10px;border-bottom:1px solid var(--rule);text-align:center;vertical-align:middle}
-.matrix thead th{background:var(--paper);position:sticky;top:0;z-index:5;font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;color:var(--navy);letter-spacing:0.06em;text-transform:uppercase;padding:10px 6px;border-bottom:2px solid var(--rule);min-width:60px}
-.matrix thead th .icon{display:block;font-size:14px;margin-bottom:3px}
-.matrix thead th.user-col{text-align:left;min-width:200px;width:200px;left:0;background:var(--paper);position:sticky;z-index:10}
-.matrix tbody tr:hover td{background:#FFFCF4}
-.matrix tbody td.user-cell{text-align:left;font-size:12.5px;background:#fff;position:sticky;left:0;z-index:4;border-right:1px solid var(--rule);min-width:200px;width:200px}
-.matrix tbody tr:hover td.user-cell{background:#FFFCF4}
-.matrix tbody td.section-header{background:linear-gradient(90deg, var(--gold-pale), #fff);font-family:'Fraunces',serif;font-style:italic;font-size:13px;color:var(--navy);text-align:left;font-weight:600;padding:8px 12px;letter-spacing:-0.01em}
-
-.user-name-cell{font-weight:600;color:var(--navy)}
-.user-meta{font-size:10px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;margin-top:2px}
-
-/* Toggle pill - 3 states: ON, OFF, DEFAULT */
-.toggle{display:inline-flex;align-items:center;justify-content:center;width:36px;height:22px;border-radius:999px;cursor:pointer;font-size:10px;font-weight:700;transition:all 0.15s;border:1px solid var(--rule);font-family:'JetBrains Mono',monospace}
-.toggle:hover{transform:scale(1.1)}
-.toggle.on{background:var(--success);color:#fff;border-color:var(--success)}
-.toggle.off{background:var(--danger);color:#fff;border-color:var(--danger)}
-.toggle.default{background:var(--paper);color:var(--text-dim);border-color:var(--rule)}
-.toggle.default::before{content:'—'}
-.toggle.on::before{content:'✓'}
-.toggle.off::before{content:'✗'}
-
-.dirty-row{background:linear-gradient(90deg, var(--warn-bg) 0%, #fff 8%);border-left:3px solid var(--warn) !important}
-.dirty-row .user-cell{background:var(--warn-bg) !important}
-
-.save-bar{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:14px 24px;border-radius:12px;display:none;align-items:center;gap:14px;box-shadow:0 10px 30px rgba(0,0,0,0.3);z-index:50;border:2px solid var(--gold)}
-.save-bar.show{display:flex}
-.save-bar-text{font-size:13px;font-weight:600}
-.save-bar-count{background:var(--gold);color:var(--navy);padding:2px 8px;border-radius:999px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700}
-
-.stats-bar{display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));gap:12px;margin-bottom:16px}
-.stat{background:#fff;border:1px solid var(--rule);border-radius:10px;padding:14px}
-.stat-label{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--gold-deep);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:6px}
-.stat-value{font-family:'Fraunces',serif;font-size:24px;font-weight:600;color:var(--navy);line-height:1}
-
-.empty{text-align:center;padding:60px 20px;color:var(--text-dim);font-style:italic}
-
-.spin{width:13px;height:13px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;vertical-align:-2px}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-@media (max-width:768px){
-  .main{padding:14px}
-  .topbar{padding:12px 16px}
-  .matrix{font-size:11px}
-}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);color:var(--text-1);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:760px;margin:0 auto;padding:22px 18px 120px}
+.topbar{margin-bottom:18px}
+.back-link{font-size:13px;color:var(--text-2);text-decoration:none;display:inline-flex;align-items:center;gap:5px;margin-bottom:12px}
+.back-link:hover{color:var(--primary)}
+.page-title{font-size:23px;font-weight:700;letter-spacing:-.4px}
+.page-title i{vertical-align:-3px;margin-right:6px;color:var(--accent-deep)}
+.page-sub{font-size:13px;color:var(--text-2);margin-top:3px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-sm)}
+.picker{padding:18px 20px;margin-bottom:14px}
+label.lbl{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-2);margin-bottom:7px}
+.dd-wrap{position:relative}
+.dd-input{width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--border-strong);border-radius:10px;font-family:inherit;outline:none;background:var(--card);color:var(--text-1)}
+.dd-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(38,208,206,.12)}
+.dd{position:absolute;top:100%;left:0;right:0;z-index:60;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-top:4px;max-height:300px;overflow-y:auto;display:none;box-shadow:var(--shadow-lg)}
+.dd.open{display:block}
+.dd-item{padding:11px 14px;cursor:pointer;border-bottom:1px solid var(--bg);display:flex;align-items:center;gap:10px}
+.dd-item:last-child{border-bottom:none}
+.dd-item:hover{background:var(--primary-50)}
+.dd-av{width:32px;height:32px;border-radius:50%;background:var(--primary);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0}
+.dd-info{min-width:0}
+.dd-nm{font-size:13.5px;font-weight:600;color:var(--text-1)}
+.dd-meta{font-size:11px;color:var(--text-3);font-family:'JetBrains Mono',monospace}
+.dd-empty{padding:12px 14px;font-size:13px;color:var(--text-3);font-style:italic}
+.member-head{display:none;align-items:center;gap:14px;padding:16px 20px;background:linear-gradient(135deg,var(--primary),var(--primary-700));border-radius:var(--r-lg);color:#fff;margin-bottom:14px;box-shadow:var(--shadow-md)}
+.member-head.show{display:flex}
+.mh-av{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.12);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;flex-shrink:0;border:2px solid rgba(38,208,206,.4)}
+.mh-info{flex:1;min-width:0}
+.mh-name{font-size:17px;font-weight:700}
+.mh-meta{font-size:12px;color:rgba(255,255,255,.7);font-family:'JetBrains Mono',monospace;margin-top:2px}
+.mh-role-select{padding:7px 11px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;font-family:inherit;font-size:12.5px;font-weight:600}
+.mh-role-select option{color:#0E1942}
+.presets{display:none;flex-wrap:wrap;gap:8px;padding:14px 20px;margin-bottom:14px}
+.presets.show{display:flex}
+.presets .ptitle{width:100%;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-2);margin-bottom:2px}
+.preset-btn{padding:8px 14px;border-radius:999px;border:1px solid var(--border-strong);background:var(--card);color:var(--text-1);font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .15s}
+.preset-btn:hover{border-color:var(--accent);background:var(--primary-50);color:var(--primary)}
+.features{display:none}
+.features.show{display:block}
+.feat-section{margin-bottom:8px}
+.feat-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--accent-deep);padding:14px 4px 8px}
+.feat-row{display:flex;align-items:center;gap:14px;padding:13px 18px;border-bottom:1px solid var(--border)}
+.feat-row:last-child{border-bottom:none}
+.feat-ico{font-size:20px;width:26px;text-align:center;flex-shrink:0}
+.feat-name{flex:1;font-size:14.5px;font-weight:500;color:var(--text-1)}
+.feat-default{font-size:10.5px;color:var(--text-3);font-family:'JetBrains Mono',monospace;margin-left:8px}
+.feat-locked{font-size:11px;color:var(--text-3);font-style:italic;display:flex;align-items:center;gap:5px}
+.sw{position:relative;width:52px;height:30px;flex-shrink:0;cursor:pointer}
+.sw input{opacity:0;width:0;height:0;position:absolute}
+.sw .track{position:absolute;inset:0;background:#CBD2E0;border-radius:999px;transition:background .18s}
+.sw .knob{position:absolute;top:3px;left:3px;width:24px;height:24px;background:#fff;border-radius:50%;transition:transform .18s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.sw input:checked + .track{background:var(--success)}
+.sw input:checked + .track + .knob{transform:translateX(22px)}
+.sw.locked{opacity:.4;cursor:not-allowed}
+.savebar{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--border);box-shadow:0 -4px 20px rgba(11,25,87,.08);padding:14px 20px;display:none;align-items:center;justify-content:space-between;gap:14px;z-index:80}
+.savebar.show{display:flex}
+.savebar-info{font-size:13px;color:var(--text-2)}
+.savebar-info b{color:var(--primary)}
+.btn{font-family:inherit;font-weight:600;font-size:14px;padding:11px 22px;border-radius:10px;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:all .15s}
+.btn-primary{background:var(--primary);color:#fff;box-shadow:0 2px 8px rgba(11,25,87,.25)}
+.btn-primary:hover{background:var(--primary-700)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.btn-ghost{background:var(--card);color:var(--text-2);border:1px solid var(--border)}
+.empty-state{text-align:center;padding:50px 20px;color:var(--text-3)}
+.empty-state i{font-size:40px;display:block;margin-bottom:12px;color:var(--border-strong)}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--primary);color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:500;display:none;z-index:200;box-shadow:var(--shadow-lg)}
+.toast.show{display:block}
+.toast.success{background:var(--success)} .toast.error{background:var(--danger)}
+.blocked{max-width:440px;margin:80px auto;text-align:center;padding:40px;background:var(--card);border-radius:var(--r-xl);box-shadow:var(--shadow-lg)}
+.blocked i{font-size:48px;color:var(--gold)}
+.hide{display:none}
+@media(max-width:560px){ .member-head{flex-wrap:wrap} .mh-role-select{width:100%} }
 </style>
 </head>
 <body>
-
-<div class="topbar">
-  <div class="tb-brand">
-    <div class="tb-logo">🔐</div>
-    <div>
-      <div class="tb-name">Access Control</div>
-      <div class="tb-tag">Admin · User × Feature Matrix</div>
-    </div>
+<div class="wrap" id="app">
+  <div class="topbar">
+    <a href="app.html#v2" class="back-link"><i class="ti ti-arrow-left"></i> Back to admin</a>
+    <h1 class="page-title"><i class="ti ti-shield-lock"></i> Team Access</h1>
+    <p class="page-sub">Member chuno, phir har feature ON/OFF karo. Save karte hi unke account mein lagu.</p>
   </div>
-  <div style="display:flex;gap:8px">
-    <a href="/hub.html" class="btn btn-secondary">← Hub</a>
-    <a href="/admin-v2.html" class="btn btn-secondary">⚙️ Admin</a>
+  <div id="loadingState" class="empty-state"><i class="ti ti-loader"></i><div>Loading…</div></div>
+  <div id="mainUI" class="hide">
+    <div class="card picker">
+      <label class="lbl">Member chuno</label>
+      <div class="dd-wrap">
+        <input type="text" id="memSearch" class="dd-input" placeholder="Naam ya phone search karo…" autocomplete="off">
+        <div id="memDD" class="dd"></div>
+      </div>
+    </div>
+    <div class="member-head" id="memberHead">
+      <div class="mh-av" id="mhAv">?</div>
+      <div class="mh-info">
+        <div class="mh-name" id="mhName">—</div>
+        <div class="mh-meta" id="mhMeta">—</div>
+      </div>
+      <select class="mh-role-select" id="mhRole" onchange="onRoleChange(this.value)"></select>
+    </div>
+    <div class="card presets" id="presets"></div>
+    <div class="card features" id="features"></div>
   </div>
 </div>
-
-<div class="main">
-  
-  <div class="page-head">
-    <div>
-      <div class="page-title">Feature <em>Access Control</em></div>
-      <div class="page-sub" id="todayDate">…</div>
-    </div>
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-secondary" onclick="resetView()">↻ Refresh</button>
-    </div>
+<div class="savebar" id="saveBar">
+  <div class="savebar-info"><b id="onCount">0</b> features ON</div>
+  <div style="display:flex;gap:10px;">
+    <button class="btn btn-ghost" onclick="resetMember()">Reset</button>
+    <button class="btn btn-primary" id="saveBtn" onclick="saveAccess()"><i class="ti ti-device-floppy"></i> Save access</button>
   </div>
-  
-  <div class="callout info">
-    <span>ℹ️</span>
-    <div>
-      <strong>How it works:</strong> 
-      <span class="toggle on" style="margin:0 4px"></span> grant access · 
-      <span class="toggle off" style="margin:0 4px"></span> deny access · 
-      <span class="toggle default" style="margin:0 4px"></span> use role default
-      <br><small>Click any cell to toggle. Changes are pending until you click "Save Changes".</small>
-    </div>
-  </div>
-  
-  <div id="statsArea" class="stats-bar"></div>
-  
-  <div class="toolbar">
-    <span class="label">Search User:</span>
-    <input type="text" id="filterUser" placeholder="Name or phone..." oninput="renderMatrix()">
-    <span class="label">Role:</span>
-    <select id="filterRole" onchange="renderMatrix()">
-      <option value="">All Roles</option>
-    </select>
-    <div style="margin-left:auto;display:flex;gap:6px">
-      <button class="btn btn-info sm" onclick="quickGrantOps()">⚡ Quick: Make Ops Manager</button>
-      <button class="btn btn-info sm" onclick="quickGrantOperator()">🔨 Quick: Make Operator</button>
-    </div>
-  </div>
-  
-  <div id="matrixArea">
-    <div class="empty">Loading…</div>
-  </div>
-  
 </div>
-
-<div class="save-bar" id="saveBar">
-  <span class="save-bar-text">Unsaved changes</span>
-  <span class="save-bar-count" id="dirtyCount">0</span>
-  <button class="btn btn-secondary" onclick="discardChanges()">Discard</button>
-  <button class="btn btn-success" id="saveBtn" onclick="saveAll()">💾 Save Changes</button>
-</div>
-
-<script src="/lib/access-guard.js"></script>
+<div class="toast" id="toast"></div>
 <script>
-const SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
-const HEADERS = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' };
+"use strict";
+var CONFIG={ supabaseUrl:'https://fpbktcgtspqsqpaytslv.supabase.co', supabaseKey:'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j' };
+function $(id){return document.getElementById(id);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function toast(m,t){var e=$('toast');e.textContent=m;e.className='toast '+(t||'')+' show';clearTimeout(window._t);window._t=setTimeout(function(){e.classList.remove('show');},2800);}
+function api(path,opt){opt=opt||{};opt.headers=Object.assign({apikey:CONFIG.supabaseKey,Authorization:'Bearer '+CONFIG.supabaseKey},opt.headers||{});if(opt.body&&typeof opt.body!=='string'){opt.headers['Content-Type']='application/json';opt.body=JSON.stringify(opt.body);}return fetch(CONFIG.supabaseUrl+path,opt).then(function(r){if(!r.ok)return r.text().then(function(t){throw new Error('API '+r.status+': '+t);});if(r.status===204)return null;return r.text().then(function(t){return t&&t.trim()?JSON.parse(t):null;});});}
 
-// MODULES — must match hub.html
-const MODULES = [
-  // Workspace
-  { id:'dashboard', name:'Dashboard', icon:'📊', section:'Workspace', roles:['owner','admin','operations_manager','data_manager'] },
-  { id:'campaigns', name:'Campaigns', icon:'📋', section:'Workspace', roles:['owner','admin','operations_manager'] },
-  { id:'members', name:'Team members', icon:'👥', section:'Workspace', roles:['owner','admin'] },
-  { id:'assignments', name:'Daily assignments', icon:'🗓️', section:'Workspace', roles:['owner','admin','operations_manager'] },
-  { id:'photos', name:'Photos browser', icon:'📸', section:'Workspace', roles:['owner','admin','operations_manager','data_manager','verifier'] },
-  // Quality & Output
-  { id:'verifier', name:'Verifier portal', icon:'✅', section:'Quality & Output', roles:['owner','admin','verifier','data_manager','operations_manager'] },
-  { id:'reports', name:'Reports', icon:'📈', section:'Quality & Output', roles:['owner','admin','operations_manager','data_manager'] },
-  { id:'clientlinks', name:'Client links', icon:'🔗', section:'Quality & Output', roles:['owner','admin','operations_manager'] },
-  { id:'ppt', name:'PPT Generator', icon:'🎬', section:'Quality & Output', roles:['owner','admin','sales','operations_manager','data_manager'] },
-  { id:'master-cache', name:'Master Database', icon:'💾', section:'Quality & Output', roles:['owner','admin','data_manager'] },
-  // Operations
-  { id:'launch-campaign', name:'Launch Campaign', icon:'🚀', section:'Operations', roles:['owner','admin','operations_manager'] },
-  { id:'campaign-status', name:'Campaign Status', icon:'🗂️', section:'Operations', roles:['owner','admin','operations_manager','data_manager','printing','stitching','delivery'] },
-  { id:'assign-operators', name:'Assign Operators', icon:'🎯', section:'Operations', roles:['owner','admin','operations_manager'] },
-  { id:'designer-uploads', name:'Designer Uploads', icon:'🎨', section:'Operations', roles:['owner','admin','operations_manager','designer'] },
-  { id:'execution-plan', name:'Execution Plan', icon:'📋', section:'Operations', roles:['owner','admin','operations_manager'] },
-  { id:'execution-entry', name:'Daily Entry', icon:'✍️', section:'Operations', roles:['owner','admin','operations_manager','operations'] },
-  { id:'rates-master', name:'Rates Master', icon:'💵', section:'Operations', roles:['owner','admin'] },
-  { id:'ops-dashboard', name:'Ops Dashboard', icon:'📟', section:'Operations', roles:['owner','admin','operations_manager'] },
-  // Production
-  { id:'printing', name:'Printing', icon:'🖨️', section:'Production', roles:['owner','admin','printing','operations_manager'] },
-  { id:'stitching', name:'Stitching', icon:'🧵', section:'Production', roles:['owner','admin','stitching','operations_manager'] },
-  { id:'delivery', name:'Delivery', icon:'🚚', section:'Production', roles:['owner','admin','delivery','operations_manager'] },
-  { id:'field', name:'Field App (PWA)', icon:'📍', section:'Production', roles:['owner','admin','field','operations_manager'] },
-  // Finance
-  { id:'payments', name:'Payments', icon:'💰', section:'Finance', roles:['owner','admin','accountant'] },
-  { id:'outstanding', name:'Outstanding', icon:'⏳', section:'Finance', roles:['owner','admin','accountant'] },
-  // Reports Suite
-  { id:'report-daily', name:'Daily Report', icon:'📅', section:'Reports Suite', roles:['owner','admin','operations_manager','data_manager'] },
-  { id:'report-team', name:'Team Report', icon:'🏆', section:'Reports Suite', roles:['owner','admin','operations_manager','data_manager'] },
-  { id:'report-campaign', name:'Campaign Report', icon:'📈', section:'Reports Suite', roles:['owner','admin','operations_manager','data_manager','sales'] },
-  { id:'reassignment-history', name:'Reassignment Log', icon:'🔄', section:'Reports Suite', roles:['owner','admin','operations_manager','data_manager'] },
-  { id:'archive-viewer', name:'Archive Viewer', icon:'📦', section:'Reports Suite', roles:['owner','admin','operations_manager','data_manager','sales'] },
-  // Sales CRM
-  { id:'crm', name:'CRM Dashboard', icon:'💼', section:'Sales CRM', roles:['owner','admin','sales'] },
-  { id:'leads', name:'Leads', icon:'🎣', section:'Sales CRM', roles:['owner','admin','sales'] },
-  { id:'quotations', name:'Quotations', icon:'📝', section:'Sales CRM', roles:['owner','admin','sales'] },
-  { id:'pi', name:'Proforma Invoice', icon:'🧾', section:'Sales CRM', roles:['owner','admin','sales'] },
-  { id:'invoices', name:'Invoices', icon:'📄', section:'Sales CRM', roles:['owner','admin','sales'] },
-  { id:'clients', name:'Clients', icon:'🏢', section:'Sales CRM', roles:['owner','admin','sales'] },
-  // Tools
-  { id:'hub', name:'Operations Hub', icon:'🛠️', section:'Tools', roles:['owner','admin','operations_manager'] },
-  { id:'sales-hub', name:'Sales Hub', icon:'📊', section:'Tools', roles:['owner','admin','sales'] },
-  // Owner-only (never assignable to others — shown locked)
-  { id:'owner', name:'Owner Console', icon:'👑', section:'Owner Only', roles:['owner','admin'], ownerOnly:true },
-  { id:'access-control', name:'Access Control', icon:'🔐', section:'Owner Only', roles:['owner','admin'], ownerOnly:true },
-  { id:'add-team-member', name:'Add Team Member', icon:'➕', section:'Owner Only', roles:['owner','admin'], ownerOnly:true },
-  { id:'bulkimport', name:'Bulk Import', icon:'📥', section:'Owner Only', roles:['owner','admin'], ownerOnly:true }
+var MODULES=[
+  {id:'dashboard',name:'Dashboard',icon:'📊',section:'Workspace',roles:['owner','admin','operations_manager','data_manager']},
+  {id:'campaigns',name:'Campaigns',icon:'📋',section:'Workspace',roles:['owner','admin','operations_manager']},
+  {id:'members',name:'Team members',icon:'👥',section:'Workspace',roles:['owner','admin']},
+  {id:'assignments',name:'Daily assignments',icon:'🗓️',section:'Workspace',roles:['owner','admin','operations_manager']},
+  {id:'photos',name:'Photos browser',icon:'📸',section:'Workspace',roles:['owner','admin','operations_manager','data_manager','verifier']},
+  {id:'verifier',name:'Verifier portal',icon:'✅',section:'Quality & Output',roles:['owner','admin','verifier','data_manager','operations_manager']},
+  {id:'reports',name:'Reports',icon:'📈',section:'Quality & Output',roles:['owner','admin','operations_manager','data_manager']},
+  {id:'clientlinks',name:'Client links',icon:'🔗',section:'Quality & Output',roles:['owner','admin','operations_manager']},
+  {id:'ppt',name:'PPT Generator',icon:'🎬',section:'Quality & Output',roles:['owner','admin','sales','operations_manager','data_manager']},
+  {id:'master-cache',name:'Master Database',icon:'💾',section:'Quality & Output',roles:['owner','admin','data_manager']},
+  {id:'launch-campaign',name:'Launch Campaign',icon:'🚀',section:'Operations',roles:['owner','admin','operations_manager']},
+  {id:'campaign-status',name:'Campaign Status',icon:'🗂️',section:'Operations',roles:['owner','admin','operations_manager','data_manager','printing','stitching','delivery']},
+  {id:'assign-operators',name:'Assign Operators',icon:'🎯',section:'Operations',roles:['owner','admin','operations_manager']},
+  {id:'designer-uploads',name:'Designer Uploads',icon:'🎨',section:'Operations',roles:['owner','admin','operations_manager','designer']},
+  {id:'execution-plan',name:'Execution Plan',icon:'📋',section:'Operations',roles:['owner','admin','operations_manager']},
+  {id:'execution-entry',name:'Daily Entry',icon:'✍️',section:'Operations',roles:['owner','admin','operations_manager','operations']},
+  {id:'rates-master',name:'Rates Master',icon:'💵',section:'Operations',roles:['owner','admin']},
+  {id:'ops-dashboard',name:'Ops Dashboard',icon:'📟',section:'Operations',roles:['owner','admin','operations_manager']},
+  {id:'printing',name:'Printing',icon:'🖨️',section:'Production',roles:['owner','admin','printing','operations_manager']},
+  {id:'stitching',name:'Stitching',icon:'🧵',section:'Production',roles:['owner','admin','stitching','operations_manager']},
+  {id:'delivery',name:'Delivery',icon:'🚚',section:'Production',roles:['owner','admin','delivery','operations_manager']},
+  {id:'field',name:'Field App (PWA)',icon:'📍',section:'Production',roles:['owner','admin','field','operations_manager']},
+  {id:'payments',name:'Payments',icon:'💰',section:'Finance',roles:['owner','admin','accountant']},
+  {id:'outstanding',name:'Outstanding',icon:'⏳',section:'Finance',roles:['owner','admin','accountant']},
+  {id:'report-daily',name:'Daily Report',icon:'📅',section:'Reports Suite',roles:['owner','admin','operations_manager','data_manager']},
+  {id:'report-team',name:'Team Report',icon:'🏆',section:'Reports Suite',roles:['owner','admin','operations_manager','data_manager']},
+  {id:'report-campaign',name:'Campaign Report',icon:'📈',section:'Reports Suite',roles:['owner','admin','operations_manager','data_manager','sales']},
+  {id:'reassignment-history',name:'Reassignment Log',icon:'🔄',section:'Reports Suite',roles:['owner','admin','operations_manager','data_manager']},
+  {id:'archive-viewer',name:'Archive Viewer',icon:'📦',section:'Reports Suite',roles:['owner','admin','operations_manager','data_manager','sales']},
+  {id:'crm',name:'CRM Dashboard',icon:'💼',section:'Sales CRM',roles:['owner','admin','sales']},
+  {id:'leads',name:'Leads',icon:'🎣',section:'Sales CRM',roles:['owner','admin','sales']},
+  {id:'quotations',name:'Quotations',icon:'📝',section:'Sales CRM',roles:['owner','admin','sales']},
+  {id:'pi',name:'Proforma Invoice',icon:'🧾',section:'Sales CRM',roles:['owner','admin','sales']},
+  {id:'invoices',name:'Invoices',icon:'📄',section:'Sales CRM',roles:['owner','admin','sales']},
+  {id:'clients',name:'Clients',icon:'🏢',section:'Sales CRM',roles:['owner','admin','sales']},
+  {id:'hub',name:'Operations Hub',icon:'🛠️',section:'Tools',roles:['owner','admin','operations_manager']},
+  {id:'sales-hub',name:'Sales Hub',icon:'📊',section:'Tools',roles:['owner','admin','sales']},
+  {id:'owner',name:'Owner Console',icon:'👑',section:'Owner Only',roles:['owner','admin'],ownerOnly:true},
+  {id:'access-control',name:'Access Control',icon:'🔐',section:'Owner Only',roles:['owner','admin'],ownerOnly:true},
+  {id:'add-team-member',name:'Add Team Member',icon:'➕',section:'Owner Only',roles:['owner','admin'],ownerOnly:true},
+  {id:'bulkimport',name:'Bulk Import',icon:'📥',section:'Owner Only',roles:['owner','admin'],ownerOnly:true}
 ];
-
-const state = {
-  user: null,
-  teamMembers: [],
-  pendingChanges: {}, // {userId: {moduleId: true/false/null}}
+var ROLE_DEFAULTS={
+  'sales':['crm','leads','quotations','pi','invoices','clients','sales-hub','report-campaign','archive-viewer','ppt'],
+  'data_manager':['dashboard','photos','verifier','ppt','master-cache','reports','report-daily','report-team','report-campaign','campaign-status','reassignment-history','archive-viewer'],
+  'operations_manager':['dashboard','campaigns','assignments','photos','launch-campaign','campaign-status','assign-operators','designer-uploads','execution-plan','execution-entry','ops-dashboard','printing','stitching','delivery','field','verifier','ppt','reports','report-daily','report-team','report-campaign','reassignment-history','archive-viewer'],
+  'operations':['dashboard','campaign-status','execution-entry','launch-campaign'],
+  'verifier':['verifier','photos','reports'],
+  'accountant':['payments','outstanding','report-campaign'],
+  'printing':['printing','campaign-status'],
+  'stitching':['stitching','campaign-status'],
+  'delivery':['delivery','campaign-status'],
+  'field':['field']
 };
+var ROLE_OPTIONS=['owner','admin','sales','data_manager','operations_manager','operations','verifier','accountant','printing','stitching','delivery','field'];
+var PRESET_KEYS=['sales','data_manager','operations_manager','printing','stitching','delivery','verifier','field'];
+var state={ me:null, members:[], selected:null, draft:{} };
 
-async function api(path, opts = {}) {
-  const res = await fetch(SUPABASE_URL + path, { ...opts, headers: { ...HEADERS, ...(opts.headers || {}) } });
-  if (!res.ok) throw new Error('API ' + res.status + ': ' + await res.text());
-  if (res.status === 204) return null;
-  const text = await res.text();
-  return text ? JSON.parse(text) : null;
-}
-
-function escapeHtml(s) {
-  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-async function checkAccess() {
-  // Session-based (unified with login.html). Falls back to legacy phone key.
-  var member = null;
-  if (window.AccessGuard && AccessGuard.getUser) {
-    member = AccessGuard.getUser();
-  }
-  if (!member) {
-    const phone = localStorage.getItem('prajapati_admin_phone') || localStorage.getItem('prajapati_admin_phone_v2');
-    if (!phone) { location.href = '/login.html'; return null; }
-    const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
-    if (!members || !members.length) { location.href = '/login.html'; return null; }
-    member = members[0];
-  }
-  const role = (member.role || '').toLowerCase();
-  if (!['owner', 'admin'].includes(role)) {
-    document.getElementById('matrixArea').innerHTML = '<div class="callout error"><span>🔒</span><div>Owner/Admin only. Your role: ' + role + '</div></div>';
-    return null;
-  }
-  return member;
-}
-
-async function loadData() {
-  state.user = await checkAccess();
-  if (!state.user) return;
-  
-  document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-IN', {
-    weekday: 'long', day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata'
-  });
-  
-  try {
-    // Read directly from the table (no view dependency). Active members only.
-    const team = await api('/rest/v1/trial_team_members?select=id,name,phone,role,active,module_access&active=eq.true&order=role.asc,name.asc');
-    state.teamMembers = team || [];
-    
-    // Parse module_access if it's a string
-    state.teamMembers.forEach(m => {
-      if (typeof m.module_access === 'string') {
-        try { m.module_access = JSON.parse(m.module_access); } catch(e) { m.module_access = {}; }
-      }
-      if (!m.module_access) m.module_access = {};
-    });
-    
-    // Populate role filter
-    const roles = [...new Set(state.teamMembers.map(m => m.role).filter(Boolean))];
-    document.getElementById('filterRole').innerHTML = '<option value="">All Roles</option>' + 
-      roles.map(r => `<option value="${r}">${escapeHtml(r)}</option>`).join('');
-    
-    renderStats();
-    renderMatrix();
-  } catch (e) {
-    document.getElementById('matrixArea').innerHTML = '<div class="callout error"><span>❌</span><div>Load failed: ' + escapeHtml(e.message) + '<br><small>Make sure STEP1_access_control.sql has been run (adds module_access column).</small></div></div>';
-  }
-}
-
-function renderStats() {
-  const total = state.teamMembers.length;
-  const withOverrides = state.teamMembers.filter(m => Object.keys(m.module_access || {}).length > 0).length;
-  const roleBreakdown = {};
-  state.teamMembers.forEach(m => {
-    const r = m.role || 'unknown';
-    roleBreakdown[r] = (roleBreakdown[r] || 0) + 1;
-  });
-  
-  document.getElementById('statsArea').innerHTML = `
-    <div class="stat">
-      <div class="stat-label">Total Users</div>
-      <div class="stat-value">${total}</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">Custom Access</div>
-      <div class="stat-value">${withOverrides}</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">Default Access</div>
-      <div class="stat-value">${total - withOverrides}</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">Total Modules</div>
-      <div class="stat-value">${MODULES.length}</div>
-    </div>
-  `;
-}
-
-function renderMatrix() {
-  const search = (document.getElementById('filterUser').value || '').toLowerCase();
-  const roleFilter = document.getElementById('filterRole').value;
-  
-  let users = state.teamMembers;
-  if (search) users = users.filter(u => 
-    (u.name || '').toLowerCase().includes(search) || 
-    (u.phone || '').includes(search)
-  );
-  if (roleFilter) users = users.filter(u => u.role === roleFilter);
-  
-  if (!users.length) {
-    document.getElementById('matrixArea').innerHTML = '<div class="empty">No users match filter</div>';
+(function(){
+  var me=(window.AccessGuard&&AccessGuard.getUser)?AccessGuard.getUser():null;
+  if(!me){
+    var ph=localStorage.getItem('prajapati_admin_phone')||localStorage.getItem('prajapati_admin_phone_v2');
+    if(!ph){ gotoLogin(); return; }
+    api('/rest/v1/trial_team_members?phone=eq.'+ph+'&active=eq.true&select=*').then(function(m){
+      if(!m||!m.length){ gotoLogin(); return; }
+      finishBoot(m[0]);
+    }).catch(function(e){ showBlocked('Load error: '+e.message); });
     return;
   }
-  
-  // Group modules by section (in declaration order)
-  const sectionOrder = [];
-  MODULES.forEach(m => { if (sectionOrder.indexOf(m.section) === -1) sectionOrder.push(m.section); });
+  finishBoot(me);
+})();
 
-  // Two-row header: section spans on top, module names below
-  const sectionHeaderCells = sectionOrder.map(sec => {
-    const count = MODULES.filter(m => m.section === sec).length;
-    return `<th colspan="${count}" style="background:var(--gold-pale,#FAF3DD);font-family:'Fraunces',serif;font-style:italic;color:var(--navy,#0B1957);border-left:2px solid var(--rule,#E5E0D2);">${escapeHtml(sec)}</th>`;
-  }).join('');
-
-  const headerCells = MODULES.map(m => `
-    <th title="${escapeHtml(m.name)} (${m.id})${m.ownerOnly ? ' — OWNER ONLY' : ''}">
-      <span class="icon">${m.icon}</span>
-      ${escapeHtml(m.name.split(' ')[0])}${m.ownerOnly ? ' 🔒' : ''}
-    </th>
-  `).join('');
-  
-  const bodyRows = users.map(u => {
-    const isDirty = state.pendingChanges[u.id] && Object.keys(state.pendingChanges[u.id]).length > 0;
-    
-    const cells = MODULES.map(m => {
-      // Owner-only modules: locked — can't be granted to anyone via matrix
-      if (m.ownerOnly) {
-        return `<td><span class="toggle" style="opacity:.35;cursor:not-allowed;" title="Owner-only — sirf owner/admin"></span></td>`;
-      }
-      const pendingValue = state.pendingChanges[u.id] && (m.id in state.pendingChanges[u.id]) 
-        ? state.pendingChanges[u.id][m.id] 
-        : undefined;
-      
-      const currentValue = pendingValue !== undefined 
-        ? pendingValue 
-        : (u.module_access && (m.id in u.module_access) ? u.module_access[m.id] : null);
-      
-      let cls = 'default';
-      if (currentValue === true) cls = 'on';
-      else if (currentValue === false) cls = 'off';
-      
-      // Indicator if role default would have allowed
-      const roleAllowed = m.roles.includes((u.role || '').toLowerCase());
-      const dot = currentValue === null && roleAllowed ? ' style="box-shadow:inset 0 0 0 1px var(--success)"' : '';
-      
-      return `<td><span class="toggle ${cls}" onclick="cycleToggle('${u.id}', '${m.id}')"${dot} title="${roleAllowed ? 'Role default: ALLOWED' : 'Role default: DENIED'}"></span></td>`;
-    }).join('');
-    
-    return `
-      <tr class="${isDirty ? 'dirty-row' : ''}" data-user-id="${u.id}">
-        <td class="user-cell">
-          <div class="user-name-cell">${escapeHtml(u.name || 'Unknown')}</div>
-          <div class="user-meta">${escapeHtml(u.phone || '—')} · ${escapeHtml(u.role || '—')}</div>
-        </td>
-        ${cells}
-      </tr>
-    `;
-  }).join('');
-  
-  document.getElementById('matrixArea').innerHTML = `
-    <div class="matrix-wrap">
-      <table class="matrix">
-        <thead>
-          <tr>
-            <th class="user-col" rowspan="2">User</th>
-            ${sectionHeaderCells}
-          </tr>
-          <tr>
-            ${headerCells}
-          </tr>
-        </thead>
-        <tbody>
-          ${bodyRows}
-        </tbody>
-      </table>
-    </div>
-  `;
-  
-  updateSaveBar();
+function gotoLogin(){ try{ if(window.top&&window.top!==window.self){ window.top.location.href='/login.html'; return; } }catch(e){} window.location.href='/login.html'; }
+function showBlocked(msg){ document.body.innerHTML='<div class="blocked"><i class="ti ti-lock"></i><h2 style="margin:14px 0 8px;">Access Restricted</h2><p style="color:#5B6480;">'+esc(msg)+'</p></div>'; }
+function finishBoot(me){
+  var role=String(me.role||'').toLowerCase();
+  if(role!=='owner'&&role!=='admin'){ showBlocked('Sirf Owner/Admin. Aapka role: '+role); return; }
+  state.me=me; loadMembers();
 }
-
-function cycleToggle(userId, moduleId) {
-  // Get current value
-  const user = state.teamMembers.find(u => u.id === userId);
-  if (!user) return;
-  
-  const pendingValue = state.pendingChanges[userId] && (moduleId in state.pendingChanges[userId]) 
-    ? state.pendingChanges[userId][moduleId] 
-    : undefined;
-  
-  const currentValue = pendingValue !== undefined 
-    ? pendingValue 
-    : (user.module_access && (moduleId in user.module_access) ? user.module_access[moduleId] : null);
-  
-  // Cycle: null → true → false → null
-  let next;
-  if (currentValue === null) next = true;
-  else if (currentValue === true) next = false;
-  else next = null;
-  
-  // Compare with original
-  const originalValue = user.module_access && (moduleId in user.module_access) ? user.module_access[moduleId] : null;
-  
-  if (!state.pendingChanges[userId]) state.pendingChanges[userId] = {};
-  
-  if (next === originalValue) {
-    delete state.pendingChanges[userId][moduleId];
-    if (Object.keys(state.pendingChanges[userId]).length === 0) {
-      delete state.pendingChanges[userId];
-    }
-  } else {
-    state.pendingChanges[userId][moduleId] = next;
-  }
-  
-  renderMatrix();
-}
-
-function updateSaveBar() {
-  const dirtyUsers = Object.keys(state.pendingChanges).length;
-  const totalChanges = Object.values(state.pendingChanges).reduce((sum, m) => sum + Object.keys(m).length, 0);
-  
-  const bar = document.getElementById('saveBar');
-  if (totalChanges > 0) {
-    document.getElementById('dirtyCount').textContent = totalChanges + ' change' + (totalChanges > 1 ? 's' : '') + ' · ' + dirtyUsers + ' user' + (dirtyUsers > 1 ? 's' : '');
-    bar.classList.add('show');
-  } else {
-    bar.classList.remove('show');
-  }
-}
-
-function discardChanges() {
-  if (!confirm('Discard all unsaved changes?')) return;
-  state.pendingChanges = {};
-  renderMatrix();
-}
-
-async function saveAll() {
-  const btn = document.getElementById('saveBtn');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spin"></span> Saving…';
-  
-  try {
-    const updates = [];
-    
-    for (const [userId, changes] of Object.entries(state.pendingChanges)) {
-      const user = state.teamMembers.find(u => u.id === userId);
-      if (!user) continue;
-      
-      const newAccess = { ...(user.module_access || {}) };
-      
-      for (const [moduleId, value] of Object.entries(changes)) {
-        if (value === null) {
-          delete newAccess[moduleId];
-        } else {
-          newAccess[moduleId] = value;
-        }
-        
-        // Audit log
-        updates.push({
-          user_id: userId,
-          changed_by: state.user.id,
-          module_id: moduleId,
-          old_value: user.module_access && (moduleId in user.module_access) ? user.module_access[moduleId] : null,
-          new_value: value
-        });
-      }
-      
-      // Update user
-      await api('/rest/v1/trial_team_members?id=eq.' + userId, {
-        method: 'PATCH',
-        headers: { 'Prefer': 'return=minimal' },
-        body: JSON.stringify({ module_access: newAccess })
+function loadMembers(){
+  api('/rest/v1/trial_team_members?select=id,name,phone,role,active,module_access&active=eq.true&order=role.asc,name.asc')
+    .then(function(rows){
+      state.members=(rows||[]).map(function(m){
+        if(m.module_access&&typeof m.module_access==='string'){ try{m.module_access=JSON.parse(m.module_access);}catch(e){m.module_access={};} }
+        if(!m.module_access) m.module_access={};
+        return m;
       });
-      
-      // Update local cache
-      user.module_access = newAccess;
-    }
-    
-    // Bulk audit log
-    if (updates.length) {
-      try {
-        await api('/rest/v1/trial_access_change_log', {
-          method: 'POST',
-          headers: { 'Prefer': 'return=minimal' },
-          body: JSON.stringify(updates)
-        });
-      } catch (e) {
-        console.warn('Audit log failed:', e);
+      $('loadingState').classList.add('hide');
+      $('mainUI').classList.remove('hide');
+      buildRoleOptions(); setupSearch();
+    })
+    .catch(function(e){ $('loadingState').innerHTML='<div style="color:#DC2626;">Load failed: '+esc(e.message)+'<br><small>STEP1 SQL chala hai? (module_access column chahiye)</small></div>'; });
+}
+function buildRoleOptions(){ $('mhRole').innerHTML=ROLE_OPTIONS.map(function(r){return '<option value="'+r+'">'+r.replace(/_/g,' ')+'</option>';}).join(''); }
+
+function setupSearch(){
+  var inp=$('memSearch'),dd=$('memDD');
+  function render(){
+    var q=(inp.value||'').toLowerCase().trim();
+    var list=state.members.filter(function(m){ return !q||(m.name||'').toLowerCase().indexOf(q)>-1||(m.phone||'').indexOf(q)>-1||(m.role||'').toLowerCase().indexOf(q)>-1; }).slice(0,60);
+    dd.innerHTML=list.length?list.map(function(m){
+      var ini=(m.name||'?').split(' ').map(function(p){return p[0];}).join('').substring(0,2).toUpperCase();
+      return '<div class="dd-item" data-id="'+m.id+'"><div class="dd-av">'+ini+'</div><div class="dd-info"><div class="dd-nm">'+esc(m.name||'—')+'</div><div class="dd-meta">'+esc(m.role||'—')+' · '+esc(m.phone||'')+'</div></div></div>';
+    }).join(''):'<div class="dd-empty">Koi member nahi mila</div>';
+    dd.classList.add('open');
+    Array.prototype.forEach.call(dd.querySelectorAll('.dd-item'),function(el){ el.addEventListener('mousedown',function(){ selectMember(el.getAttribute('data-id')); }); });
+  }
+  inp.addEventListener('input',render); inp.addEventListener('focus',render);
+  document.addEventListener('click',function(e){ if(e.target!==inp&&!dd.contains(e.target)) dd.classList.remove('open'); });
+}
+function selectMember(id){
+  var m=state.members.find(function(x){return String(x.id)===String(id);});
+  if(!m) return;
+  state.selected=m; state.draft=Object.assign({},m.module_access||{});
+  $('memSearch').value=m.name||''; $('memDD').classList.remove('open');
+  var ini=(m.name||'?').split(' ').map(function(p){return p[0];}).join('').substring(0,2).toUpperCase();
+  $('mhAv').textContent=ini; $('mhName').textContent=m.name||'—'; $('mhMeta').textContent=(m.phone||'')+' · '+(m.role||'');
+  $('mhRole').value=String(m.role||'').toLowerCase();
+  $('memberHead').classList.add('show');
+  buildPresets(); renderFeatures();
+  $('presets').classList.add('show'); $('features').classList.add('show'); $('saveBar').classList.add('show');
+}
+function buildPresets(){
+  var html='<div class="ptitle">Quick preset — ek click mein default access</div>';
+  html+=PRESET_KEYS.map(function(r){return '<button class="preset-btn" onclick="applyPreset(\''+r+'\')">'+r.replace(/_/g,' ')+'</button>';}).join('');
+  $('presets').innerHTML=html;
+}
+function isOn(modId){
+  var m=state.selected; if(!m) return false;
+  var role=String($('mhRole').value||m.role||'').toLowerCase();
+  if(role==='owner'||role==='admin') return true;
+  if(state.draft[modId]===true) return true;
+  if(state.draft[modId]===false) return false;
+  var defs=ROLE_DEFAULTS[role];
+  return defs?defs.indexOf(modId)>-1:false;
+}
+function renderFeatures(){
+  var m=state.selected; if(!m) return;
+  var role=String($('mhRole').value||m.role||'').toLowerCase();
+  var isAdminRole=(role==='owner'||role==='admin');
+  var sections=[]; MODULES.forEach(function(mod){ if(sections.indexOf(mod.section)===-1) sections.push(mod.section); });
+  var html=sections.map(function(sec){
+    var rows=MODULES.filter(function(x){return x.section===sec;}).map(function(mod){
+      if(mod.ownerOnly){
+        return '<div class="feat-row"><div class="feat-ico">'+mod.icon+'</div><div class="feat-name">'+esc(mod.name)+'</div><div class="feat-locked"><i class="ti ti-lock"></i> Owner only</div></div>';
       }
-    }
-    
-    state.pendingChanges = {};
-    renderStats();
-    renderMatrix();
-    
-    // Success flash
-    const successBar = document.createElement('div');
-    successBar.className = 'save-bar show';
-    successBar.style.background = 'var(--success)';
-    successBar.innerHTML = '<span class="save-bar-text">✅ Changes saved successfully!</span>';
-    document.body.appendChild(successBar);
-    setTimeout(() => successBar.remove(), 2500);
-    
-  } catch (e) {
-    alert('Save failed: ' + e.message);
-    btn.disabled = false;
-    btn.innerHTML = '💾 Save Changes';
-  }
+      var on=isOn(mod.id);
+      var roleAllowed=mod.roles.indexOf(role)>-1;
+      var lockedAdmin=isAdminRole;
+      return '<div class="feat-row"><div class="feat-ico">'+mod.icon+'</div>'+
+        '<div class="feat-name">'+esc(mod.name)+(roleAllowed&&!isAdminRole?'<span class="feat-default">role default</span>':'')+'</div>'+
+        '<label class="sw'+(lockedAdmin?' locked':'')+'"><input type="checkbox" '+(on?'checked':'')+(lockedAdmin?' disabled':'')+' onchange="toggleFeat(\''+mod.id+'\',this.checked)"><span class="track"></span><span class="knob"></span></label>'+
+      '</div>';
+    }).join('');
+    return '<div class="feat-section"><div class="feat-section-title">'+esc(sec)+'</div>'+rows+'</div>';
+  }).join('');
+  $('features').innerHTML=html; updateOnCount();
 }
-
-function resetView() {
-  if (Object.keys(state.pendingChanges).length > 0) {
-    if (!confirm('You have unsaved changes. Reload anyway?')) return;
-  }
-  state.pendingChanges = {};
-  loadData();
+function toggleFeat(modId,checked){ state.draft[modId]=checked?true:false; updateOnCount(); }
+function updateOnCount(){ $('onCount').textContent=MODULES.filter(function(m){return !m.ownerOnly&&isOn(m.id);}).length; }
+function onRoleChange(newRole){ $('mhMeta').textContent=(state.selected.phone||'')+' · '+newRole; renderFeatures(); }
+function applyPreset(roleKey){
+  var preset=ROLE_DEFAULTS[roleKey]||[]; var d={};
+  MODULES.forEach(function(m){ if(!m.ownerOnly) d[m.id]=preset.indexOf(m.id)>-1; });
+  state.draft=d; $('mhRole').value=roleKey; renderFeatures();
+  toast('Preset "'+roleKey.replace(/_/g,' ')+'" laga — ab Save dabao','');
 }
-
-// Quick action: Grant all "operations" modules to selected role
-function quickGrantOps() {
-  alert('Quick Grant Ops: Pick a user first by hovering. Coming in next update — for now, manually click their row toggles.');
+function resetMember(){
+  if(!state.selected) return;
+  state.draft=Object.assign({},state.selected.module_access||{});
+  $('mhRole').value=String(state.selected.role||'').toLowerCase();
+  renderFeatures();
 }
-
-function quickGrantOperator() {
-  alert('Quick Grant Operator: Pick a user first. For now, manually click toggles for printing-v2/stitching-v2/delivery-v2.');
+function saveAccess(){
+  var m=state.selected; if(!m) return;
+  var newRole=$('mhRole').value;
+  var btn=$('saveBtn'); btn.disabled=true; btn.innerHTML='<i class="ti ti-loader"></i> Saving…';
+  api('/rest/v1/trial_team_members?id=eq.'+m.id,{method:'PATCH',headers:{Prefer:'return=minimal'},body:{role:newRole,module_access:state.draft}})
+    .then(function(){
+      m.role=newRole; m.module_access=Object.assign({},state.draft);
+      btn.disabled=false; btn.innerHTML='<i class="ti ti-device-floppy"></i> Save access';
+      toast('✓ '+(m.name||'Member')+' ka access save ho gaya','success');
+    })
+    .catch(function(e){ btn.disabled=false; btn.innerHTML='<i class="ti ti-device-floppy"></i> Save access'; toast('Save error: '+e.message,'error'); });
 }
-
-// Warn on unsaved changes
-window.addEventListener('beforeunload', (e) => {
-  if (Object.keys(state.pendingChanges).length > 0) {
-    e.preventDefault();
-    e.returnValue = 'Unsaved changes';
-  }
-});
-
-document.addEventListener('DOMContentLoaded', loadData);
 </script>
 </body>
 </html>
