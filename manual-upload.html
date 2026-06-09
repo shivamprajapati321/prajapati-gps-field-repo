@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Prajapati GPS · Manual Photo Upload</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<!-- Tesseract.js for browser OCR of the GPS stamp box -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+:root{
+  --primary:#0B1957; --primary-700:#0E1F6E; --primary-50:#EEF1FB;
+  --accent:#26d0ce; --accent-deep:#0fa6a4; --gold:#F5B800;
+  --bg:#F7F8FC; --card:#FFFFFF; --surface:#FAFBFE; --border:#E6E9F2; --border-strong:#D5DAE9;
+  --text-1:#0E1942; --text-2:#5B6480; --text-3:#8E97B2;
+  --success:#16A34A; --success-bg:#E7F8EE; --warn:#D97706; --warn-bg:#FEF4E2;
+  --danger:#DC2626; --danger-bg:#FCEBEB; --info:#185FA5; --info-bg:#E6F1FB;
+  --r-sm:6px; --r-md:10px; --r-lg:14px; --r-xl:18px;
+  --shadow-sm:0 1px 2px rgba(11,25,87,.04),0 1px 3px rgba(11,25,87,.06);
+  --shadow-md:0 4px 12px rgba(11,25,87,.06),0 2px 6px rgba(11,25,87,.04);
+  --shadow-lg:0 12px 32px rgba(11,25,87,.10),0 4px 12px rgba(11,25,87,.06);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);color:var(--text-1);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1100px;margin:0 auto;padding:24px 20px 80px}
+
+/* Login gate */
+.login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.login-box{background:var(--card);border-radius:var(--r-xl);padding:34px 30px;max-width:380px;width:100%;box-shadow:var(--shadow-lg);border:1px solid var(--border);text-align:center}
+.login-logo{width:60px;height:60px;background:linear-gradient(135deg,var(--primary),var(--primary-700));color:var(--accent);border-radius:16px;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800}
+.login-box h1{font-size:20px;font-weight:700;margin-bottom:3px}
+.login-box .ver{font-size:11px;color:var(--accent-deep);font-weight:700;letter-spacing:.5px;margin-bottom:18px}
+
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:16px;flex-wrap:wrap}
+.page-title{font-size:23px;font-weight:700;letter-spacing:-.4px}
+.page-title i{vertical-align:-3px;margin-right:6px;color:var(--accent-deep)}
+.page-sub{font-size:13px;color:var(--text-2);margin-top:2px;margin-bottom:22px}
+.back-link{font-size:13px;color:var(--text-2);text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+.back-link:hover{color:var(--primary)}
+
+input,select{width:100%;padding:10px 13px;font-size:13px;border:1px solid var(--border-strong);border-radius:9px;font-family:inherit;outline:none;background:var(--card);color:var(--text-1);transition:all .15s}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(38,208,206,.12)}
+label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-2);margin-bottom:6px}
+
+.btn{font-family:inherit;font-weight:600;font-size:13px;padding:9px 16px;border-radius:9px;border:1px solid transparent;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .15s;white-space:nowrap}
+.btn i{font-size:16px}
+.btn-primary{background:var(--primary);color:#fff;box-shadow:0 2px 6px rgba(11,25,87,.25)}
+.btn-primary:hover{background:var(--primary-700);transform:translateY(-1px)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-accent{background:var(--accent);color:var(--primary);font-weight:700}
+.btn-accent:hover{background:var(--accent-deep);color:#fff}
+.btn-ghost{background:var(--card);color:var(--text-1);border-color:var(--border);box-shadow:var(--shadow-sm)}
+.btn-ghost:hover{border-color:var(--border-strong);background:var(--surface)}
+.btn-block{width:100%;justify-content:center}
+.btn-sm{padding:6px 11px;font-size:12px}
+
+/* Step card */
+.step{background:var(--card);border-radius:var(--r-lg);border:1px solid var(--border);padding:20px 22px;margin-bottom:14px;box-shadow:var(--shadow-sm)}
+.step-head{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.step-num{width:30px;height:30px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0}
+.step-num.done{background:var(--success)}
+.step-title{font-size:15px;font-weight:700}
+.step-desc{font-size:12px;color:var(--text-2);margin-top:1px}
+
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.field-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.field{margin-bottom:0}
+.field+.field{margin-top:0}
+
+/* Searchable dropdown */
+.dd-wrap{position:relative}
+.dd{position:absolute;top:100%;left:0;right:0;z-index:60;background:var(--card);border:1px solid var(--border);border-radius:8px;margin-top:3px;max-height:240px;overflow-y:auto;display:none;box-shadow:var(--shadow-lg)}
+.dd.open{display:block}
+.dd-item{padding:9px 12px;font-size:12.5px;cursor:pointer;border-bottom:1px solid var(--bg)}
+.dd-item:last-child{border-bottom:none}
+.dd-item:hover{background:var(--primary-50);color:var(--primary)}
+.dd-empty{padding:10px 12px;font-size:12px;color:var(--text-3);font-style:italic}
+
+/* Dropzone */
+.dropzone{border:2px dashed var(--border-strong);border-radius:var(--r-md);padding:38px 20px;text-align:center;background:var(--surface);cursor:pointer;transition:all .2s}
+.dropzone:hover,.dropzone.drag{border-color:var(--accent);background:rgba(38,208,206,.04)}
+.dropzone i.lead{font-size:40px;color:var(--accent-deep);display:block;margin-bottom:10px}
+.dropzone h4{font-size:15px;font-weight:700;margin-bottom:4px}
+.dropzone p{font-size:12px;color:var(--text-2)}
+
+/* Photo review cards */
+.review-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.pcard{background:var(--card);border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;box-shadow:var(--shadow-sm)}
+.pcard.err{border-color:var(--warn);box-shadow:0 0 0 2px rgba(217,119,6,.15)}
+.pcard-img{position:relative;height:200px;background:#0a0d1a;display:flex;align-items:center;justify-content:center}
+.pcard-img img{max-width:100%;max-height:100%;object-fit:contain}
+.pcard-badge{position:absolute;top:8px;right:8px;font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px}
+.badge-ocr{background:rgba(11,25,87,.85);color:var(--accent)}
+.badge-ready{background:var(--success);color:#fff}
+.badge-pend{background:var(--warn);color:#fff}
+.pcard-body{padding:12px 14px}
+.pcard-row{margin-bottom:10px}
+.pcard-row:last-child{margin-bottom:0}
+.pcard-row label{font-size:9px;margin-bottom:3px}
+.pcard-row input{padding:7px 10px;font-size:12px}
+.pcard-row .latlng{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pcard-row .mono{font-family:'JetBrains Mono',monospace}
+.pcard-remove{position:absolute;top:8px;left:8px;width:26px;height:26px;border-radius:6px;background:rgba(0,0,0,.6);color:#fff;border:none;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center}
+.pcard-remove:hover{background:var(--danger)}
+.ocr-status{font-size:10px;color:var(--text-3);margin-top:4px;font-family:'JetBrains Mono',monospace}
+
+/* Notes box */
+.notes{background:linear-gradient(135deg,var(--primary-50),#F5F8FE);border-radius:var(--r-lg);border-left:4px solid var(--accent);padding:13px 16px;font-size:12px;color:var(--text-1);line-height:1.6;margin-top:8px}
+.notes strong{color:var(--primary)}
+.notes i{vertical-align:-2px;color:var(--primary);margin-right:4px}
+
+.summary-bar{position:sticky;bottom:0;background:var(--card);border-top:1px solid var(--border);box-shadow:0 -4px 16px rgba(11,25,87,.06);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin:14px -20px -80px;border-radius:var(--r-lg) var(--r-lg) 0 0}
+.summary-info{font-size:13px;color:var(--text-2)}
+.summary-info b{color:var(--primary);font-family:'JetBrains Mono',monospace}
+
+.toast{position:fixed;top:20px;right:20px;background:var(--primary);color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:500;display:none;z-index:2000;box-shadow:var(--shadow-lg);max-width:340px}
+.toast.show{display:block;animation:sd .25s}
+.toast.success{background:var(--success)} .toast.error{background:var(--danger)}
+@keyframes sd{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+
+.spinner{width:26px;height:26px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;margin:20px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hide{display:none}
+
+@media(max-width:640px){
+  .field-grid,.field-grid-3{grid-template-columns:1fr}
+  .review-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN GATE (admin/owner only) -->
+<div id="loginScreen" class="login-screen">
+  <div class="login-box">
+    <div class="login-logo">P</div>
+    <h1>Manual Upload</h1>
+    <div class="ver">ADMIN · DATA MANAGER</div>
+    <p style="font-size:13px;color:var(--text-2);margin-bottom:18px">Admin ya owner number daalo</p>
+    <input type="tel" id="loginPhone" placeholder="10 digit phone" maxlength="10" inputmode="numeric" style="margin-bottom:12px">
+    <button class="btn btn-primary btn-block" id="loginBtn">Login <i class="ti ti-arrow-right"></i></button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="app" class="wrap hide">
+  <a href="app.html#v2" class="back-link"><i class="ti ti-arrow-left"></i> Back to admin</a>
+  <div class="topbar" style="margin-top:10px">
+    <div>
+      <h1 class="page-title"><i class="ti ti-cloud-upload"></i> Manual Photo Upload</h1>
+      <p class="page-sub">Third-party GPS camera photos ko campaign mein laao — OCR location auto-read, phir verify flow.</p>
+    </div>
+  </div>
+
+  <!-- STEP 1: Campaign / Member / Date / Mode -->
+  <div class="step">
+    <div class="step-head">
+      <div class="step-num">1</div>
+      <div><div class="step-title">Batch details</div><div class="step-desc">In sab photos par yeh apply hoga</div></div>
+    </div>
+    <div class="field-grid" style="margin-bottom:14px">
+      <div class="field dd-wrap">
+        <label>Campaign *</label>
+        <input type="text" id="campSearch" placeholder="Search campaign…" autocomplete="off">
+        <div id="campDD" class="dd"></div>
+        <input type="hidden" id="campKey">
+      </div>
+      <div class="field dd-wrap">
+        <label>Team member *</label>
+        <input type="text" id="memSearch" placeholder="Search member…" autocomplete="off">
+        <div id="memDD" class="dd"></div>
+        <input type="hidden" id="memPhone"><input type="hidden" id="memName">
+      </div>
+    </div>
+    <div class="field-grid">
+      <div class="field">
+        <label>Capture date *</label>
+        <input type="date" id="batchDate">
+      </div>
+      <div class="field">
+        <label>Mode *</label>
+        <select id="batchMode">
+          <option value="hood">Hood — 3 photos per vehicle</option>
+          <option value="back_panel">Back Panel — 1 photo per vehicle</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: Drop photos -->
+  <div class="step">
+    <div class="step-head">
+      <div class="step-num">2</div>
+      <div><div class="step-title">Add photos</div><div class="step-desc">Drag-drop ya click — JPG/PNG, GPS-stamped</div></div>
+    </div>
+    <div class="dropzone" id="dz" onclick="document.getElementById('fileInput').click()">
+      <i class="ti ti-photo-up lead"></i>
+      <h4>Click to choose photos</h4>
+      <p>ya yahan drag-drop karo · multiple photos ek saath</p>
+      <input type="file" id="fileInput" accept="image/*" multiple class="hide" onchange="handleFiles(this.files)">
+    </div>
+    <div class="notes">
+      <i class="ti ti-info-circle"></i> Photo add karte hi GPS box (Lat/Long/city) <strong>automatically OCR se padha jayega</strong>. Har photo ke neeche detail dikhegi — galat ho to wahin theek kar do. Lat/Long se city auto-confirm hogi.
+    </div>
+  </div>
+
+  <!-- STEP 3: Review -->
+  <div class="step hide" id="reviewStep">
+    <div class="step-head">
+      <div class="step-num" id="reviewNum">3</div>
+      <div><div class="step-title">Review &amp; confirm</div><div class="step-desc" id="reviewSub">—</div></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="rerunOCR()"><i class="ti ti-refresh"></i> Re-run OCR (all)</button>
+      <button class="btn btn-ghost btn-sm" onclick="clearAll()"><i class="ti ti-trash"></i> Clear all</button>
+    </div>
+    <div class="review-grid" id="reviewGrid"></div>
+  </div>
+
+  <!-- Sticky summary / upload -->
+  <div class="summary-bar hide" id="summaryBar">
+    <div class="summary-info">
+      <b id="sumCount">0</b> photos · <b id="sumReady">0</b> ready · <b id="sumPend">0</b> need location
+    </div>
+    <button class="btn btn-primary" id="uploadBtn" onclick="doUpload()"><i class="ti ti-cloud-upload"></i> Upload all to campaign</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+var CONFIG = {
+  supabaseUrl: 'https://fpbktcgtspqsqpaytslv.supabase.co',
+  supabaseKey: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j',
+  bucket: 'trial-photos'
+};
+function $(id){return document.getElementById(id);}
+function esc(s){if(s==null)return'';return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function toast(m,t){var e=$('toast');e.textContent=m;e.className='toast '+(t||'');e.classList.add('show');clearTimeout(window._tt);window._tt=setTimeout(function(){e.classList.remove('show');},3000);}
+function api(path,opt){opt=opt||{};opt.headers=Object.assign({apikey:CONFIG.supabaseKey,Authorization:'Bearer '+CONFIG.supabaseKey},opt.headers||{});if(opt.body&&typeof opt.body!=='string'){opt.headers['Content-Type']='application/json';opt.body=JSON.stringify(opt.body);}return fetch(CONFIG.supabaseUrl+path,opt).then(function(r){if(!r.ok)return r.text().then(function(t){throw new Error('API '+r.status+': '+t);});if(r.status===204)return null;return r.text().then(function(t){return t&&t.trim()?JSON.parse(t):null;});});}
+function todayStr(){var n=new Date();var i=new Date(n.getTime()+5.5*3600*1000);return i.toISOString().split('T')[0];}
+
+var state={admin:null,campaigns:[],members:[],photos:[]};
+
+// ───── LOGIN ─────
+$('loginPhone').addEventListener('input',function(){this.value=this.value.replace(/\D/g,'');});
+$('loginPhone').addEventListener('keypress',function(e){if(e.key==='Enter')login();});
+$('loginBtn').addEventListener('click',login);
+function login(){
+  var phone=$('loginPhone').value.trim();
+  if(phone.length!==10){toast('10 digit number daalo','error');return;}
+  var btn=$('loginBtn');btn.disabled=true;btn.innerHTML='<i class="ti ti-loader"></i> ...';
+  api('/rest/v1/trial_team_members?phone=eq.'+phone+'&active=eq.true&select=*').then(function(m){
+    btn.disabled=false;btn.innerHTML='Login <i class="ti ti-arrow-right"></i>';
+    if(!m||!m.length){toast('Number registered nahi','error');return;}
+    var u=m[0];
+    if(u.role!=='admin'&&u.role!=='owner'){toast('Sirf admin/owner','error');return;}
+    state.admin=u;localStorage.setItem('prajapati_manual_phone',phone);enterApp();
+  }).catch(function(e){btn.disabled=false;btn.innerHTML='Login <i class="ti ti-arrow-right"></i>';toast('Error: '+e.message,'error');});
+}
+function enterApp(){
+  $('loginScreen').classList.add('hide');$('app').classList.remove('hide');
+  $('batchDate').value=todayStr();
+  loadDropdownData();
+}
+document.addEventListener('DOMContentLoaded',function(){
+  var s=localStorage.getItem('prajapati_manual_phone');
+  if(s&&s.length===10)$('loginPhone').value=s;
+});
+
+// ───── LOAD campaigns + members ─────
+function loadDropdownData(){
+  api('/rest/v1/trial_campaigns?select=*&active=eq.true&order=name.asc').then(function(c){
+    state.campaigns=(c||[]).map(function(x){return{key:x.key||x.campaign_key||x.id,name:x.name||x.campaign_name||x.key};});
+  });
+  api('/rest/v1/trial_team_members?select=*&active=eq.true&order=name.asc').then(function(m){
+    state.members=(m||[]).map(function(x){return{phone:x.phone||x.member_phone,name:x.name||x.member_name,role:x.role};}).filter(function(x){return x.phone;});
+  });
+}
+
+// ───── Searchable dropdowns ─────
+function setupDD(searchId,ddId,getList,onPick){
+  var inp=$(searchId),dd=$(ddId);
+  function render(){
+    var q=(inp.value||'').toLowerCase().trim();
+    var list=getList().filter(function(o){return o.label.toLowerCase().indexOf(q)>-1;}).slice(0,50);
+    dd.innerHTML=list.length?list.map(function(o){return'<div class="dd-item" data-v="'+esc(o.value)+'">'+esc(o.label)+'</div>';}).join(''):'<div class="dd-empty">No matches</div>';
+    dd.classList.add('open');
+    Array.prototype.forEach.call(dd.querySelectorAll('.dd-item'),function(el){
+      el.addEventListener('mousedown',function(){onPick(el.getAttribute('data-v'),el.textContent);inp.value=el.textContent;dd.classList.remove('open');});
+    });
+  }
+  inp.addEventListener('input',render);inp.addEventListener('focus',render);
+  document.addEventListener('click',function(e){if(e.target!==inp&&!dd.contains(e.target))dd.classList.remove('open');});
+}
+setupDD('campSearch','campDD',function(){return state.campaigns.map(function(c){return{value:c.key,label:c.name};});},function(v){$('campKey').value=v;});
+setupDD('memSearch','memDD',function(){return state.members.map(function(m){return{value:m.phone,label:m.name+' ('+m.phone+')'};});},function(v){var m=state.members.find(function(x){return x.phone===v;});$('memPhone').value=v;$('memName').value=m?m.name:'';});
+
+// ───── FILE HANDLING ─────
+var dz=$('dz');
+['dragenter','dragover'].forEach(function(ev){dz.addEventListener(ev,function(e){e.preventDefault();dz.classList.add('drag');});});
+['dragleave','drop'].forEach(function(ev){dz.addEventListener(ev,function(e){e.preventDefault();dz.classList.remove('drag');});});
+dz.addEventListener('drop',function(e){if(e.dataTransfer.files.length)handleFiles(e.dataTransfer.files);});
+
+function handleFiles(files){
+  var arr=Array.prototype.slice.call(files).filter(function(f){return f.type.indexOf('image')===0;});
+  if(!arr.length){toast('Koi image nahi mili','error');return;}
+  arr.forEach(function(f){
+    var id='ph_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+    var p={id:id,file:f,dataUrl:null,lat:null,lng:null,city:'',address:'',ocrDone:false,ocrText:''};
+    state.photos.push(p);
+    var rd=new FileReader();
+    rd.onload=function(e){p.dataUrl=e.target.result;renderReview();runOCR(p);};
+    rd.readAsDataURL(f);
+  });
+  $('reviewStep').classList.remove('hide');
+  $('summaryBar').classList.remove('hide');
+  $('fileInput').value='';
+}
+
+// ───── OCR (Tesseract on bottom GPS box) ─────
+function cropBottom(dataUrl){
+  return new Promise(function(resolve){
+    var img=new Image();
+    img.onload=function(){
+      var c=document.createElement('canvas');
+      var topY=Math.floor(img.height*0.66);  // bottom 34% holds the GPS box
+      c.width=img.width;c.height=img.height-topY;
+      var ctx=c.getContext('2d');
+      ctx.drawImage(img,0,topY,img.width,c.height,0,0,img.width,c.height);
+      // grayscale + contrast boost helps OCR
+      var d=ctx.getImageData(0,0,c.width,c.height);var px=d.data;
+      for(var i=0;i<px.length;i+=4){var g=0.3*px[i]+0.59*px[i+1]+0.11*px[i+2];g=g>140?255:(g<90?0:g);px[i]=px[i+1]=px[i+2]=g;}
+      ctx.putImageData(d,0,0);
+      resolve(c.toDataURL('image/png'));
+    };
+    img.src=dataUrl;
+  });
+}
+
+function parseGPS(txt){
+  var out={lat:null,lng:null,city:'',address:''};
+  // Lat/Long — handle optional degree symbol + OCR's "o"/"O" mistakes
+  var m=txt.match(/Lat\s*([\d.]+)\s*[°oO]?\s*Long\s*([\d.]+)\s*[°oO]?/i);
+  if(m){out.lat=m[1];out.lng=m[2];}
+  // City — token before ", <State>, India"
+  var c=txt.match(/([A-Za-z][A-Za-z .]+?),\s*[A-Za-z ]+,\s*India/);
+  if(c)out.city=c[1].trim();
+  // Address — line containing a 6-digit pincode and India
+  var a=txt.match(/([A-Za-z0-9+][^\n]*\d{6}[^\n]*India)/);
+  if(a)out.address=a[1].trim();
+  return out;
+}
+
+function runOCR(p){
+  if(!p.dataUrl)return;
+  p.ocrText='';p.ocrDone=false;renderReview();
+  cropBottom(p.dataUrl).then(function(crop){
+    return Tesseract.recognize(crop,'eng');
+  }).then(function(res){
+    var txt=res.data.text||'';
+    p.ocrText=txt;
+    var g=parseGPS(txt);
+    if(g.lat&&g.lng){p.lat=g.lat;p.lng=g.lng;}
+    if(g.city)p.city=g.city;
+    if(g.address)p.address=g.address;
+    p.ocrDone=true;
+    // If we have lat/lng but city looks junk, reverse-geocode for a clean city
+    if(p.lat&&p.lng&&(!p.city||p.city.length<3||/[^A-Za-z .]/.test(p.city))){
+      reverseGeocode(p);
+    }
+    renderReview();
+  }).catch(function(e){
+    p.ocrDone=true;p.ocrText='OCR failed';renderReview();
+  });
+}
+
+function reverseGeocode(p){
+  fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+p.lat+'&lon='+p.lng+'&zoom=12',{headers:{'Accept-Language':'en'}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var a=d.address||{};
+      var city=a.city||a.town||a.village||a.county||'';
+      if(city){p.city=city;renderReview();}
+      if(!p.address&&d.display_name){p.address=d.display_name;renderReview();}
+    }).catch(function(){});
+}
+
+function rerunOCR(){state.photos.forEach(runOCR);}
+
+// ───── RENDER review cards ─────
+function renderReview(){
+  var grid=$('reviewGrid');
+  if(!state.photos.length){grid.innerHTML='';$('reviewStep').classList.add('hide');$('summaryBar').classList.add('hide');return;}
+  grid.innerHTML=state.photos.map(function(p){
+    var ready=p.lat&&p.lng;
+    var badge=!p.ocrDone?'<span class="pcard-badge badge-ocr">⏳ Reading…</span>':(ready?'<span class="pcard-badge badge-ready">✓ Ready</span>':'<span class="pcard-badge badge-pend">Need location</span>');
+    return '<div class="pcard'+(p.ocrDone&&!ready?' err':'')+'">'+
+      '<div class="pcard-img">'+
+        '<button class="pcard-remove" onclick="removePhoto(\''+p.id+'\')">×</button>'+
+        badge+
+        (p.dataUrl?'<img src="'+p.dataUrl+'">':'<div class="spinner"></div>')+
+      '</div>'+
+      '<div class="pcard-body">'+
+        '<div class="pcard-row"><label>Vehicle number</label><input class="mono" value="'+esc(p.vehicle||'')+'" placeholder="MH00XX0000 (optional)" oninput="setField(\''+p.id+'\',\'vehicle\',this.value)"></div>'+
+        '<div class="pcard-row"><label>Lat / Long</label><div class="latlng">'+
+          '<input class="mono" value="'+esc(p.lat||'')+'" placeholder="Lat" oninput="setField(\''+p.id+'\',\'lat\',this.value)">'+
+          '<input class="mono" value="'+esc(p.lng||'')+'" placeholder="Long" oninput="setField(\''+p.id+'\',\'lng\',this.value)">'+
+        '</div></div>'+
+        '<div class="pcard-row"><label>City</label><input value="'+esc(p.city||'')+'" placeholder="City" oninput="setField(\''+p.id+'\',\'city\',this.value)"></div>'+
+        '<div class="pcard-row"><label>Address</label><input value="'+esc(p.address||'')+'" placeholder="Address" oninput="setField(\''+p.id+'\',\'address\',this.value)"></div>'+
+        (p.ocrDone&&!ready?'<div class="ocr-status" style="color:var(--warn)">⚠️ GPS auto-read nahi hua — Lat/Long manually daalo</div>':'')+
+      '</div>'+
+    '</div>';
+  }).join('');
+  var ready=state.photos.filter(function(p){return p.lat&&p.lng;}).length;
+  $('reviewSub').textContent=state.photos.length+' photos · OCR auto-fill done, confirm karo';
+  $('sumCount').textContent=state.photos.length;
+  $('sumReady').textContent=ready;
+  $('sumPend').textContent=state.photos.length-ready;
+}
+function setField(id,f,v){var p=state.photos.find(function(x){return x.id===id;});if(p){p[f]=v;if(f==='lat'||f==='lng'){var r=state.photos.filter(function(x){return x.lat&&x.lng;}).length;$('sumReady').textContent=r;$('sumPend').textContent=state.photos.length-r;}}}
+function removePhoto(id){state.photos=state.photos.filter(function(p){return p.id!==id;});renderReview();}
+function clearAll(){if(!confirm('Saari photos hata dein?'))return;state.photos=[];renderReview();}
+
+// ───── UPLOAD ─────
+function cleanName(s){return String(s||'unknown').replace(/[^a-zA-Z0-9]/g,'-').replace(/-+/g,'-').substring(0,40);}
+
+function doUpload(){
+  var campKey=$('campKey').value, memPhone=$('memPhone').value, memName=$('memName').value;
+  var date=$('batchDate').value, mode=$('batchMode').value;
+  if(!campKey){toast('Campaign select karo','error');return;}
+  if(!memPhone){toast('Team member select karo','error');return;}
+  if(!date){toast('Date daalo','error');return;}
+  if(!state.photos.length){toast('Koi photo nahi','error');return;}
+  var missing=state.photos.filter(function(p){return!p.lat||!p.lng;});
+  if(missing.length){
+    if(!confirm(missing.length+' photos mein Lat/Long nahi hai. Bina location ke upload karein? (Recommended: pehle location daalo)'))return;
+  }
+  var btn=$('uploadBtn');btn.disabled=true;
+  var done=0,failed=0;var total=state.photos.length;
+  // captured_at: batch date + a stable IST noon (so date filters work). Spread seconds to keep order.
+  var baseTs=new Date(date+'T12:00:00+05:30').getTime();
+
+  var chain=Promise.resolve();
+  state.photos.forEach(function(p,idx){
+    chain=chain.then(function(){
+      btn.innerHTML='<i class="ti ti-loader"></i> Uploading '+(idx+1)+'/'+total+'…';
+      return uploadOne(p,idx,{campKey:campKey,memPhone:memPhone,memName:memName,mode:mode,baseTs:baseTs})
+        .then(function(){done++;})
+        .catch(function(e){failed++;console.error('upload fail',p.id,e);});
+    });
+  });
+  chain.then(function(){
+    btn.disabled=false;btn.innerHTML='<i class="ti ti-cloud-upload"></i> Upload all to campaign';
+    toast('✅ '+done+' uploaded'+(failed?' · '+failed+' failed':''),failed?'error':'success');
+    if(done>0&&!failed){state.photos=[];renderReview();}
+    else renderReview();
+  });
+}
+
+function dataUrlToBlob(dataUrl){
+  var parts=dataUrl.split(',');var mime=parts[0].match(/:(.*?);/)[1];
+  var bin=atob(parts[1]);var n=bin.length;var u8=new Uint8Array(n);
+  while(n--)u8[n]=bin.charCodeAt(n);
+  return new Blob([u8],{type:mime});
+}
+
+function uploadOne(p,idx,b){
+  var vehicle=(p.vehicle||'').toUpperCase().replace(/\s+/g,'')||('MANUAL-'+p.id.slice(-6));
+  var side=b.mode==='back_panel'?'back':'front';
+  var path=cleanName(b.memName)+'/'+cleanName(vehicle)+'/'+side+'-'+cleanName(vehicle)+'-'+p.id.slice(-5)+'.jpg';
+  var blob=dataUrlToBlob(p.dataUrl);
+  // 1) upload to storage
+  return fetch(CONFIG.supabaseUrl+'/storage/v1/object/'+CONFIG.bucket+'/'+encodeURI(path),{
+    method:'POST',
+    headers:{apikey:CONFIG.supabaseKey,Authorization:'Bearer '+CONFIG.supabaseKey,'Content-Type':'image/jpeg','x-upsert':'true'},
+    body:blob
+  }).then(function(r){
+    if(!r.ok)return r.text().then(function(t){throw new Error('storage '+r.status+': '+t);});
+    var publicUrl=CONFIG.supabaseUrl+'/storage/v1/object/public/'+CONFIG.bucket+'/'+encodeURI(path);
+    // 2) insert DB row — same shape as app-captured photos (no special flag, per your call)
+    var ts=new Date(b.baseTs+idx*1000).toISOString();
+    var row={
+      campaign_key:b.campKey,
+      member_phone:b.memPhone,
+      member_name:b.memName,
+      mode:b.mode,
+      vehicle_number:(p.vehicle||'').toUpperCase().replace(/\s+/g,'')||null,
+      public_url:publicUrl,
+      captured_at:ts,
+      city:p.city||null,
+      address:p.address||null,
+      latitude:p.lat?parseFloat(p.lat):null,
+      longitude:p.lng?parseFloat(p.lng):null
+    };
+    return api('/rest/v1/trial_photos',{method:'POST',headers:{'Content-Type':'application/json',Prefer:'return=minimal'},body:row});
+  });
+}
+</script>
+</body>
+</html>
