@@ -2183,6 +2183,82 @@ label {
   .member-tags { grid-column: 1 / -1; justify-content: flex-start; }
   .member-actions { grid-column: 1 / -1; }
 }
+/* ============ MOVE / REASSIGN FEATURE ============ */
+.photo-card { position: relative; }
+.photo-card.is-selected { outline: 3px solid var(--gold, #B89B4E); outline-offset: -1px; }
+.pc-check {
+  position: absolute; top: 8px; left: 8px; z-index: 6;
+  width: 26px; height: 26px; border-radius: 7px;
+  background: rgba(11,25,87,.78); border: 2px solid #fff;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 15px; color: var(--gold, #B89B4E);
+  font-weight: 900; line-height: 1; transition: all .12s; opacity: 0;
+}
+.photo-card:hover .pc-check, .photo-card.is-selected .pc-check { opacity: 1; }
+.pc-check.on { background: var(--gold, #B89B4E); border-color: var(--gold, #B89B4E); color: #2A1E00; }
+.pc-move {
+  position: absolute; bottom: 8px; right: 8px; z-index: 6;
+  background: rgba(11,25,87,.85); color: #fff; border: none;
+  padding: 5px 9px; border-radius: 6px; font-size: 11px; font-weight: 700;
+  cursor: pointer; opacity: 0; transition: opacity .12s; font-family: inherit;
+  display: flex; align-items: center; gap: 4px;
+}
+.photo-card:hover .pc-move { opacity: 1; }
+.pc-move:hover { background: var(--gold, #B89B4E); color: #2A1E00; }
+#photosBulkBar {
+  position: sticky; top: 8px; z-index: 20;
+  background: linear-gradient(90deg, var(--navy, #0B1957), #16276b);
+  border: 1px solid var(--gold, #B89B4E);
+  border-radius: 12px; padding: 12px 16px; margin-bottom: 14px;
+  display: none; align-items: center; justify-content: space-between;
+  box-shadow: 0 8px 24px rgba(0,0,0,.3); flex-wrap: wrap; gap: 10px;
+}
+#photosBulkBar.show { display: flex; }
+.bulk-count { color: #fff; font-weight: 800; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+.bulk-count .dot { color: var(--gold, #B89B4E); }
+.bulk-mode-tag { font-size: 11px; padding: 2px 8px; border-radius: 6px; background: rgba(184,155,78,.22); color: var(--gold,#B89B4E); font-weight: 700; }
+.bulk-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.bulk-btn {
+  background: rgba(255,255,255,.1); color: #fff; border: none;
+  padding: 8px 14px; border-radius: 7px; font-weight: 700; font-size: 12px;
+  cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 5px; transition: all .12s;
+}
+.bulk-btn:hover { background: var(--gold, #B89B4E); color: #2A1E00; }
+.bulk-btn.danger:hover { background: #dc2626; color: #fff; }
+.bulk-btn.ghost { background: transparent; border: 1px solid rgba(255,255,255,.25); }
+#moveModal {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(5,8,22,.82); backdrop-filter: blur(4px);
+  display: none; align-items: center; justify-content: center; padding: 16px;
+}
+#moveModal.show { display: flex; }
+.mv-box {
+  background: var(--card, #0f1633); border: 1px solid var(--gold, #B89B4E);
+  border-radius: 16px; padding: 24px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto;
+}
+.mv-title { font-size: 17px; font-weight: 800; color: var(--gold, #B89B4E); margin-bottom: 4px; }
+.mv-sub { color: var(--text-2, rgba(255,255,255,.55)); font-size: 12px; margin-bottom: 18px; }
+.mv-fromto {
+  display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center;
+  background: rgba(255,255,255,.04); padding: 14px; border-radius: 10px; margin-bottom: 16px;
+}
+.mv-fromto .arrow { color: var(--gold, #B89B4E); font-size: 22px; font-weight: 900; text-align: center; }
+.mv-collbl { font-size: 9px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-2, rgba(255,255,255,.5)); font-weight: 700; margin-bottom: 4px; }
+.mv-colval { font-size: 14px; font-weight: 800; color: #fff; word-break: break-word; }
+.mv-field { margin-bottom: 14px; }
+.mv-field label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-2, rgba(255,255,255,.55)); font-weight: 700; margin-bottom: 5px; }
+.mv-fromto select, .mv-fromto input, .mv-field select, .mv-field input {
+  width: 100%; background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.14);
+  color: #fff; padding: 9px 11px; border-radius: 8px; font-size: 13px; font-family: inherit;
+}
+.mv-warn {
+  background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.3);
+  padding: 10px 12px; border-radius: 8px; font-size: 11.5px; color: #fbbf24; margin-bottom: 16px; line-height: 1.5;
+}
+.mv-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.mv-cancel { background: transparent; border: 1px solid rgba(255,255,255,.18); color: #fff; padding: 10px 18px; border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer; font-family: inherit; }
+.mv-confirm { background: var(--gold, #B89B4E); color: #2A1E00; border: none; padding: 10px 22px; border-radius: 8px; font-weight: 800; font-size: 12px; cursor: pointer; font-family: inherit; }
+.mv-confirm:disabled { opacity: .5; cursor: not-allowed; }
 </style>
 </head>
 <body>
@@ -2802,6 +2878,20 @@ label {
       </div>
 
       <!-- Photos containers -->
+      <div id="photosBulkBar">
+        <div class="bulk-count">
+          <span class="dot">✓</span>
+          <span id="bulkCount">0</span> selected
+          <span class="bulk-mode-tag" id="bulkModeTag">—</span>
+        </div>
+        <div class="bulk-btns">
+          <button class="bulk-btn" onclick="openMoveModal('campaign')">📂 Move to campaign</button>
+          <button class="bulk-btn" onclick="openMoveModal('worker')">👤 Change worker</button>
+          <button class="bulk-btn" onclick="openMoveModal('vehicle')">🔄 Reassign vehicle</button>
+          <button class="bulk-btn danger" onclick="bulkDeletePhotos()">🗑️ Delete</button>
+          <button class="bulk-btn ghost" onclick="clearPhotoSelection()">✕ Clear</button>
+        </div>
+      </div>
       <div id="photosGridContainer" class="photos-masonry">
         <div class="spinner"></div>
       </div>
@@ -6228,7 +6318,11 @@ var p4state = {
   currentPhoto: null,
   clientLinks: [],
   bulkData: null,
-  bulkExistingVehicles: {}
+  bulkExistingVehicles: {},
+  selectedIds: [],          // MOVE FEATURE: selected photo IDs
+  moveMode: null,           // mode lock of current selection
+  moveAction: null,         // 'campaign' | 'worker' | 'vehicle'
+  members: null             // cached team members for worker reassign
 };
 
 // ─── PHOTOS BROWSER ───
@@ -6567,7 +6661,11 @@ function renderPhotos() {
     var time = p.captured_at ? new Date(p.captured_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }) : '';
     var memberName = (p.member_name || '—').split(' ')[0];
     
-    gridHtml += '<div class="photo-card" onclick="openLightbox(' + idx + ')">' +
+    var selClass = p4state.selectedIds.indexOf(p.id) > -1 ? ' is-selected' : '';
+    var checkOn = p4state.selectedIds.indexOf(p.id) > -1 ? ' on' : '';
+    gridHtml += '<div class="photo-card' + selClass + '" data-pid="' + escapeHtml(String(p.id)) + '" onclick="openLightbox(' + idx + ')">' +
+                  '<div class="pc-check' + checkOn + '" onclick="event.stopPropagation(); togglePhotoSelect(\'' + escapeHtml(String(p.id)) + '\')">✓</div>' +
+                  '<button class="pc-move" onclick="event.stopPropagation(); quickMoveSingle(\'' + escapeHtml(String(p.id)) + '\')">📂 Move</button>' +
                   '<div class="verify-dot ' + verifyClass + '"></div>' +
                   '<div class="photo-card-overlay">' +
                     '<span class="v-num">' + escapeHtml(p.vehicle_number || '—') + '</span>' +
@@ -6611,6 +6709,182 @@ function renderPhotos() {
                 '</div>';
   });
   $('photosListContainer').innerHTML = listHtml;
+}
+
+// ============ MOVE / REASSIGN FEATURE (DB-only, storage-safe) ============
+function mvWorkName(nm) {
+  if (!nm) return '—';
+  return String(nm).split(/[·\-–—|]/)[0].trim() || nm;
+}
+function ensureMembersLoaded() {
+  if (p4state.members && p4state.members.length) return Promise.resolve();
+  return api('/rest/v1/trial_team_members?select=*&order=member_name.asc')
+    .then(function(rows) {
+      p4state.members = (rows || []).map(function(m) {
+        return { phone: m.member_phone || m.phone || '', name: m.member_name || m.name || m.captured_by_name || '(no name)' };
+      }).filter(function(m){ return m.phone; });
+    }).catch(function(){ p4state.members = []; });
+}
+function photoById(id) {
+  return (p4state.photos || []).find(function(p){ return String(p.id) === String(id); });
+}
+function togglePhotoSelect(id) {
+  var p = photoById(id);
+  if (!p) return;
+  var i = p4state.selectedIds.indexOf(id);
+  if (i > -1) {
+    p4state.selectedIds.splice(i, 1);
+  } else {
+    if (p4state.selectedIds.length === 0) {
+      p4state.moveMode = p.mode || null;
+    } else if ((p.mode || null) !== p4state.moveMode) {
+      showToast('Alag mode ki photo select nahi kar sakte. Sirf ' + (p4state.moveMode || '—').toUpperCase() + ' mode select hai.', 'error');
+      return;
+    }
+    p4state.selectedIds.push(id);
+  }
+  if (p4state.selectedIds.length === 0) p4state.moveMode = null;
+  refreshSelectionUI();
+}
+function clearPhotoSelection() {
+  p4state.selectedIds = [];
+  p4state.moveMode = null;
+  refreshSelectionUI();
+}
+function refreshSelectionUI() {
+  var sel = p4state.selectedIds;
+  document.querySelectorAll('.photo-card[data-pid]').forEach(function(card) {
+    var pid = card.getAttribute('data-pid');
+    var on = sel.indexOf(pid) > -1;
+    card.classList.toggle('is-selected', on);
+    var chk = card.querySelector('.pc-check');
+    if (chk) chk.classList.toggle('on', on);
+  });
+  var bar = $('photosBulkBar');
+  if (!bar) return;
+  if (sel.length > 0) {
+    bar.classList.add('show');
+    $('bulkCount').textContent = sel.length;
+    $('bulkModeTag').textContent = (p4state.moveMode || '—').toUpperCase();
+  } else { bar.classList.remove('show'); }
+}
+function quickMoveSingle(id) {
+  var p = photoById(id);
+  if (!p) return;
+  p4state.selectedIds = [id];
+  p4state.moveMode = p.mode || null;
+  refreshSelectionUI();
+  openMoveModal('campaign');
+}
+function currentCampaignLabel(p) {
+  if (!p) return '—';
+  var c = (state.campaigns || []).find(function(x){ return (x.key||x.campaign_key||x.id) === p.campaign_key; });
+  var nm = c ? (c.name || p.campaign_key) : p.campaign_key;
+  return mvWorkName(nm);
+}
+function setMoveTitle(t, s) { $('moveModalTitle').textContent = t; $('moveModalSub').textContent = s; }
+function closeMoveModal() { $('moveModal').classList.remove('show'); }
+function openMoveModal(action) {
+  if (p4state.selectedIds.length === 0) { showToast('Pehle photos select karo.', 'error'); return; }
+  p4state.moveAction = action;
+  var first = photoById(p4state.selectedIds[0]);
+  var n = p4state.selectedIds.length;
+  var box = $('moveModalBody');
+
+  if (action === 'campaign') {
+    var opts = '<option value="">Select campaign…</option>';
+    (state.campaigns || []).forEach(function(c) {
+      var k = c.key || c.campaign_key || c.id;
+      opts += '<option value="' + escapeHtml(k) + '">' + escapeHtml(mvWorkName(c.name || k)) + '</option>';
+    });
+    box.innerHTML =
+      '<div class="mv-fromto">' +
+        '<div><div class="mv-collbl">From campaign</div><div class="mv-colval">' + escapeHtml(currentCampaignLabel(first)) + '</div>' +
+          '<div style="font-size:10px;color:var(--text-2,rgba(255,255,255,.4));margin-top:3px">' + n + ' photo' + (n>1?'s':'') + ' · ' + (p4state.moveMode||'—').toUpperCase() + '</div></div>' +
+        '<div class="arrow">→</div>' +
+        '<div><div class="mv-collbl">To campaign</div><select id="mvTargetCampaign">' + opts + '</select></div>' +
+      '</div>' +
+      '<div class="mv-warn">⚠️ Sirf <b>' + (p4state.moveMode||'—').toUpperCase() + '</b> mode campaign mein move karein. Alag mode (Hood↔Back) report tod dega.</div>';
+    setMoveTitle('📂 Move to campaign', n + ' photo' + (n>1?'s':'') + ' move karega — sirf campaign tag badlega, files safe rahengi.');
+  } else if (action === 'worker') {
+    ensureMembersLoaded().then(function(){
+      var opts = '<option value="">Select worker…</option>';
+      (p4state.members || []).forEach(function(m){
+        opts += '<option value="' + escapeHtml(m.phone) + '" data-name="' + escapeHtml(m.name) + '">' + escapeHtml(m.name) + ' (' + escapeHtml(m.phone) + ')</option>';
+      });
+      box.innerHTML =
+        '<div class="mv-fromto">' +
+          '<div><div class="mv-collbl">From worker</div><div class="mv-colval">' + escapeHtml(first.member_name||'—') + '</div>' +
+            '<div style="font-size:10px;color:var(--text-2,rgba(255,255,255,.4));margin-top:3px">' + n + ' photo' + (n>1?'s':'') + '</div></div>' +
+          '<div class="arrow">→</div>' +
+          '<div><div class="mv-collbl">To worker</div><select id="mvTargetWorker">' + opts + '</select></div>' +
+        '</div>' +
+        '<div class="mv-warn">ℹ️ Photos ka worker (member) badlega. Storage file waisi hi rahegi — sirf DB record update hoga.</div>';
+      setMoveTitle('👤 Change worker', 'Galat worker assign hua tha? Yahan sahi karo.');
+    });
+  } else if (action === 'vehicle') {
+    box.innerHTML =
+      '<div class="mv-fromto">' +
+        '<div><div class="mv-collbl">From vehicle</div><div class="mv-colval">' + escapeHtml(first.vehicle_number||'—') + '</div>' +
+          '<div style="font-size:10px;color:var(--text-2,rgba(255,255,255,.4));margin-top:3px">' + n + ' photo' + (n>1?'s':'') + '</div></div>' +
+        '<div class="arrow">→</div>' +
+        '<div><div class="mv-collbl">To vehicle no.</div><input id="mvTargetVehicle" type="text" placeholder="MH00XX0000" value=""></div>' +
+      '</div>' +
+      '<div class="mv-warn">ℹ️ RTO format: <b>MH00XX0000</b>. Sabhi selected photos ka vehicle number isme badlega.</div>';
+    setMoveTitle('🔄 Reassign vehicle / rickshaw', 'Galat plate number? Sahi vehicle pe move karo.');
+  }
+  $('moveModal').classList.add('show');
+}
+function confirmMove() {
+  var ids = p4state.selectedIds.slice();
+  if (ids.length === 0) return;
+  var action = p4state.moveAction;
+  var btn = $('moveConfirmBtn');
+  var idFilter = 'id=in.(' + ids.map(encodeURIComponent).join(',') + ')';
+  var patch = {}; var human = '';
+
+  if (action === 'campaign') {
+    var target = $('mvTargetCampaign').value;
+    if (!target) { showToast('Target campaign select karo.', 'error'); return; }
+    patch.campaign_key = target; human = 'campaign';
+  } else if (action === 'worker') {
+    var wsel = $('mvTargetWorker'); var phone = wsel.value;
+    if (!phone) { showToast('Worker select karo.', 'error'); return; }
+    patch.member_phone = phone;
+    patch.member_name = wsel.options[wsel.selectedIndex].getAttribute('data-name') || '';
+    human = 'worker';
+  } else if (action === 'vehicle') {
+    var v = ($('mvTargetVehicle').value || '').toUpperCase().replace(/\s+/g, '');
+    if (!/^[A-Z]{2}[0-9]{1,2}[A-Z]{0,3}[0-9]{3,4}$/.test(v)) { showToast('Sahi RTO format daalo (e.g. MH04JH1018).', 'error'); return; }
+    patch.vehicle_number = v; human = 'vehicle';
+  }
+  btn.disabled = true; var orig = btn.textContent; btn.textContent = 'Moving…';
+  api('/rest/v1/trial_photos?' + idFilter, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+    body: patch
+  }).then(function() {
+    showToast('✅ ' + ids.length + ' photo' + (ids.length>1?'s':'') + ' move ho gayi (' + human + ').', 'success');
+    closeMoveModal(); clearPhotoSelection(); loadPhotos();
+  }).catch(function(err) {
+    console.error('[Move] failed', err);
+    showToast('❌ Move fail: ' + (err.message || '?'), 'error');
+    btn.disabled = false; btn.textContent = orig;
+  });
+}
+function bulkDeletePhotos() {
+  var ids = p4state.selectedIds.slice();
+  if (ids.length === 0) return;
+  if (!confirm(ids.length + ' photos delete karein? (Soft delete — recover ho sakti hain)')) return;
+  var idFilter = 'id=in.(' + ids.map(encodeURIComponent).join(',') + ')';
+  api('/rest/v1/trial_photos?' + idFilter, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+    body: { deleted_at: new Date().toISOString() }
+  }).then(function() {
+    showToast('🗑️ ' + ids.length + ' photos deleted.', 'success');
+    clearPhotoSelection(); loadPhotos();
+  }).catch(function(err) { showToast('Delete fail: ' + (err.message || '?'), 'error'); });
 }
 
 function switchPhotoView(view) {
@@ -10520,5 +10794,16 @@ function inferMediaType(hood, back) {
   console.log('[Excel Report V2] Module loaded — call downloadExcelReportV2() to generate approved format');
 })();
 </script>
+<div id="moveModal">
+  <div class="mv-box">
+    <div class="mv-title" id="moveModalTitle">Move</div>
+    <div class="mv-sub" id="moveModalSub"></div>
+    <div id="moveModalBody"></div>
+    <div class="mv-actions">
+      <button class="mv-cancel" onclick="closeMoveModal()">Cancel</button>
+      <button class="mv-confirm" id="moveConfirmBtn" onclick="confirmMove()">Confirm move</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
