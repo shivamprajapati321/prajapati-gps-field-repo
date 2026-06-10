@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache">
+<title>Design Tasks · Prajapati Advertising</title>
+<!-- Unified login bridge: feed session → legacy prajapati_admin_phone -->
+<script src="/lib/access-guard.js"></script>
+<script>
+(function(){
+  try{
+    var s=(window.AccessGuard&&AccessGuard.getSession)?AccessGuard.getSession():null;
+    if(s&&s.member){ if(s.member.phone) localStorage.setItem('prajapati_admin_phone',s.member.phone); window.currentSessionMember=s.member; }
+    else { var embedded=(window.self!==window.top)||/[?&]embedded=1/.test(location.search);
+      if(!embedded&&!localStorage.getItem('prajapati_admin_phone')){ location.href='/login.html'; } }
+  }catch(e){console.warn('bridge',e);}
+})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --primary:#0B1957;--primary-700:#0E1F6E;--primary-50:#EEF1FB;
+  --accent:#26d0ce;--accent-deep:#0fa6a4;--gold:#F5B800;--gold-pale:#FAF3DD;
+  --bg:#F7F8FC;--card:#FFFFFF;--surface:#FAFBFE;--border:#E6E9F2;--border-strong:#D5DAE9;
+  --text-1:#0E1942;--text-2:#5B6480;--text-3:#8E97B2;
+  --success:#16A34A;--success-bg:#E7F8EE;--warn:#D97706;--warn-bg:#FEF3E2;--danger:#DC2626;--danger-bg:#FEECEC;
+  --r-md:10px;--r-lg:14px;--r-xl:18px;
+  --shadow-sm:0 1px 2px rgba(11,25,87,.04),0 1px 3px rgba(11,25,87,.06);
+  --shadow-md:0 4px 12px rgba(11,25,87,.06),0 2px 6px rgba(11,25,87,.04);
+  --shadow-lg:0 12px 32px rgba(11,25,87,.10),0 4px 12px rgba(11,25,87,.06);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);color:var(--text-1);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.mono{font-family:'JetBrains Mono',monospace}
+.wrap{max-width:1080px;margin:0 auto;padding:22px 18px 90px}
+.tabs{display:flex;gap:8px;margin-bottom:22px;flex-wrap:wrap}
+.tab{padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);background:var(--card);color:var(--text-2);font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.tab .badge{background:var(--gold);color:#5b4500;border-radius:99px;padding:1px 7px;font-size:11px;font-weight:700}
+.view{display:none}.view.active{display:block}
+.page-head{margin-bottom:18px}
+.page-title{font-size:23px;font-weight:700;letter-spacing:-.4px}
+.page-title i{color:var(--accent-deep);vertical-align:-3px;margin-right:6px}
+.page-sub{font-size:13px;color:var(--text-2);margin-top:3px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-sm);padding:20px;margin-bottom:16px}
+.lbl{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-2);margin-bottom:7px}
+.inp{width:100%;padding:11px 13px;font-size:14px;border:1px solid var(--border-strong);border-radius:9px;font-family:inherit;outline:none;background:var(--card);color:var(--text-1)}
+.inp:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(38,208,206,.12)}
+textarea.inp{resize:vertical}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.field{margin-bottom:14px}
+.btn{font-family:inherit;font-weight:600;font-size:14px;padding:11px 20px;border-radius:9px;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:filter .15s}
+.btn:hover{filter:brightness(1.05)} .btn:disabled{opacity:.55;cursor:not-allowed}
+.btn-primary{background:var(--primary);color:#fff}.btn-teal{background:var(--accent);color:#073b3a}.btn-gold{background:var(--gold);color:#5b4500}
+.btn-success{background:var(--success);color:#fff}.btn-danger{background:var(--danger-bg);color:var(--danger);border:1px solid #F3C7C7}
+.btn-ghost{background:var(--card);color:var(--text-2);border:1px solid var(--border)}
+.btn-sm{padding:7px 13px;font-size:12.5px}
+.task{border:1px solid var(--border);border-radius:var(--r-lg);padding:16px 18px;margin-bottom:12px;background:var(--card);box-shadow:var(--shadow-sm)}
+.task-top{display:flex;align-items:flex-start;gap:12px;margin-bottom:6px}
+.task-icon{width:42px;height:42px;border-radius:10px;background:var(--primary-50);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.task-main{flex:1;min-width:0}
+.task-name{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.task-meta{font-size:12px;color:var(--text-3);margin-top:2px}
+.task-meta b{color:var(--text-2)}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:600}
+.chip.pending{background:var(--warn-bg);color:var(--warn)}.chip.in_progress{background:#E8F0FE;color:#1D4ED8}
+.chip.submitted{background:#F3E8FF;color:#7E22CE}.chip.approved{background:var(--success-bg);color:var(--success)}
+.chip.rejected{background:var(--danger-bg);color:var(--danger)}.chip.sent_to_print,.chip.completed{background:var(--gold-pale);color:#7A5C00}
+.chip.urgent{background:var(--danger-bg);color:var(--danger)}
+.task-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);flex-wrap:wrap}
+.task-detail{font-size:13px;color:var(--text-2)}
+.qty-pill{background:var(--primary);color:#fff;padding:3px 10px;border-radius:7px;font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.file-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:9px;margin:8px 0;background:var(--surface)}
+.file-thumb{width:44px;height:44px;border-radius:7px;background:linear-gradient(135deg,var(--accent),var(--accent-deep));display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;flex-shrink:0}
+.file-info{flex:1;min-width:0}.file-name{font-size:13.5px;font-weight:600;word-break:break-all}.file-sub{font-size:11px;color:var(--text-3)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px 18px;box-shadow:var(--shadow-sm)}
+.stat-num{font-size:28px;font-weight:800;font-family:'JetBrains Mono',monospace;letter-spacing:-1px}
+.stat-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);margin-top:2px}
+.stat.teal .stat-num{color:var(--accent-deep)}.stat.gold .stat-num{color:var(--gold)}.stat.green .stat-num{color:var(--success)}.stat.navy .stat-num{color:var(--primary)}
+.ranges{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap}
+.range{padding:7px 14px;border-radius:8px;border:1px solid var(--border-strong);background:var(--card);font-size:12.5px;font-weight:600;color:var(--text-2);cursor:pointer}
+.range.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.ptable{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden}
+.ptable th{background:var(--surface);text-align:left;padding:12px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-2);border-bottom:1px solid var(--border)}
+.ptable td{padding:13px 14px;border-bottom:1px solid var(--border);font-size:13.5px}
+.ptable tr:last-child td{border-bottom:none}
+.pname{font-weight:600}
+.bar{height:8px;background:var(--border);border-radius:99px;overflow:hidden;width:110px;display:inline-block;vertical-align:middle}
+.bar span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-deep))}
+.perf-badge{padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700}
+.perf-badge.high{background:var(--success-bg);color:var(--success)}.perf-badge.mid{background:var(--warn-bg);color:var(--warn)}.perf-badge.low{background:var(--danger-bg);color:var(--danger)}
+.section-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent-deep);margin:14px 0 12px}
+.empty{text-align:center;padding:40px 20px;color:var(--text-3)}
+.empty i{font-size:38px;display:block;margin-bottom:10px;color:var(--border-strong)}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--primary);color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:500;display:none;z-index:200;box-shadow:var(--shadow-lg)}
+.toast.show{display:block}.toast.success{background:var(--success)}.toast.error{background:var(--danger)}
+.loading{text-align:center;padding:50px;color:var(--text-3)}
+.spin{width:30px;height:30px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:sp .8s linear infinite;margin:0 auto 12px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.modal-bg{position:fixed;inset:0;background:rgba(11,25,87,.45);display:none;align-items:center;justify-content:center;z-index:150;padding:20px}
+.modal-bg.show{display:flex}
+.modal{background:var(--card);border-radius:var(--r-xl);box-shadow:var(--shadow-lg);max-width:460px;width:100%;padding:24px}
+.modal h3{font-size:18px;font-weight:700;margin-bottom:6px}
+.modal p{font-size:13px;color:var(--text-2);margin-bottom:16px}
+@media(max-width:720px){.grid2,.grid3{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}.tabs{overflow-x:auto}}
+.hide{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="loadingState" class="loading"><div class="spin"></div>Loading…</div>
+
+  <div id="app" class="hide">
+    <div class="tabs" id="tabsBar"></div>
+
+    <!-- VIEW: CREATE -->
+    <div class="view" id="view-create">
+      <div class="page-head">
+        <h1 class="page-title"><i class="ti ti-plus"></i> Assign a design task</h1>
+        <p class="page-sub">Designer chuno, design detail bharo. Assign karte hi WhatsApp + app notification jayega.</p>
+      </div>
+      <div class="card">
+        <div class="field"><label class="lbl">Design title</label><input class="inp" id="cTitle" placeholder="e.g. Diwali hoarding 20x10"></div>
+        <div class="grid2">
+          <div class="field"><label class="lbl">Assign to designer</label><select class="inp" id="cDesigner"></select></div>
+          <div class="field"><label class="lbl">Link campaign (optional)</label><select class="inp" id="cCampaign"><option value="">— None —</option></select></div>
+        </div>
+        <div class="grid3">
+          <div class="field"><label class="lbl">Quantity required</label><input class="inp mono" id="cQty" type="number" min="1" value="1"></div>
+          <div class="field"><label class="lbl">Due date</label><input class="inp" id="cDue" type="date"></div>
+          <div class="field"><label class="lbl">Priority</label><select class="inp" id="cPriority"><option value="normal">Normal</option><option value="urgent">Urgent</option></select></div>
+        </div>
+        <div class="field"><label class="lbl">Brief / notes for designer</label><textarea class="inp" id="cBrief" rows="3" placeholder="Colors, references, brand guidelines..."></textarea></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+          <button class="btn btn-ghost" onclick="resetCreate()">Clear</button>
+          <button class="btn btn-primary" id="cSubmit" onclick="createTask()"><i class="ti ti-send"></i> Assign & notify</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW: APPROVAL -->
+    <div class="view" id="view-approve">
+      <div class="page-head">
+        <h1 class="page-title"><i class="ti ti-checks"></i> Designs awaiting approval</h1>
+        <p class="page-sub">Designer ne submit kiya. Quantity confirm karke approve karo, ya note ke saath wapas bhejo.</p>
+      </div>
+      <div id="approveList"></div>
+    </div>
+
+    <!-- VIEW: DESIGNER -->
+    <div class="view" id="view-designer">
+      <div class="page-head">
+        <h1 class="page-title"><i class="ti ti-palette"></i> My design tasks</h1>
+        <p class="page-sub">Aapke assigned tasks. Design upload karo. Approve hone par print pe bhejo.</p>
+      </div>
+      <div id="designerList"></div>
+    </div>
+
+    <!-- VIEW: PERFORMANCE -->
+    <div class="view" id="view-perf">
+      <div class="page-head">
+        <h1 class="page-title"><i class="ti ti-chart-bar"></i> Designer task sheet</h1>
+        <p class="page-sub">Daily/weekly progress, completion %, performance.</p>
+      </div>
+      <div class="ranges" id="ranges">
+        <div class="range" data-r="today">Today</div>
+        <div class="range" data-r="yesterday">Yesterday</div>
+        <div class="range active" data-r="week">This week</div>
+        <div class="range" data-r="month">This month</div>
+        <div class="range" data-r="lastmonth">Last month</div>
+      </div>
+      <div class="stats" id="perfStats"></div>
+      <div class="card" style="padding:0;overflow:hidden;"><table class="ptable" id="perfTable"></table></div>
+    </div>
+  </div>
+</div>
+
+<!-- Upload modal -->
+<div class="modal-bg" id="uploadModal">
+  <div class="modal">
+    <h3>Upload design</h3>
+    <p id="upTaskName">—</p>
+    <div class="field"><label class="lbl">Design file (image/PDF, max 50MB)</label><input class="inp" id="upFile" type="file" accept="image/*,.pdf"></div>
+    <div class="field"><label class="lbl">Note (optional)</label><input class="inp" id="upNote" placeholder="e.g. Logo position theek ki"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn btn-ghost" onclick="closeUpload()">Cancel</button>
+      <button class="btn btn-teal" id="upSubmit" onclick="submitUpload()"><i class="ti ti-upload"></i> Upload & submit</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reject modal -->
+<div class="modal-bg" id="rejectModal">
+  <div class="modal">
+    <h3>Reject & send back</h3>
+    <p id="rjTaskName">—</p>
+    <div class="field"><label class="lbl">Reason / changes needed</label><textarea class="inp" id="rjNote" rows="3" placeholder="Kya change karna hai..."></textarea></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn btn-ghost" onclick="closeReject()">Cancel</button>
+      <button class="btn btn-danger" id="rjSubmit" onclick="submitReject()"><i class="ti ti-rotate"></i> Send back</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+var CONFIG={ url:'https://fpbktcgtspqsqpaytslv.supabase.co', key:'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j', bucket:'campaign-designs' };
+var sb=supabase.createClient(CONFIG.url,CONFIG.key);
+function $(id){return document.getElementById(id);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function toast(m,t){var e=$('toast');e.textContent=m;e.className='toast '+(t||'')+' show';clearTimeout(window._t);window._t=setTimeout(function(){e.classList.remove('show');},2800);}
+function fmtDate(d){if(!d)return '';try{return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',timeZone:'Asia/Kolkata'});}catch(e){return d;}}
+function ago(d){if(!d)return '';var s=(Date.now()-new Date(d).getTime())/1000;if(s<3600)return Math.max(1,Math.floor(s/60))+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';return Math.floor(s/86400)+'d ago';}
+
+var state={ me:null, role:'', tasks:[], subs:{}, designers:[], perfRange:'week' };
+
+// ─── BOOT ───
+(function(){
+  var me=window.currentSessionMember||(window.AccessGuard&&AccessGuard.getUser?AccessGuard.getUser():null);
+  if(!me){
+    var ph=localStorage.getItem('prajapati_admin_phone');
+    if(!ph){ var emb=(window.self!==window.top)||/[?&]embedded=1/.test(location.search); if(!emb)location.href='/login.html'; return; }
+    sb.from('trial_team_members').select('*').eq('phone',ph).eq('active',true).single().then(function(res){
+      if(res.data){ state.me=res.data; init(); } else { var emb=(window.self!==window.top)||/[?&]embedded=1/.test(location.search); if(!emb)location.href='/login.html'; }
+    });
+    return;
+  }
+  state.me=me; init();
+})();
+
+function init(){
+  state.role=String(state.me.role||'').toLowerCase();
+  buildTabs();
+  loadAll();
+}
+
+function isApprover(){ return ['owner','admin','sales','hr_sales','sales_admin'].indexOf(state.role)>-1; }
+function isDesigner(){ return ['designer','design'].indexOf(state.role)>-1; }
+function canManage(){ return isApprover()||['operations_manager','ops_manager'].indexOf(state.role)>-1; }
+
+function buildTabs(){
+  var tabs=[];
+  if(isApprover()||canManage()){
+    tabs.push({id:'create',icon:'ti-plus',label:'Create task'});
+    tabs.push({id:'approve',icon:'ti-checks',label:'Approvals',badgeKey:'approve'});
+  }
+  if(isDesigner()||state.role==='owner'||state.role==='admin'){
+    tabs.push({id:'designer',icon:'ti-palette',label:isDesigner()?'My tasks':'Designer view',badgeKey:'designer'});
+  }
+  tabs.push({id:'perf',icon:'ti-chart-bar',label:'Task sheet'});
+  var html=tabs.map(function(t,i){
+    return '<button class="tab'+(i===0?' active':'')+'" data-view="'+t.id+'" onclick="showView(\''+t.id+'\',this)"><i class="ti '+t.icon+'"></i> '+t.label+(t.badgeKey?' <span class="badge hide" id="badge-'+t.badgeKey+'"></span>':'')+'</button>';
+  }).join('');
+  $('tabsBar').innerHTML=html;
+  // default view = first tab
+  if(tabs.length){ document.getElementById('view-'+tabs[0].id).classList.add('active'); state._firstView=tabs[0].id; }
+}
+
+function showView(v,btn){
+  document.querySelectorAll('.view').forEach(function(x){x.classList.remove('active');});
+  $('view-'+v).classList.add('active');
+  document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('active');});
+  if(btn)btn.classList.add('active');
+  if(v==='perf') renderPerf();
+}
+
+function loadAll(){
+  Promise.all([
+    sb.from('trial_team_members').select('id,name,phone,role').eq('active',true),
+    sb.from('prajapati_design_tasks').select('*').order('created_at',{ascending:false}).limit(300),
+    loadCampaigns()
+  ]).then(function(r){
+    var members=r[0].data||[];
+    state.designers=members.filter(function(m){return ['designer','design'].indexOf(String(m.role||'').toLowerCase())>-1;});
+    state.tasks=r[1].data||[];
+    // submissions for visible tasks
+    var ids=state.tasks.map(function(t){return t.id;});
+    if(ids.length){
+      sb.from('prajapati_design_submissions').select('*').in('task_id',ids).order('uploaded_at',{ascending:false}).then(function(sr){
+        (sr.data||[]).forEach(function(s){ (state.subs[s.task_id]=state.subs[s.task_id]||[]).push(s); });
+        afterLoad();
+      });
+    } else { afterLoad(); }
+  }).catch(function(e){ $('loadingState').innerHTML='<div style="color:#DC2626">Load failed: '+esc(e.message)+'<br><small>DESIGN_TASKS_SCHEMA.sql chala hai?</small></div>'; });
+}
+
+function loadCampaigns(){
+  return sb.from('trial_campaigns').select('campaign_key,name').limit(200).then(function(r){
+    var sel=$('cCampaign'); if(sel&&r.data){ r.data.forEach(function(c){ var o=document.createElement('option'); o.value=c.campaign_key||''; o.textContent=c.name||c.campaign_key; sel.appendChild(o); }); }
+  }).catch(function(){});
+}
+
+function afterLoad(){
+  // designer dropdown
+  var ds=$('cDesigner');
+  if(ds){ ds.innerHTML=state.designers.length?state.designers.map(function(d){return '<option value="'+d.id+'" data-phone="'+esc(d.phone)+'" data-name="'+esc(d.name)+'">'+esc(d.name)+'</option>';}).join(''):'<option value="">No designers found</option>'; }
+  $('loadingState').classList.add('hide');
+  $('app').classList.remove('hide');
+  renderApprove(); renderDesigner(); updateBadges();
+}
+
+function updateBadges(){
+  var pendApprove=state.tasks.filter(function(t){return t.status==='submitted';}).length;
+  var myPhone=state.me.phone;
+  var myTodo=state.tasks.filter(function(t){return (t.status==='pending'||t.status==='in_progress'||t.status==='approved')&&(t.designer_phone===myPhone||state.role==='owner'||state.role==='admin');}).length;
+  setBadge('approve',pendApprove); setBadge('designer',myTodo);
+}
+function setBadge(k,n){var b=$('badge-'+k);if(!b)return;if(n>0){b.textContent=n;b.classList.remove('hide');}else b.classList.add('hide');}
+
+// ─── CREATE ───
+function createTask(){
+  var title=$('cTitle').value.trim();
+  if(!title){toast('Title daalo','error');return;}
+  var ds=$('cDesigner'); var opt=ds.options[ds.selectedIndex];
+  if(!opt||!opt.value){toast('Designer chuno','error');return;}
+  var camp=$('cCampaign'); var campOpt=camp.options[camp.selectedIndex];
+  var btn=$('cSubmit'); btn.disabled=true; btn.innerHTML='<i class="ti ti-loader"></i> Assigning…';
+  var row={
+    title:title, brief:$('cBrief').value.trim()||null,
+    campaign_key:camp.value||null, campaign_name:camp.value?campOpt.textContent:null,
+    designer_id:opt.value, designer_phone:opt.getAttribute('data-phone'), designer_name:opt.getAttribute('data-name'),
+    assigned_by_id:state.me.id, assigned_by_phone:state.me.phone, assigned_by_name:state.me.name, assigned_by_role:state.role,
+    quantity_required:parseInt($('cQty').value)||1, due_date:$('cDue').value||null, priority:$('cPriority').value, status:'pending'
+  };
+  sb.from('prajapati_design_tasks').insert(row).select().single().then(function(res){
+    if(res.error)throw res.error;
+    var task=res.data;
+    // in-app notification
+    sb.from('prajapati_notifications').insert({
+      to_phone:row.designer_phone, to_id:row.designer_id,
+      title:'New design task', body:title+(row.priority==='urgent'?' (URGENT)':''),
+      type:'design_task', link:'/app.html#v2', ref_table:'prajapati_design_tasks', ref_id:task.id
+    }).then(function(){});
+    // WhatsApp notification (best-effort)
+    notifyWhatsApp(row.designer_phone, row.designer_name, title, row.quantity_required, row.due_date, row.priority);
+    state.tasks.unshift(task);
+    btn.disabled=false; btn.innerHTML='<i class="ti ti-send"></i> Assign & notify';
+    resetCreate(); renderApprove(); renderDesigner(); updateBadges();
+    toast('✓ Task assign + notify ho gaya','success');
+  }).catch(function(e){ btn.disabled=false; btn.innerHTML='<i class="ti ti-send"></i> Assign & notify'; toast('Error: '+e.message,'error'); });
+}
+function resetCreate(){ ['cTitle','cBrief','cDue'].forEach(function(id){$(id).value='';}); $('cQty').value=1; $('cPriority').value='normal'; }
+
+function notifyWhatsApp(phone,name,title,qty,due,priority){
+  // Uses wati-send edge function via WatiClient if present; else direct fetch
+  var body={ action:'send_template', to_phone:phone, to_name:name, template_name:'design_task_assigned',
+             params:[name||'Designer', title, String(qty||1), due?fmtDate(due):'ASAP'], context_type:'design_task' };
+  fetch(CONFIG.url+'/functions/v1/wati-send',{method:'POST',headers:{'Content-Type':'application/json',apikey:CONFIG.key,Authorization:'Bearer '+CONFIG.key},body:JSON.stringify(body)}).catch(function(){});
+}
+
+// ─── APPROVE ───
+function renderApprove(){
+  var el=$('approveList'); if(!el)return;
+  var mine=isApprover()&&state.role!=='owner'&&state.role!=='admin';
+  var list=state.tasks.filter(function(t){
+    if(t.status!=='submitted'&&t.status!=='approved')return false;
+    if(mine) return t.assigned_by_phone===state.me.phone; // sales sees own
+    return true; // owner/admin see all
+  });
+  var pend=list.filter(function(t){return t.status==='submitted';});
+  var appr=list.filter(function(t){return t.status==='approved';});
+  if(!list.length){ el.innerHTML='<div class="empty"><i class="ti ti-checks"></i>Koi design approval pending nahi</div>'; return; }
+  var html='';
+  if(pend.length){ html+='<div class="section-label">Pending review</div>'; html+=pend.map(approveCard).join(''); }
+  if(appr.length){ html+='<div class="section-label" style="margin-top:18px;">Approved — waiting designer to print</div>'; html+=appr.map(approvedCard).join(''); }
+  el.innerHTML=html;
+}
+function latestSub(taskId){ var s=state.subs[taskId]; return s&&s.length?s[0]:null; }
+function approveCard(t){
+  var sub=latestSub(t.id);
+  return '<div class="task"><div class="task-top"><div class="task-icon">🎨</div><div class="task-main">'+
+    '<div class="task-name">'+esc(t.title)+' <span class="chip submitted"><i class="ti ti-clock"></i> Submitted</span>'+(t.priority==='urgent'?' <span class="chip urgent">Urgent</span>':'')+'</div>'+
+    '<div class="task-meta">By <b>'+esc(t.designer_name||'Designer')+'</b> · <span class="mono">'+ago(t.submitted_at)+'</span> · Asked qty <span class="mono">'+(t.quantity_required||1)+'</span></div></div></div>'+
+    (sub?'<div class="file-row"><div class="file-thumb"><i class="ti ti-file"></i></div><div class="file-info"><div class="file-name">'+esc(sub.file_name||'design')+'</div><div class="file-sub">v'+(sub.version||1)+(sub.note?' · "'+esc(sub.note)+'"':'')+'</div></div><a class="btn btn-ghost btn-sm" href="'+esc(sub.file_url)+'" target="_blank"><i class="ti ti-eye"></i> View</a></div>':'<div class="task-detail">No file uploaded yet</div>')+
+    '<div class="task-foot"><div style="display:flex;align-items:center;gap:10px;"><label class="lbl" style="margin:0;">Approve qty:</label><input class="inp mono" id="aq-'+t.id+'" style="width:80px;padding:7px 10px;" type="number" min="1" value="'+(t.quantity_required||1)+'"></div>'+
+    '<div style="display:flex;gap:8px;"><button class="btn btn-danger btn-sm" onclick="openReject(\''+t.id+'\')"><i class="ti ti-rotate"></i> Reject</button>'+
+    '<button class="btn btn-success btn-sm" onclick="approveTask(\''+t.id+'\')" '+(sub?'':'disabled')+'><i class="ti ti-check"></i> Approve</button></div></div></div>';
+}
+function approvedCard(t){
+  return '<div class="task" style="opacity:.85;"><div class="task-top"><div class="task-icon">✅</div><div class="task-main">'+
+    '<div class="task-name">'+esc(t.title)+' <span class="chip approved">Approved</span></div>'+
+    '<div class="task-meta">Approved qty <span class="qty-pill">'+(t.quantity_approved||t.quantity_required)+'</span> · <span class="mono">'+ago(t.approved_at)+'</span></div></div></div>'+
+    '<div class="task-foot"><div class="task-detail">Designer ko notify ho gaya — woh print pe bhejega</div><span class="chip sent_to_print"><i class="ti ti-printer"></i> Waiting → print</span></div></div>';
+}
+function approveTask(id){
+  var t=state.tasks.find(function(x){return x.id===id;}); if(!t)return;
+  var qty=parseInt(($('aq-'+id)||{}).value)||t.quantity_required||1;
+  sb.from('prajapati_design_tasks').update({status:'approved',quantity_approved:qty,approved_at:new Date().toISOString()}).eq('id',id).then(function(res){
+    if(res.error){toast('Error: '+res.error.message,'error');return;}
+    var sub=latestSub(id);
+    if(sub) sb.from('prajapati_design_submissions').update({approval_status:'approved',approved_quantity:qty,reviewed_by:state.me.id,reviewed_at:new Date().toISOString()}).eq('id',sub.id).then(function(){});
+    // notify designer
+    sb.from('prajapati_notifications').insert({to_phone:t.designer_phone,to_id:t.designer_id,title:'Design approved ✅',body:t.title+' — qty '+qty+'. Print pe bhej sakte ho.',type:'approval',link:'/app.html#v2',ref_table:'prajapati_design_tasks',ref_id:id}).then(function(){});
+    notifyApprovalWA(t.designer_phone,t.designer_name,t.title,qty);
+    t.status='approved'; t.quantity_approved=qty; t.approved_at=new Date().toISOString();
+    renderApprove(); renderDesigner(); updateBadges();
+    toast('✓ Approved — designer ko notify kiya','success');
+  });
+}
+function notifyApprovalWA(phone,name,title,qty){
+  var body={action:'send_template',to_phone:phone,to_name:name,template_name:'design_approved',params:[name||'Designer',title,String(qty)],context_type:'approval'};
+  fetch(CONFIG.url+'/functions/v1/wati-send',{method:'POST',headers:{'Content-Type':'application/json',apikey:CONFIG.key,Authorization:'Bearer '+CONFIG.key},body:JSON.stringify(body)}).catch(function(){});
+}
+var _rejectId=null;
+function openReject(id){ _rejectId=id; var t=state.tasks.find(function(x){return x.id===id;}); $('rjTaskName').textContent=t?t.title:''; $('rjNote').value=''; $('rejectModal').classList.add('show'); }
+function closeReject(){ $('rejectModal').classList.remove('show'); }
+function submitReject(){
+  var note=$('rjNote').value.trim(); if(!note){toast('Reason daalo','error');return;}
+  var id=_rejectId; var t=state.tasks.find(function(x){return x.id===id;});
+  sb.from('prajapati_design_tasks').update({status:'rejected',reject_note:note}).eq('id',id).then(function(res){
+    if(res.error){toast('Error: '+res.error.message,'error');return;}
+    sb.from('prajapati_notifications').insert({to_phone:t.designer_phone,to_id:t.designer_id,title:'Design needs changes',body:t.title+' — '+note,type:'rejection',link:'/app.html#v2',ref_table:'prajapati_design_tasks',ref_id:id}).then(function(){});
+    t.status='rejected'; t.reject_note=note; closeReject(); renderApprove(); renderDesigner(); updateBadges();
+    toast('Wapas bheja designer ko','success');
+  });
+}
+
+// ─── DESIGNER VIEW ───
+function renderDesigner(){
+  var el=$('designerList'); if(!el)return;
+  var myPhone=state.me.phone;
+  var seeAll=(state.role==='owner'||state.role==='admin');
+  var mine=state.tasks.filter(function(t){return seeAll||t.designer_phone===myPhone;});
+  if(!mine.length){ el.innerHTML='<div class="empty"><i class="ti ti-palette"></i>Koi task assign nahi hua</div>'; return; }
+  var action=mine.filter(function(t){return t.status==='pending'||t.status==='in_progress'||t.status==='rejected';});
+  var ready=mine.filter(function(t){return t.status==='approved';});
+  var waiting=mine.filter(function(t){return t.status==='submitted';});
+  var done=mine.filter(function(t){return t.status==='sent_to_print'||t.status==='completed';});
+  var html='';
+  if(action.length){ html+='<div class="section-label">Action needed</div>'+action.map(designerActionCard).join(''); }
+  if(ready.length){ html+='<div class="section-label" style="margin-top:18px;">Approved — ready to print</div>'+ready.map(designerReadyCard).join(''); }
+  if(waiting.length){ html+='<div class="section-label" style="margin-top:18px;">Waiting for approval</div>'+waiting.map(designerWaitCard).join(''); }
+  if(done.length){ html+='<div class="section-label" style="margin-top:18px;">Sent to print</div>'+done.map(designerDoneCard).join(''); }
+  el.innerHTML=html;
+}
+function designerActionCard(t){
+  var rejected=t.status==='rejected';
+  return '<div class="task"><div class="task-top"><div class="task-icon">'+(rejected?'🔁':'📌')+'</div><div class="task-main">'+
+    '<div class="task-name">'+esc(t.title)+(t.priority==='urgent'?' <span class="chip urgent"><i class="ti ti-flame"></i> Urgent</span>':'')+' <span class="chip '+(rejected?'rejected':'pending')+'">'+(rejected?'Changes needed':'New task')+'</span></div>'+
+    '<div class="task-meta">By <b>'+esc(t.assigned_by_name||'—')+'</b> · Due <span class="mono">'+(t.due_date?fmtDate(t.due_date):'ASAP')+'</span> · Qty <span class="mono">'+(t.quantity_required||1)+'</span></div></div></div>'+
+    (t.brief?'<div class="task-detail" style="margin:4px 0 8px;">Brief: '+esc(t.brief)+'</div>':'')+
+    (rejected&&t.reject_note?'<div class="task-detail" style="color:var(--danger);margin-bottom:8px;">↩ '+esc(t.reject_note)+'</div>':'')+
+    '<div class="task-foot"><div class="task-detail">'+(rejected?'Changes karke dobara upload karo':'Design upload karo')+'</div>'+
+    '<button class="btn btn-teal btn-sm" onclick="openUpload(\''+t.id+'\')"><i class="ti ti-upload"></i> Upload design</button></div></div>';
+}
+function designerReadyCard(t){
+  return '<div class="task"><div class="task-top"><div class="task-icon">✅</div><div class="task-main">'+
+    '<div class="task-name">'+esc(t.title)+' <span class="chip approved">Approved</span></div>'+
+    '<div class="task-meta">Qty <span class="qty-pill">'+(t.quantity_approved||t.quantity_required)+'</span> · <span class="mono">'+ago(t.approved_at)+'</span></div></div></div>'+
+    '<div class="task-foot"><div class="task-detail">Approved file print ke liye taiyaar</div>'+
+    '<button class="btn btn-gold btn-sm" onclick="sendToPrint(\''+t.id+'\')"><i class="ti ti-printer"></i> Send to print (qty '+(t.quantity_approved||t.quantity_required)+')</button></div></div>';
+}
+function designerWaitCard(t){
+  return '<div class="task" style="opacity:.85;"><div class="task-top"><div class="task-icon">🎨</div><div class="task-main">'+
+    '<div class="task-name">'+esc(t.title)+' <span class="chip submitted">Submitted</span></div>'+
+    '<div class="task-meta">To <b>'+esc(t.assigned_by_name||'—')+'</b> · <span class="mono">'+ago(t.submitted_at)+'</span></div></div></div>'+
+    '<div class="task-foot"><div class="task-detail">⏳ Approval ka intezaar</div><span class="chip submitted">Pending review</span></div></div>';
+}
+function designerDoneCard(t){
+  return '<div class="task" style="opacity:.7;"><div class="task-top"><div class="task-icon">🖨️</div><div class="task-main">'+
+    '<div class="task-name">'+esc(t.title)+' <span class="chip sent_to_print">Sent to print</span></div>'+
+    '<div class="task-meta">Qty <span class="mono">'+(t.quantity_approved||t.quantity_required)+'</span> · <span class="mono">'+ago(t.sent_to_print_at)+'</span></div></div></div></div>';
+}
+
+// upload
+var _uploadId=null;
+function openUpload(id){ _uploadId=id; var t=state.tasks.find(function(x){return x.id===id;}); $('upTaskName').textContent=t?t.title:''; $('upFile').value=''; $('upNote').value=''; $('uploadModal').classList.add('show'); }
+function closeUpload(){ $('uploadModal').classList.remove('show'); }
+function submitUpload(){
+  var f=$('upFile').files[0]; if(!f){toast('File chuno','error');return;}
+  if(f.size>50*1024*1024){toast('File 50MB se badi hai','error');return;}
+  var id=_uploadId; var t=state.tasks.find(function(x){return x.id===id;});
+  var btn=$('upSubmit'); btn.disabled=true; btn.innerHTML='<i class="ti ti-loader"></i> Uploading…';
+  var path='design-tasks/'+id+'/'+Date.now()+'_'+f.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  sb.storage.from(CONFIG.bucket).upload(path,f,{upsert:true}).then(function(up){
+    if(up.error)throw up.error;
+    var pub=sb.storage.from(CONFIG.bucket).getPublicUrl(path);
+    var url=pub.data.publicUrl;
+    var existing=(state.subs[id]||[]).length;
+    return sb.from('prajapati_design_submissions').insert({
+      task_id:id, version:existing+1, file_url:url, file_name:f.name, file_size_kb:Math.round(f.size/1024),
+      note:$('upNote').value.trim()||null, uploaded_by:state.me.id
+    }).select().single();
+  }).then(function(res){
+    if(res.error)throw res.error;
+    (state.subs[id]=state.subs[id]||[]).unshift(res.data);
+    return sb.from('prajapati_design_tasks').update({status:'submitted',submitted_at:new Date().toISOString()}).eq('id',id);
+  }).then(function(){
+    t.status='submitted'; t.submitted_at=new Date().toISOString();
+    // notify approver
+    sb.from('prajapati_notifications').insert({to_phone:t.assigned_by_phone,to_id:t.assigned_by_id,title:'Design submitted',body:t.title+' — review pending',type:'design_task',link:'/app.html#v2',ref_table:'prajapati_design_tasks',ref_id:id}).then(function(){});
+    btn.disabled=false; btn.innerHTML='<i class="ti ti-upload"></i> Upload & submit';
+    closeUpload(); renderDesigner(); renderApprove(); updateBadges();
+    toast('✓ Submit ho gaya — approval pending','success');
+  }).catch(function(e){ btn.disabled=false; btn.innerHTML='<i class="ti ti-upload"></i> Upload & submit'; toast('Upload error: '+e.message,'error'); });
+}
+
+function sendToPrint(id){
+  var t=state.tasks.find(function(x){return x.id===id;}); if(!t)return;
+  sb.from('prajapati_design_tasks').update({status:'sent_to_print',sent_to_print_at:new Date().toISOString()}).eq('id',id).then(function(res){
+    if(res.error){toast('Error: '+res.error.message,'error');return;}
+    t.status='sent_to_print'; t.sent_to_print_at=new Date().toISOString();
+    renderDesigner(); updateBadges();
+    toast('✓ Print pe bhej diya','success');
+  });
+}
+
+// ─── PERFORMANCE ───
+document.addEventListener('click',function(e){
+  var r=e.target.closest&&e.target.closest('.range'); if(r){ document.querySelectorAll('.range').forEach(function(x){x.classList.remove('active');}); r.classList.add('active'); state.perfRange=r.getAttribute('data-r'); renderPerf(); }
+});
+function rangeBounds(key){
+  var now=new Date(); var s,e;
+  function ist(d){return new Date(d.toLocaleString('en-US',{timeZone:'Asia/Kolkata'}));}
+  var t=ist(now); t.setHours(0,0,0,0);
+  if(key==='today'){ s=new Date(t); e=new Date(t); e.setDate(e.getDate()+1); }
+  else if(key==='yesterday'){ s=new Date(t); s.setDate(s.getDate()-1); e=new Date(t); }
+  else if(key==='week'){ s=new Date(t); s.setDate(s.getDate()-s.getDay()); e=new Date(s); e.setDate(e.getDate()+7); }
+  else if(key==='month'){ s=new Date(t.getFullYear(),t.getMonth(),1); e=new Date(t.getFullYear(),t.getMonth()+1,1); }
+  else if(key==='lastmonth'){ s=new Date(t.getFullYear(),t.getMonth()-1,1); e=new Date(t.getFullYear(),t.getMonth(),1); }
+  else { s=new Date(0); e=new Date(now.getTime()+86400000); }
+  return {start:s,end:e};
+}
+function renderPerf(){
+  var b=rangeBounds(state.perfRange);
+  var inRange=state.tasks.filter(function(t){ var d=new Date(t.created_at); return d>=b.start&&d<b.end; });
+  // stats
+  var assigned=inRange.length;
+  var done=inRange.filter(function(t){return ['approved','sent_to_print','completed'].indexOf(t.status)>-1;}).length;
+  var prog=inRange.filter(function(t){return ['pending','in_progress','submitted'].indexOf(t.status)>-1;}).length;
+  var pct=assigned?Math.round(100*done/assigned):0;
+  $('perfStats').innerHTML=
+    '<div class="stat navy"><div class="stat-num">'+assigned+'</div><div class="stat-lbl">Assigned</div></div>'+
+    '<div class="stat green"><div class="stat-num">'+done+'</div><div class="stat-lbl">Completed</div></div>'+
+    '<div class="stat gold"><div class="stat-num">'+prog+'</div><div class="stat-lbl">In progress</div></div>'+
+    '<div class="stat teal"><div class="stat-num">'+pct+'%</div><div class="stat-lbl">Completion</div></div>';
+  // per-designer
+  var byD={};
+  inRange.forEach(function(t){ var k=t.designer_phone||'—'; (byD[k]=byD[k]||{name:t.designer_name||'—',a:0,d:0,p:0})['a']++; if(['approved','sent_to_print','completed'].indexOf(t.status)>-1)byD[k].d++; else byD[k].p++; });
+  var rows=Object.keys(byD).map(function(k){
+    var x=byD[k]; var p=x.a?Math.round(100*x.d/x.a):0;
+    var badge=p>=80?'high':(p>=50?'mid':'low'); var bl=p>=80?'Excellent':(p>=50?'Good':'Low');
+    return '<tr><td class="pname">'+esc(x.name)+'</td><td class="mono">'+x.a+'</td><td class="mono">'+x.d+'</td><td class="mono">'+x.p+'</td>'+
+      '<td><span class="bar"><span style="width:'+p+'%"></span></span> <span class="mono" style="font-size:12px;">'+p+'%</span></td>'+
+      '<td><span class="perf-badge '+badge+'">'+bl+'</span></td></tr>';
+  }).join('');
+  $('perfTable').innerHTML='<thead><tr><th>Designer</th><th>Assigned</th><th>Done</th><th>Pending</th><th>Progress</th><th>Performance</th></tr></thead><tbody>'+(rows||'<tr><td colspan="6" style="text-align:center;color:var(--text-3);padding:30px;">Is range mein koi task nahi</td></tr>')+'</tbody>';
+}
+</script>
+</body>
+</html>
