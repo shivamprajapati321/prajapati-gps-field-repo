@@ -1,6 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<!-- Unified login bridge: feed session → legacy prajapati_admin_phone -->
+<script src="/lib/access-guard.js"></script>
+<script>
+(function(){
+  try{
+    var s = (window.AccessGuard && AccessGuard.getSession) ? AccessGuard.getSession() : null;
+    if (s && s.member) {
+      // Make legacy code happy: set the phone key it expects
+      if (s.member.phone) localStorage.setItem('prajapati_admin_phone', s.member.phone);
+      window.currentSessionMember = s.member;
+    } else {
+      // No session → bounce to unified login (top window, in case of iframe)
+      var go = function(){ try{ if(window.top&&window.top!==window.self){ window.top.location.href='/login.html'; return; } }catch(e){} window.location.href='/login.html'; };
+      // Only redirect if there's no legacy phone either (avoid breaking direct testing)
+      if(!localStorage.getItem('prajapati_admin_phone')) go();
+    }
+  }catch(e){ console.warn('login bridge', e); }
+})();
+</script>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Campaign Status · Prajapati Advertising</title>
@@ -142,7 +162,12 @@ function escapeHtml(s) {
 
 async function loadData() {
   const phone = localStorage.getItem('prajapati_admin_phone');
-  if (!phone) { location.href = '/hub.html'; return; }
+  if (!phone) {
+    // Embedded in admin-v2 iframe? Don't redirect inside the frame.
+    var embedded = (window.self !== window.top) || /[?&]embedded=1/.test(location.search);
+    if (!embedded) { location.href = '/login.html'; }
+    return;
+  }
   
   try {
     const [user, campaigns] = await Promise.all([
@@ -150,7 +175,11 @@ async function loadData() {
       api('/rest/v1/v_active_campaigns?select=*&limit=200')
     ]);
     
-    if (!user || !user.length) { location.href = '/hub.html'; return; }
+    if (!user || !user.length) {
+      var embedded = (window.self !== window.top) || /[?&]embedded=1/.test(location.search);
+      if (!embedded) { location.href = '/login.html'; }
+      return;
+    }
     state.user = user[0];
     state.campaigns = campaigns || [];
     
