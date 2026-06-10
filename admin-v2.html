@@ -2357,7 +2357,7 @@ label {
     <!-- ═══ OPERATIONS ═══ -->
     <div class="nav-section">
       <div class="nav-section-title">⚙️ Operations</div>
-      <div data-module="launch-campaign" class="nav-item" onclick="openExternal('launch-campaign.html')">
+      <div data-module="launch-campaign" class="nav-item" onclick="openInTab('launch-campaign.html','Launch Campaign')">
         <i class="ti ti-rocket"></i>
         <span>Launch Campaign</span>
         <i class="ti ti-external-link" style="font-size:13px; margin-left:auto; opacity:0.5;"></i>
@@ -3319,6 +3319,23 @@ label {
         </div>
       </div>
     </div>
+
+    <!-- ═══════════ UNIVERSAL IFRAME TAB (loads external pages in-window) ═══════════ -->
+    <div id="tab-embed" class="tab-content" style="padding:0;">
+      <div id="embedLoader" style="display:none;align-items:center;justify-content:center;height:60vh;color:var(--text-2,#5B6480);font-size:14px;">
+        <div style="text-align:center;">
+          <div style="width:34px;height:34px;border:3px solid #E6E9F2;border-top-color:#0B1957;border-radius:50%;animation:embedspin .8s linear infinite;margin:0 auto 12px;"></div>
+          <div id="embedLoaderText">Loading…</div>
+        </div>
+      </div>
+      <iframe id="embedFrame" title="Embedded page" style="width:100%;border:none;display:block;background:#F7F8FC;" scrolling="yes"></iframe>
+    </div>
+    <style>
+      @keyframes embedspin{to{transform:rotate(360deg)}}
+      /* When embed tab is active, let iframe fill the content area */
+      #tab-embed.active{height:calc(100vh - 0px);}
+      #tab-embed.active #embedFrame{height:calc(100vh - 8px);}
+    </style>
 
   </main>
 </div>
@@ -4291,6 +4308,42 @@ function openExternal(file) {
     }
   } catch (e) { /* cross-origin guard — fall through */ }
   window.location.href = file;
+}
+
+// ═══ Open an external page INSIDE admin-v2 as an embedded tab (iframe) ═══
+// Same window, sidebar stays, role-filtering stays. No new browser tab.
+function openInTab(file, title) {
+  var frame = $('embedFrame');
+  var loader = $('embedLoader');
+  if (!frame) { openExternal(file); return; }  // safety fallback
+
+  // Mark the matching nav-item active (so sidebar highlights correctly)
+  document.querySelectorAll('.nav-item[data-tab]').forEach(function(n){ n.classList.remove('active'); });
+  document.querySelectorAll('.nav-item').forEach(function(n){
+    var oc = n.getAttribute('onclick') || '';
+    n.classList.toggle('active', oc.indexOf("'" + file + "'") > -1);
+  });
+
+  // Hide all tab-contents, show the embed tab
+  document.querySelectorAll('.tab-content').forEach(function(c){ c.classList.remove('active'); });
+  $('tab-embed').classList.add('active');
+
+  // Show loader, load the page
+  loader.style.display = 'flex';
+  $('embedLoaderText').textContent = 'Loading ' + (title || '') + '…';
+  frame.style.display = 'none';
+
+  // Cache-bust + pass a flag so the page knows it's embedded
+  var sep = file.indexOf('?') > -1 ? '&' : '?';
+  frame.src = file + sep + 'embedded=1&v=' + Date.now();
+
+  frame.onload = function(){
+    loader.style.display = 'none';
+    frame.style.display = 'block';
+  };
+
+  // Close mobile sidebar
+  if ($('sidebar')) $('sidebar').classList.remove('open');
 }
 
 // ─── DASHBOARD ───
