@@ -1,26 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- Unified login bridge: feed session → legacy prajapati_admin_phone -->
-<script src="/lib/access-guard.js"></script>
-<script>
-(function(){
-  try{
-    var s = (window.AccessGuard && AccessGuard.getSession) ? AccessGuard.getSession() : null;
-    if (s && s.member) {
-      // Make legacy code happy: set the phone key it expects
-      if (s.member.phone) localStorage.setItem('prajapati_admin_phone', s.member.phone);
-      window.currentSessionMember = s.member;
-    } else {
-      // No session → bounce to unified login (top window, in case of iframe)
-      var go = function(){ try{ if(window.top&&window.top!==window.self){ window.top.location.href='/login.html'; return; } }catch(e){} window.location.href='/login.html'; };
-      // Only redirect if there's no legacy phone either (avoid breaking direct testing)
-      if(!localStorage.getItem('prajapati_admin_phone')) go();
-    }
-  }catch(e){ console.warn('login bridge', e); }
-})();
-</script>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Dispatch · Prajapati Admin Hub</title>
@@ -323,9 +303,14 @@ input,select,textarea{font-family:inherit;outline:none}
       <div class="view" id="view-new-dispatch">
         <div class="page-head">
           <div>
-            <div class="page-title">Create New Dispatch</div>
+            <div class="page-title" id="dispatchFormTitle">Create New Dispatch</div>
             <div class="page-sub">Campaign dispatch with auto-populate · PDF generation · WhatsApp send</div>
           </div>
+          <button class="btn btn-secondary" id="dCancelEditBtn" style="display:none" onclick="cancelEditDispatch()">✕ Cancel Edit</button>
+        </div>
+        
+        <div id="editModeBanner" style="display:none;background:var(--info-bg);color:var(--info);padding:10px 16px;border-radius:8px;margin-bottom:14px;font-size:12.5px;font-weight:600">
+          ✏️ Editing existing dispatch — changes will update the original record (not create new).
         </div>
         
         <div class="section">
@@ -913,6 +898,7 @@ const state = {
   reports: null,
   progressFilter: 'all',
   currentDispatch: null,
+  editingDispatch: null,
   currentVendorPayment: null,
   vpPaidBy: 'prajapati',
   vendorPayFilter: 'all',
@@ -1383,6 +1369,77 @@ function clearDispatchForm() {
   document.getElementById('freightBreakdown').textContent = '— bundles × ₹0';
   document.getElementById('dStatus').innerHTML = '';
   setRecipientType('execution_member');
+  // exit edit mode
+  state.editingDispatch = null;
+  document.getElementById('dispatchFormTitle').textContent = 'Create New Dispatch';
+  document.getElementById('editModeBanner').style.display = 'none';
+  document.getElementById('dCancelEditBtn').style.display = 'none';
+  var sb = document.getElementById('dSaveBtn'); if (sb) sb.innerHTML = '💾 Save Dispatch';
+  var ssb = document.getElementById('dSaveSendBtn'); if (ssb) ssb.style.display = '';
+}
+
+// Open an existing dispatch in the form for editing
+function openEditDispatch(id) {
+  const d = state.dispatches.find(x => x.id === id);
+  if (!d) { alert('Dispatch not found'); return; }
+  // Switch to the form view first
+  switchView('new-dispatch');
+  // Clear, then fill (clear resets edit mode, so set editing AFTER)
+  clearDispatchForm();
+
+  state.editingDispatch = d;
+
+  // Recipient type
+  setRecipientType(d.recipient_type || 'manual');
+
+  // Campaign (display work name; keep id for save)
+  if (d.campaign_id || d.campaign_name) {
+    state.selectedCampaign = { id: d.campaign_id, campaign_name: d.campaign_name, name: d.campaign_name };
+    const wn = getWorkName(d.campaign_name || '');
+    document.getElementById('dCampaignSearch').value = wn;
+    if (wn) {
+      document.getElementById('campaignSelected').textContent = '✓ Campaign: ' + wn;
+      document.getElementById('campaignSelected').style.display = 'block';
+    }
+  }
+
+  // Recipient fields
+  document.getElementById('dRecipientName').value = d.recipient_name || '';
+  document.getElementById('dRecipientPhone').value = d.recipient_phone || '';
+  document.getElementById('dAddress').value = d.recipient_address || '';
+  document.getElementById('dCity').value = d.recipient_city || '';
+  if (d.execution_member_id) state.selectedRecipient = { id: d.execution_member_id, name: d.recipient_name, phone: d.recipient_phone };
+
+  // Vendor
+  if (d.vendor_id) document.getElementById('dVendor').value = d.vendor_id;
+
+  // Shipment
+  document.getElementById('dQty').value = d.quantity_pcs || '';
+  document.getElementById('dBundles').value = d.total_bundles || '';
+  document.getElementById('dRate').value = d.rate_per_bundle || '';
+  document.getElementById('dTracking').value = d.tracking_number || '';
+  document.getElementById('dVehicle').value = d.vehicle_number || '';
+  document.getElementById('dDispatchDate').value = d.dispatch_date || new Date().toISOString().slice(0, 10);
+  document.getElementById('dExpectedDate').value = d.expected_delivery_date || '';
+  document.getElementById('dPaymentStatus').value = d.payment_status || 'paid';
+  document.getElementById('dPaidBy').value = d.paid_by || 'prajapati';
+  document.getElementById('dNotes').value = d.notes || '';
+  calculateFreight();
+
+  // UI → edit mode
+  document.getElementById('dispatchFormTitle').textContent = 'Edit Dispatch';
+  document.getElementById('editModeBanner').style.display = 'block';
+  document.getElementById('dCancelEditBtn').style.display = '';
+  document.getElementById('dSaveBtn').innerHTML = '💾 Update Dispatch';
+  // Hide "save + send" during edit to keep it simple (use row 📲 after saving)
+  document.getElementById('dSaveSendBtn').style.display = 'none';
+  document.getElementById('dStatus').innerHTML = '<div class="callout info"><span>✏️</span><div>Editing dispatch #' + (d.id || '').slice(0,8).toUpperCase() + '. Change anything and click Update.</div></div>';
+  window.scrollTo(0, 0);
+}
+
+function cancelEditDispatch() {
+  clearDispatchForm();
+  switchView('dashboard');
 }
 
 async function saveDispatch(sendWatiAfter) {
@@ -1457,8 +1514,33 @@ async function saveDispatch(sendWatiAfter) {
       updated_at: new Date().toISOString()
     };
     if (lrUrl) { payload.lr_url = lrUrl; payload.receipt_url = lrUrl; }
-    
-    // Insert and get back ID
+
+    let dispatch;
+    if (state.editingDispatch && state.editingDispatch.id) {
+      // ── UPDATE existing dispatch (don't overwrite status/created_*) ──
+      const editId = state.editingDispatch.id;
+      const updatePayload = { ...payload };
+      delete updatePayload.status;        // keep existing delivery status
+      delete updatePayload.created_at;
+      delete updatePayload.created_by;
+      delete updatePayload.dispatched_by;
+      updatePayload.updated_at = new Date().toISOString();
+      const res = await fetch(SUPABASE_URL + '/rest/v1/prajapati_dispatches?id=eq.' + editId, {
+        method: 'PATCH',
+        headers: { ...HEADERS, 'Prefer': 'return=representation' },
+        body: JSON.stringify(updatePayload)
+      });
+      if (!res.ok) throw new Error('Update failed: ' + await res.text());
+      const updated = await res.json();
+      dispatch = Array.isArray(updated) ? updated[0] : updated;
+      document.getElementById('dStatus').innerHTML = '<div class="callout success"><span>✅</span><div>Dispatch updated! Freight: ' + fmtINR(bundles * rate) + '</div></div>';
+      await loadDispatches();
+      // exit edit mode, go back to dashboard
+      setTimeout(() => { clearDispatchForm(); switchView('dashboard'); }, 900);
+      return dispatch;
+    }
+
+    // ── Insert new dispatch ──
     const res = await fetch(SUPABASE_URL + '/rest/v1/prajapati_dispatches', {
       method: 'POST',
       headers: { ...HEADERS, 'Prefer': 'return=representation' },
@@ -1466,7 +1548,8 @@ async function saveDispatch(sendWatiAfter) {
     });
     if (!res.ok) throw new Error('Save failed: ' + await res.text());
     const created = await res.json();
-    const dispatch = Array.isArray(created) ? created[0] : created;
+    const dispatch_new = Array.isArray(created) ? created[0] : created;
+    dispatch = dispatch_new;
     
     document.getElementById('dStatus').innerHTML = '<div class="callout success"><span>✅</span><div>Dispatch saved! Freight: ' + fmtINR(bundles * rate) + '</div></div>';
     
@@ -1862,6 +1945,7 @@ function renderDispatchRow(d) {
       <td><span class="tag ${statusTag}">${statusLabel}</span></td>
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <button class="btn btn-secondary sm" data-act="edit" data-id="${d.id}" onclick="window.openEditDispatch('${d.id}')" title="Edit dispatch">✏️</button>
           ${d.pdf_url ? `<a href="${d.pdf_url}" target="_blank" class="btn btn-secondary sm">📄 PDF</a>` : `<button class="btn btn-secondary sm" data-act="pdf" data-id="${d.id}" onclick="window.generatePdfFor('${d.id}')">📄 PDF</button>`}
           <button class="btn btn-wati sm" data-act="wati" data-id="${d.id}" onclick="window.sendDispatchWati('${d.id}')">📲</button>
           ${st === 'booked' ? `<button class="btn btn-info sm" data-act="status" data-id="${d.id}" data-to="in_transit" onclick="window.updateDispatchStatus('${d.id}','in_transit')">🚛</button>` : ''}
@@ -2015,6 +2099,7 @@ function renderProgress() {
     if (st !== 'hold' && st !== 'delivered') actions += `<button class="btn btn-danger sm" data-act="status" data-id="${d.id}" data-to="hold" onclick="window.updateDispatchStatus('${d.id}','hold')" title="Hold">⏸️</button>`;
     if (st === 'hold') actions += `<button class="btn btn-info sm" data-act="status" data-id="${d.id}" data-to="in_transit" onclick="window.updateDispatchStatus('${d.id}','in_transit')">▶️ Resume</button>`;
     actions += `<button class="btn btn-wati sm" data-act="wati" data-id="${d.id}" onclick="window.sendDispatchWati('${d.id}')" title="Send via WhatsApp">📲</button>`;
+    actions += `<button class="btn btn-secondary sm" data-act="edit" data-id="${d.id}" onclick="window.openEditDispatch('${d.id}')" title="Edit dispatch">✏️</button>`;
     
     return `
       <tr>
@@ -2599,6 +2684,7 @@ document.addEventListener('click', (e) => {
   if (act === 'status') updateDispatchStatus(id, btn.dataset.to);
   else if (act === 'wati') sendDispatchWati(id);
   else if (act === 'pdf') generatePdfFor(id);
+  else if (act === 'edit') openEditDispatch(id);
 });
 dbg('✅ click delegation attached (fallback mode)');
 
@@ -2626,6 +2712,8 @@ document.addEventListener('DOMContentLoaded', () => {
 window.updateDispatchStatus = updateDispatchStatus;
 window.sendDispatchWati = sendDispatchWati;
 window.generatePdfFor = generatePdfFor;
+window.openEditDispatch = openEditDispatch;
+window.cancelEditDispatch = cancelEditDispatch;
 window.switchView = switchView;
 window.setProgressFilter = setProgressFilter;
 window.openVendorPaymentModal = openVendorPaymentModal;
