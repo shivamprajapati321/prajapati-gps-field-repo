@@ -54,6 +54,14 @@ label.lbl{display:block;font-size:11px;font-weight:600;text-transform:uppercase;
 .mh-meta{font-size:12px;color:rgba(255,255,255,.7);font-family:'JetBrains Mono',monospace;margin-top:2px}
 .mh-role-select{padding:7px 11px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;font-family:inherit;font-size:12.5px;font-weight:600}
 .mh-role-select option{color:#0E1942}
+.mh-edit-btn{padding:7px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all .15s}
+.mh-edit-btn:hover{background:rgba(255,255,255,.2)}
+.edit-profile{display:none;padding:18px 20px;margin-bottom:14px}
+.edit-profile.show{display:block}
+.ep-title{font-size:14px;font-weight:700;color:var(--primary);margin-bottom:14px;display:flex;align-items:center;gap:7px}
+.ep-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.ep-actions{display:flex;gap:10px;justify-content:flex-end}
+@media(max-width:560px){ .ep-grid{grid-template-columns:1fr} }
 .presets{display:none;flex-wrap:wrap;gap:8px;padding:14px 20px;margin-bottom:14px}
 .presets.show{display:flex}
 .presets .ptitle{width:100%;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-2);margin-bottom:2px}
@@ -118,8 +126,31 @@ label.lbl{display:block;font-size:11px;font-weight:600;text-transform:uppercase;
         <div class="mh-name" id="mhName">—</div>
         <div class="mh-meta" id="mhMeta">—</div>
       </div>
+      <button class="mh-edit-btn" id="mhEditBtn" onclick="openEditProfile()" title="Naam / phone edit karo">
+        <i class="ti ti-edit"></i> Edit
+      </button>
       <select class="mh-role-select" id="mhRole" onchange="onRoleChange(this.value)"></select>
     </div>
+
+    <!-- Inline edit form for name + phone -->
+    <div class="card edit-profile" id="editProfile">
+      <div class="ep-title"><i class="ti ti-user-edit"></i> Member details edit</div>
+      <div class="ep-grid">
+        <div>
+          <label class="lbl">Naam</label>
+          <input type="text" id="epName" class="dd-input" placeholder="Full name">
+        </div>
+        <div>
+          <label class="lbl">Phone (10 digit)</label>
+          <input type="tel" id="epPhone" class="dd-input" placeholder="9876543210" maxlength="10" inputmode="numeric">
+        </div>
+      </div>
+      <div class="ep-actions">
+        <button class="btn btn-ghost" onclick="closeEditProfile()">Cancel</button>
+        <button class="btn btn-primary" id="epSaveBtn" onclick="saveProfile()"><i class="ti ti-check"></i> Save details</button>
+      </div>
+    </div>
+
     <div class="card presets" id="presets"></div>
     <div class="card features" id="features"></div>
   </div>
@@ -260,9 +291,56 @@ function selectMember(id){
   $('mhAv').textContent=ini; $('mhName').textContent=m.name||'—'; $('mhMeta').textContent=(m.phone||'')+' · '+(m.role||'');
   $('mhRole').value=String(m.role||'').toLowerCase();
   $('memberHead').classList.add('show');
+  closeEditProfile();
   buildPresets(); renderFeatures();
   $('presets').classList.add('show'); $('features').classList.add('show'); $('saveBar').classList.add('show');
 }
+
+// ─── Edit name + phone ───
+function openEditProfile(){
+  var m=state.selected; if(!m) return;
+  $('epName').value=m.name||'';
+  $('epPhone').value=m.phone||'';
+  $('editProfile').classList.add('show');
+}
+function closeEditProfile(){ $('editProfile').classList.remove('show'); }
+
+function saveProfile(){
+  var m=state.selected; if(!m) return;
+  var newName=$('epName').value.trim();
+  var newPhone=$('epPhone').value.replace(/\D/g,'');
+  if(!newName){ toast('Naam khali nahi ho sakta','error'); return; }
+  if(newPhone.length!==10){ toast('Phone 10 digit ka hona chahiye','error'); return; }
+
+  var btn=$('epSaveBtn'); btn.disabled=true; btn.innerHTML='<i class="ti ti-loader"></i> Saving…';
+
+  // First: check phone not used by another active member
+  api('/rest/v1/trial_team_members?phone=eq.'+newPhone+'&select=id,name')
+    .then(function(rows){
+      var clash=(rows||[]).find(function(r){ return String(r.id)!==String(m.id); });
+      if(clash){
+        btn.disabled=false; btn.innerHTML='<i class="ti ti-check"></i> Save details';
+        toast('Yeh number pehle se "'+(clash.name||'kisi')+'" ke paas hai','error');
+        return Promise.reject('dup');
+      }
+      // Update name + phone
+      return api('/rest/v1/trial_team_members?id=eq.'+m.id,{method:'PATCH',headers:{Prefer:'return=minimal'},body:{name:newName,phone:newPhone}});
+    })
+    .then(function(){
+      m.name=newName; m.phone=newPhone;
+      var ini=(newName||'?').split(' ').map(function(p){return p[0];}).join('').substring(0,2).toUpperCase();
+      $('mhAv').textContent=ini; $('mhName').textContent=newName; $('mhMeta').textContent=newPhone+' · '+(m.role||'');
+      $('memSearch').value=newName;
+      btn.disabled=false; btn.innerHTML='<i class="ti ti-check"></i> Save details';
+      closeEditProfile();
+      toast('✓ Details update ho gaye','success');
+    })
+    .catch(function(e){
+      btn.disabled=false; btn.innerHTML='<i class="ti ti-check"></i> Save details';
+      if(e!=='dup') toast('Save error: '+(e.message||e),'error');
+    });
+}
+
 function buildPresets(){
   var html='<div class="ptitle">Quick preset — ek click mein default access</div>';
   html+=PRESET_KEYS.map(function(r){return '<button class="preset-btn" onclick="applyPreset(\''+r+'\')">'+r.replace(/_/g,' ')+'</button>';}).join('');
