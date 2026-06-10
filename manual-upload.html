@@ -1,6 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<!-- Unified login bridge: feed session → legacy phone key -->
+<script src="/lib/access-guard.js"></script>
+<script>
+(function(){
+  try{
+    var s=(window.AccessGuard&&AccessGuard.getSession)?AccessGuard.getSession():null;
+    if(s&&s.member){ if(s.member.phone){localStorage.setItem('prajapati_admin_phone',s.member.phone);localStorage.setItem('prajapati_manual_phone',s.member.phone);} window.currentSessionMember=s.member; }
+    else { var embedded=(window.self!==window.top)||/[?&]embedded=1/.test(location.search);
+      if(!embedded && !localStorage.getItem('prajapati_admin_phone') && !localStorage.getItem('prajapati_manual_phone')){ location.href='/login.html'; } }
+  }catch(e){console.warn('bridge',e);}
+})();
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -148,7 +160,7 @@ label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;lett
 
 <!-- MAIN -->
 <div id="app" class="wrap hide">
-  <a href="app.html#v2" class="back-link"><i class="ti ti-arrow-left"></i> Back to admin</a>
+  <a href="app.html#v2" class="back-link" onclick="if(window.self!==window.top){window.top.location.href='/app.html#v2';return false;}"><i class="ti ti-arrow-left"></i> Back to admin</a>
   <div class="topbar" style="margin-top:10px">
     <div>
       <h1 class="page-title"><i class="ti ti-cloud-upload"></i> Manual Photo Upload</h1>
@@ -251,6 +263,7 @@ var state={admin:null,campaigns:[],members:[],photos:[]};
 $('loginPhone').addEventListener('input',function(){this.value=this.value.replace(/\D/g,'');});
 $('loginPhone').addEventListener('keypress',function(e){if(e.key==='Enter')login();});
 $('loginBtn').addEventListener('click',login);
+var ALLOWED_ROLES=['admin','owner','data_manager','operations_manager','ops_manager','data_entry'];
 function login(){
   var phone=$('loginPhone').value.trim();
   if(phone.length!==10){toast('10 digit number daalo','error');return;}
@@ -259,10 +272,23 @@ function login(){
     btn.disabled=false;btn.innerHTML='Login <i class="ti ti-arrow-right"></i>';
     if(!m||!m.length){toast('Number registered nahi','error');return;}
     var u=m[0];
-    if(u.role!=='admin'&&u.role!=='owner'){toast('Sirf admin/owner','error');return;}
+    if(ALLOWED_ROLES.indexOf((u.role||'').toLowerCase())===-1){toast('Sirf admin/owner/data manager','error');return;}
     state.admin=u;localStorage.setItem('prajapati_manual_phone',phone);enterApp();
   }).catch(function(e){btn.disabled=false;btn.innerHTML='Login <i class="ti ti-arrow-right"></i>';toast('Error: '+e.message,'error');});
 }
+// Auto-login from unified session / legacy phone (skip login screen when embedded in admin)
+(function autoLoginManual(){
+  try{
+    var ph=(window.currentSessionMember&&window.currentSessionMember.phone)||localStorage.getItem('prajapati_admin_phone')||localStorage.getItem('prajapati_manual_phone');
+    if(!ph)return;
+    api('/rest/v1/trial_team_members?phone=eq.'+ph+'&active=eq.true&select=*').then(function(m){
+      if(!m||!m.length)return;
+      var u=m[0];
+      if(ALLOWED_ROLES.indexOf((u.role||'').toLowerCase())===-1)return;
+      state.admin=u;localStorage.setItem('prajapati_manual_phone',ph);enterApp();
+    }).catch(function(){});
+  }catch(e){}
+})();
 function enterApp(){
   $('loginScreen').classList.add('hide');$('app').classList.remove('hide');
   $('batchDate').value=todayStr();
@@ -443,7 +469,7 @@ function doUpload(){
     if(!confirm(missing.length+' photos mein Lat/Long nahi hai. Bina location ke upload karein? (Recommended: pehle location daalo)'))return;
   }
   var btn=$('uploadBtn');btn.disabled=true;
-  var done=0,failed=0;var total=state.photos.length;
+  var done=0,failed=0;var total=state.photos.length;var firstErr=null;
   // captured_at: batch date + a stable IST noon (so date filters work). Spread seconds to keep order.
   var baseTs=new Date(date+'T12:00:00+05:30').getTime();
 
@@ -453,12 +479,18 @@ function doUpload(){
       btn.innerHTML='<i class="ti ti-loader"></i> Uploading '+(idx+1)+'/'+total+'…';
       return uploadOne(p,idx,{campKey:campKey,memPhone:memPhone,memName:memName,mode:mode,baseTs:baseTs})
         .then(function(){done++;})
-        .catch(function(e){failed++;console.error('upload fail',p.id,e);});
+        .catch(function(e){failed++;if(!firstErr)firstErr=e.message;console.error('upload fail',p.id,e);});
     });
   });
   chain.then(function(){
     btn.disabled=false;btn.innerHTML='<i class="ti ti-cloud-upload"></i> Upload all to campaign';
     toast('✅ '+done+' uploaded'+(failed?' · '+failed+' failed':''),failed?'error':'success');
+    if(failed&&firstErr){
+      // Show the real reason on screen (storage RLS / DB column / etc.)
+      var errBox=$('uploadErrBox');
+      if(!errBox){ errBox=document.createElement('div'); errBox.id='uploadErrBox'; errBox.style.cssText='margin-top:12px;padding:12px 14px;background:#FEECEC;border:1px solid #F3C7C7;border-radius:10px;color:#BE123C;font-size:12.5px;line-height:1.5'; var bar=$('uploadBtn').parentNode; bar.parentNode.insertBefore(errBox,bar.nextSibling); }
+      errBox.innerHTML='<b>⚠️ Upload error:</b><br>'+firstErr+'<br><small style="color:#7A2030">Agar "row-level security" ya "403" hai → STORAGE_RLS_FIX.sql Supabase mein chalao. Agar "column" hai → batao.</small>';
+    }
     if(done>0&&!failed){state.photos=[];renderReview();}
     else renderReview();
   });
