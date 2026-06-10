@@ -1,26 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- Unified login bridge: feed session → legacy prajapati_admin_phone -->
-<script src="/lib/access-guard.js"></script>
-<script>
-(function(){
-  try{
-    var s = (window.AccessGuard && AccessGuard.getSession) ? AccessGuard.getSession() : null;
-    if (s && s.member) {
-      // Make legacy code happy: set the phone key it expects
-      if (s.member.phone) localStorage.setItem('prajapati_admin_phone', s.member.phone);
-      window.currentSessionMember = s.member;
-    } else {
-      // No session → bounce to unified login (top window, in case of iframe)
-      var go = function(){ try{ if(window.top&&window.top!==window.self){ window.top.location.href='/login.html'; return; } }catch(e){} window.location.href='/login.html'; };
-      // Only redirect if there's no legacy phone either (avoid breaking direct testing)
-      if(!localStorage.getItem('prajapati_admin_phone')) go();
-    }
-  }catch(e){ console.warn('login bridge', e); }
-})();
-</script>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Prajapati GPS — PPT Generator v5 ⚡ FAST</title>
@@ -376,6 +356,7 @@ body {
       <h2>Preview</h2>
       <div style="display:flex;gap:10px;align-items:center;">
         <button class="btn btn-accent" id="fetchMissingBtn" onclick="fetchMissingFromSurepass()" style="display:none;background:#26d0ce;color:#0B1957;font-weight:700;">🔍 Fetch Missing Owners</button>
+        <button class="btn" id="getOwnersBtn" onclick="getAllVehicleOwners()" disabled style="display:none;background:#26d0ce;color:#0B1957;font-weight:700;">🔍 Get Vehicle Owners</button>
         <button class="btn" id="excelBtn" onclick="generateExcel()" disabled style="background:#16a34a;color:#fff;font-weight:700;">📊 Excel Report</button>
         <button class="btn btn-accent" id="generateBtn" onclick="generatePPT()" disabled>📥 Generate PPT</button>
       </div>
@@ -575,9 +556,9 @@ function canSeeContact() {
 }
 
 function canFetchSurepass() {
-  // Only admin/DEO can trigger Surepass fetch (cost-controlled)
+  // Only admin/owner/data roles can trigger Surepass fetch (cost-controlled)
   // Client cannot incur API costs
-  return ['admin', 'owner', 'data_entry'].includes(state.userRole);
+  return ['admin', 'owner', 'data_entry', 'data_manager', 'operations_manager', 'ops_manager'].includes(state.userRole);
 }
 
 function getRoleBadge() {
@@ -1061,6 +1042,17 @@ function renderPreview() {
   document.getElementById('generateBtn').disabled = totalVehicles === 0 || !window.PPTX_LIB_LOADED;
   var exBtn = document.getElementById('excelBtn');
   if (exBtn) exBtn.disabled = totalVehicles === 0;
+  // Get Vehicle Owners button — show whenever vehicles are loaded and user can fetch
+  var getOwnBtn = document.getElementById('getOwnersBtn');
+  if (getOwnBtn) {
+    if (totalVehicles > 0 && canFetchSurepass()) {
+      getOwnBtn.style.display = 'inline-block';
+      getOwnBtn.disabled = false;
+      getOwnBtn.textContent = '🔍 Get Vehicle Owners (' + totalVehicles + ')';
+    } else {
+      getOwnBtn.style.display = 'none';
+    }
+  }
   
   const body = document.getElementById('vehicleListBody');
   body.innerHTML = state.vehicles.map(v => {
@@ -1168,8 +1160,58 @@ async function fetchMissingFromSurepass() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  ★ KEY FIX: Fetch image AND get its actual dimensions
+//  Get Vehicle Owners — fetch owner+contact for ALL loaded vehicles
+//  (not just missing). Cached results are free; fresh ones cost ~₹3.
 // ═══════════════════════════════════════════════════════════════
+async function getAllVehicleOwners() {
+  if (!canFetchSurepass()) { showToast('Aap data fetch nahi kar sakte', 'error'); return; }
+  if (!state.vehicles || state.vehicles.length === 0) { showToast('Pehle campaign select karo', 'error'); return; }
+
+  // Unique plates from loaded vehicles
+  var seen = {};
+  var list = [];
+  state.vehicles.forEach(function(v){
+    var plate = (v.vehicle_number || '').toUpperCase().trim();
+    if (plate.length >= 6 && !seen[plate]) { seen[plate] = true; list.push(v); }
+  });
+  if (list.length === 0) { showToast('Koi valid vehicle number nahi', 'error'); return; }
+
+  var confirmed = confirm(
+    list.length + ' vehicles ke owner + contact fetch karne hain?\n\n' +
+    'Cached (pehle fetch kiye) FREE milenge.\n' +
+    'Naye fetch ~₹3 each. Verified Database mein cache ho jayega.\n\n' +
+    'Proceed?'
+  );
+  if (!confirmed) return;
+
+  var btn = document.getElementById('getOwnersBtn');
+  var orig = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; }
+
+  var success = 0, failed = 0;
+  for (var i = 0; i < list.length; i++) {
+    var v = list[i];
+    if (btn) btn.textContent = '⏳ ' + (i + 1) + '/' + list.length + ' · ' + v.vehicle_number;
+    try {
+      var res = await fetch(CONFIG.edgeFunctionUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + CONFIG.supabaseKey, 'apikey': CONFIG.supabaseKey },
+        body: JSON.stringify({ vehicle_number: v.vehicle_number })
+      });
+      var data = await res.json();
+      if (data && data.success) {
+        if (data.owner_name) v.owner_name = data.owner_name;
+        if (data.contact_number) v.contact_number = data.contact_number;
+        if (data.pincode) v.pincode = data.pincode;
+        if (data.owner_name || data.contact_number) success++; else failed++;
+      } else { failed++; }
+    } catch (e) { console.warn('[Surepass] Failed for', v.vehicle_number, e); failed++; }
+    if ((i + 1) % 3 === 0 || i === list.length - 1) renderPreview();
+  }
+  renderPreview();
+  if (btn) { btn.disabled = false; btn.textContent = orig || '🔍 Get Vehicle Owners'; }
+  showToast('✅ Done! Fetched: ' + success + ' · Failed: ' + failed, success > 0 ? '' : 'error');
+}
 // ⚡ OPTIMIZED: Fetch + compress image (1920px max) for faster PPT
 async function fetchImageWithDims(url) {
   try {
