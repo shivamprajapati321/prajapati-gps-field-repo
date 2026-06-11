@@ -315,6 +315,17 @@ a{color:inherit;text-decoration:none}
           <input class="input" id="campaignName" placeholder="e.g., Sharma Garments — Festive Push 2026">
         </div>
         <div class="field">
+          <div class="label">Photo Coverage <span class="req">*</span> <span class="hint">Auto-select in field app</span></div>
+          <select class="input" id="photoCoverage">
+            <option value="hood">Auto Rickshaw Hood — 3 photos (back, left, right)</option>
+            <option value="back_panel">Auto Back Panel — 1 photo</option>
+            <option value="both">Both — Hood (3) + Back (1)</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="row">
+        <div class="field">
           <div class="label">Campaign Start Date <span class="req">*</span></div>
           <input class="input" type="date" id="startDate">
         </div>
@@ -1347,6 +1358,9 @@ async function submitCampaign(targetStatus = 'pending_execution_plan') {
       campaign_name: campaignName || 'Untitled Draft',
       client_id: clientId,
       client_name: selectedClient?.name,
+      sales_member_id: selectedSales?.id,
+      sales_member_name: selectedSales?.name || null,
+      created_by_name: (typeof user !== 'undefined' && user) ? user.name : null,
       start_date: document.getElementById('startDate').value || null,
       deadline_date: document.getElementById('deadlineDate').value || null,
       order_type: orderType,
@@ -1367,6 +1381,8 @@ async function submitCampaign(targetStatus = 'pending_execution_plan') {
       advance_paid: parseFloat(document.getElementById('payAdvance').value) || 0,
       balance_due: Math.max(0, (parseFloat(document.getElementById('payTotal').value) || total) - (parseFloat(document.getElementById('payAdvance').value) || 0)),
       total_quantity: totalQty,
+      hood_photo_count: (function(){ var m=document.getElementById('photoCoverage').value; return (m==='hood'||m==='both')?3:0; })(),
+      back_panel_photo_count: (function(){ var m=document.getElementById('photoCoverage').value; return (m==='back_panel'||m==='both')?1:0; })(),
       status: targetStatus,
       created_by: user.id
     };
