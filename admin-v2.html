@@ -8539,7 +8539,7 @@ function openStaffReportModal(data) {
       '<div class="srp-modal">' +
         '<div class="srp-head">' +
           '<div>' +
-            '<div class="srp-title">Field Work Report</div>' +
+            '<div class="srp-title">Field Work Report <span style="font-size:11px;font-weight:600;color:#26d0ce;vertical-align:middle">v3 · pdf/jpeg</span></div>' +
             '<div class="srp-sub">'+escapeHtml(rangeLabel)+' · '+data.rows.length+' entries</div>' +
           '</div>' +
           '<div style="display:flex;gap:8px">' +
@@ -8689,23 +8689,98 @@ async function exportStaffReportExcel() {
 }
 
 // Capture the modal's cards+table area as a high-res canvas (shared by PDF + JPEG)
+// Build a clean, self-contained report node (only hex colors) and render it off-screen.
+// This avoids html2canvas crashing on modern CSS (oklch/color-mix/CSS vars) used elsewhere on the page.
+function buildStaffReportPrintNode() {
+  var data = window._staffReportData;
+  if (!data) throw new Error('Report data missing');
+  var range = (typeof getPhotosDateRange === 'function') ? getPhotosDateRange() : {from:'',to:''};
+  var rangeLabel = (range.from === range.to || !range.to) ? (range.from || 'All dates') : (range.from + ' → ' + range.to);
+
+  var cardDefs = [
+    ['TOTAL QTY', data.total, '#0B1957'],
+    ['FIELD STAFF', data.members, '#26d0ce'],
+    ['CAMPAIGNS', data.works, '#B89B4E'],
+    ['CITIES', data.cities, '#7C3AED'],
+    ['AUTO HOOD', data.hood, '#047857'],
+    ['AUTO BACK', data.back, '#C2410C']
+  ];
+  var cards = cardDefs.map(function(c){
+    return '<div style="flex:1;min-width:120px;border:1px solid #E5E0D2;border-top:3px solid '+c[2]+';border-radius:11px;padding:12px 8px;text-align:center;background:#fff">' +
+             '<div style="font-size:24px;font-weight:800;color:'+c[2]+';font-family:monospace;line-height:1">'+c[1]+'</div>' +
+             '<div style="font-size:10px;color:#64748B;margin-top:5px;text-transform:uppercase;letter-spacing:.4px;font-weight:600">'+c[0]+'</div>' +
+           '</div>';
+  }).join('');
+
+  var rows = data.rows.map(function(r, i){
+    var mediaColor = r.media === 'AUTO BACK' ? '#C2410C' : '#047857';
+    var bg = i % 2 === 1 ? '#FAFBFC' : '#fff';
+    return '<tr style="background:'+bg+'">' +
+      '<td style="padding:9px 12px;border:1px solid #EEE;color:#1E293B">'+escapeHtml(r.date)+'</td>' +
+      '<td style="padding:9px 12px;border:1px solid #EEE;color:#1E293B;font-weight:600">'+escapeHtml(r.name)+'</td>' +
+      '<td style="padding:9px 12px;border:1px solid #EEE;color:#1E293B">'+escapeHtml(r.work)+'</td>' +
+      '<td style="padding:9px 12px;border:1px solid #EEE;color:#1E293B">'+escapeHtml(r.location)+'</td>' +
+      '<td style="padding:9px 12px;border:1px solid #EEE;color:#0B1957;text-align:center;font-weight:700;font-family:monospace">'+r.qty+'</td>' +
+      '<td style="padding:9px 12px;border:1px solid #EEE;text-align:center;color:'+mediaColor+';font-weight:600;font-size:11px">'+escapeHtml(r.media)+'</td>' +
+    '</tr>';
+  }).join('');
+
+  var node = document.createElement('div');
+  node.style.cssText = 'position:fixed;left:-99999px;top:0;width:920px;background:#fff;font-family:Arial,Helvetica,sans-serif;color:#1E293B';
+  node.innerHTML =
+    '<div style="background:#0B1957;color:#fff;padding:18px 24px">' +
+      '<div style="font-size:20px;font-weight:700">Prajapati Advertising — Field Work Report</div>' +
+      '<div style="font-size:12px;opacity:.85;margin-top:3px">'+escapeHtml(rangeLabel)+' · '+data.rows.length+' entries</div>' +
+    '</div>' +
+    '<div style="display:flex;gap:10px;padding:16px 24px;background:#F7F9FC">'+cards+'</div>' +
+    '<div style="padding:0 24px 24px">' +
+      '<table style="width:100%;border-collapse:collapse;font-size:13px">' +
+        '<thead><tr>' +
+          ['DATE','NAME','WORK','LOCATION','QTY','MEDIA'].map(function(h,idx){
+            var al = (idx>=4)?'center':'left';
+            return '<th style="background:#FFF200;color:#000;font-size:11px;font-weight:700;padding:10px 12px;text-align:'+al+';border:1px solid #E5C800">'+h+'</th>';
+          }).join('') +
+        '</tr></thead>' +
+        '<tbody>'+rows+'</tbody>' +
+        '<tfoot><tr>' +
+          '<td colspan="4" style="padding:11px 12px;background:#FFF7CC;border:1px solid #E5C800;text-align:right;font-weight:700;color:#0B1957">TOTAL</td>' +
+          '<td style="padding:11px 12px;background:#FFF7CC;border:1px solid #E5C800;text-align:center;font-weight:800;font-family:monospace;color:#0B1957">'+data.total+'</td>' +
+          '<td style="background:#FFF7CC;border:1px solid #E5C800"></td>' +
+        '</tr></tfoot>' +
+      '</table>' +
+      '<div style="margin-top:14px;font-size:10px;color:#94A3B8;text-align:right">Generated ' + new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'}) + ' · prajapatiadvertising.com</div>' +
+    '</div>';
+  return node;
+}
+
+// Ensure a script is loaded (dynamic fallback if CDN <script> didn't load)
+function ensureScript(src, globalCheck) {
+  return new Promise(function(resolve, reject){
+    try { if (globalCheck()) { resolve(); return; } } catch(e){}
+    var existing = document.querySelector('script[data-dyn="' + src + '"]');
+    if (existing) { existing.addEventListener('load', function(){ resolve(); }); existing.addEventListener('error', function(){ reject(new Error('load failed')); }); return; }
+    var s = document.createElement('script');
+    s.src = src; s.setAttribute('data-dyn', src);
+    s.onload = function(){ resolve(); };
+    s.onerror = function(){ reject(new Error('Could not load ' + src)); };
+    document.head.appendChild(s);
+    setTimeout(function(){ try{ if(globalCheck()) resolve(); else reject(new Error('timeout loading ' + src)); }catch(e){ reject(e); } }, 8000);
+  });
+}
+
 async function captureStaffReportCanvas() {
-  if (typeof html2canvas === 'undefined') throw new Error('Image library not loaded. Refresh (Ctrl+Shift+R).');
-  var modal = document.querySelector('#staffReportModal .srp-modal');
-  if (!modal) throw new Error('Report preview not open');
-  // Temporarily expand the table area so the FULL table is captured (not just scrolled part)
-  var wrap = modal.querySelector('.srp-table-wrap');
-  var prevMax = wrap ? wrap.style.maxHeight : '';
-  var prevOvf = wrap ? wrap.style.overflow : '';
-  var prevModalMax = modal.style.maxHeight;
-  if (wrap) { wrap.style.maxHeight = 'none'; wrap.style.overflow = 'visible'; }
-  modal.style.maxHeight = 'none';
+  // Make sure html2canvas is available (load on demand if needed)
+  if (typeof html2canvas === 'undefined') {
+    await ensureScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', function(){ return typeof html2canvas !== 'undefined'; });
+  }
+  if (typeof html2canvas === 'undefined') throw new Error('Image library (html2canvas) load nahi hui. Internet check karo ya page refresh karo.');
+  var node = buildStaffReportPrintNode();
+  document.body.appendChild(node);
   try {
-    var canvas = await html2canvas(modal, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false });
+    var canvas = await html2canvas(node, { scale: 2, backgroundColor: '#ffffff', logging: false });
     return canvas;
   } finally {
-    if (wrap) { wrap.style.maxHeight = prevMax; wrap.style.overflow = prevOvf; }
-    modal.style.maxHeight = prevModalMax;
+    node.remove();
   }
 }
 
@@ -8719,7 +8794,7 @@ function staffReportFilename(ext) {
 async function exportStaffReportJPEG() {
   var btn = document.querySelector('.srp-btn-jpeg');
   var orig = btn ? btn.innerHTML : '';
-  if (btn) { btn.disabled = true; btn.innerHTML = '⏳'; }
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2"></i> ...'; }
   try {
     var canvas = await captureStaffReportCanvas();
     var url = canvas.toDataURL('image/jpeg', 0.92);
@@ -8738,12 +8813,16 @@ async function exportStaffReportJPEG() {
 async function exportStaffReportPDF() {
   var btn = document.querySelector('.srp-btn-pdf');
   var orig = btn ? btn.innerHTML : '';
-  if (btn) { btn.disabled = true; btn.innerHTML = '⏳'; }
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2"></i> ...'; }
   try {
     var canvas = await captureStaffReportCanvas();
     var imgData = canvas.toDataURL('image/jpeg', 0.92);
+    // Ensure jsPDF available (load on demand)
+    if (!(window.jspdf && window.jspdf.jsPDF) && !window.jsPDF) {
+      await ensureScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', function(){ return !!((window.jspdf && window.jspdf.jsPDF) || window.jsPDF); });
+    }
     var jsPDFCtor = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : (window.jsPDF || null);
-    if (!jsPDFCtor) throw new Error('PDF library not loaded. Refresh (Ctrl+Shift+R).');
+    if (!jsPDFCtor) throw new Error('PDF library (jsPDF) load nahi hui. Internet check karo ya page refresh karo.');
 
     // Fit image to A4 portrait, paginate if taller than one page
     var pdf = new jsPDFCtor('p', 'mm', 'a4');
