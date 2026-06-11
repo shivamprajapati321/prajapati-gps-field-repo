@@ -163,7 +163,7 @@ label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;lett
   <a href="app.html#v2" class="back-link" onclick="if(window.self!==window.top){window.top.location.href='/app.html#v2';return false;}"><i class="ti ti-arrow-left"></i> Back to admin</a>
   <div class="topbar" style="margin-top:10px">
     <div>
-      <h1 class="page-title"><i class="ti ti-cloud-upload"></i> Manual Photo Upload</h1>
+      <h1 class="page-title"><i class="ti ti-cloud-upload"></i> Manual Photo Upload <span style="font-size:11px;font-weight:600;color:#26d0ce;vertical-align:middle">v2 robust</span></h1>
       <p class="page-sub">Third-party GPS camera photos ko campaign mein laao — OCR location auto-read, phir verify flow.</p>
     </div>
   </div>
@@ -477,20 +477,31 @@ function doUpload(){
   state.photos.forEach(function(p,idx){
     chain=chain.then(function(){
       btn.innerHTML='<i class="ti ti-loader"></i> Uploading '+(idx+1)+'/'+total+'…';
+      p.uploadErr=null;
       return uploadOne(p,idx,{campKey:campKey,memPhone:memPhone,memName:memName,mode:mode,baseTs:baseTs})
-        .then(function(){done++;})
-        .catch(function(e){failed++;if(!firstErr)firstErr=e.message;console.error('upload fail',p.id,e);});
+        .then(function(){done++;p.uploaded=true;})
+        .catch(function(e){failed++;if(!firstErr)firstErr=e.message;p.uploadErr=e.message;console.error('upload fail',p.id,e);});
     });
   });
   chain.then(function(){
     btn.disabled=false;btn.innerHTML='<i class="ti ti-cloud-upload"></i> Upload all to campaign';
     toast('✅ '+done+' uploaded'+(failed?' · '+failed+' failed':''),failed?'error':'success');
+    var errBox=$('uploadErrBox');
     if(failed&&firstErr){
-      // Show the real reason on screen (storage RLS / DB column / etc.)
-      var errBox=$('uploadErrBox');
-      if(!errBox){ errBox=document.createElement('div'); errBox.id='uploadErrBox'; errBox.style.cssText='margin-top:12px;padding:12px 14px;background:#FEECEC;border:1px solid #F3C7C7;border-radius:10px;color:#BE123C;font-size:12.5px;line-height:1.5'; var bar=$('uploadBtn').parentNode; bar.parentNode.insertBefore(errBox,bar.nextSibling); }
-      errBox.innerHTML='<b>⚠️ Upload error:</b><br>'+firstErr+'<br><small style="color:#7A2030">Agar "row-level security" ya "403" hai → STORAGE_RLS_FIX.sql Supabase mein chalao. Agar "column" hai → batao.</small>';
-    }
+      // Big, clear, always-visible error with exact cause + fix
+      if(!errBox){ errBox=document.createElement('div'); errBox.id='uploadErrBox'; var bar=$('uploadBtn').parentNode; bar.parentNode.insertBefore(errBox,bar.nextSibling); }
+      errBox.style.cssText='margin-top:14px;padding:16px 18px;background:#FEECEC;border:2px solid #DC2626;border-radius:12px;color:#BE123C;font-size:13px;line-height:1.6';
+      var isStorage=/STORAGE/i.test(firstErr), isDb=/DATABASE/i.test(firstErr);
+      var isRls=/row-level|row level|403|not authorized|violates|policy|permission/i.test(firstErr);
+      var hint='';
+      if(isStorage&&isRls) hint='👉 Storage permission ki dikkat hai. STORAGE_RLS_FIX.sql Supabase mein chalao (ya dobara chalao) → 30 sec ruko → phir try karo.';
+      else if(isStorage) hint='👉 Storage upload fail. Bucket "trial-photos" exist karta hai? Public hai? STORAGE_RLS_FIX.sql chalao.';
+      else if(isDb&&/column|schema|PGRST/i.test(firstErr)) hint='👉 DB column missing. Yeh error mujhe bhejo, exact column add kar dunga.';
+      else if(isDb&&isRls) hint='👉 trial_photos table pe RLS block kar rahi. STORAGE_RLS_FIX.sql (table policy part) chalao.';
+      else hint='👉 Yeh error mujhe waisa ka waisa bhejo, fix kar dunga.';
+      errBox.innerHTML='<b style="font-size:14px">❌ '+failed+' photo upload fail hui</b><br><br><b>Exact error:</b><br><code style="background:#fff;padding:4px 8px;border-radius:5px;display:inline-block;margin:4px 0;word-break:break-all">'+(firstErr.replace(/</g,'&lt;'))+'</code><br><br>'+hint;
+      errBox.scrollIntoView({behavior:'smooth',block:'center'});
+    } else if(errBox){ errBox.remove(); }
     if(done>0&&!failed){state.photos=[];renderReview();}
     else renderReview();
   });
@@ -508,15 +519,28 @@ function uploadOne(p,idx,b){
   var side=b.mode==='back_panel'?'back':'front';
   var path=cleanName(b.memName)+'/'+cleanName(vehicle)+'/'+side+'-'+cleanName(vehicle)+'-'+p.id.slice(-5)+'.jpg';
   var blob=dataUrlToBlob(p.dataUrl);
-  // 1) upload to storage
-  return fetch(CONFIG.supabaseUrl+'/storage/v1/object/'+CONFIG.bucket+'/'+encodeURI(path),{
-    method:'POST',
-    headers:{apikey:CONFIG.supabaseKey,Authorization:'Bearer '+CONFIG.supabaseKey,'Content-Type':'image/jpeg','x-upsert':'true'},
-    body:blob
-  }).then(function(r){
-    if(!r.ok)return r.text().then(function(t){throw new Error('storage '+r.status+': '+t);});
+
+  // STEP 1: upload to storage (try upsert, fallback to plain)
+  function doStorage(useUpsert){
+    var headers={apikey:CONFIG.supabaseKey,Authorization:'Bearer '+CONFIG.supabaseKey,'Content-Type':'image/jpeg'};
+    if(useUpsert)headers['x-upsert']='true';
+    return fetch(CONFIG.supabaseUrl+'/storage/v1/object/'+CONFIG.bucket+'/'+encodeURI(path),{method:'POST',headers:headers,body:blob});
+  }
+  return doStorage(true).then(function(r){
+    if(r.ok)return r;
+    // some setups reject x-upsert via anon → retry once without it
+    return r.text().then(function(t){
+      if(/already exists|409|Duplicate/i.test(t)){ // file there already → treat as ok
+        return {ok:true,_dup:true};
+      }
+      return doStorage(false).then(function(r2){
+        if(r2.ok)return r2;
+        return r2.text().then(function(t2){ throw new Error('STORAGE '+r2.status+': '+(t2||t).slice(0,160)); });
+      });
+    });
+  }).then(function(){
     var publicUrl=CONFIG.supabaseUrl+'/storage/v1/object/public/'+CONFIG.bucket+'/'+encodeURI(path);
-    // 2) insert DB row — same shape as app-captured photos (no special flag, per your call)
+    // STEP 2: insert DB row
     var ts=new Date(b.baseTs+idx*1000).toISOString();
     var row={
       campaign_key:b.campKey,
@@ -531,7 +555,10 @@ function uploadOne(p,idx,b){
       latitude:p.lat?parseFloat(p.lat):null,
       longitude:p.lng?parseFloat(p.lng):null
     };
-    return api('/rest/v1/trial_photos',{method:'POST',headers:{'Content-Type':'application/json',Prefer:'return=minimal'},body:row});
+    return fetch(CONFIG.supabaseUrl+'/rest/v1/trial_photos',{method:'POST',headers:{apikey:CONFIG.supabaseKey,Authorization:'Bearer '+CONFIG.supabaseKey,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify(row)}).then(function(r){
+      if(r.ok)return true;
+      return r.text().then(function(t){ throw new Error('DATABASE '+r.status+': '+(t||'').slice(0,160)); });
+    });
   });
 }
 </script>
