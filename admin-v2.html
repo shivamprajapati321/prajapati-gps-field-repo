@@ -1064,6 +1064,32 @@ label {
    PHASE 4 STYLES — Photos Browser + Client Links + Bulk Import
    ═══════════════════════════════════════════════════════════════════════ */
 
+/* ── Staff Report interactive modal ── */
+@keyframes srpRow { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+@keyframes srpPop { from{opacity:0;transform:scale(.97) translateY(10px)} to{opacity:1;transform:scale(1) translateY(0)} }
+.srp-overlay{position:fixed;inset:0;background:rgba(5,11,46,.55);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:9999;padding:24px}
+.srp-modal{background:#fff;border-radius:16px;width:100%;max-width:980px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 70px rgba(11,25,87,.35);animation:srpPop .25s ease}
+.srp-head{display:flex;justify-content:space-between;align-items:center;padding:20px 24px;background:linear-gradient(135deg,#0B1957,#1A237E);color:#fff}
+.srp-title{font-family:'Fraunces',serif;font-size:20px;font-weight:600}
+.srp-sub{font-size:12.5px;opacity:.8;margin-top:2px}
+.srp-btn{border:none;border-radius:9px;padding:9px 15px;font-family:inherit;font-weight:600;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.srp-btn-excel{background:#26d0ce;color:#04282a}
+.srp-btn-excel:hover{background:#1fb8b6}
+.srp-btn-close{background:rgba(255,255,255,.15);color:#fff;width:38px;justify-content:center}
+.srp-btn-close:hover{background:rgba(255,255,255,.28)}
+.srp-cards{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;padding:18px 24px;background:#F7F9FC}
+.srp-card{background:#fff;border:1px solid #E5E0D2;border-radius:11px;padding:12px 10px;text-align:center}
+.srp-card-val{font-size:24px;font-weight:800;font-family:'JetBrains Mono',monospace;line-height:1}
+.srp-card-lbl{font-size:10.5px;color:#64748B;margin-top:5px;text-transform:uppercase;letter-spacing:.4px;font-weight:600}
+.srp-table-wrap{overflow:auto;flex:1;padding:0 24px 24px}
+.srp-table{width:100%;border-collapse:collapse;font-size:13px}
+.srp-table thead th{position:sticky;top:0;background:#FFF200;color:#000;font-size:11px;font-weight:700;letter-spacing:.3px;padding:10px 12px;text-align:left;border:1px solid #E5C800;z-index:1}
+.srp-table tbody td{padding:9px 12px;border:1px solid #EEE;color:#1E293B}
+.srp-table tbody tr:nth-child(even){background:#FAFBFC}
+.srp-table tbody tr:hover{background:#FFFBEA}
+.srp-table tfoot td{padding:11px 12px;background:#FFF7CC;border:1px solid #E5C800;font-size:14px}
+@media(max-width:760px){ .srp-cards{grid-template-columns:repeat(3,1fr)} }
+
 /* Photo filters bar — sticky for long lists */
 .photos-filter-bar {
   display: flex;
@@ -8300,6 +8326,21 @@ function downloadPhotosZip() {
 
 // ──── Staff Report (NEW) — Image-2 format: Date · Name · Work · Location · Qty · Media ────
 // Qty = unique vehicles (Hood 3 photos/veh, Back 1 photo/veh). Groups by date+member+work+location.
+
+// Resolve proper campaign NAME from key (so report shows "Samrudha..." not "samrudha_peramedi")
+function resolveCampaignName(campaignKey, campaignName) {
+  // 1) if a readable name is already on the photo, use it
+  var cn = (campaignName || '').trim();
+  if (cn && cn !== campaignKey && !/^camp_/i.test(cn)) return getWorkNameClean(cn);
+  // 2) look it up in loaded campaigns by key
+  if (state.campaigns && campaignKey) {
+    var m = state.campaigns.find(function(c){ return (c.key === campaignKey) || (c.campaign_key === campaignKey) || (c.id === campaignKey); });
+    if (m && (m.name || m.campaign_name)) return getWorkNameClean(m.name || m.campaign_name);
+  }
+  // 3) fall back: prettify the key
+  return getWorkNameClean(cn || campaignKey || '—');
+}
+
 function getWorkNameClean(campaignName) {
   // Strip agency/company prefix: take text before first separator (privacy)
   var s = String(campaignName || '').trim();
@@ -8308,69 +8349,179 @@ function getWorkNameClean(campaignName) {
   return s || campaignName || '';
 }
 
+// City normalize: Marathi→English transliteration of common areas + merge sub-areas into main city.
+// Analyst rationale: GPS returns micro-localities (Tathawade, Wakad, Punawale...) that are all PCMC/Pune.
+// Staff report needs ONE row per real city per work, like the manual sheet.
+var CITY_MAP = {
+  // PCMC / Pune cluster
+  'tathawade':'Pimpri-Chinchwad','ताथवडे':'Pimpri-Chinchwad','तथावडे':'Pimpri-Chinchwad','wakad':'Pimpri-Chinchwad',
+  'punawale':'Pimpri-Chinchwad','thergaon':'Pimpri-Chinchwad','bhujbal chowk':'Pimpri-Chinchwad','pimpri':'Pimpri-Chinchwad',
+  'chinchwad':'Pimpri-Chinchwad','pimpri-chinchwad':'Pimpri-Chinchwad','aundh':'Pune','aundh-ravet':'Pune',
+  // Kalyan-Dombivli cluster
+  'dombivali':'Kalyan-Dombivli','dombivli':'Kalyan-Dombivli','kalyan':'Kalyan-Dombivli','kalyan-dombivli':'Kalyan-Dombivli',
+  // common Marathi → English
+  'उल्हासनगर':'Ulhasnagar','नाशिक':'Nashik','सोलापूर':'Solapur','भांडुप':'Bhandup','बदलापूर':'Badlapur',
+  'अंबाजोगाई':'Ambajogai','देवळाली':'Deolali Camp','देवळाली कॅम्प':'Deolali Camp'
+};
+function normalizeCity(city) {
+  var c = String(city || '').trim();
+  if (!c) return '—';
+  var low = c.toLowerCase();
+  if (CITY_MAP[low]) return CITY_MAP[low];
+  if (CITY_MAP[c]) return CITY_MAP[c]; // exact (Marathi) match
+  return c;
+}
+
+// Shared builder — used by BOTH the on-screen preview and the Excel download
+async function buildStaffReportData() {
+  var qs = '/rest/v1/trial_photos' + buildPhotoFilterQS();
+  var photos = await api(qs);
+  photos = photos || [];
+  if (!photos.length) return null;
+
+  var rows = {};
+  photos.forEach(function(p) {
+    var d = p.captured_at ? new Date(p.captured_at) : null;
+    var dateStr = d ? d.toLocaleDateString('en-GB', { timeZone:'Asia/Kolkata', day:'2-digit', month:'2-digit', year:'numeric' }) : '—';
+    var name = (p.member_name || p.member_phone || '—');
+    var work = resolveCampaignName(p.campaign_key, p.campaign_name);
+    var loc = normalizeCity(p.city);
+    var isBack = (p.mode === 'back_panel');
+    var media = isBack ? 'AUTO BACK' : (p.mode === 'hood' ? 'AUTO HOOD' : (p.mode ? String(p.mode).toUpperCase() : 'AUTO HOOD'));
+    var veh = ((p.verified_plate || p.vehicle_number || '') + '').trim().toUpperCase();
+
+    var key = dateStr + '||' + name + '||' + work + '||' + loc;
+    if (!rows[key]) rows[key] = { date:dateStr, name:name, work:work, location:loc, mediaCounts:{}, vehicles:{}, _sortDate:(d?d.getTime():0) };
+    if (veh && veh.length >= 4) rows[key].vehicles[veh] = 1;
+    else rows[key].vehicles['__row_' + p.id] = 1;
+    rows[key].mediaCounts[media] = (rows[key].mediaCounts[media] || 0) + 1;
+  });
+
+  var arr = Object.keys(rows).map(function(k){
+    var r = rows[k];
+    r.qty = Object.keys(r.vehicles).length;
+    // dominant media for that row
+    r.media = Object.keys(r.mediaCounts).sort(function(a,b){ return r.mediaCounts[b]-r.mediaCounts[a]; })[0] || 'AUTO HOOD';
+    return r;
+  });
+  arr.sort(function(a,b){ return a._sortDate - b._sortDate || a.name.localeCompare(b.name); });
+
+  // summary
+  var total = 0, members = {}, works = {}, cities = {}, hood = 0, back = 0;
+  arr.forEach(function(r){
+    total += r.qty; members[r.name]=1; works[r.work]=1; cities[r.location]=1;
+    if (r.media === 'AUTO BACK') back += r.qty; else hood += r.qty;
+  });
+  return { rows: arr, total: total, members: Object.keys(members).length, works: Object.keys(works).length, cities: Object.keys(cities).length, hood: hood, back: back };
+}
+
+// Open interactive preview modal
 async function downloadStaffReport() {
   var btn = document.querySelector('button[onclick="downloadStaffReport()"]');
   var orig = btn ? btn.innerHTML : 'Staff Report';
   if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Building...'; }
   try {
-    if (typeof XLSX === 'undefined') throw new Error('Excel library not loaded. Refresh page (Ctrl+Shift+R).');
-
-    var qs = '/rest/v1/trial_photos' + buildPhotoFilterQS();
-    var photos = await api(qs);
-    photos = photos || [];
-    if (!photos.length) { alert('❌ Is filter mein koi photo nahi.\nDate range ya campaign badal ke dekho.'); if (btn){btn.disabled=false;btn.innerHTML=orig;} return; }
-
-    // Group: key = date | member | work | location ; track unique vehicles + media
-    var rows = {};
-    photos.forEach(function(p) {
-      // IST date
-      var d = p.captured_at ? new Date(p.captured_at) : null;
-      var dateStr = d ? d.toLocaleDateString('en-GB', { timeZone:'Asia/Kolkata', day:'2-digit', month:'2-digit', year:'numeric' }) : '—'; // dd/mm/yyyy
-      var name = (p.member_name || p.member_phone || '—');
-      var work = getWorkNameClean(p.campaign_name || p.campaign_key || '—');
-      var loc = (p.city || '—');
-      var media = (p.mode === 'back_panel') ? 'AUTO BACK' : (p.mode === 'hood' ? 'AUTO HOOD' : (p.mode ? p.mode.toUpperCase() : 'AUTO HOOD'));
-      // vehicle identity for unique count
-      var veh = ((p.verified_plate || p.vehicle_number || '') + '').trim().toUpperCase();
-
-      var key = dateStr + '||' + name + '||' + work + '||' + loc;
-      if (!rows[key]) rows[key] = { date:dateStr, name:name, work:work, location:loc, media:media, vehicles:{}, _sortDate:(d?d.getTime():0) };
-      if (veh && veh.length >= 4) rows[key].vehicles[veh] = 1;
-      else rows[key].vehicles['__row_' + p.id] = 1; // unidentified still counts as 1 capture
-      // media: if mixed, prefer showing what's most present — keep first non-empty
-      if (media && rows[key].media === 'AUTO HOOD' && media !== 'AUTO HOOD') { /* keep hood as default unless back dominates; simple: leave */ }
-    });
-
-    var arr = Object.keys(rows).map(function(k){ var r=rows[k]; r.qty = Object.keys(r.vehicles).length; return r; });
-    // sort by date asc, then name
-    arr.sort(function(a,b){ return a._sortDate - b._sortDate || a.name.localeCompare(b.name); });
-
-    // Build sheet — exact Image-2 columns
-    var aoa = [['DATE','NAME','WORK','LOCATION','Q.','CASEBOOK','MEDIA']];
-    var total = 0;
-    arr.forEach(function(r){ aoa.push([r.date, r.name, r.work, r.location, r.qty, '', r.media]); total += r.qty; });
-    aoa.push(['', '', '', '', total, '', '']); // total row
-
-    var ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols'] = [{wch:12},{wch:18},{wch:26},{wch:16},{wch:7},{wch:11},{wch:12}];
-    // Header style-ish: set row heights
-    ws['!rows'] = [{hpt:20}];
-
-    var wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Daily Report');
-
-    var range = (typeof getPhotosDateRange === 'function') ? getPhotosDateRange() : {from:'',to:''};
-    var dl = (range.from || 'all') + (range.to && range.to !== range.from ? '_to_' + range.to : '');
-    var fname = 'Field_Report_' + (dl || 'all') + '.xlsx';
-    XLSX.writeFile(wb, fname);
-
-    if (btn) { btn.disabled = false; btn.innerHTML = orig; }
-    showToast('✓ Staff report downloaded · ' + arr.length + ' rows · ' + total + ' total qty', 'success');
+    var data = await buildStaffReportData();
+    if (!data) { alert('❌ Is filter mein koi photo nahi.\nDate range ya campaign badal ke dekho.'); return; }
+    window._staffReportData = data;
+    openStaffReportModal(data);
   } catch (e) {
     console.error('[Staff Report]', e);
     alert('❌ Report failed: ' + (e.message || e));
+  } finally {
     if (btn) { btn.disabled = false; btn.innerHTML = orig; }
   }
+}
+
+function openStaffReportModal(data) {
+  var existing = document.getElementById('staffReportModal');
+  if (existing) existing.remove();
+
+  var range = (typeof getPhotosDateRange === 'function') ? getPhotosDateRange() : {from:'',to:''};
+  var rangeLabel = (range.from === range.to || !range.to) ? (range.from || 'All dates') : (range.from + ' → ' + range.to);
+
+  var cards = [
+    ['Total Qty', data.total, '#0B1957'],
+    ['Field Staff', data.members, '#26d0ce'],
+    ['Campaigns', data.works, '#B89B4E'],
+    ['Cities', data.cities, '#7C3AED'],
+    ['Auto Hood', data.hood, '#047857'],
+    ['Auto Back', data.back, '#C2410C']
+  ].map(function(c){
+    return '<div class="srp-card" style="border-top:3px solid '+c[2]+'">' +
+             '<div class="srp-card-val" style="color:'+c[2]+'">'+c[1]+'</div>' +
+             '<div class="srp-card-lbl">'+c[0]+'</div>' +
+           '</div>';
+  }).join('');
+
+  var tbody = data.rows.map(function(r, i){
+    var mediaColor = r.media === 'AUTO BACK' ? '#C2410C' : '#047857';
+    return '<tr style="animation:srpRow .3s ease '+(i*0.015)+'s both">' +
+      '<td>'+escapeHtml(r.date)+'</td>' +
+      '<td style="font-weight:600">'+escapeHtml(r.name)+'</td>' +
+      '<td>'+escapeHtml(r.work)+'</td>' +
+      '<td>'+escapeHtml(r.location)+'</td>' +
+      '<td style="text-align:center;font-weight:700;font-family:JetBrains Mono,monospace">'+r.qty+'</td>' +
+      '<td style="text-align:center"><span style="color:'+mediaColor+';font-weight:600;font-size:11px">'+r.media+'</span></td>' +
+    '</tr>';
+  }).join('');
+
+  var html =
+    '<div id="staffReportModal" class="srp-overlay" onclick="if(event.target===this)this.remove()">' +
+      '<div class="srp-modal">' +
+        '<div class="srp-head">' +
+          '<div>' +
+            '<div class="srp-title">Field Work Report</div>' +
+            '<div class="srp-sub">'+escapeHtml(rangeLabel)+' · '+data.rows.length+' entries</div>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px">' +
+            '<button class="srp-btn srp-btn-excel" onclick="exportStaffReportExcel()"><i class="ti ti-file-spreadsheet"></i> Download Excel</button>' +
+            '<button class="srp-btn srp-btn-close" onclick="document.getElementById(\'staffReportModal\').remove()">✕</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="srp-cards">'+cards+'</div>' +
+        '<div class="srp-table-wrap">' +
+          '<table class="srp-table">' +
+            '<thead><tr><th>DATE</th><th>NAME</th><th>WORK</th><th>LOCATION</th><th style="text-align:center">QTY</th><th style="text-align:center">MEDIA</th></tr></thead>' +
+            '<tbody>'+tbody+'</tbody>' +
+            '<tfoot><tr><td colspan="4" style="text-align:right;font-weight:700">TOTAL</td><td style="text-align:center;font-weight:800;font-family:JetBrains Mono,monospace;color:#0B1957">'+data.total+'</td><td></td></tr></tfoot>' +
+          '</table>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+  var wrap = document.createElement('div');
+  wrap.innerHTML = html;
+  document.body.appendChild(wrap.firstChild);
+}
+
+function exportStaffReportExcel() {
+  var data = window._staffReportData;
+  if (!data) { alert('Report data missing — dobara generate karo'); return; }
+  if (typeof XLSX === 'undefined') { alert('Excel library not loaded. Refresh (Ctrl+Shift+R).'); return; }
+
+  var aoa = [['DATE','NAME','WORK','LOCATION','Q.','CASEBOOK','MEDIA']];
+  data.rows.forEach(function(r){ aoa.push([r.date, r.name, r.work, r.location, r.qty, '', r.media]); });
+  aoa.push(['', '', '', 'TOTAL', data.total, '', '']);
+
+  var ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{wch:12},{wch:18},{wch:28},{wch:18},{wch:7},{wch:11},{wch:12}];
+
+  // Style header (yellow like the manual sheet) + total row — if styling supported
+  var lastRow = aoa.length;
+  var hdrFill = { patternType:'solid', fgColor:{rgb:'FFF200'} };
+  var hdrFont = { bold:true, color:{rgb:'000000'} };
+  ['A1','B1','C1','D1','E1','F1','G1'].forEach(function(c){ if(ws[c]) ws[c].s = { fill:hdrFill, font:hdrFont, alignment:{horizontal:'center'} }; });
+  var totFill = { patternType:'solid', fgColor:{rgb:'FFF7CC'} };
+  ['A','B','C','D','E','F','G'].forEach(function(col){ var ref=col+lastRow; if(ws[ref]) ws[ref].s = { fill:totFill, font:{bold:true} }; });
+
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Daily Report');
+
+  var range = (typeof getPhotosDateRange === 'function') ? getPhotosDateRange() : {from:'',to:''};
+  var dl = (range.from || 'all') + (range.to && range.to !== range.from ? '_to_' + range.to : '');
+  XLSX.writeFile(wb, 'Field_Report_' + (dl || 'all') + '.xlsx');
+  showToast('✓ Excel downloaded · ' + data.rows.length + ' rows · ' + data.total + ' qty', 'success');
 }
 
 async function downloadExcelReport() {
