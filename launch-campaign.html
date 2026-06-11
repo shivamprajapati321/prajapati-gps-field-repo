@@ -990,6 +990,25 @@ function fetchWithTimeout(url, opts, ms) {
 // Try Photon first (fast + good for India), normalize to Nominatim-like shape.
 // Fall back to Nominatim if Photon fails/empty. Returns array (maybe empty).
 async function fetchPlaces(query) {
+  var saved = [];
+  // ── 0) Saved locations (manual + previously used) — instant, accurate ──
+  try {
+    var sUrl = SUPABASE_URL + '/rest/v1/prajapati_saved_locations?or=(name.ilike.*' + encodeURIComponent(query) + '*,city.ilike.*' + encodeURIComponent(query) + '*)&order=use_count.desc&limit=4';
+    var sRes = await fetchWithTimeout(sUrl, { headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY } }, 2500);
+    if (sRes.ok) {
+      var sData = await sRes.json();
+      saved = (sData || []).map(function(s){
+        return {
+          address: { suburb: s.name, city: s.city, state: s.state, postcode: s.pincode },
+          display_name: [s.name, s.city, s.state, s.pincode].filter(Boolean).join(', '),
+          lat: s.latitude, lon: s.longitude,
+          place_id: 'saved_' + s.id,
+          type: 'saved', class: 'saved', _saved: true
+        };
+      });
+    }
+  } catch (e) { /* ignore, continue to map */ }
+
   // ── 1) Photon (komoot) — quick, India-friendly ──
   try {
     var pUrl = 'https://photon.komoot.io/api/?q=' + encodeURIComponent(query) + '&limit=6&lang=en&lat=19.7&lon=75.7';
@@ -1001,7 +1020,7 @@ async function fetchPlaces(query) {
       var inIndia = feats.filter(function(f){ return f.properties && (f.properties.countrycode === 'IN' || f.properties.country === 'India'); });
       var use = inIndia.length ? inIndia : feats;
       if (use.length) {
-        return use.map(function(f){
+        var mapped = use.map(function(f){
           var p = f.properties || {};
           var coords = (f.geometry && f.geometry.coordinates) || [null, null];
           var main = p.name || p.district || p.city || p.locality || p.county || '';
@@ -1015,6 +1034,7 @@ async function fetchPlaces(query) {
             type: p.osm_value || p.type || 'place', class: p.osm_key || 'place'
           };
         });
+        return saved.concat(mapped);
       }
     }
   } catch (e) { /* fall through to Nominatim */ }
@@ -1025,11 +1045,11 @@ async function fetchPlaces(query) {
     var nRes = await fetchWithTimeout(nUrl, { headers: { 'Accept-Language': 'en' } }, 4000);
     if (nRes.ok) {
       var nData = await nRes.json();
-      if (Array.isArray(nData)) return nData;
+      if (Array.isArray(nData)) return saved.concat(nData);
     }
   } catch (e2) { /* both failed → empty */ }
 
-  return [];
+  return saved;
 }
 
 async function searchLocation(tempId, locId, query) {
@@ -1052,20 +1072,7 @@ async function searchLocation(tempId, locId, query) {
       const results = await fetchPlaces(query);
       
       if (!results.length) {
-        window['_manual_' + tempId + '_' + locId] = { name: query, address: query, city: query, state: 'Maharashtra', lat: null, lng: null, place_id: null, pincode: '', type: 'manual' };
-        dropdown.innerHTML = `
-          <div class="gp-section-label">No results from map</div>
-          <div class="gp-results">
-            <div class="gp-option" onclick="selectLocation('${tempId}', '${locId}', window['_manual_${tempId}_${locId}'])">
-              <span class="gp-icon">✍️</span>
-              <div class="gp-info">
-                <div class="gp-main">Add "${escapeHtml(query)}" manually</div>
-                <div class="gp-sub">Map pe nahi mila — naam se add karo (location optional)</div>
-              </div>
-            </div>
-          </div>
-          <div class="gp-footer">Powered by OpenStreetMap</div>
-        `;
+        showManualLoc(tempId, locId, query);
         return;
       }
       
@@ -1104,7 +1111,10 @@ async function searchLocation(tempId, locId, query) {
             `;
           }).join('')}
         </div>
-        <div class="gp-footer">Powered by OpenStreetMap</div>
+        <div class="gp-manual-entry" onclick="showManualLoc('${tempId}','${locId}','${escapeHtml(query).replace(/'/g,'')}')" style="padding:10px 14px;border-top:1px dashed var(--rule);cursor:pointer;display:flex;align-items:center;gap:8px;color:var(--gold-deep);font-weight:600;font-size:12.5px">
+          <span style="font-size:15px">✍️</span> Nahi mila? Manually add karo
+        </div>
+        <div class="gp-footer">Map search</div>
       `;
     } catch(e) {
       dropdown.innerHTML = `
@@ -1123,6 +1133,52 @@ async function searchLocation(tempId, locId, query) {
       `;
     }
   }, 220);
+}
+
+// ── Manual location entry (NEW) — area + city fields inside dropdown ──
+function showManualLoc(tempId, locId, prefill) {
+  var dropdown = document.getElementById('gp-' + tempId + '-' + locId);
+  if (!dropdown) return;
+  var pf = (prefill || '').replace(/"/g, '');
+  dropdown.classList.add('open');
+  dropdown.innerHTML =
+    '<div class="gp-section-label">✍️ Manually add location</div>' +
+    '<div style="padding:12px 14px;display:flex;flex-direction:column;gap:9px">' +
+      '<input id="ml-name-' + tempId + '-' + locId + '" class="input" placeholder="Area / locality name *" value="' + escapeHtml(pf) + '" style="font-size:13px;padding:9px 11px">' +
+      '<input id="ml-city-' + tempId + '-' + locId + '" class="input" placeholder="City *" style="font-size:13px;padding:9px 11px">' +
+      '<div style="display:flex;gap:8px">' +
+        '<input id="ml-pin-' + tempId + '-' + locId + '" class="input" placeholder="Pincode (optional)" style="font-size:13px;padding:9px 11px">' +
+        '<button class="btn btn-gold" onclick="saveManualLoc(\'' + tempId + '\',\'' + locId + '\')" style="white-space:nowrap;padding:9px 16px">✓ Add</button>' +
+      '</div>' +
+      '<div id="ml-status-' + tempId + '-' + locId + '" style="font-size:11px;color:var(--text-dim)"></div>' +
+    '</div>' +
+    '<div class="gp-footer">Save ho jayega — future mein search mein aayega</div>';
+  setTimeout(function(){ var el = document.getElementById('ml-name-' + tempId + '-' + locId); if (el && !pf) el.focus(); else if (el) { var c = document.getElementById('ml-city-' + tempId + '-' + locId); if (c) c.focus(); } }, 50);
+}
+
+async function saveManualLoc(tempId, locId) {
+  var name = (document.getElementById('ml-name-' + tempId + '-' + locId).value || '').trim();
+  var city = (document.getElementById('ml-city-' + tempId + '-' + locId).value || '').trim();
+  var pin = (document.getElementById('ml-pin-' + tempId + '-' + locId).value || '').trim();
+  var statusEl = document.getElementById('ml-status-' + tempId + '-' + locId);
+  if (!name) { statusEl.style.color = 'var(--danger)'; statusEl.textContent = 'Area name zaroori hai'; return; }
+  if (!city) { statusEl.style.color = 'var(--danger)'; statusEl.textContent = 'City zaroori hai'; return; }
+
+  var locData = { name: name, address: name + ', ' + city, city: city, state: 'Maharashtra', lat: null, lng: null, place_id: null, pincode: pin || '', type: 'manual' };
+
+  // Select it into the design row immediately (don't block on save)
+  selectLocation(tempId, locId, locData);
+
+  // Save to prajapati_saved_locations for future (best-effort)
+  try {
+    await db.from('prajapati_saved_locations').insert({
+      name: name, city: city, state: 'Maharashtra', pincode: pin || null,
+      address: name + ', ' + city, source: 'manual', created_by: (typeof user !== 'undefined' && user ? user.id : null)
+    });
+  } catch (e) {
+    // duplicate (already saved) or table missing → ignore silently
+    console.warn('saved_locations insert skipped:', e.message);
+  }
 }
 
 function selectLocation(tempId, locId, locData) {
