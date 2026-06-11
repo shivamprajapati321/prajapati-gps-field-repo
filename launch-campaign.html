@@ -975,6 +975,63 @@ function updateDesignField(tempId, field, value) {
 function _removed_clearLocation() {}
 
 let locTimer = null;
+
+// Fetch with a hard timeout so the search never hangs
+function fetchWithTimeout(url, opts, ms) {
+  return new Promise(function(resolve, reject){
+    var ctrl = new AbortController();
+    var t = setTimeout(function(){ ctrl.abort(); reject(new Error('timeout')); }, ms || 4000);
+    fetch(url, Object.assign({}, opts, { signal: ctrl.signal }))
+      .then(function(r){ clearTimeout(t); resolve(r); })
+      .catch(function(e){ clearTimeout(t); reject(e); });
+  });
+}
+
+// Try Photon first (fast + good for India), normalize to Nominatim-like shape.
+// Fall back to Nominatim if Photon fails/empty. Returns array (maybe empty).
+async function fetchPlaces(query) {
+  // ── 1) Photon (komoot) — quick, India-friendly ──
+  try {
+    var pUrl = 'https://photon.komoot.io/api/?q=' + encodeURIComponent(query) + '&limit=6&lang=en&lat=19.7&lon=75.7';
+    var pRes = await fetchWithTimeout(pUrl, { headers: { 'Accept-Language': 'en' } }, 3500);
+    if (pRes.ok) {
+      var pData = await pRes.json();
+      var feats = (pData && pData.features) || [];
+      // keep only India results
+      var inIndia = feats.filter(function(f){ return f.properties && (f.properties.countrycode === 'IN' || f.properties.country === 'India'); });
+      var use = inIndia.length ? inIndia : feats;
+      if (use.length) {
+        return use.map(function(f){
+          var p = f.properties || {};
+          var coords = (f.geometry && f.geometry.coordinates) || [null, null];
+          var main = p.name || p.district || p.city || p.locality || p.county || '';
+          var city = p.city || p.district || p.county || p.state || '';
+          var parts = [p.name, p.street, p.district, p.city, p.state, p.postcode].filter(Boolean);
+          return {
+            address: { suburb: p.district, neighbourhood: p.locality, village: p.locality, town: p.city, city_district: p.district, city: p.city, county: p.county, state: p.state, postcode: p.postcode },
+            display_name: parts.join(', '),
+            lat: coords[1], lon: coords[0],
+            place_id: p.osm_id ? String(p.osm_id) : null,
+            type: p.osm_value || p.type || 'place', class: p.osm_key || 'place'
+          };
+        });
+      }
+    }
+  } catch (e) { /* fall through to Nominatim */ }
+
+  // ── 2) Nominatim fallback ──
+  try {
+    var nUrl = 'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(query) + '&format=json&addressdetails=1&limit=6&countrycodes=in';
+    var nRes = await fetchWithTimeout(nUrl, { headers: { 'Accept-Language': 'en' } }, 4000);
+    if (nRes.ok) {
+      var nData = await nRes.json();
+      if (Array.isArray(nData)) return nData;
+    }
+  } catch (e2) { /* both failed → empty */ }
+
+  return [];
+}
+
 async function searchLocation(tempId, locId, query) {
   const dropdown = document.getElementById('gp-' + tempId + '-' + locId);
   if (!dropdown) return;
@@ -990,9 +1047,9 @@ async function searchLocation(tempId, locId, query) {
     dropdown.innerHTML = `<div class="gp-section-label">Searching "${escapeHtml(query)}"…</div>`;
     
     try {
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=6&countrycodes=in`;
-      const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
-      const results = await res.json();
+      // FAST + ACCURATE: Photon (India-good, quick) primary; Nominatim fallback.
+      // Each call has a hard timeout so search never hangs.
+      const results = await fetchPlaces(query);
       
       if (!results.length) {
         window['_manual_' + tempId + '_' + locId] = { name: query, address: query, city: query, state: 'Maharashtra', lat: null, lng: null, place_id: null, pincode: '', type: 'manual' };
@@ -1065,7 +1122,7 @@ async function searchLocation(tempId, locId, query) {
         <div class="gp-footer">Powered by OpenStreetMap</div>
       `;
     }
-  }, 350);
+  }, 220);
 }
 
 function selectLocation(tempId, locId, locData) {
