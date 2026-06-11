@@ -1,58 +1,1354 @@
--- ═══════════════════════════════════════════════════════════════════════
--- LAUNCH_CAMPAIGN_UPGRADE.sql
--- Adds: client extra details, deadline date, payment fields, sample/full order.
--- All IF NOT EXISTS — safe to re-run. Run in Supabase SQL Editor.
--- ═══════════════════════════════════════════════════════════════════════
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Launch Campaign · Prajapati Advertising</title>
+<meta name="theme-color" content="#0B1957">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght,ital@9..144,300..900,0..1&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+:root{
+  --navy:#0B1957;--navy-deep:#050B2E;--navy-mid:#1A237E;
+  --gold:#B89B4E;--gold-bright:#D4B45F;--gold-deep:#8B7430;--gold-soft:#F4E4B0;
+  --cream:#FAF8F3;--paper:#F7F4EC;--rule:#E5E0D2;
+  --ink-950:#0F172A;--ink-700:#475569;--text-dim:#94A3B8;
+  --success:#047857;--success-bg:#D1FAE5;
+  --warn:#C2410C;--warn-bg:#FED7AA;
+  --danger:#BE123C;--danger-bg:#FECACA;
+  --info:#1E40AF;--info-bg:#DBEAFE;
+  --purple:#7C3AED;--purple-bg:#EDE9FE;
+}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--cream);color:var(--ink-950);font-size:14px;line-height:1.5;min-height:100vh}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+a{color:inherit;text-decoration:none}
 
--- ─── 1) trial_clients: add full contact details ────────────────────────
-ALTER TABLE trial_clients ADD COLUMN IF NOT EXISTS contact_person text;
-ALTER TABLE trial_clients ADD COLUMN IF NOT EXISTS email         text;
-ALTER TABLE trial_clients ADD COLUMN IF NOT EXISTS address       text;
-ALTER TABLE trial_clients ADD COLUMN IF NOT EXISTS gst_number    text;
-ALTER TABLE trial_clients ADD COLUMN IF NOT EXISTS created_at    timestamptz DEFAULT now();
+.topbar{background:var(--navy);color:#fff;padding:14px 32px;border-bottom:3px solid var(--gold);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.tb-brand{display:flex;align-items:center;gap:12px}
+.tb-logo{width:36px;height:36px;background:var(--gold);color:var(--navy);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:700;font-size:20px}
+.tb-name{font-size:14px;font-weight:700}
+.tb-tag{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--gold-bright);letter-spacing:0.16em;text-transform:uppercase;margin-top:2px}
+.tb-user{display:flex;align-items:center;gap:10px;padding:4px 14px 4px 4px;background:rgba(255,255,255,0.08);border:1px solid rgba(212,180,95,0.3);border-radius:999px}
+.tb-ava{width:30px;height:30px;border-radius:50%;background:var(--gold);color:var(--navy);display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-style:italic;font-weight:700;font-size:14px}
+.tb-info .name{font-size:12px;font-weight:700;line-height:1.1}
+.tb-info .role{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--gold-bright);letter-spacing:0.14em;text-transform:uppercase}
 
--- ─── 2) trial_campaigns: deadline + payment + order type ───────────────
--- (total_amount, start_date, client_id, client_name already exist)
-ALTER TABLE trial_campaigns ADD COLUMN IF NOT EXISTS deadline_date       date;
-ALTER TABLE trial_campaigns ADD COLUMN IF NOT EXISTS advance_paid        numeric DEFAULT 0;
-ALTER TABLE trial_campaigns ADD COLUMN IF NOT EXISTS balance_due         numeric;          -- total_amount - advance_paid (app fills)
-ALTER TABLE trial_campaigns ADD COLUMN IF NOT EXISTS payment_receipt_url text;
+.main{padding:28px;max-width:1200px;margin:0 auto;padding-bottom:120px}
 
--- Sample / Full order
-ALTER TABLE trial_campaigns ADD COLUMN IF NOT EXISTS order_type        text DEFAULT 'full';   -- 'sample' | 'full'
-ALTER TABLE trial_campaigns ADD COLUMN IF NOT EXISTS sample_quantity   integer DEFAULT 0;      -- qty when it was a sample
-ALTER TABLE trial_campaigns ADD COLUMN IF NOT EXISTS converted_to_full boolean DEFAULT false;  -- sample → full done?
-ALTER TABLE trial_campaigns ADD COLUMN IF NOT EXISTS converted_at      timestamptz;
+.page-head{margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between}
+.page-title{font-family:'Fraunces',serif;font-size:26px;font-weight:500;color:var(--navy);letter-spacing:-0.02em}
+.page-title em{color:var(--gold);font-style:italic}
+.page-sub{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:0.12em;text-transform:uppercase;margin-top:4px}
 
--- Optional safe CHECK on order_type (drop old first so re-runnable)
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.columns
-             WHERE table_name='trial_campaigns' AND column_name='order_type') THEN
-    BEGIN
-      ALTER TABLE trial_campaigns DROP CONSTRAINT IF EXISTS chk_order_type;
-      ALTER TABLE trial_campaigns
-        ADD CONSTRAINT chk_order_type CHECK (order_type IN ('sample','full'));
-    EXCEPTION WHEN others THEN
-      -- if any existing row has a weird value, skip the constraint rather than fail
-      RAISE NOTICE 'order_type check skipped: %', SQLERRM;
-    END;
-  END IF;
-END $$;
+.section{background:#fff;border:1px solid var(--rule);border-radius:10px;margin-bottom:18px;overflow:hidden}
+.ord-card{flex:1;border:2px solid var(--rule);border-radius:12px;padding:16px;cursor:pointer;text-align:center;transition:all .15s;background:#fff}
+.ord-card.active{border-color:var(--gold);background:var(--gold-soft)}
+.ord-card:hover{border-color:var(--gold-deep)}
+.pay-box{background:linear-gradient(135deg,var(--gold-soft),#fff);border:2px solid var(--gold);border-radius:12px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.pay-box .pl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--gold-deep)}
+.pay-box .pv{font-size:24px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--navy)}
+.modal-bg{position:fixed;inset:0;background:rgba(11,25,87,.5);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px}
+.modal-bg.show{display:flex}
+.modal-box{background:#fff;border-radius:14px;max-width:500px;width:100%;padding:24px;max-height:92vh;overflow:auto}
+.modal-box h3{font-family:'Fraunces',serif;font-size:18px;color:var(--navy);margin-bottom:16px}
+.section-head{padding:14px 20px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg, var(--paper), #fff)}
+.section-title{font-family:'Fraunces',serif;font-size:15px;font-weight:600;color:var(--navy);letter-spacing:-0.01em}
+.section-title em{color:var(--gold);font-style:italic}
+.section-meta{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--gold-deep);letter-spacing:0.14em;text-transform:uppercase}
+.section-body{padding:18px 20px}
 
--- ─── 3) Backfill: existing campaigns are 'full' (so old data behaves) ───
-UPDATE trial_campaigns SET order_type = 'full' WHERE order_type IS NULL;
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.row.three{grid-template-columns:2fr 1fr 1fr}
+.row:last-child{margin-bottom:0}
 
--- ─── 4) Reload schema ──────────────────────────────────────────────────
-NOTIFY pgrst, 'reload schema';
+.field{display:flex;flex-direction:column;gap:6px}
+.label{font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:var(--navy);letter-spacing:0.12em;text-transform:uppercase}
+.label .req{color:var(--danger);margin-left:2px}
+.label .hint{color:var(--text-dim);font-weight:400;text-transform:none;letter-spacing:0;font-size:10px;margin-left:6px}
+.input,.select,.textarea{padding:10px 12px;border:1px solid var(--rule);background:var(--cream);font-family:inherit;font-size:13px;color:var(--ink-950);border-radius:6px;outline:none;width:100%}
+.input:focus,.select:focus,.textarea:focus{border-color:var(--gold);background:#fff}
+.textarea{resize:vertical;min-height:70px}
 
--- ─── VERIFY ────────────────────────────────────────────────────────────
-SELECT 'trial_clients' AS tbl, column_name
-FROM information_schema.columns
-WHERE table_name='trial_clients' AND column_name IN ('contact_person','email','address','gst_number')
-UNION ALL
-SELECT 'trial_campaigns', column_name
-FROM information_schema.columns
-WHERE table_name='trial_campaigns'
-  AND column_name IN ('deadline_date','advance_paid','balance_due','payment_receipt_url','order_type','sample_quantity','converted_to_full')
-ORDER BY tbl, column_name;
+.search-select{position:relative}
+.ss-trigger{padding:10px 12px;border:1px solid var(--rule);background:var(--cream);font-size:13px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;min-height:44px}
+.ss-trigger:hover{border-color:var(--gold)}
+.ss-placeholder{color:var(--text-dim);display:flex;align-items:center;gap:8px}
+.ss-selected{display:flex;align-items:center;gap:8px}
+.ss-ava{width:24px;height:24px;border-radius:50%;background:var(--gold);color:var(--navy);display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-style:italic;font-weight:700;font-size:11px;flex-shrink:0}
+.ss-info{min-width:0}
+.ss-info .name{font-size:13px;font-weight:600;line-height:1.1}
+.ss-info .meta{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-dim);letter-spacing:0.06em;margin-top:1px}
+.ss-chev{color:var(--text-dim);font-size:11px;flex-shrink:0}
+.ss-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:50;background:#fff;border:1px solid var(--gold);border-radius:8px;box-shadow:0 12px 40px rgba(11,25,87,0.25);max-height:320px;display:none;flex-direction:column}
+.ss-dropdown.open{display:flex}
+.ss-search{padding:10px 12px;border:none;border-bottom:1px solid var(--rule);background:transparent;font-size:13px;outline:none;font-family:inherit}
+.ss-options{flex:1;overflow-y:auto;max-height:260px}
+.ss-option{padding:9px 12px;cursor:pointer;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--cream);transition:background 0.1s}
+.ss-option:hover{background:var(--cream)}
+.ss-option:last-child{border-bottom:none}
+.ss-option .ava{width:28px;height:28px;border-radius:50%;background:var(--gold-soft);color:var(--gold-deep);display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-style:italic;font-weight:700;font-size:12px;flex-shrink:0}
+.ss-option .info{flex:1;min-width:0}
+.ss-option .name{font-size:12.5px;font-weight:600;color:var(--navy)}
+.ss-option .meta{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--text-dim);letter-spacing:0.06em}
+.ss-option .tag{font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;background:var(--info-bg);color:var(--info);padding:2px 6px;border-radius:3px;letter-spacing:0.06em;flex-shrink:0}
+
+.job-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(170px, 1fr));gap:10px}
+.job-card{border:1.5px solid var(--rule);background:#fff;padding:12px;border-radius:10px;cursor:pointer;transition:all 0.15s;display:flex;flex-direction:column;gap:6px}
+.job-card:hover{border-color:var(--gold)}
+.job-card.selected{border-color:var(--gold);background:linear-gradient(135deg, var(--gold-soft), #fff);box-shadow:0 4px 14px rgba(184,155,78,0.2)}
+.job-card-icon{font-size:22px}
+.job-card-name{font-size:12px;font-weight:700;color:var(--navy)}
+.job-card-flow{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--text-dim);letter-spacing:0.06em;line-height:1.3}
+.job-card.selected .job-card-flow{color:var(--gold-deep)}
+
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--cream);border-radius:8px;margin-bottom:8px;gap:14px}
+.toggle-info{flex:1;min-width:0}
+.toggle-label{font-size:13px;font-weight:600;color:var(--navy)}
+.toggle-hint{font-size:11px;color:var(--text-dim);margin-top:2px}
+.toggle-switch{width:38px;height:22px;background:var(--rule);border-radius:999px;position:relative;cursor:pointer;transition:background 0.15s;flex-shrink:0}
+.toggle-switch::after{content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;border-radius:50%;transition:transform 0.15s;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
+.toggle-switch.on{background:var(--gold)}
+.toggle-switch.on::after{transform:translateX(16px)}
+
+.design-row{background:#fff;border:1.5px solid var(--rule);border-radius:12px;margin-bottom:12px;overflow:hidden;transition:all 0.15s}
+.design-row:hover{border-color:var(--gold-soft)}
+.design-row.expanded{border-color:var(--gold)}
+.design-row-head{padding:10px 16px;background:linear-gradient(180deg, var(--paper), #fff);border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between}
+.design-num{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--gold-deep);letter-spacing:0.16em;text-transform:uppercase}
+.design-num .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--gold);color:var(--navy);margin-right:6px}
+.design-remove{width:24px;height:24px;border-radius:50%;background:var(--cream);color:var(--danger);display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;font-weight:700}
+.design-remove:hover{background:var(--danger-bg)}
+.design-row-body{padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+
+.dlabel{display:flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:var(--navy);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:5px}
+.dlabel .req{color:var(--danger)}
+.dlabel .hint{color:var(--text-dim);font-weight:400;text-transform:none;letter-spacing:0;font-size:10px;margin-left:4px}
+.dinput{width:100%;padding:9px 12px;border:1px solid var(--rule);background:var(--cream);font-family:inherit;font-size:13px;color:var(--ink-950);border-radius:6px;outline:none;transition:all 0.15s}
+.dinput:focus{border-color:var(--gold);background:#fff}
+
+.location-input{position:relative}
+
+/* ─── Multi-location rows ─── */
+.loc-list{display:flex;flex-direction:column;gap:8px;margin-bottom:9px}
+.loc-row{display:flex;align-items:center;gap:10px;border:1px solid var(--rule);background:var(--cream);border-radius:8px;padding:9px 12px;transition:all 0.15s}
+.loc-row.has-value{background:linear-gradient(135deg,var(--gold-soft),#fff);border-color:var(--gold)}
+.loc-row .loc-pin{font-size:14px;color:var(--gold-deep);flex-shrink:0}
+.loc-row .loc-info{flex:1;min-width:0}
+.loc-row .loc-name{font-size:13px;font-weight:600;color:var(--ink-950)}
+.loc-row .loc-detail{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--gold-deep);letter-spacing:0.05em;margin-top:2px}
+.loc-row .loc-search-input{width:100%;border:none;background:transparent;outline:none;font-family:inherit;font-size:13px;color:var(--ink-950)}
+.loc-row .loc-qty{width:78px;padding:7px 9px;border:1px solid var(--rule);border-radius:6px;font-family:inherit;font-size:13px;text-align:center;font-weight:700;color:var(--ink-950);outline:none}
+.loc-row.has-value .loc-qty{border-color:var(--gold)}
+.loc-row .loc-qty:focus{border-color:var(--accent)}
+.loc-row .loc-remove{background:transparent;border:none;color:var(--danger);font-size:17px;cursor:pointer;line-height:1;flex-shrink:0;width:22px}
+.loc-row .loc-remove:hover{color:#a30d2b}
+.btn-add-loc{width:100%;padding:9px;border:1px dashed var(--gold);background:transparent;border-radius:8px;color:var(--gold-deep);font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;transition:all 0.15s}
+.btn-add-loc:hover{background:var(--gold-soft)}
+.location-input .input-wrap{display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--rule);background:var(--cream);border-radius:6px;cursor:text;transition:all 0.15s;min-height:42px}
+.location-input .input-wrap:focus-within{border-color:var(--gold);background:#fff}
+.location-input.has-value .input-wrap{background:linear-gradient(135deg, var(--gold-soft), #fff);border-color:var(--gold)}
+.location-pin{font-size:14px;color:var(--gold-deep);flex-shrink:0}
+.location-text{flex:1;font-size:13px;color:var(--ink-950);min-width:0}
+.location-text input{width:100%;border:none;background:transparent;outline:none;font-family:inherit;font-size:13px;color:var(--ink-950)}
+.location-text.placeholder{color:var(--text-dim)}
+.location-detail{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--gold-deep);letter-spacing:0.06em;margin-top:2px}
+.location-change{font-size:10px;color:var(--gold-deep);font-weight:700;text-transform:uppercase;letter-spacing:0.1em;cursor:pointer;background:transparent;border:none;font-family:inherit;flex-shrink:0}
+
+.gp-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:50;background:#fff;border:1px solid var(--gold);border-radius:8px;box-shadow:0 12px 40px rgba(11,25,87,0.25);max-height:340px;display:none;flex-direction:column;overflow:hidden}
+.gp-dropdown.open{display:flex}
+.gp-section-label{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--gold-deep);letter-spacing:0.14em;text-transform:uppercase;padding:8px 14px 4px;background:var(--paper)}
+.gp-results{flex:1;overflow-y:auto}
+.gp-option{padding:9px 14px;cursor:pointer;display:flex;align-items:flex-start;gap:10px;border-bottom:1px solid var(--cream)}
+.gp-option:hover{background:var(--cream)}
+.gp-option:last-child{border-bottom:none}
+.gp-option .gp-icon{font-size:14px;color:var(--gold-deep);flex-shrink:0;margin-top:1px}
+.gp-option .gp-info{flex:1;min-width:0}
+.gp-option .gp-main{font-size:13px;font-weight:600;color:var(--navy);line-height:1.3}
+.gp-option .gp-sub{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--text-dim);letter-spacing:0.06em;margin-top:1px}
+.gp-footer{padding:6px 14px;background:var(--cream);font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--text-dim);text-align:right;letter-spacing:0.08em}
+
+.file-upload-empty{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;background:var(--cream);border:2px dashed var(--rule);border-radius:8px;cursor:pointer;transition:all 0.15s;color:var(--text-dim);font-size:12.5px;text-align:center}
+.file-upload-empty:hover{border-color:var(--gold);background:var(--gold-soft);color:var(--gold-deep)}
+.file-upload-done{display:flex;align-items:center;gap:12px;padding:10px 12px;background:linear-gradient(135deg, var(--success-bg), #fff);border:1px solid var(--success);border-radius:8px}
+.file-icon{width:36px;height:36px;border-radius:6px;background:var(--success);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.file-info{flex:1;min-width:0}
+.file-name{font-size:12.5px;font-weight:600;color:var(--navy);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-size{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--text-dim);letter-spacing:0.06em;margin-top:2px}
+.file-replace{font-size:10px;color:var(--gold-deep);font-weight:700;text-transform:uppercase;letter-spacing:0.1em;cursor:pointer;background:transparent;border:none;font-family:inherit}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;border-radius:8px;font-size:12px;font-weight:700;letter-spacing:0.02em;cursor:pointer;transition:all 0.15s}
+.btn:hover{transform:translateY(-1px)}
+.btn-primary{background:var(--navy);color:#fff}
+.btn-gold{background:var(--gold);color:var(--navy)}
+.btn-success{background:var(--success);color:#fff}
+.btn-secondary{background:#fff;color:var(--navy);border:1px solid var(--rule)}
+.btn.sm{padding:6px 10px;font-size:10px}
+.btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+.btn-add-design{width:100%;padding:12px;background:var(--cream);border:2px dashed var(--gold);color:var(--gold-deep);border-radius:10px;font-weight:700;font-size:12px;letter-spacing:0.04em;text-transform:uppercase;font-family:'JetBrains Mono',monospace}
+.btn-add-design:hover{background:var(--gold-soft)}
+
+.pricing-bar{background:linear-gradient(135deg, var(--navy), var(--navy-deep));color:#fff;padding:18px 22px;border-radius:10px;display:grid;grid-template-columns:repeat(4, 1fr);gap:14px;border:1px solid var(--gold)}
+.pricing-item{text-align:center}
+.pricing-val{font-family:'Fraunces',serif;font-size:20px;font-weight:600;color:var(--gold-bright);letter-spacing:-0.02em;line-height:1}
+.pricing-lbl{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:#cbd5e1;letter-spacing:0.14em;text-transform:uppercase;margin-top:4px}
+
+.callout{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:12px}
+.callout.info{background:var(--info-bg);color:var(--info)}
+.callout.success{background:var(--success-bg);color:var(--success)}
+.callout.warn{background:var(--warn-bg);color:var(--warn)}
+.callout.error{background:var(--danger-bg);color:var(--danger)}
+.callout-icon{font-size:14px;flex-shrink:0}
+
+.action-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--rule);padding:14px 32px;display:flex;justify-content:flex-end;gap:10px;align-items:center;box-shadow:0 -4px 12px rgba(0,0,0,0.05);z-index:50}
+.action-bar .left{margin-right:auto;font-size:12px;color:var(--text-dim)}
+.action-bar .left strong{color:var(--navy)}
+
+.spin{width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.empty-state{text-align:center;padding:30px;color:var(--text-dim);font-size:12px;font-style:italic}
+
+@media (max-width: 768px){
+  .main{padding:18px;padding-bottom:120px}
+  .row{grid-template-columns:1fr}
+  .row.three{grid-template-columns:1fr 1fr}
+  .pricing-bar{grid-template-columns:repeat(2, 1fr)}
+  .action-bar{padding:12px 18px;flex-wrap:wrap}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="tb-brand">
+    <div class="tb-logo">P</div>
+    <div>
+      <div class="tb-name">Prajapati Advertising</div>
+      <div class="tb-tag">Launch Campaign · v3.0</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <a href="/sales-hub.html" class="btn btn-secondary sm">← Sales Hub</a>
+    <div class="tb-user">
+      <div class="tb-ava" id="tbAva">?</div>
+      <div class="tb-info"><div class="name" id="tbName">…</div><div class="role" id="tbRole">…</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+  
+  <div class="page-head">
+    <div>
+      <div class="page-title">Launch <em>Campaign</em></div>
+      <div class="page-sub" id="todayDate">…</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <a href="/settings-job-types.html" class="btn btn-secondary">⚙️ Job Types</a>
+    </div>
+  </div>
+  
+  <!-- ORDER TYPE (NEW) -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title">Order <em>Type</em></div>
+      <div class="section-meta">Sample ya Full</div>
+    </div>
+    <div class="section-body">
+      <div style="display:flex;gap:12px" id="orderTypeWrap">
+        <div class="ord-card active" data-ord="sample" onclick="pickOrderType('sample')">
+          <div style="font-size:26px;margin-bottom:6px">🧪</div>
+          <div style="font-size:15px;font-weight:700;color:var(--navy)">Sample</div>
+          <div style="font-size:11.5px;color:var(--text-dim);margin-top:3px">Demo dikhane ke liye (chhoti qty)</div>
+        </div>
+        <div class="ord-card" data-ord="full" onclick="pickOrderType('full')">
+          <div style="font-size:26px;margin-bottom:6px">📦</div>
+          <div style="font-size:15px;font-weight:700;color:var(--navy)">Full Order</div>
+          <div style="font-size:11.5px;color:var(--text-dim);margin-top:3px">Poora order, badi qty</div>
+        </div>
+      </div>
+      <div id="orderTypeNote" style="margin-top:10px;font-size:12px;color:var(--ink-700);background:var(--info-bg);padding:9px 13px;border-radius:8px">🧪 Sample: client ko demo dikhane ke liye. Approve hone par yahi campaign Full ban jayega — sample qty full mein add ho jayegi.</div>
+    </div>
+  </div>
+  
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title">Basic <em>Information</em></div>
+      <div class="section-meta">Required</div>
+    </div>
+    <div class="section-body">
+      
+      <div class="row">
+        <div class="field">
+          <div class="label">Sales Person <span class="req">*</span> <span class="hint">Searchable</span></div>
+          <div class="search-select" id="salesSelect">
+            <div class="ss-trigger" onclick="toggleSS('salesSelect',event)">
+              <div class="ss-placeholder"><span>🔍</span><span>Search by name, phone or role…</span></div>
+              <div class="ss-chev">▼</div>
+            </div>
+            <div class="ss-dropdown">
+              <input type="text" class="ss-search" placeholder="Type to filter…" oninput="filterSales(this.value)">
+              <div class="ss-options" id="salesOptions"><div class="empty-state">Loading…</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <div class="label">Client <span class="req">*</span> <span class="hint">Existing or add new</span></div>
+          <div class="search-select" id="clientSelect">
+            <div class="ss-trigger" onclick="toggleSS('clientSelect',event)">
+              <div class="ss-placeholder"><span>🔍</span><span>Search client name…</span></div>
+              <div class="ss-chev">▼</div>
+            </div>
+            <div class="ss-dropdown">
+              <input type="text" class="ss-search" placeholder="Type to filter…" oninput="filterClients(this.value)">
+              <div class="ss-options" id="clientOptions"><div class="empty-state">Loading…</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="row">
+        <div class="field">
+          <div class="label">Campaign Name <span class="req">*</span></div>
+          <input class="input" id="campaignName" placeholder="e.g., Sharma Garments — Festive Push 2026">
+        </div>
+        <div class="field">
+          <div class="label">Campaign Start Date <span class="req">*</span></div>
+          <input class="input" type="date" id="startDate">
+        </div>
+      </div>
+      
+      <div class="row">
+        <div class="field">
+          <div class="label">Deadline Date <span class="req">*</span> <span class="hint">Kab tak complete</span></div>
+          <input class="input" type="date" id="deadlineDate">
+        </div>
+        <div class="field"></div>
+      </div>
+      
+      <div class="toggle-row" style="margin-top:8px">
+        <div class="toggle-info">
+          <div class="toggle-label">Self-Sale by Admin/Owner</div>
+          <div class="toggle-hint">Toggle ON for direct admin sale (no salesperson commission)</div>
+        </div>
+        <div class="toggle-switch" id="selfSaleToggle" onclick="toggleSwitch(this)"></div>
+      </div>
+      
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <div class="toggle-label">🚨 Mark as URGENT</div>
+          <div class="toggle-hint">Jumps queue, red banner, instant WhatsApp notify</div>
+        </div>
+        <div class="toggle-switch" id="urgentToggle" onclick="toggleSwitch(this)"></div>
+      </div>
+      
+    </div>
+  </div>
+  
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title">Select <em>Job Type</em></div>
+      <div class="section-meta"><a href="/settings-job-types.html" style="color:var(--gold-deep)">⚙️ Configure</a></div>
+    </div>
+    <div class="section-body">
+      <div class="callout info">
+        <span class="callout-icon">ℹ️</span>
+        <div>Each job type defines required stages (printing/stitching/field/delivery) automatically.</div>
+      </div>
+      <div class="job-grid" id="jobGrid"><div class="empty-state" style="grid-column:1/-1">Loading job types…</div></div>
+    </div>
+  </div>
+  
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title">Designs · <em>Mandatory upload</em></div>
+      <div class="section-meta">Any format · max 10 MB · location required</div>
+    </div>
+    <div class="section-body">
+      <div id="designsList"></div>
+      <button class="btn-add-design" onclick="addDesign()">+ Add Design</button>
+      
+      <div class="callout success" id="materialCalc" style="margin-top:14px;display:none">
+        <span class="callout-icon">📐</span>
+        <div id="materialCalcText"></div>
+      </div>
+      
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <div class="toggle-label">🔗 Send client preview before printing</div>
+          <div class="toggle-hint">Client gets WhatsApp link to approve designs — avoids reprints</div>
+        </div>
+        <div class="toggle-switch" id="clientPreviewToggle" onclick="toggleSwitch(this)"></div>
+      </div>
+      
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <div class="toggle-label">📱 Notify team via WhatsApp on assignment</div>
+          <div class="toggle-hint">Each assignee gets WhatsApp with design + qty + deadline</div>
+        </div>
+        <div class="toggle-switch on" id="notifyToggle" onclick="toggleSwitch(this)"></div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title">Pricing <em>Breakdown</em></div>
+      <div class="section-meta">Editable</div>
+    </div>
+    <div class="section-body">
+      <div class="row three">
+        <div class="field">
+          <div class="label">Rate per Unit (₹)</div>
+          <input class="input" type="number" id="rateUnit" value="100" oninput="calcPricing()">
+        </div>
+        <div class="field">
+          <div class="label">Discount (₹)</div>
+          <input class="input" type="number" id="discount" value="0" oninput="calcPricing()">
+        </div>
+        <div class="field">
+          <div class="label">GST %</div>
+          <input class="input" type="number" id="gstPct" value="18" oninput="calcPricing()">
+        </div>
+      </div>
+      
+      <div class="pricing-bar" style="margin-top:14px">
+        <div class="pricing-item"><div class="pricing-val" id="priceBase">₹0</div><div class="pricing-lbl">Base Cost</div></div>
+        <div class="pricing-item"><div class="pricing-val" id="priceGst">₹0</div><div class="pricing-lbl">GST</div></div>
+        <div class="pricing-item"><div class="pricing-val" id="priceDisc">₹0</div><div class="pricing-lbl">Discount</div></div>
+        <div class="pricing-item"><div class="pricing-val" id="priceTotal">₹0</div><div class="pricing-lbl">Grand Total</div></div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- PAYMENT (NEW) -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title">Payment <em>Details</em></div>
+      <div class="section-meta">Advance & balance</div>
+    </div>
+    <div class="section-body">
+      <div class="row three">
+        <div class="field">
+          <div class="label">Total Amount (₹) <span class="hint">Auto from pricing, editable</span></div>
+          <input class="input" type="number" id="payTotal" value="0" oninput="calcBalance()">
+        </div>
+        <div class="field">
+          <div class="label">Advance / Part Paid (₹)</div>
+          <input class="input" type="number" id="payAdvance" value="0" oninput="calcBalance()">
+        </div>
+        <div class="field">
+          <div class="label">Payment Receipt <span class="hint">Optional</span></div>
+          <input class="input" type="file" id="payReceipt" accept="image/*,application/pdf">
+        </div>
+      </div>
+      <div class="pay-box">
+        <div>
+          <div class="pl">Balance Due</div>
+          <div style="font-size:11.5px;color:var(--text-dim);margin-top:2px" id="payBreakdown">Total ₹0 − Advance ₹0</div>
+        </div>
+        <div class="pv" id="payBalance">₹0</div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="submitStatus"></div>
+  
+</div>
+
+<div class="action-bar">
+  <div class="left" id="actionLeft">No designs added yet</div>
+  <button class="btn btn-secondary" onclick="saveDraft()">💾 Save Draft</button>
+  <button class="btn btn-gold" onclick="submitCampaign()" id="submitBtn">Submit for Operations →</button>
+</div>
+
+<!-- ADD CLIENT MODAL (NEW) -->
+<div class="modal-bg" id="clientModal">
+  <div class="modal-box">
+    <h3>➕ Add New Client</h3>
+    <div class="row">
+      <div class="field"><div class="label">Client / Company Name <span class="req">*</span></div><input class="input" id="ncName" placeholder="e.g. Purohit Sweets"></div>
+      <div class="field"><div class="label">Contact Person</div><input class="input" id="ncContact" placeholder="Person name"></div>
+    </div>
+    <div class="row">
+      <div class="field"><div class="label">Phone <span class="req">*</span></div><input class="input" id="ncPhone" type="tel" maxlength="10" placeholder="9876543210"></div>
+      <div class="field"><div class="label">Email</div><input class="input" id="ncEmail" placeholder="optional"></div>
+    </div>
+    <div class="field"><div class="label">Address</div><input class="input" id="ncAddress" placeholder="Shop / office address"></div>
+    <div class="row">
+      <div class="field"><div class="label">City</div><input class="input" id="ncCity" placeholder="Nashik"></div>
+      <div class="field"><div class="label">GST No. <span class="hint">Optional</span></div><input class="input" id="ncGst" placeholder="27XXXXX"></div>
+    </div>
+    <div id="ncStatus"></div>
+    <div style="display:flex;justify-content:flex-end;gap:9px;margin-top:10px">
+      <button class="btn btn-secondary" onclick="closeClientModal()">Cancel</button>
+      <button class="btn btn-gold" id="ncSaveBtn" onclick="saveNewClient()">💾 Save Client</button>
+    </div>
+  </div>
+</div>
+
+<script src="/lib/access-guard.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+
+<script>
+AccessGuard.protect({ 
+  module: 'launch-campaign',
+  redirectTo: '/login.html',
+  allowedRoles: ['owner', 'admin', 'sales', 'hr_sales', 'sales_admin']
+});
+
+const user = AccessGuard.getUser();
+const SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let jobTypes = [], selectedJobType = null;
+let allSales = [], selectedSales = null;
+let allClients = [], selectedClient = null;
+let designs = [];
+let nextDesignId = 1;
+
+async function init() {
+  const initial = (user.name || '?').charAt(0).toUpperCase();
+  document.getElementById('tbAva').textContent = initial;
+  document.getElementById('tbName').textContent = user.name || 'User';
+  document.getElementById('tbRole').textContent = (user.role || 'user').replace(/_/g, ' ');
+  
+  document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-IN', {
+    weekday: 'long', day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata'
+  });
+  
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  document.getElementById('startDate').value = tomorrow.toISOString().slice(0, 10);
+  // default deadline = 14 days out
+  var dl = new Date(); dl.setDate(dl.getDate() + 14);
+  var dlEl = document.getElementById('deadlineDate'); if (dlEl) dlEl.value = dl.toISOString().slice(0, 10);
+  // mark payTotal as manually touched if user edits it
+  var pt = document.getElementById('payTotal');
+  if (pt) pt.addEventListener('input', function(){ pt.dataset.touched = '1'; });
+  
+  await Promise.all([loadJobTypes(), loadSalesTeam(), loadClients()]);
+  addDesign();
+}
+
+async function loadJobTypes() {
+  const { data } = await db.from('trial_campaign_job_types')
+    .select('*').eq('active', true).order('display_order');
+  jobTypes = data || [];
+  
+  const grid = document.getElementById('jobGrid');
+  if (!jobTypes.length) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1">No job types configured. <a href="/settings-job-types.html" style="color:var(--gold-deep);font-weight:700">⚙️ Configure now</a></div>';
+    return;
+  }
+  
+  grid.innerHTML = jobTypes.map(jt => {
+    const stages = [];
+    if (jt.requires_printing) stages.push('Print');
+    if (jt.requires_stitching) stages.push('Stitch');
+    if (jt.requires_field_execution) stages.push('Field');
+    if (jt.requires_delivery) stages.push('Deliver');
+    return `
+      <div class="job-card" data-id="${jt.id}" onclick="selectJobType('${jt.id}')">
+        <div class="job-card-icon">${jt.icon || '📦'}</div>
+        <div class="job-card-name">${escapeHtml(jt.name)}</div>
+        <div class="job-card-flow">${stages.join(' → ') || 'Custom flow'}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function selectJobType(id) {
+  selectedJobType = jobTypes.find(j => j.id === id);
+  document.querySelectorAll('.job-card').forEach(c => c.classList.remove('selected'));
+  document.querySelector(`.job-card[data-id="${id}"]`)?.classList.add('selected');
+  updateActionBar();
+}
+
+function toggleSS(id, ev) {
+  if (ev) ev.stopPropagation();
+  document.querySelectorAll('.ss-dropdown').forEach(d => {
+    if (d.parentElement.id !== id) d.classList.remove('open');
+  });
+  const dd = document.getElementById(id).querySelector('.ss-dropdown');
+  dd.classList.toggle('open');
+  if (dd.classList.contains('open')) {
+    setTimeout(() => dd.querySelector('.ss-search')?.focus(), 50);
+  }
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.search-select') && !e.target.closest('.location-input') && !e.target.closest('.loc-row')) {
+    document.querySelectorAll('.ss-dropdown, .gp-dropdown').forEach(d => d.classList.remove('open'));
+  }
+});
+
+async function loadSalesTeam() {
+  const { data } = await db.from('trial_team_members')
+    .select('id, name, phone, role, lead_sources, hr_role')
+    .eq('active', true)
+    .in('role', ['owner', 'admin', 'sales', 'hr_sales', 'sales_admin'])
+    .order('name');
+
+  allSales = data || [];
+
+  // Ensure the current user is always selectable as the salesperson for their
+  // own campaign — even if their role isn't in the sales set (e.g. planner,
+  // operations_manager). If they're missing from the list, fetch + prepend them.
+  if (user && user.id && !allSales.some(s => s.id === user.id)) {
+    try {
+      const { data: me } = await db.from('trial_team_members')
+        .select('id, name, phone, role, lead_sources, hr_role')
+        .eq('id', user.id)
+        .single();
+      if (me) allSales = [me, ...allSales];
+    } catch (e) {
+      // fallback: use the session user object we already have
+      allSales = [{ id: user.id, name: user.name, phone: user.phone, role: user.role, lead_sources: [], hr_role: null }, ...allSales];
+    }
+  }
+
+  renderSalesOptions(allSales);
+
+  // Auto-select self for any role that opened the page (their campaign → their credit)
+  const self = allSales.find(s => s.id === user.id);
+  if (self) selectSales(self);
+}
+
+function renderSalesOptions(arr) {
+  const el = document.getElementById('salesOptions');
+  if (!arr.length) { el.innerHTML = '<div class="empty-state">No matching team found</div>'; return; }
+  el.innerHTML = arr.map(s => {
+    const sources = (s.lead_sources || []).join(', ') || s.phone || '';
+    const roleTag = s.role === 'owner' ? 'OWNER' : (s.hr_role ? 'SALES + HR' : (s.role || '').toUpperCase().replace('_', ' '));
+    const initial = (s.name || '?').charAt(0).toUpperCase();
+    return `
+      <div class="ss-option" data-id="${s.id}" onclick='_sel(this,"sales")'>
+        <div class="ava">${initial}</div>
+        <div class="info">
+          <div class="name">${escapeHtml(s.name)}</div>
+          <div class="meta">${escapeHtml(s.phone || '')}${sources ? ' · ' + escapeHtml(sources) : ''}</div>
+        </div>
+        <span class="tag">${roleTag}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+window._sel = function(el, type) {
+  const id = el.dataset.id;
+  if (type === 'sales') selectSales(allSales.find(s => s.id === id));
+  else if (type === 'client') selectClient(allClients.find(c => c.id === id));
+};
+
+function selectSales(s) {
+  if (!s) return;
+  selectedSales = s;
+  const trigger = document.querySelector('#salesSelect .ss-trigger');
+  const initial = (s.name || '?').charAt(0).toUpperCase();
+  trigger.innerHTML = `
+    <div class="ss-selected">
+      <div class="ss-ava">${initial}</div>
+      <div class="ss-info">
+        <div class="name">${escapeHtml(s.name)}</div>
+        <div class="meta">${(s.role || '').toUpperCase()} · ${escapeHtml(s.phone || '')}</div>
+      </div>
+    </div>
+    <div class="ss-chev">▼</div>
+  `;
+  trigger.setAttribute('onclick', "toggleSS('salesSelect',event)");
+  document.querySelector('#salesSelect .ss-dropdown').classList.remove('open');
+  updateActionBar();
+}
+
+function filterSales(query) {
+  const q = query.toLowerCase().trim();
+  if (!q) return renderSalesOptions(allSales);
+  const filtered = allSales.filter(s => 
+    (s.name || '').toLowerCase().includes(q) || 
+    (s.phone || '').toLowerCase().includes(q) ||
+    (s.role || '').toLowerCase().includes(q) ||
+    (s.lead_sources || []).join(' ').toLowerCase().includes(q)
+  );
+  renderSalesOptions(filtered);
+}
+
+async function loadClients() {
+  try {
+    const { data, error } = await db.from('trial_clients')
+      .select('id, name, phone, city')
+      .order('name').limit(500);
+    if (!error && data) {
+      allClients = data;
+      renderClientOptions(allClients);
+      return;
+    }
+  } catch(e) {}
+  
+  allClients = [];
+  document.getElementById('clientOptions').innerHTML = `
+    <div class="ss-option" onclick="addNewClient()" style="background:var(--gold-soft);font-weight:700;color:var(--gold-deep)">
+      <div class="ava" style="background:var(--gold);color:var(--navy)">+</div>
+      <div class="info"><div class="name">Add New Client</div><div class="meta">Manual entry</div></div>
+    </div>
+    <div class="empty-state" style="padding:20px">No clients table found in DB</div>
+  `;
+}
+
+function renderClientOptions(arr) {
+  const el = document.getElementById('clientOptions');
+  let html = `<div class="ss-option" onclick="addNewClient()" style="background:var(--gold-soft);font-weight:700;color:var(--gold-deep)">
+    <div class="ava" style="background:var(--gold);color:var(--navy)">+</div>
+    <div class="info"><div class="name">Add New Client</div><div class="meta">Manual entry</div></div>
+  </div>`;
+  
+  html += arr.map(c => {
+    const initial = (c.name || '?').charAt(0).toUpperCase();
+    return `
+      <div class="ss-option" data-id="${c.id}" onclick='_sel(this,"client")'>
+        <div class="ava" style="background:var(--purple-bg);color:var(--purple)">${initial}</div>
+        <div class="info">
+          <div class="name">${escapeHtml(c.name)}</div>
+          <div class="meta">${escapeHtml(c.phone || '')}${c.city ? ' · ' + escapeHtml(c.city) : ''}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  el.innerHTML = html;
+}
+
+function filterClients(query) {
+  const q = query.toLowerCase().trim();
+  if (!q) return renderClientOptions(allClients);
+  const filtered = allClients.filter(c => 
+    (c.name || '').toLowerCase().includes(q) ||
+    (c.phone || '').toLowerCase().includes(q) ||
+    (c.city || '').toLowerCase().includes(q)
+  );
+  renderClientOptions(filtered);
+}
+
+function selectClient(c) {
+  if (!c) return;
+  selectedClient = c;
+  const trigger = document.querySelector('#clientSelect .ss-trigger');
+  const initial = (c.name || '?').charAt(0).toUpperCase();
+  trigger.innerHTML = `
+    <div class="ss-selected">
+      <div class="ss-ava" style="background:var(--purple-bg);color:var(--purple)">${initial}</div>
+      <div class="ss-info">
+        <div class="name">${escapeHtml(c.name)}</div>
+        <div class="meta">${escapeHtml(c.phone || '')}${c.city ? ' · ' + escapeHtml(c.city) : ''}</div>
+      </div>
+    </div>
+    <div class="ss-chev">▼</div>
+  `;
+  trigger.setAttribute('onclick', "toggleSS('clientSelect',event)");
+  document.querySelector('#clientSelect .ss-dropdown').classList.remove('open');
+  updateActionBar();
+}
+
+// ── Order Type (NEW) ──
+var orderType = 'sample';
+function pickOrderType(type){
+  orderType = type;
+  document.querySelectorAll('.ord-card').forEach(function(c){ c.classList.toggle('active', c.getAttribute('data-ord')===type); });
+  document.getElementById('orderTypeNote').innerHTML = type==='sample'
+    ? '🧪 Sample: client ko demo dikhane ke liye. Approve hone par yahi campaign Full ban jayega — sample qty full mein add ho jayegi.'
+    : '📦 Full Order: poora order. Badi quantity, normal campaign.';
+}
+
+// ── Payment balance (NEW) ──
+function calcBalance(){
+  var total = parseFloat(document.getElementById('payTotal').value) || 0;
+  var adv = parseFloat(document.getElementById('payAdvance').value) || 0;
+  var bal = Math.max(0, total - adv);
+  document.getElementById('payBalance').textContent = '₹' + Math.round(bal).toLocaleString('en-IN');
+  document.getElementById('payBreakdown').textContent = 'Total ₹' + Math.round(total).toLocaleString('en-IN') + ' − Advance ₹' + Math.round(adv).toLocaleString('en-IN');
+}
+
+// ── Add Client modal (NEW — replaces prompt) ──
+function addNewClient() { openClientModal(); }
+function openClientModal(){
+  ['ncName','ncContact','ncPhone','ncEmail','ncAddress','ncCity','ncGst'].forEach(function(id){ var e=document.getElementById(id); if(e)e.value=''; });
+  document.getElementById('ncStatus').innerHTML='';
+  var b=document.getElementById('ncSaveBtn'); b.disabled=false; b.innerHTML='💾 Save Client';
+  document.getElementById('clientModal').classList.add('show');
+}
+function closeClientModal(){ document.getElementById('clientModal').classList.remove('show'); }
+async function saveNewClient(){
+  var name=document.getElementById('ncName').value.trim();
+  var phone=document.getElementById('ncPhone').value.trim();
+  if(!name){ document.getElementById('ncStatus').innerHTML='<div style="color:var(--danger);font-size:12px;margin-top:8px">Name zaroori hai</div>'; return; }
+  var b=document.getElementById('ncSaveBtn'); b.disabled=true; b.innerHTML='Saving…';
+  var payload={
+    name:name,
+    contact_person:document.getElementById('ncContact').value.trim()||null,
+    phone:phone||null,
+    email:document.getElementById('ncEmail').value.trim()||null,
+    address:document.getElementById('ncAddress').value.trim()||null,
+    city:document.getElementById('ncCity').value.trim()||null,
+    gst_number:document.getElementById('ncGst').value.trim()||null
+  };
+  try{
+    var res=await db.from('trial_clients').insert(payload).select().single();
+    if(res.error) throw res.error;
+    allClients.unshift(res.data);
+    selectClient(res.data);
+    closeClientModal();
+  }catch(e){
+    // If extra columns missing, retry with core fields
+    if(/column|schema|PGRST/i.test(e.message||'')){
+      try{
+        var core={name:name,phone:phone||null,city:payload.city};
+        var r2=await db.from('trial_clients').insert(core).select().single();
+        if(r2.error) throw r2.error;
+        allClients.unshift(r2.data); selectClient(r2.data); closeClientModal();
+        return;
+      }catch(e2){ e=e2; }
+    }
+    document.getElementById('ncStatus').innerHTML='<div style="color:var(--danger);font-size:12px;margin-top:8px">'+(e.message||'Save failed')+'</div>';
+    b.disabled=false; b.innerHTML='💾 Save Client';
+  }
+}
+
+function toggleSwitch(el) { el.classList.toggle('on'); }
+
+function addDesign() {
+  designs.push({
+    tempId: 'd_' + (nextDesignId++),
+    design_name: '',
+    locations: [],  // [{ name, address, lat, lng, place_id, city, state, pincode, type, quantity }]
+    design_url: null,
+    design_file_name: null,
+    design_file_size: null,
+    design_file_type: null,
+    locations: [blankLocation()]
+  });
+  renderDesigns();
+  setTimeout(() => {
+    const lastRow = document.querySelector('.design-row:last-of-type input[data-field="design_name"]');
+    lastRow?.focus();
+  }, 100);
+}
+
+function blankLocation() {
+  return {
+    locId: 'L_' + Math.random().toString(36).slice(2, 8),
+    name: '', address: '', lat: null, lng: null, place_id: null,
+    city: null, state: 'Maharashtra', pincode: null, type: null, quantity: 0
+  };
+}
+
+function removeDesign(tempId) {
+  designs = designs.filter(d => d.tempId !== tempId);
+  if (designs.length === 0) addDesign();
+  else renderDesigns();
+}
+
+function renderDesigns() {
+  const el = document.getElementById('designsList');
+  el.innerHTML = designs.map((d, i) => {
+    const locs = d.locations || [];
+    const totalQty = locs.reduce((s, l) => s + (l.quantity || 0), 0);
+    const validLocs = locs.filter(l => l.name && l.quantity > 0);
+    const isFilled = d.design_name && validLocs.length > 0 && d.design_url;
+    const isExpanded = d.design_name || locs.length > 0;
+    const stateLabel = isFilled ? 'COMPLETE' : (isExpanded ? 'IN PROGRESS' : 'NEW · INCOMPLETE');
+
+    const locRows = locs.map(l => `
+      <div class="loc-row ${l.name ? 'has-value' : ''}">
+        ${l.name ? `
+          <span class="loc-pin">📍</span>
+          <div class="loc-info">
+            <div class="loc-name">${escapeHtml(l.name)}</div>
+            <div class="loc-detail">${escapeHtml((l.state || '').toUpperCase())}${l.lat ? ' · ' + l.lat.toFixed(4) + '°N, ' + l.lng.toFixed(4) + '°E' : ''}</div>
+          </div>
+          <input class="loc-qty" type="number" min="1" value="${l.quantity || ''}" placeholder="qty"
+                 oninput="updateLocQty('${d.tempId}','${l.locId}', parseInt(this.value)||0)">
+          <button class="loc-remove" onclick="removeLocation('${d.tempId}','${l.locId}')" title="Remove location">×</button>
+        ` : `
+          <span class="loc-pin">🔍</span>
+          <div class="loc-info" style="position:relative">
+            <input type="text" class="loc-search-input" placeholder="Search city, locality, or address..."
+                   oninput="searchLocation('${d.tempId}','${l.locId}', this.value)"
+                   onfocus="searchLocation('${d.tempId}','${l.locId}', this.value)">
+            <div class="gp-dropdown" id="gp-${d.tempId}-${l.locId}"></div>
+          </div>
+          <input class="loc-qty" type="number" min="1" value="${l.quantity || ''}" placeholder="qty"
+                 oninput="updateLocQty('${d.tempId}','${l.locId}', parseInt(this.value)||0)">
+          <button class="loc-remove" onclick="removeLocation('${d.tempId}','${l.locId}')" title="Remove">×</button>
+        `}
+      </div>
+    `).join('');
+
+    return `
+      <div class="design-row ${isExpanded ? 'expanded' : ''}" id="${d.tempId}">
+        <div class="design-row-head">
+          <span class="design-num"><span class="badge">#${i+1}</span>DESIGN · ${stateLabel}</span>
+          <button class="design-remove" onclick="removeDesign('${d.tempId}')" title="Remove">×</button>
+        </div>
+        <div class="design-row-body">
+          
+          <div>
+            <div class="dlabel">Design Name <span class="req">*</span></div>
+            <input class="dinput" data-field="design_name" 
+                   value="${escapeAttr(d.design_name)}" 
+                   placeholder="e.g., Auto Hood Front — Diwali Edition"
+                   oninput="updateDesignField('${d.tempId}', 'design_name', this.value)">
+          </div>
+          
+          <div>
+            <div class="dlabel" style="display:flex;justify-content:space-between;align-items:center">
+              <span>📍 Locations <span class="req">*</span> <span class="hint">har location ki apni quantity</span></span>
+              <span style="color:var(--accent-deep);font-weight:700;font-size:11px">${locs.length} location${locs.length!==1?'s':''} · ${totalQty} units</span>
+            </div>
+            <div class="loc-list">
+              ${locRows}
+            </div>
+            <button class="btn-add-loc" onclick="addLocation('${d.tempId}')">+ Add another location</button>
+          </div>
+          
+          <div>
+            <div class="dlabel">Design File <span class="req">*</span> <span class="hint">Any format · Max 10 MB</span></div>
+            <div id="file-${d.tempId}">
+              ${d.design_url ? `
+                <div class="file-upload-done">
+                  <div class="file-icon">📄</div>
+                  <div class="file-info">
+                    <div class="file-name">${escapeHtml(d.design_file_name || 'uploaded')}</div>
+                    <div class="file-size">${formatFileSize(d.design_file_size)} · Uploaded</div>
+                  </div>
+                  <button class="file-replace" onclick="triggerFilePick('${d.tempId}')">Replace</button>
+                </div>
+              ` : `
+                <div class="file-upload-empty" onclick="triggerFilePick('${d.tempId}')">
+                  <span style="font-size:18px">📎</span>
+                  <span>Click to upload design file · Any format · Max 10 MB</span>
+                </div>
+              `}
+              <input type="file" id="file-input-${d.tempId}" style="display:none" 
+                     onchange="handleFileSelect('${d.tempId}', this.files[0])">
+            </div>
+          </div>
+          
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  updateActionBar();
+  calcPricing();
+}
+
+function addLocation(tempId) {
+  const d = designs.find(x => x.tempId === tempId);
+  if (!d) return;
+  if (!d.locations) d.locations = [];
+  d.locations.push(blankLocation());
+  renderDesigns();
+}
+
+function removeLocation(tempId, locId) {
+  const d = designs.find(x => x.tempId === tempId);
+  if (!d) return;
+  d.locations = (d.locations || []).filter(l => l.locId !== locId);
+  renderDesigns();
+}
+
+function updateLocQty(tempId, locId, qty) {
+  const d = designs.find(x => x.tempId === tempId);
+  if (!d) return;
+  const l = (d.locations || []).find(x => x.locId === locId);
+  if (l) { l.quantity = qty; updateActionBar(); calcPricing(); }
+}
+
+function updateDesignField(tempId, field, value) {
+  const d = designs.find(x => x.tempId === tempId);
+  if (d) { d[field] = value; updateActionBar(); calcPricing(); }
+}
+
+function _removed_clearLocation() {}
+
+let locTimer = null;
+async function searchLocation(tempId, locId, query) {
+  const dropdown = document.getElementById('gp-' + tempId + '-' + locId);
+  if (!dropdown) return;
+  
+  if (!query || query.length < 2) {
+    dropdown.classList.remove('open');
+    return;
+  }
+  
+  clearTimeout(locTimer);
+  locTimer = setTimeout(async () => {
+    dropdown.classList.add('open');
+    dropdown.innerHTML = `<div class="gp-section-label">Searching "${escapeHtml(query)}"…</div>`;
+    
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=6&countrycodes=in`;
+      const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+      const results = await res.json();
+      
+      if (!results.length) {
+        window['_manual_' + tempId + '_' + locId] = { name: query, address: query, city: query, state: 'Maharashtra', lat: null, lng: null, place_id: null, pincode: '', type: 'manual' };
+        dropdown.innerHTML = `
+          <div class="gp-section-label">No results from map</div>
+          <div class="gp-results">
+            <div class="gp-option" onclick="selectLocation('${tempId}', '${locId}', window['_manual_${tempId}_${locId}'])">
+              <span class="gp-icon">✍️</span>
+              <div class="gp-info">
+                <div class="gp-main">Add "${escapeHtml(query)}" manually</div>
+                <div class="gp-sub">Map pe nahi mila — naam se add karo (location optional)</div>
+              </div>
+            </div>
+          </div>
+          <div class="gp-footer">Powered by OpenStreetMap</div>
+        `;
+        return;
+      }
+      
+      dropdown.innerHTML = `
+        <div class="gp-section-label">Suggestions for "${escapeHtml(query)}"</div>
+        <div class="gp-results">
+          ${results.map((r, idx) => {
+            const addr = r.address || {};
+            const main = addr.suburb || addr.neighbourhood || addr.village || addr.town || addr.city_district || addr.city || (r.display_name || '').split(',')[0];
+            const city = addr.city || addr.town || addr.village || addr.county || '';
+            const state = addr.state || '';
+            const pincode = addr.postcode || '';
+            const subLine = [city, state, pincode].filter(x => x && x !== main).join(' · ');
+            const icon = r.type === 'railway' || r.class === 'railway' ? '🚉' : (r.class === 'amenity' ? '🏛️' : (r.class === 'place' ? '📍' : '🏙️'));
+            
+            window['_loc_' + tempId + '_' + locId + '_' + idx] = {
+              name: main + (city && city !== main ? ', ' + city : ''),
+              address: r.display_name,
+              lat: parseFloat(r.lat),
+              lng: parseFloat(r.lon),
+              place_id: r.place_id ? String(r.place_id) : null,
+              city: city || main,
+              state: state || 'Maharashtra',
+              pincode: pincode,
+              type: r.type || r.class
+            };
+            
+            return `
+              <div class="gp-option" onclick="selectLocation('${tempId}', '${locId}', window['_loc_${tempId}_${locId}_${idx}'])">
+                <span class="gp-icon">${icon}</span>
+                <div class="gp-info">
+                  <div class="gp-main">${escapeHtml(main + (city && city !== main ? ', ' + city : ''))}</div>
+                  <div class="gp-sub">${escapeHtml(subLine || (r.display_name || '').slice(0, 60))}</div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+        <div class="gp-footer">Powered by OpenStreetMap</div>
+      `;
+    } catch(e) {
+      dropdown.innerHTML = `
+        <div class="gp-section-label" style="color:var(--danger)">Search failed</div>
+        <div style="padding:10px 14px;text-align:center;color:var(--text-dim);font-size:12px">${escapeHtml(e.message || 'Network error')}</div>
+        <div class="gp-results">
+          <div class="gp-option" onclick="selectLocation('${tempId}', '${locId}', {name:'${escapeHtml(query).replace(/'/g,"")}',address:'${escapeHtml(query).replace(/'/g,"")}',city:'${escapeHtml(query).replace(/'/g,"")}',state:'Maharashtra',lat:null,lng:null,place_id:null,pincode:'',type:'manual'})">
+            <span class="gp-icon">✍️</span>
+            <div class="gp-info">
+              <div class="gp-main">Add "${escapeHtml(query)}" manually</div>
+              <div class="gp-sub">Internet/map issue — naam se add karo</div>
+            </div>
+          </div>
+        </div>
+        <div class="gp-footer">Powered by OpenStreetMap</div>
+      `;
+    }
+  }, 350);
+}
+
+function selectLocation(tempId, locId, locData) {
+  const d = designs.find(x => x.tempId === tempId);
+  if (!d) return;
+  const l = (d.locations || []).find(x => x.locId === locId);
+  if (l) {
+    Object.assign(l, locData);
+    renderDesigns();
+  }
+}
+
+function triggerFilePick(tempId) {
+  document.getElementById('file-input-' + tempId)?.click();
+}
+
+async function handleFileSelect(tempId, file) {
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) {
+    alert('File too large. Max 10 MB.');
+    return;
+  }
+  
+  const d = designs.find(x => x.tempId === tempId);
+  if (!d) return;
+  
+  const fileWrap = document.getElementById('file-' + tempId);
+  fileWrap.querySelector('.file-upload-empty, .file-upload-done').outerHTML = `
+    <div class="file-upload-done" style="background:linear-gradient(135deg, var(--info-bg), #fff);border-color:var(--info)">
+      <div class="file-icon" style="background:var(--info)"><span class="spin"></span></div>
+      <div class="file-info">
+        <div class="file-name">${escapeHtml(file.name)}</div>
+        <div class="file-size">Uploading…</div>
+      </div>
+    </div>
+  `;
+  
+  try {
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `${user.id}/${Date.now()}_${safeName}`;
+    
+    const { error } = await db.storage.from('campaign-designs')
+      .upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: false });
+    
+    if (error) throw error;
+    
+    const { data: urlData } = db.storage.from('campaign-designs').getPublicUrl(path);
+    
+    d.design_url = urlData.publicUrl;
+    d.design_file_name = file.name;
+    d.design_file_size = file.size;
+    d.design_file_type = file.type;
+    
+    renderDesigns();
+  } catch(e) {
+    alert('Upload failed: ' + (e.message || e) + '\n\nCheck that "campaign-designs" storage bucket exists (public, 10MB limit).');
+    renderDesigns();
+  }
+}
+
+function calcPricing() {
+  const totalQty = designs.reduce((s, d) => s + (d.locations || []).reduce((t, l) => t + (l.quantity || 0), 0), 0);
+  const rate = parseFloat(document.getElementById('rateUnit').value) || 0;
+  const disc = parseFloat(document.getElementById('discount').value) || 0;
+  const gstPct = parseFloat(document.getElementById('gstPct').value) || 0;
+  
+  const base = totalQty * rate;
+  const afterDisc = Math.max(0, base - disc);
+  const gst = afterDisc * (gstPct / 100);
+  const total = afterDisc + gst;
+  
+  document.getElementById('priceBase').textContent = '₹' + Math.round(base).toLocaleString('en-IN');
+  document.getElementById('priceGst').textContent = '₹' + Math.round(gst).toLocaleString('en-IN');
+  document.getElementById('priceDisc').textContent = '₹' + Math.round(disc).toLocaleString('en-IN');
+  document.getElementById('priceTotal').textContent = '₹' + Math.round(total).toLocaleString('en-IN');
+  // Auto-fill payment total from grand total (only if user hasn't manually changed it)
+  var payTotalEl = document.getElementById('payTotal');
+  if (payTotalEl && !payTotalEl.dataset.touched) { payTotalEl.value = Math.round(total); calcBalance(); }
+  
+  const cities = new Set();
+  designs.forEach(d => (d.locations || []).forEach(l => l.city && cities.add(l.city)));
+  const locCount = designs.reduce((s, d) => s + (d.locations || []).filter(l => l.name).length, 0);
+  const calcEl = document.getElementById('materialCalc');
+  if (totalQty > 0) {
+    calcEl.style.display = 'flex';
+    document.getElementById('materialCalcText').innerHTML = `
+      <strong>Material Calculator:</strong> ${totalQty.toLocaleString('en-IN')} total units across <strong>${locCount}</strong> location${locCount !== 1 ? 's' : ''}${cities.size > 0 ? ' (' + Array.from(cities).slice(0, 3).join(', ') + (cities.size > 3 ? '…' : '') + ')' : ''} · Est. wastage allowance: <strong>5%</strong> = ${Math.ceil(totalQty * 0.05).toLocaleString('en-IN')} extra units
+    `;
+  } else {
+    calcEl.style.display = 'none';
+  }
+}
+
+function updateActionBar() {
+  const totalQty = designs.reduce((s, d) => s + (d.locations || []).reduce((t, l) => t + (l.quantity || 0), 0), 0);
+  const validDesigns = designs.filter(d => d.design_name && d.design_url && (d.locations || []).some(l => l.name && l.quantity > 0));
+  const cities = new Set();
+  designs.forEach(d => (d.locations || []).forEach(l => l.city && cities.add(l.city)));
+  const locCount = designs.reduce((s, d) => s + (d.locations || []).filter(l => l.name && l.quantity > 0).length, 0);
+  
+  const parts = [];
+  if (validDesigns.length > 0) parts.push(`<strong>${validDesigns.length}</strong> design${validDesigns.length !== 1 ? 's' : ''}`);
+  if (locCount > 0) parts.push(`<strong>${locCount}</strong> location${locCount !== 1 ? 's' : ''}`);
+  if (totalQty > 0) parts.push(`<strong>${totalQty.toLocaleString('en-IN')}</strong> units`);
+  if (selectedJobType) parts.push(`Type: <strong>${escapeHtml(selectedJobType.name)}</strong>`);
+  
+  document.getElementById('actionLeft').innerHTML = parts.length ? parts.join(' · ') : 'Fill form to enable submit';
+  document.getElementById('submitBtn').disabled = !(validDesigns.length > 0 && selectedSales && selectedClient && selectedJobType);
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(s) { return String(s == null ? '' : s).replace(/"/g, '&quot;'); }
+function formatFileSize(b) {
+  if (!b) return '0 KB';
+  if (b < 1024) return b + ' B';
+  if (b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
+  return (b/(1024*1024)).toFixed(1) + ' MB';
+}
+
+async function saveDraft() { await submitCampaign('draft'); }
+
+async function submitCampaign(targetStatus = 'pending_execution_plan') {
+  const campaignName = document.getElementById('campaignName').value.trim();
+  const validDesigns = designs.filter(d => d.design_name && d.design_url && (d.locations || []).some(l => l.name && l.quantity > 0));
+  
+  if (targetStatus !== 'draft') {
+    if (!selectedSales || !selectedClient || !selectedJobType || !campaignName) {
+      document.getElementById('submitStatus').innerHTML = '<div class="callout error"><span class="callout-icon">⚠️</span><div>Please complete: Sales person, Client, Job Type, Campaign name</div></div>';
+      window.scrollTo({top: 0, behavior: 'smooth'});
+      return;
+    }
+    if (validDesigns.length === 0) {
+      document.getElementById('submitStatus').innerHTML = '<div class="callout error"><span class="callout-icon">⚠️</span><div>At least 1 complete design required (name + file + at least 1 location with quantity)</div></div>';
+      return;
+    }
+  }
+  
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Submitting…';
+  document.getElementById('submitStatus').innerHTML = '<div class="callout info"><span class="callout-icon">⏳</span><div>Saving campaign…</div></div>';
+  
+  try {
+    let clientId = selectedClient?.id;
+    if (clientId && String(clientId).startsWith('tmp_')) {
+      try {
+        const { data: newClient } = await db.from('trial_clients').insert({
+          name: selectedClient.name, phone: selectedClient.phone, city: selectedClient.city
+        }).select().single();
+        clientId = newClient?.id || null;
+      } catch(e) { clientId = null; }
+    }
+    
+    const totalQty = validDesigns.reduce((s, d) => s + (d.locations || []).reduce((t, l) => t + ((l.name && l.quantity > 0) ? l.quantity : 0), 0), 0);
+    const rate = parseFloat(document.getElementById('rateUnit').value) || 0;
+    const disc = parseFloat(document.getElementById('discount').value) || 0;
+    const gstPct = parseFloat(document.getElementById('gstPct').value) || 0;
+    const base = totalQty * rate;
+    const afterDisc = Math.max(0, base - disc);
+    const gst = afterDisc * (gstPct / 100);
+    const total = afterDisc + gst;
+    
+    const campaignPayload = {
+      campaign_name: campaignName || 'Untitled Draft',
+      client_id: clientId,
+      client_name: selectedClient?.name,
+      start_date: document.getElementById('startDate').value || null,
+      deadline_date: document.getElementById('deadlineDate').value || null,
+      order_type: orderType,
+      sample_quantity: orderType === 'sample' ? totalQty : 0,
+      job_type_id: selectedJobType?.id,
+      job_type_code: selectedJobType?.code,
+      sales_member_id: selectedSales?.id,
+      is_self_sale: document.getElementById('selfSaleToggle').classList.contains('on'),
+      is_urgent: document.getElementById('urgentToggle').classList.contains('on'),
+      notify_whatsapp: document.getElementById('notifyToggle').classList.contains('on'),
+      send_client_preview: document.getElementById('clientPreviewToggle').classList.contains('on'),
+      rate_per_unit: rate,
+      discount: disc,
+      gst_pct: gstPct,
+      base_amount: base,
+      gst_amount: gst,
+      total_amount: total,
+      advance_paid: parseFloat(document.getElementById('payAdvance').value) || 0,
+      balance_due: Math.max(0, (parseFloat(document.getElementById('payTotal').value) || total) - (parseFloat(document.getElementById('payAdvance').value) || 0)),
+      total_quantity: totalQty,
+      status: targetStatus,
+      created_by: user.id
+    };
+    
+    // Strip nulls to avoid type errors
+    Object.keys(campaignPayload).forEach(k => {
+      if (campaignPayload[k] === null || campaignPayload[k] === undefined) delete campaignPayload[k];
+    });
+    
+    const { data: campaign, error: campErr } = await db.from('trial_campaigns')
+      .insert(campaignPayload).select().single();
+    
+    if (campErr) throw campErr;
+    
+    // Upload payment receipt (NEW) — best-effort, doesn't block campaign
+    try {
+      var rcFile = document.getElementById('payReceipt') && document.getElementById('payReceipt').files[0];
+      if (rcFile && campaign && campaign.id) {
+        var safe = rcFile.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+        var rcPath = 'campaign-payments/' + campaign.id + '_' + Date.now() + '_' + safe;
+        var up = await fetch(SUPABASE_URL + '/storage/v1/object/payment-receipts/' + encodeURI(rcPath), {
+          method:'POST',
+          headers:{ apikey:SUPABASE_KEY, Authorization:'Bearer '+SUPABASE_KEY, 'Content-Type':rcFile.type, 'x-upsert':'true' },
+          body: rcFile
+        });
+        if (up.ok) {
+          var rcUrl = SUPABASE_URL + '/storage/v1/object/public/payment-receipts/' + encodeURI(rcPath);
+          await db.from('trial_campaigns').update({ payment_receipt_url: rcUrl }).eq('id', campaign.id);
+        }
+      }
+    } catch(rcErr) { console.warn('receipt upload skipped:', rcErr); }
+    
+    if (validDesigns.length > 0) {
+      // Flatten: each design × each valid location → one trial_campaign_designs row.
+      // Same design_name + design_url repeated per location (ek design, multi-location).
+      let sortIdx = 0;
+      const designsPayload = [];
+      validDesigns.forEach(d => {
+        (d.locations || []).filter(l => l.name && l.quantity > 0).forEach(l => {
+          designsPayload.push({
+            campaign_id: campaign.id,
+            sort_order: sortIdx++,
+            design_name: d.design_name,
+            location_name: l.name,
+            location_address: l.address,
+            location_lat: l.lat,
+            location_lng: l.lng,
+            location_place_id: l.place_id,
+            location_city: l.city,
+            location_state: l.state,
+            location_pincode: l.pincode,
+            location_type: l.type,
+            quantity: l.quantity,
+            design_url: d.design_url,
+            design_file_name: d.design_file_name,
+            design_file_size: d.design_file_size,
+            design_file_type: d.design_file_type,
+            created_by: user.id
+          });
+        });
+      });
+      
+      const { error: dErr } = await db.from('trial_campaign_designs').insert(designsPayload);
+      if (dErr) throw dErr;
+    }
+    
+    document.getElementById('submitStatus').innerHTML = `
+      <div class="callout success">
+        <span class="callout-icon">✅</span>
+        <div>
+          <strong>${targetStatus === 'draft' ? 'Draft saved!' : 'Campaign submitted!'}</strong><br>
+          ${targetStatus === 'draft' ? 'You can resume editing anytime.' : 'Operations team will assign teams. Redirecting…'}
+        </div>
+      </div>
+    `;
+    
+    setTimeout(() => {
+      window.location.href = targetStatus === 'draft' ? '/sales-hub.html' : '/execution-plan.html?campaign=' + campaign.id;
+    }, 1800);
+    
+  } catch(e) {
+    console.error(e);
+    document.getElementById('submitStatus').innerHTML = `
+      <div class="callout error">
+        <span class="callout-icon">❌</span>
+        <div><strong>Submit failed:</strong> ${escapeHtml(e.message || String(e))}<br><small>Make sure SQL schema is applied and storage bucket 'campaign-designs' exists.</small></div>
+      </div>
+    `;
+    btn.disabled = false;
+    btn.innerHTML = 'Submit for Operations →';
+  }
+}
+
+init();
+</script>
+
+</body>
+</html>
