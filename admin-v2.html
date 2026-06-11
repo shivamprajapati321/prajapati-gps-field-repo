@@ -2909,6 +2909,7 @@ label {
         <button class="pbtn pbtn-zip" id="zipDownloadBtn" onclick="downloadPhotosZip()"><i class="ti ti-package"></i> Download ZIP</button>
         <button class="pbtn pbtn-excel" onclick="downloadExcelReport()" title="Standalone Excel report — campaign/date/team/location"><i class="ti ti-file-spreadsheet"></i> Excel Report</button>
         <button class="pbtn pbtn-excel2" onclick="downloadExcelReportV2()" title="Approved format — verified vehicles with owner details"><i class="ti ti-sparkles"></i> Excel V2</button>
+        <button class="pbtn pbtn-excel" onclick="downloadStaffReport()" title="Daily staff report — Date · Name · Work · Location · Qty · Media" style="background:#0B1957;color:#fff"><i class="ti ti-clipboard-list"></i> Staff Report</button>
         <button class="pbtn pbtn-ppt" onclick="openPPTGenerator()" title="Generate PowerPoint presentation"><i class="ti ti-presentation"></i> Generate PPT</button>
         <button class="pbtn pbtn-owners" onclick="bulkFetchSurepass()" title="Fetch owner+contact from Verified Database"><i class="ti ti-search"></i> Get Vehicle Owners</button>
         <button class="pbtn pbtn-bulk" onclick="openBulkUpload()" title="Upload existing vehicle data (Excel/CSV)"><i class="ti ti-upload"></i> Bulk Import</button>
@@ -8296,6 +8297,81 @@ function downloadPhotosZip() {
 }
 
 // ──── downloadExcelReport (ported from V1) ────
+
+// ──── Staff Report (NEW) — Image-2 format: Date · Name · Work · Location · Qty · Media ────
+// Qty = unique vehicles (Hood 3 photos/veh, Back 1 photo/veh). Groups by date+member+work+location.
+function getWorkNameClean(campaignName) {
+  // Strip agency/company prefix: take text before first separator (privacy)
+  var s = String(campaignName || '').trim();
+  var idx = s.search(/[·\-–—|]/);
+  if (idx > 0) s = s.slice(0, idx).trim();
+  return s || campaignName || '';
+}
+
+async function downloadStaffReport() {
+  var btn = document.querySelector('button[onclick="downloadStaffReport()"]');
+  var orig = btn ? btn.innerHTML : 'Staff Report';
+  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Building...'; }
+  try {
+    if (typeof XLSX === 'undefined') throw new Error('Excel library not loaded. Refresh page (Ctrl+Shift+R).');
+
+    var qs = '/rest/v1/trial_photos' + buildPhotoFilterQS();
+    var photos = await api(qs);
+    photos = photos || [];
+    if (!photos.length) { alert('❌ Is filter mein koi photo nahi.\nDate range ya campaign badal ke dekho.'); if (btn){btn.disabled=false;btn.innerHTML=orig;} return; }
+
+    // Group: key = date | member | work | location ; track unique vehicles + media
+    var rows = {};
+    photos.forEach(function(p) {
+      // IST date
+      var d = p.captured_at ? new Date(p.captured_at) : null;
+      var dateStr = d ? d.toLocaleDateString('en-GB', { timeZone:'Asia/Kolkata', day:'2-digit', month:'2-digit', year:'numeric' }) : '—'; // dd/mm/yyyy
+      var name = (p.member_name || p.member_phone || '—');
+      var work = getWorkNameClean(p.campaign_name || p.campaign_key || '—');
+      var loc = (p.city || '—');
+      var media = (p.mode === 'back_panel') ? 'AUTO BACK' : (p.mode === 'hood' ? 'AUTO HOOD' : (p.mode ? p.mode.toUpperCase() : 'AUTO HOOD'));
+      // vehicle identity for unique count
+      var veh = ((p.verified_plate || p.vehicle_number || '') + '').trim().toUpperCase();
+
+      var key = dateStr + '||' + name + '||' + work + '||' + loc;
+      if (!rows[key]) rows[key] = { date:dateStr, name:name, work:work, location:loc, media:media, vehicles:{}, _sortDate:(d?d.getTime():0) };
+      if (veh && veh.length >= 4) rows[key].vehicles[veh] = 1;
+      else rows[key].vehicles['__row_' + p.id] = 1; // unidentified still counts as 1 capture
+      // media: if mixed, prefer showing what's most present — keep first non-empty
+      if (media && rows[key].media === 'AUTO HOOD' && media !== 'AUTO HOOD') { /* keep hood as default unless back dominates; simple: leave */ }
+    });
+
+    var arr = Object.keys(rows).map(function(k){ var r=rows[k]; r.qty = Object.keys(r.vehicles).length; return r; });
+    // sort by date asc, then name
+    arr.sort(function(a,b){ return a._sortDate - b._sortDate || a.name.localeCompare(b.name); });
+
+    // Build sheet — exact Image-2 columns
+    var aoa = [['DATE','NAME','WORK','LOCATION','Q.','CASEBOOK','MEDIA']];
+    var total = 0;
+    arr.forEach(function(r){ aoa.push([r.date, r.name, r.work, r.location, r.qty, '', r.media]); total += r.qty; });
+    aoa.push(['', '', '', '', total, '', '']); // total row
+
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{wch:12},{wch:18},{wch:26},{wch:16},{wch:7},{wch:11},{wch:12}];
+    // Header style-ish: set row heights
+    ws['!rows'] = [{hpt:20}];
+
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Daily Report');
+
+    var range = (typeof getPhotosDateRange === 'function') ? getPhotosDateRange() : {from:'',to:''};
+    var dl = (range.from || 'all') + (range.to && range.to !== range.from ? '_to_' + range.to : '');
+    var fname = 'Field_Report_' + (dl || 'all') + '.xlsx';
+    XLSX.writeFile(wb, fname);
+
+    if (btn) { btn.disabled = false; btn.innerHTML = orig; }
+    showToast('✓ Staff report downloaded · ' + arr.length + ' rows · ' + total + ' total qty', 'success');
+  } catch (e) {
+    console.error('[Staff Report]', e);
+    alert('❌ Report failed: ' + (e.message || e));
+    if (btn) { btn.disabled = false; btn.innerHTML = orig; }
+  }
+}
 
 async function downloadExcelReport() {
   // Find button reliably (not via event.target which can fail)
