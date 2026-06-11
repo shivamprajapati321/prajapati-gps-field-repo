@@ -27,6 +27,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <!-- Phase 4: SheetJS for Excel bulk import + QRCode for client links -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <!-- Photos Browser feature parity (V1): ZIP + PPT -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -2854,7 +2855,10 @@ label {
             <option value="today">Today</option>
             <option value="yesterday">Yesterday</option>
             <option value="week" selected>Last 7 days</option>
+            <option value="thisweek">This week (Mon–today)</option>
             <option value="month">Last 30 days</option>
+            <option value="thismonth">This month</option>
+            <option value="alltime">All time</option>
             <option value="custom">Custom range</option>
           </select>
         </div>
@@ -6931,8 +6935,21 @@ function getPhotosDateRange() {
   } else if (preset === 'week') {
     from = new Date(ist.getTime() - 7*24*60*60*1000).toISOString().slice(0, 10);
     to = todayIso;
+  } else if (preset === 'thisweek') {
+    // Monday of current week → today
+    var dow = ist.getUTCDay(); // 0=Sun..6=Sat (ist already shifted)
+    var back = (dow === 0 ? 6 : dow - 1); // days since Monday
+    from = new Date(ist.getTime() - back*24*60*60*1000).toISOString().slice(0, 10);
+    to = todayIso;
   } else if (preset === 'month') {
     from = new Date(ist.getTime() - 30*24*60*60*1000).toISOString().slice(0, 10);
+    to = todayIso;
+  } else if (preset === 'thismonth') {
+    // 1st of current month → today
+    from = todayIso.slice(0, 8) + '01';
+    to = todayIso;
+  } else if (preset === 'alltime') {
+    from = '2020-01-01'; // well before any data
     to = todayIso;
   } else {
     from = $('photosDateFrom').value;
@@ -8410,6 +8427,7 @@ function normalizeCity(city) {
 // Shared builder — used by BOTH the on-screen preview and the Excel download
 async function buildStaffReportData() {
   var qs = '/rest/v1/trial_photos' + buildPhotoFilterQS();
+  qs = qs.replace('limit=5000', 'limit=50000'); // report needs full data (esp. All time)
   var photos = await api(qs);
   photos = photos || [];
   if (!photos.length) return null;
@@ -8539,33 +8557,127 @@ function openStaffReportModal(data) {
   document.body.appendChild(wrap.firstChild);
 }
 
-function exportStaffReportExcel() {
+async function exportStaffReportExcel() {
   var data = window._staffReportData;
   if (!data) { alert('Report data missing — dobara generate karo'); return; }
-  if (typeof XLSX === 'undefined') { alert('Excel library not loaded. Refresh (Ctrl+Shift+R).'); return; }
-
-  var aoa = [['DATE','NAME','WORK','LOCATION','Q.','CASEBOOK','MEDIA']];
-  data.rows.forEach(function(r){ aoa.push([r.date, r.name, r.work, r.location, r.qty, '', r.media]); });
-  aoa.push(['', '', '', 'TOTAL', data.total, '', '']);
-
-  var ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = [{wch:12},{wch:18},{wch:28},{wch:18},{wch:7},{wch:11},{wch:12}];
-
-  // Style header (yellow like the manual sheet) + total row — if styling supported
-  var lastRow = aoa.length;
-  var hdrFill = { patternType:'solid', fgColor:{rgb:'FFF200'} };
-  var hdrFont = { bold:true, color:{rgb:'000000'} };
-  ['A1','B1','C1','D1','E1','F1','G1'].forEach(function(c){ if(ws[c]) ws[c].s = { fill:hdrFill, font:hdrFont, alignment:{horizontal:'center'} }; });
-  var totFill = { patternType:'solid', fgColor:{rgb:'FFF7CC'} };
-  ['A','B','C','D','E','F','G'].forEach(function(col){ var ref=col+lastRow; if(ws[ref]) ws[ref].s = { fill:totFill, font:{bold:true} }; });
-
-  var wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Daily Report');
 
   var range = (typeof getPhotosDateRange === 'function') ? getPhotosDateRange() : {from:'',to:''};
+  var rangeLabel = (range.from === range.to || !range.to) ? (range.from || 'All dates') : (range.from + ' to ' + range.to);
   var dl = (range.from || 'all') + (range.to && range.to !== range.from ? '_to_' + range.to : '');
-  XLSX.writeFile(wb, 'Field_Report_' + (dl || 'all') + '.xlsx');
-  showToast('✓ Excel downloaded · ' + data.rows.length + ' rows · ' + data.total + ' qty', 'success');
+  var fname = 'Field_Report_' + (dl || 'all') + '.xlsx';
+
+  // ── Preferred: ExcelJS (full colors, like the on-screen preview) ──
+  if (typeof ExcelJS !== 'undefined') {
+    try {
+      var wb = new ExcelJS.Workbook();
+      var ws = wb.addWorksheet('Field Report', { views:[{ showGridLines:false }] });
+      ws.columns = [{width:13},{width:20},{width:30},{width:20},{width:8},{width:12},{width:13}];
+
+      var NAVY='FF0B1957', TEAL='FF26D0CE', GOLD='FFB89B4E', PURPLE='FF7C3AED', GREEN='FF047857', ORANGE='FFC2410C';
+      function setFill(cell,argb){ cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:argb}}; }
+      function center(cell){ cell.alignment={horizontal:'center',vertical:'middle'}; }
+
+      // Title
+      ws.mergeCells('A1:G1');
+      var t = ws.getCell('A1');
+      t.value = 'PRAJAPATI ADVERTISING — FIELD WORK REPORT';
+      t.font = { bold:true, size:15, color:{argb:'FFFFFFFF'} };
+      setFill(t, NAVY); center(t);
+      ws.getRow(1).height = 26;
+
+      // Subtitle (date range + entries)
+      ws.mergeCells('A2:G2');
+      var st = ws.getCell('A2');
+      st.value = rangeLabel + '  ·  ' + data.rows.length + ' entries';
+      st.font = { italic:true, size:10.5, color:{argb:'FF475569'} };
+      center(st);
+      ws.getRow(2).height = 18;
+
+      // Summary cards row (label row + value row)
+      var sumLabels = ['TOTAL QTY','FIELD STAFF','CAMPAIGNS','CITIES','AUTO HOOD','AUTO BACK'];
+      var sumVals   = [data.total, data.members, data.works, data.cities, data.hood, data.back];
+      var sumColors = [NAVY, TEAL, GOLD, PURPLE, GREEN, ORANGE];
+      // merge pairs across 6 cells: A-B? we have 7 cols; place 6 summary cells in A..F, leave G
+      var lblRow = ws.getRow(4), valRow = ws.getRow(5);
+      for (var i=0;i<6;i++){
+        var col = i+1; // A..F
+        var lc = lblRow.getCell(col), vc = valRow.getCell(col);
+        lc.value = sumLabels[i]; lc.font={bold:true,size:8,color:{argb:'FFFFFFFF'}}; setFill(lc,sumColors[i]); center(lc);
+        vc.value = sumVals[i]; vc.font={bold:true,size:16,color:{argb:sumColors[i]}}; center(vc);
+        vc.border={bottom:{style:'thin',color:{argb:'FFE5E0D2'}},left:{style:'thin',color:{argb:'FFE5E0D2'}},right:{style:'thin',color:{argb:'FFE5E0D2'}}};
+      }
+      lblRow.height=16; valRow.height=24;
+
+      // Table header (yellow, like preview + manual sheet) at row 7
+      var headRowIdx = 7;
+      var heads = ['DATE','NAME','WORK','LOCATION','Q.','CASEBOOK','MEDIA'];
+      var hr = ws.getRow(headRowIdx);
+      heads.forEach(function(h,idx){
+        var c = hr.getCell(idx+1);
+        c.value = h; c.font={bold:true,size:10,color:{argb:'FF000000'}};
+        setFill(c,'FFFFF200'); center(c);
+        c.border={top:{style:'thin',color:{argb:'FFE5C800'}},bottom:{style:'thin',color:{argb:'FFE5C800'}},left:{style:'thin',color:{argb:'FFE5C800'}},right:{style:'thin',color:{argb:'FFE5C800'}}};
+      });
+      hr.height=20;
+
+      // Data rows (zebra + back-panel colored media)
+      data.rows.forEach(function(r, idx){
+        var rowIdx = headRowIdx + 1 + idx;
+        var row = ws.getRow(rowIdx);
+        var vals = [r.date, r.name, r.work, r.location, r.qty, '', r.media];
+        vals.forEach(function(v,ci){
+          var c = row.getCell(ci+1);
+          c.value = v;
+          c.border={bottom:{style:'thin',color:{argb:'FFEFEFEF'}},right:{style:'thin',color:{argb:'FFEFEFEF'}}};
+          if (idx % 2 === 1) setFill(c,'FFFAFBFC'); // zebra
+          if (ci===1) c.font={bold:true,size:10,color:{argb:'FF1E293B'}}; else c.font={size:10,color:{argb:'FF1E293B'}};
+          if (ci===4){ center(c); c.font={bold:true,size:11,color:{argb:'FF0B1957'}}; } // qty
+          if (ci===6){ center(c); c.font={bold:true,size:9,color:{argb: r.media==='AUTO BACK'?ORANGE:GREEN}}; } // media color
+        });
+      });
+
+      // Total row
+      var totIdx = headRowIdx + 1 + data.rows.length;
+      var tr = ws.getRow(totIdx);
+      tr.getCell(4).value='TOTAL'; tr.getCell(4).alignment={horizontal:'right'};
+      tr.getCell(5).value=data.total; center(tr.getCell(5));
+      for (var ci2=1;ci2<=7;ci2++){
+        var c2=tr.getCell(ci2);
+        setFill(c2,'FFFFF7CC'); c2.font={bold:true,size:11,color:{argb:'FF0B1957'}};
+        c2.border={top:{style:'thin',color:{argb:'FFE5C800'}},bottom:{style:'thin',color:{argb:'FFE5C800'}}};
+      }
+      tr.height=20;
+
+      var buf = await wb.xlsx.writeBuffer();
+      var blob = new Blob([buf], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      if (typeof saveAs === 'function') saveAs(blob, fname);
+      else { var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; a.click(); }
+      showToast('✓ Excel downloaded · ' + data.rows.length + ' rows · ' + data.total + ' qty', 'success');
+      return;
+    } catch (e) {
+      console.warn('ExcelJS failed, falling back to plain:', e);
+    }
+  }
+
+  // ── Fallback: plain SheetJS (no colors) ──
+  if (typeof XLSX === 'undefined') { alert('Excel library not loaded. Refresh (Ctrl+Shift+R).'); return; }
+  var aoa = [
+    ['PRAJAPATI ADVERTISING — FIELD WORK REPORT'],
+    [rangeLabel + ' · ' + data.rows.length + ' entries'],
+    [],
+    ['TOTAL QTY', data.total, 'FIELD STAFF', data.members, 'CAMPAIGNS', data.works],
+    ['CITIES', data.cities, 'AUTO HOOD', data.hood, 'AUTO BACK', data.back],
+    [],
+    ['DATE','NAME','WORK','LOCATION','Q.','CASEBOOK','MEDIA']
+  ];
+  data.rows.forEach(function(r){ aoa.push([r.date, r.name, r.work, r.location, r.qty, '', r.media]); });
+  aoa.push(['', '', '', 'TOTAL', data.total, '', '']);
+  var ws2 = XLSX.utils.aoa_to_sheet(aoa);
+  ws2['!cols'] = [{wch:13},{wch:20},{wch:30},{wch:20},{wch:8},{wch:12},{wch:13}];
+  var wb2 = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb2, ws2, 'Field Report');
+  XLSX.writeFile(wb2, fname);
+  showToast('✓ Excel downloaded · ' + data.rows.length + ' rows', 'success');
 }
 
 async function downloadExcelReport() {
