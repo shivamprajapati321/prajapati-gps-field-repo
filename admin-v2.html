@@ -2812,6 +2812,12 @@ label {
         </div>
       </div>
 
+      <!-- Member search (NEW) -->
+      <div style="position:relative;margin-bottom:14px;max-width:360px">
+        <i class="ti ti-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-3);font-size:16px"></i>
+        <input id="assignSearchBox" type="text" placeholder="Search member by name, phone, city..." oninput="filterAssignments()" style="width:100%;padding:10px 12px 10px 38px;border:1px solid var(--border);border-radius:9px;font-family:inherit;font-size:14px;outline:none;background:var(--card)">
+      </div>
+
       <div id="assignmentsList">
         <div class="spinner"></div>
       </div>
@@ -6255,7 +6261,7 @@ function loadAssignments() {
         ? '<span class="status-pill assigned">✓ Assigned</span>' 
         : '<span class="status-pill unassigned">— Not assigned</span>';
       
-      html += '<div class="assign-row">' +
+      html += '<div class="assign-row" data-search="' + escapeHtml(((m.name||'') + ' ' + (m.phone||'') + ' ' + (m.city||'')).toLowerCase()) + '">' +
                 '<div class="assign-avatar">' + escapeHtml(initials) + '</div>' +
                 '<div class="member-info">' +
                   '<div class="name">' + escapeHtml(m.name) + '</div>' +
@@ -6267,10 +6273,38 @@ function loadAssignments() {
     });
     $('assignmentsList').innerHTML = html;
     $('assignSubtitle').textContent = members.length + ' field members · ' + assignments.length + ' assigned on ' + date;
+    if (typeof filterAssignments === 'function') filterAssignments(); // keep search active after reload
   }).catch(function(err) {
     console.error(err);
     $('assignmentsList').innerHTML = '<div class="empty-state"><i class="ti ti-alert-circle"></i>Load failed</div>';
   });
+}
+
+// Filter assignment rows by member name / phone / city (NEW)
+function filterAssignments() {
+  var box = $('assignSearchBox');
+  var q = box ? box.value.toLowerCase().trim() : '';
+  var rows = document.querySelectorAll('#assignmentsList .assign-row');
+  var shown = 0;
+  rows.forEach(function(r){
+    var hay = r.getAttribute('data-search') || '';
+    var match = !q || hay.indexOf(q) !== -1;
+    r.style.display = match ? '' : 'none';
+    if (match) shown++;
+  });
+  // empty-state if nothing matches
+  var existing = document.getElementById('assignNoMatch');
+  if (q && shown === 0) {
+    if (!existing) {
+      var d = document.createElement('div');
+      d.id = 'assignNoMatch';
+      d.className = 'empty-state';
+      d.innerHTML = '<i class="ti ti-user-off"></i>Koi member nahi mila "' + escapeHtml(q) + '"';
+      $('assignmentsList').appendChild(d);
+    }
+  } else if (existing) {
+    existing.remove();
+  }
 }
 
 function saveAssignment(phone, campaignKey, date) {
@@ -8357,6 +8391,7 @@ var CITY_MAP = {
   'tathawade':'Pimpri-Chinchwad','ताथवडे':'Pimpri-Chinchwad','तथावडे':'Pimpri-Chinchwad','wakad':'Pimpri-Chinchwad',
   'punawale':'Pimpri-Chinchwad','thergaon':'Pimpri-Chinchwad','bhujbal chowk':'Pimpri-Chinchwad','pimpri':'Pimpri-Chinchwad',
   'chinchwad':'Pimpri-Chinchwad','pimpri-chinchwad':'Pimpri-Chinchwad','aundh':'Pune','aundh-ravet':'Pune',
+  'ravet':'Pimpri-Chinchwad','रावेत':'Pimpri-Chinchwad','रावेट':'Pimpri-Chinchwad','moshi':'Pimpri-Chinchwad','akurdi':'Pimpri-Chinchwad','nigdi':'Pimpri-Chinchwad',
   // Kalyan-Dombivli cluster
   'dombivali':'Kalyan-Dombivli','dombivli':'Kalyan-Dombivli','kalyan':'Kalyan-Dombivli','kalyan-dombivli':'Kalyan-Dombivli',
   // common Marathi → English
@@ -8404,7 +8439,16 @@ async function buildStaffReportData() {
     r.media = Object.keys(r.mediaCounts).sort(function(a,b){ return r.mediaCounts[b]-r.mediaCounts[a]; })[0] || 'AUTO HOOD';
     return r;
   });
-  arr.sort(function(a,b){ return a._sortDate - b._sortDate || a.name.localeCompare(b.name); });
+  // Sort: AUTO HOOD first, AUTO BACK last; within that group by NAME (same person together), then date.
+  // This makes one person's rows continuous and pushes back-panel to the bottom.
+  arr.sort(function(a,b){
+    var am = a.media === 'AUTO BACK' ? 1 : 0;
+    var bm = b.media === 'AUTO BACK' ? 1 : 0;
+    if (am !== bm) return am - bm;                 // hood block, then back block
+    var n = a.name.localeCompare(b.name);          // same person's rows together
+    if (n !== 0) return n;
+    return a._sortDate - b._sortDate;              // chronological within a person
+  });
 
   // summary
   var total = 0, members = {}, works = {}, cities = {}, hood = 0, back = 0;
