@@ -537,12 +537,23 @@ function renderVehicleCard(v, idx) {
   
   var verifiedInfoHtml = '';
   if (v.verified) {
+    var vSerial = '';
+    for (var ssi=0; ssi<v.photos.length; ssi++){ if(v.photos[ssi].serial_number){ vSerial=v.photos[ssi].serial_number; break; } }
+    var campSerial = state.serialCampaigns && state.serialCampaigns[v.campaign];
+    var serialField = campSerial
+      ? '<div><div class="field-label">🔢 Serial No.</div><div class="field-value" style="color:' + (vSerial ? '#8B7430' : '#dc2626') + ';font-weight:700">' + (vSerial ? escHtml(vSerial) : 'Not set') + '</div></div>'
+      : '';
+    var serialBtn = campSerial
+      ? '<button onclick="editSerial(' + idx + ')" style="background:#FBF6E4;color:#8B7430;border:1px solid #B89B4E;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;" title="Serial number add/edit karo">🔢 ' + (vSerial ? 'Edit' : 'Add') + ' Serial</button>'
+      : '';
     verifiedInfoHtml = '<div class="vc-verified-info">' +
       '<div><div class="field-label">Plate</div><div class="field-value plate">' + escHtml(v.verifiedPlate || '') + '</div></div>' +
       '<div><div class="field-label">Photos</div><div class="field-value">' + v.photos.length + ' verified</div></div>' +
       '<div><div class="field-label">Location</div><div class="field-value">' + escHtml(v.city || '—') + '</div></div>' +
+      serialField +
       // ─── Photo Edit (added 21-May-2026): Use modal-based edit + add Merge ───
-      '<button onclick="(window.VerifierPhotoEdit ? VerifierPhotoEdit.openEdit(' + idx + ') : reEditPlate(' + idx + '))" style="margin-left:auto;background:#fff;border:1px solid var(--border);padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;" title="Plate edit karke audit log mein save karo">✏️ Edit Plate</button>' +
+      serialBtn +
+      '<button onclick="(window.VerifierPhotoEdit ? VerifierPhotoEdit.openEdit(' + idx + ') : reEditPlate(' + idx + '))" style="' + (campSerial ? '' : 'margin-left:auto;') + 'background:#fff;border:1px solid var(--border);padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;" title="Plate edit karke audit log mein save karo">✏️ Edit Plate</button>' +
       '<button onclick="(function(){var p=prompt(\'Kis plate ke saath merge karna hai? (target plate type karo)\', \'\');if(p){VerifierPhotoEdit.openMerge(' + idx + ', p.trim().toUpperCase());}})()" style="background:#ddd6fe;color:#5b21b6;border:1px solid #a78bfa;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;" title="Duplicate vehicle ke saath merge karo">🔗 Merge</button>' +
       '<button onclick="openDeleteModal(' + idx + ')" style="background:var(--err);color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;">🗑️ Delete</button>' +
     '</div>';
@@ -681,6 +692,28 @@ function getFilteredVehicles() {
     if (a.verified && !b.verified) return 1;
     return new Date(b.captured) - new Date(a.captured);
   });
+}
+
+async function editSerial(idx) {
+  var v = getFilteredVehicles()[idx];
+  if (!v) return toast('Vehicle not found', 'error');
+  var current = '';
+  for (var i=0; i<v.photos.length; i++){ if(v.photos[i].serial_number){ current=v.photos[i].serial_number; break; } }
+  var serial = prompt('🔢 Serial Number (vehicle pe likha hua, e.g. "59"):', current);
+  if (serial === null) return; // cancelled
+  serial = serial.trim();
+  try {
+    var photoIds = v.photos.map(function(p){ return p.id; });
+    var url = '/rest/v1/trial_photos?id=in.(' + photoIds.join(',') + ')';
+    var result = await api(url, { method: 'PATCH', headers: { 'Prefer': 'return=representation' }, body: { serial_number: serial || null } });
+    if (Array.isArray(result) && result.length === 0) throw new Error('0 rows updated - check RLS');
+    v.photos.forEach(function(p){ p.serial_number = serial || null; });
+    toast('🔢 Serial saved: ' + (serial || '(cleared)'), 'success');
+    renderVehicles();
+  } catch(err) {
+    console.error('[SERIAL] Error:', err);
+    toast('Serial save failed: ' + err.message, 'error');
+  }
 }
 
 async function verifyVehicle(idx) {
