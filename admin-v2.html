@@ -1246,6 +1246,10 @@ label {
 .cdm-bill-row { display:flex; justify-content:space-between; padding:5px 0; font-size:13px; }
 .cdm-bill-row strong { font-family:'JetBrains Mono',monospace; }
 .cdm-owner-only { font-size:10px; font-weight:700; color:#8A6D1E; background:#FBF3E0; padding:2px 7px; border-radius:5px; }
+.cdm-autocomplete { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 14px; border-radius:11px; margin-bottom:14px; font-size:12.5px; }
+.cdm-autocomplete.done { background:linear-gradient(135deg,#E1F5EE,#D4F0E6); border:1px solid #A8DEC9; color:#0F6E56; }
+.cdm-autocomplete.done span { color:#0B5740; font-weight:600; }
+.cdm-autocomplete.pending { background:#FFF8E8; border:1px solid #F0E0B0; color:#8A6D1E; font-weight:600; gap:6px; justify-content:flex-start; }
 .cdm-fix-btn { background:none; border:1px solid var(--border); border-radius:6px; padding:3px 7px; cursor:pointer; font-size:13px; margin:0 1px; transition:all .15s; }
 .cdm-fix-btn.edit:hover { background:#FBF3E0; border-color:#B89B4E; }
 .cdm-fix-btn.del:hover { background:#FDECEC; border-color:#E24B4A; }
@@ -4109,7 +4113,10 @@ label {
         <h2 id="cdmTitle">Campaign Details</h2>
         <div id="cdmSub" style="font-size:12px;color:var(--text-2);margin-top:2px;"></div>
       </div>
-      <button class="modal-close" onclick="closeCampaignDetail()">×</button>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button id="cdmEditBtn" class="btn btn-sm btn-primary" style="display:none;"><i class="ti ti-pencil-plus"></i> Edit / Add Design</button>
+        <button class="modal-close" onclick="closeCampaignDetail()">×</button>
+      </div>
     </div>
     <div class="modal-body" id="cdmBody" style="max-height:74vh;overflow-y:auto;">
       <div class="spinner" style="margin:30px auto;"></div>
@@ -4263,6 +4270,36 @@ function dashInScope(key) {
   if (!dashIsScoped()) return true;
   if (!window.__myCampKeys) return true;
   return window.__myCampKeys.has(String(key));
+}
+
+// ═══ JOB TYPE STAGES (which stages a campaign actually needs) ═══
+// Campaigns have job_type_id → trial_campaign_job_types row with requires_* flags.
+// We cache id → {printing, stitching, field, delivery} so progress/completion
+// only consider stages that this job type actually requires.
+window.__jobTypes = null;
+function loadJobTypes() {
+  if (window.__jobTypes) return Promise.resolve(window.__jobTypes);
+  return api('/rest/v1/trial_campaign_job_types?select=*').then(function(rows){
+    var map = {};
+    (rows||[]).forEach(function(jt){
+      map[String(jt.id)] = {
+        name: jt.name || jt.code || 'Job',
+        printing: jt.requires_printing === true,
+        stitching: jt.requires_stitching === true,
+        field: jt.requires_field_execution === true,
+        delivery: jt.requires_delivery === true
+      };
+    });
+    window.__jobTypes = map;
+    return map;
+  }).catch(function(){ window.__jobTypes = {}; return {}; });
+}
+// Get required stages for a campaign. If job type unknown, assume all stages
+// (safe default — nothing hidden) so older campaigns keep working.
+function campStages(camp) {
+  var jt = window.__jobTypes && camp && camp.job_type_id ? window.__jobTypes[String(camp.job_type_id)] : null;
+  if (!jt) return { printing:true, stitching:true, field:true, delivery:true, name:null, known:false };
+  return { printing:jt.printing, stitching:jt.stitching, field:jt.field, delivery:jt.delivery, name:jt.name, known:true };
 }
 
 // Human label for current range.
@@ -4860,8 +4897,8 @@ function openInTab(file, title) {
 
 // ─── DASHBOARD ───
 function loadDashboard() {
-  // Resolve scope (sales → own campaigns) BEFORE loading scoped widgets.
-  dashLoadMyCampaigns().then(function(){
+  // Resolve scope + job types BEFORE loading scoped widgets.
+  Promise.all([ dashLoadMyCampaigns(), loadJobTypes() ]).then(function(){
     runDashboardWidgets();
   }).catch(function(){
     window.__myCampKeys = null;
@@ -5146,6 +5183,7 @@ function loadCampDetail(cid) {
     api('/rest/v1/execution_daily_log?select=*&limit=20000').catch(function(){ return []; })
   ]).then(function(res){
     var photos = res[0]||[], stitch = res[1]||[], print = res[2]||[], exec = res[3]||[];
+    var stages = campStages(c);   // which stages this job type needs
 
     // Field: unique vehicles done vs target
     var fv = new Set();
@@ -5157,35 +5195,66 @@ function loadCampDetail(cid) {
     // Printing & Stitching qty for this campaign
     var prQty = sumForCampaign(print, c, ['qty_done','quantity','qty','count']);
     var stQty = sumForCampaign(stitch, c, ['quantity','qty']);
-
-    // Outstanding: Client (campaign total) + Team (work value on this campaign)
-    var clientOut = Number(c.total_amount || c.outstanding || c.client_outstanding || c.balance_amount || 0) || 0;
-    var teamWork = sumForCampaign(exec, c, ['total_amount','amount']);
+    var totalPlanned = Number(c.total_quantity || 0) || 0;
 
     var html = '';
-    // Field — big with progress bar
-    html += '<div class="md-cd-field">' +
-              '<div class="md-cd-field-top">' +
-                '<span class="md-cd-field-lbl"><i class="ti ti-camera"></i> Field branding</span>' +
-                '<span class="md-cd-field-val">' + fieldDone.toLocaleString('en-IN') + (target>0 ? ' <small>/ ' + target.toLocaleString('en-IN') + ' veh</small>' : ' <small>veh</small>') + '</span>' +
-              '</div>' +
-              (fieldPct !== null
-                ? '<div class="md-cd-bar big"><div class="md-cd-fill" style="width:' + fieldPct + '%;background:' + fieldColor + ';"></div></div>' +
-                  '<div class="md-cd-field-pct" style="color:' + fieldColor + ';">' + fieldPct + '% complete</div>'
-                : '<div class="md-cd-field-pct" style="color:var(--text-3);">No target set</div>') +
-            '</div>';
 
-    // Print / Stitch / Remaining row (3 small) — Remaining = target minus done
-    var remaining = target > 0 ? Math.max(0, target - fieldDone) : null;
-    html += '<div class="md-cd-grid3">';
-    html += cdItem('ti-printer', 'Printing', prQty.toLocaleString('en-IN') + ' done');
-    html += cdItem('ti-needle', 'Stitching', stQty.toLocaleString('en-IN') + ' pcs');
-    html += '<div class="md-cd-item">' +
+    // ── Primary progress block ──
+    // If this job type does field work → field is the headline (vehicles/target).
+    // Otherwise (Production type: Print→Stitch→Deliver) → printing is the headline.
+    if (stages.field) {
+      html += '<div class="md-cd-field">' +
+                '<div class="md-cd-field-top">' +
+                  '<span class="md-cd-field-lbl"><i class="ti ti-camera"></i> Field branding</span>' +
+                  '<span class="md-cd-field-val">' + fieldDone.toLocaleString('en-IN') + (target>0 ? ' <small>/ ' + target.toLocaleString('en-IN') + ' veh</small>' : ' <small>veh</small>') + '</span>' +
+                '</div>' +
+                (fieldPct !== null
+                  ? '<div class="md-cd-bar big"><div class="md-cd-fill" style="width:' + fieldPct + '%;background:' + fieldColor + ';"></div></div>' +
+                    '<div class="md-cd-field-pct" style="color:' + fieldColor + ';">' + fieldPct + '% complete</div>'
+                  : '<div class="md-cd-field-pct" style="color:var(--text-3);">No target set</div>') +
+              '</div>';
+    } else if (stages.printing) {
+      // Production-type headline = printing progress vs planned quantity
+      var prPct = totalPlanned > 0 ? Math.min(100, Math.round((prQty/totalPlanned)*100)) : null;
+      var prColor = prPct === null ? '#26d0ce' : (prPct>=80?'#1D9E75':prPct>=50?'#B89B4E':'#E24B4A');
+      html += '<div class="md-cd-field">' +
+                '<div class="md-cd-field-top">' +
+                  '<span class="md-cd-field-lbl"><i class="ti ti-printer"></i> Printing' + (stages.name ? ' · ' + escapeHtml(stages.name) : '') + '</span>' +
+                  '<span class="md-cd-field-val">' + prQty.toLocaleString('en-IN') + (totalPlanned>0 ? ' <small>/ ' + totalPlanned.toLocaleString('en-IN') + ' units</small>' : ' <small>units</small>') + '</span>' +
+                '</div>' +
+                (prPct !== null
+                  ? '<div class="md-cd-bar big"><div class="md-cd-fill" style="width:' + prPct + '%;background:' + prColor + ';"></div></div>' +
+                    '<div class="md-cd-field-pct" style="color:' + prColor + ';">' + prPct + '% printed</div>'
+                  : '<div class="md-cd-field-pct" style="color:var(--text-3);">no qty planned</div>') +
+              '</div>';
+    }
+
+    // ── Stage chips (only required stages) ──
+    var chips = [];
+    if (stages.printing) chips.push(cdItem('ti-printer', 'Printing', prQty.toLocaleString('en-IN') + ' done'));
+    if (stages.stitching) chips.push(cdItem('ti-needle', 'Stitching', stQty.toLocaleString('en-IN') + ' pcs'));
+    if (stages.field) {
+      var remaining = target > 0 ? Math.max(0, target - fieldDone) : null;
+      chips.push('<div class="md-cd-item">' +
             '<div class="md-cd-lbl"><i class="ti ti-target-arrow" style="color:#E0792E;"></i> Remaining</div>' +
             '<div class="md-cd-val" style="color:' + (remaining===0?'#0F6E56':'#A32D2D') + ';">' + (remaining !== null ? remaining.toLocaleString('en-IN') : '—') + '</div>' +
             '<div class="md-cd-out-sub">' + (remaining !== null ? (remaining===0 ? 'target poora! ✓' : 'veh baaki lagana') : 'no target') + '</div>' +
-            '</div>';
-    html += '</div>';
+            '</div>');
+    }
+    if (stages.delivery) chips.push(cdItem('ti-truck-delivery', 'Delivery', 'flow includes'));
+    // Pad to a clean grid: if only 1-2 chips, still render the grid
+    if (chips.length) {
+      html += '<div class="md-cd-grid3">' + chips.join('') + '</div>';
+    }
+    // Flow line (so user sees exactly what this campaign needs)
+    var flow = [];
+    if (stages.printing) flow.push('Print');
+    if (stages.stitching) flow.push('Stitch');
+    if (stages.field) flow.push('Field');
+    if (stages.delivery) flow.push('Deliver');
+    if (flow.length && stages.known) {
+      html += '<div style="font-size:10.5px;color:var(--text-3);margin-top:8px;font-weight:600;"><i class="ti ti-route" style="font-size:12px;"></i> Flow: ' + flow.join(' → ') + '</div>';
+    }
 
     panel.innerHTML = html;
     panel.setAttribute('data-loaded', '1');
@@ -5229,6 +5298,25 @@ function openCampaignDetail(campId, campKey) {
   $('cdmTitle').textContent = name;
   $('cdmSub').textContent = 'Key: ' + (campKey || '—');
 
+  // Edit/Add-Design access: owner/admin OR the sales who owns this campaign.
+  var meRole = String((state.admin && state.admin.role) || '').toLowerCase();
+  var meId = String((state.admin && state.admin.id) || '');
+  var canEdit = ['owner','admin'].indexOf(meRole) !== -1 ||
+                String(camp.created_by||'') === meId ||
+                String(camp.sales_member_id||'') === meId;
+  var editBtn = $('cdmEditBtn');
+  if (editBtn) {
+    if (canEdit) {
+      editBtn.style.display = '';
+      editBtn.onclick = function(){
+        closeCampaignDetail();
+        if (typeof openInTab === 'function') openInTab('launch-campaign.html?edit=' + campId, 'Edit Campaign');
+        else window.location.href = 'launch-campaign.html?edit=' + campId;
+      };
+    } else {
+      editBtn.style.display = 'none';
+    }
+  }
   var isOwner = String((state.admin && state.admin.role) || '').toLowerCase() === 'owner';
   var isAdmin = ['owner','admin'].indexOf(String((state.admin && state.admin.role) || '').toLowerCase()) !== -1;
   var target = Number(camp.target_vehicles || camp.target_count || 0) || 0;
@@ -5256,15 +5344,53 @@ function openCampaignDetail(campId, campKey) {
 
     var prQty = sumForCampaign(print, camp, ['qty_done','quantity','qty','count']);
     var stQty = sumForCampaign(stitch, camp, ['quantity','qty']);
+    var stages = campStages(camp);
+    var totalPlanned = Number(camp.total_quantity || 0) || 0;
 
     var html = '';
-    // Progress cards
+    // Progress cards — only required stages
     html += '<div class="cdm-prog-grid">';
-    html += '<div class="cdm-prog"><div class="ic">📸</div><div class="lbl">Field</div><div class="val">' + fieldDone + (target>0?' <span style="font-size:13px;color:var(--text-3);">/' + target + '</span>':'') + '</div>' +
-            (fieldPct!==null?'<div class="cdm-field-bar"><div class="cdm-field-fill" style="width:' + fieldPct + '%;background:' + fColor + ';"></div></div><div class="sub" style="color:' + fColor + ';font-weight:700;">' + fieldPct + '%</div>':'<div class="sub">no target</div>') + '</div>';
-    html += '<div class="cdm-prog"><div class="ic">🖨️</div><div class="lbl">Printing</div><div class="val">' + prQty.toLocaleString('en-IN') + '</div><div class="sub">units done</div></div>';
-    html += '<div class="cdm-prog"><div class="ic">🪡</div><div class="lbl">Stitching</div><div class="val">' + stQty.toLocaleString('en-IN') + '</div><div class="sub">pcs done</div></div>';
+    if (stages.field) {
+      html += '<div class="cdm-prog"><div class="ic">📸</div><div class="lbl">Field</div><div class="val">' + fieldDone + (target>0?' <span style="font-size:13px;color:var(--text-3);">/' + target + '</span>':'') + '</div>' +
+              (fieldPct!==null?'<div class="cdm-field-bar"><div class="cdm-field-fill" style="width:' + fieldPct + '%;background:' + fColor + ';"></div></div><div class="sub" style="color:' + fColor + ';font-weight:700;">' + fieldPct + '%</div>':'<div class="sub">no target</div>') + '</div>';
+    }
+    if (stages.printing) {
+      var prPct = totalPlanned>0 ? Math.min(100, Math.round((prQty/totalPlanned)*100)) : null;
+      html += '<div class="cdm-prog"><div class="ic">🖨️</div><div class="lbl">Printing</div><div class="val">' + prQty.toLocaleString('en-IN') + (totalPlanned>0?' <span style="font-size:13px;color:var(--text-3);">/' + totalPlanned + '</span>':'') + '</div>' + (prPct!==null?'<div class="sub" style="font-weight:700;">' + prPct + '% done</div>':'<div class="sub">units done</div>') + '</div>';
+    }
+    if (stages.stitching) {
+      html += '<div class="cdm-prog"><div class="ic">🪡</div><div class="lbl">Stitching</div><div class="val">' + stQty.toLocaleString('en-IN') + '</div><div class="sub">pcs done</div></div>';
+    }
+    if (stages.delivery) {
+      html += '<div class="cdm-prog"><div class="ic">🚚</div><div class="lbl">Delivery</div><div class="val" style="font-size:14px;">required</div><div class="sub">in flow</div></div>';
+    }
     html += '</div>';
+
+    // Flow + completion status
+    var flow = [];
+    if (stages.printing) flow.push('Print');
+    if (stages.stitching) flow.push('Stitch');
+    if (stages.field) flow.push('Field');
+    if (stages.delivery) flow.push('Deliver');
+    if (flow.length && stages.known) {
+      html += '<div style="font-size:11px;color:var(--text-2);margin:-6px 0 14px;font-weight:600;"><i class="ti ti-route"></i> Flow: ' + flow.join(' → ') + '</div>';
+    }
+
+    // ── AUTO-COMPLETE suggestion: are all required stages done? ──
+    if (!camp.completed && isAdmin) {
+      var doneStages = [], pendingStages = [];
+      if (stages.printing) (totalPlanned>0 && prQty>=totalPlanned ? doneStages : pendingStages).push('Printing');
+      if (stages.stitching) (stQty>0 ? doneStages : pendingStages).push('Stitching');
+      if (stages.field) ((target>0 && fieldDone>=target) ? doneStages : pendingStages).push('Field');
+      // delivery has no measurable here → treated as manual confirm
+      var measurable = pendingStages.length + doneStages.length;
+      if (measurable > 0 && pendingStages.length === 0 && !stages.delivery) {
+        html += '<div class="cdm-autocomplete done"><div><strong>✓ Saare required stages complete!</strong><br><span>' + doneStages.join(' · ') + ' — campaign complete mark karein?</span></div>' +
+                '<button class="btn btn-sm" style="background:var(--success,#1D9E75);color:#fff;border:none;" onclick="markCampaignComplete(\'' + campId + '\', true); closeCampaignDetail();">Mark Complete</button></div>';
+      } else if (measurable > 0) {
+        html += '<div class="cdm-autocomplete pending"><i class="ti ti-clock"></i> Pending: ' + (pendingStages.join(', ') || (stages.delivery?'Delivery confirm':'—')) + '</div>';
+      }
+    }
 
     // Location-wise quantity (from launcher designs)
     html += '<div class="cdm-sec-title"><i class="ti ti-map-pin"></i> Location-wise plan (from launch)</div>';
@@ -6033,6 +6159,7 @@ function renderCampaigns() {
               '</div>' +
               '<div class="campaign-card-actions">' +
                 '<button class="btn btn-sm btn-primary" onclick="openCampaignDetail(\'' + c.id + '\', \'' + escapeHtml(c.key) + '\')"><i class="ti ti-layout-dashboard"></i> View Details</button>' +
+                '<button class="btn btn-sm btn-ghost" onclick="openInTab(\'launch-campaign.html?edit=' + c.id + '\', \'Edit Campaign\')"><i class="ti ti-pencil-plus"></i> Edit / Add Design</button>' +
                 '<button class="btn btn-sm btn-ghost" onclick="openCampaignForm(\'' + c.id + '\')"><i class="ti ti-edit"></i> Edit</button>' +
                 '<button class="btn btn-sm btn-ghost" onclick="toggleCampaignActive(\'' + c.id + '\', ' + (!c.active) + ')"><i class="ti ti-' + (c.active ? 'pause' : 'play') + '"></i> ' + (c.active ? 'Deactivate' : 'Activate') + '</button>' +
                 '<button class="btn btn-sm btn-ghost" style="color:' + (c.serial_tracking ? 'var(--gold-deep,#8B7430)' : 'var(--text-2)') + '" onclick="toggleSerialTracking(\'' + c.id + '\', ' + (!c.serial_tracking) + ')"><i class="ti ti-hash"></i> Serial: ' + (c.serial_tracking ? 'ON' : 'OFF') + '</button>' +
