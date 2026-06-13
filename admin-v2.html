@@ -1203,6 +1203,28 @@ label {
 .md-perf-tab:hover { background:#E8EAF2; }
 .md-perf-tab.active { background:#0B1957; color:#fff; }
 .md-perf-tab.active i { color:#26d0ce; }
+
+/* Quick actions bar */
+.md-quick-bar { display:flex; gap:9px; flex-wrap:wrap; margin-bottom:18px; }
+.md-quick { display:inline-flex; align-items:center; gap:7px; font-family:inherit; font-size:13px; font-weight:600; color:#0B1957; background:var(--card); border:1px solid var(--border); border-radius:11px; padding:10px 16px; cursor:pointer; transition:all .16s; box-shadow:0 1px 3px rgba(11,25,87,0.04); }
+.md-quick:hover { transform:translateY(-2px); border-color:#26d0ce; box-shadow:0 6px 16px rgba(11,25,87,0.10); }
+.md-quick i { font-size:16px; color:#26d0ce; }
+
+/* Outstanding summary */
+.md-out-total { font-size:28px; font-weight:800; font-family:'JetBrains Mono',monospace; color:#A32D2D; letter-spacing:-1px; }
+.md-out-sub { font-size:11.5px; color:var(--text-3); margin-bottom:12px; }
+.md-out-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-top:1px solid var(--border); font-size:12.5px; }
+.md-out-row .nm { color:var(--text-1); font-weight:600; }
+.md-out-row .amt { font-family:'JetBrains Mono',monospace; font-weight:700; color:#A32D2D; }
+
+/* Recent campaigns */
+.md-rc-row { display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid var(--border); cursor:pointer; transition:background .12s; }
+.md-rc-row:hover { background:#F7F8FC; }
+.md-rc-row:first-child { border-top:none; }
+.md-rc-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.md-rc-name { flex:1; font-size:12.5px; font-weight:600; color:#0B1957; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.md-rc-meta { font-size:11px; color:var(--text-3); }
+.md-rc-badge { font-size:10px; font-weight:700; padding:2px 8px; border-radius:5px; }
 .md-action {
   border-radius: 14px; padding: 16px 18px; cursor: pointer; transition: transform .18s ease, box-shadow .18s ease; border-left: 4px solid;
   box-shadow: 0 1px 3px rgba(11,25,87,0.04);
@@ -2776,6 +2798,16 @@ label {
         <button class="btn btn-primary btn-sm" onclick="applyCustomRange()">Apply</button>
       </div>
 
+      <!-- Quick actions -->
+      <div class="md-quick-bar">
+        <button class="md-quick" onclick="switchTab('photos')"><i class="ti ti-photo"></i> Photos</button>
+        <button class="md-quick" onclick="openExternal('launch-campaign.html')"><i class="ti ti-rocket"></i> New Campaign</button>
+        <button class="md-quick" onclick="openExternal('verifier.html')"><i class="ti ti-shield-check"></i> Verify</button>
+        <button class="md-quick" onclick="openInTab('ppt.html','PPT Generator')"><i class="ti ti-presentation"></i> Make PPT</button>
+        <button class="md-quick" onclick="openExternal('outstanding.html')"><i class="ti ti-cash"></i> Outstanding</button>
+        <button class="md-quick" onclick="switchTab('members')"><i class="ti ti-users"></i> Team</button>
+      </div>
+
       <!-- Action center -->
       <div class="md-sec-label">Action center — needs you today</div>
       <div class="md-action-grid" id="actionCenter">
@@ -2862,6 +2894,18 @@ label {
         <div class="md-card">
           <div class="md-card-title" id="cityCovTitle"><i class="ti ti-map-pin"></i> City coverage today</div>
           <div id="cityCoverage"><div class="spinner" style="margin:18px auto;"></div></div>
+        </div>
+      </div>
+
+      <!-- Outstanding summary + Recent campaigns -->
+      <div class="md-row" style="grid-template-columns:1fr 1.3fr;">
+        <div class="md-card">
+          <div class="md-card-title"><i class="ti ti-cash" style="color:#E0792E;"></i> Outstanding summary</div>
+          <div id="outstandingSummary"><div class="spinner" style="margin:18px auto;"></div></div>
+        </div>
+        <div class="md-card">
+          <div class="md-card-title"><i class="ti ti-flag" style="color:#26d0ce;"></i> Recent campaigns</div>
+          <div id="recentCampaigns"><div class="spinner" style="margin:18px auto;"></div></div>
         </div>
       </div>
 
@@ -4709,6 +4753,8 @@ function loadDashboard() {
   loadCampaignHealth();
   load7DayChart();
   loadCityCoverage();
+  loadOutstandingSummary();
+  loadRecentCampaigns();
   // Reflect current range in section labels
   var lbl = dashRangeLabel();
   var ccTitle = document.getElementById('cityCovTitle');
@@ -4861,6 +4907,80 @@ function loadCityCoverage() {
     });
 }
 
+// ── Outstanding summary: member work earned minus paid ──
+function loadOutstandingSummary() {
+  var box = $('outstandingSummary');
+  if (!box) return;
+  Promise.all([
+    api('/rest/v1/execution_daily_log?select=member_name,member_phone,total_amount&limit=20000').catch(function(){ return []; }),
+    api('/rest/v1/execution_payments?select=member_phone,amount&limit=20000').catch(function(){ return []; })
+  ]).then(function(res){
+    var logs = res[0] || [], pays = res[1] || [];
+    var earned = {}, paid = {}, names = {};
+    logs.forEach(function(l){
+      var k = l.member_phone || l.member_name || 'x';
+      earned[k] = (earned[k]||0) + (Number(l.total_amount)||0);
+      if (l.member_name) names[k] = l.member_name;
+    });
+    pays.forEach(function(p){
+      var k = p.member_phone || 'x';
+      paid[k] = (paid[k]||0) + (Number(p.amount)||0);
+    });
+    var rows = Object.keys(earned).map(function(k){
+      return { name: names[k] || k, due: (earned[k]||0) - (paid[k]||0) };
+    }).filter(function(r){ return r.due > 0; }).sort(function(a,b){ return b.due - a.due; });
+    var total = rows.reduce(function(s,r){ return s + r.due; }, 0);
+
+    var html = '<div class="md-out-total">₹' + total.toLocaleString('en-IN') + '</div>' +
+               '<div class="md-out-sub">Total pending to team · ' + rows.length + ' member' + (rows.length!==1?'s':'') + '</div>';
+    if (rows.length === 0) {
+      html += '<div class="empty-state" style="padding:10px;"><i class="ti ti-circle-check"></i>Sab clear, koi pending nahi</div>';
+    } else {
+      rows.slice(0,5).forEach(function(r){
+        html += '<div class="md-out-row"><span class="nm">' + escapeHtml(r.name) + '</span><span class="amt">₹' + Math.round(r.due).toLocaleString('en-IN') + '</span></div>';
+      });
+      html += '<div style="text-align:center;margin-top:10px;"><button class="btn btn-ghost btn-sm" onclick="openExternal(\'outstanding.html\')">View all →</button></div>';
+    }
+    box.innerHTML = html;
+  }).catch(function(){
+    box.innerHTML = '<div class="empty-state" style="padding:14px;"><i class="ti ti-alert-circle"></i>Data load nahi hua</div>';
+  });
+}
+
+// ── Recent campaigns quick-view ──
+function loadRecentCampaigns() {
+  var box = $('recentCampaigns');
+  if (!box) return;
+  api('/rest/v1/trial_campaigns?select=*&limit=200')
+    .then(function(camps){
+      camps = camps || [];
+      camps.sort(function(a,b){ return String(b.created_at||b.start_date||'').localeCompare(String(a.created_at||a.start_date||'')); });
+      camps = camps.slice(0, 6);
+      if (camps.length === 0) { box.innerHTML = '<div class="empty-state" style="padding:14px;"><i class="ti ti-flag"></i>Koi campaign nahi</div>'; return; }
+      var html = '';
+      camps.forEach(function(c){
+        var name = c.name || c.campaign_name || c.key || 'Campaign';
+        var done = c.completed === true;
+        var active = c.active === true && !done;
+        var dotColor = done ? '#6B6F7E' : (active ? '#1D9E75' : '#B89B4E');
+        var badge = done ? '<span class="md-rc-badge" style="background:#F1F1F4;color:#6B6F7E;">Done</span>'
+                  : (active ? '<span class="md-rc-badge" style="background:#E1F5EE;color:#0F6E56;">Active</span>'
+                  : '<span class="md-rc-badge" style="background:#FBF3E0;color:#8A6D1E;">Draft</span>');
+        var created = (c.created_at || c.start_date || '').slice(0,10);
+        var sales = c.sales_member_name ? ' · ' + escapeHtml(c.sales_member_name) : '';
+        html += '<div class="md-rc-row" onclick="switchTab(\'campaigns\')">' +
+                  '<span class="md-rc-dot" style="background:' + dotColor + ';"></span>' +
+                  '<span class="md-rc-name">' + escapeHtml(name) + '</span>' +
+                  '<span class="md-rc-meta">' + (created || '') + sales + '</span>' +
+                  badge +
+                '</div>';
+      });
+      box.innerHTML = html;
+    }).catch(function(){
+      box.innerHTML = '<div class="empty-state" style="padding:14px;"><i class="ti ti-alert-circle"></i>Load failed</div>';
+    });
+}
+
 function loadDashStats() {
   var R = window.dashDate;
   var b = dashUtcBounds(R.from, R.to);
@@ -4983,13 +5103,16 @@ function loadGpsSplit() {
   // Calculate Real vs Manual GPS split for last 30 days
   var ist30 = new Date(new Date().getTime() + 5.5*60*60*1000 - 30*24*60*60*1000).toISOString();
   
-  api('/rest/v1/trial_photos?select=id,latitude,longitude,manual_gps,campaign_key&captured_at=gte.' + ist30 + '&deleted_at=is.null&limit=5000')
+  // select=* so a missing manual_gps column never fails the whole query
+  api('/rest/v1/trial_photos?select=id,latitude,longitude,manual_gps&captured_at=gte.' + ist30 + '&deleted_at=is.null&limit=8000')
     .then(function(photos) {
       photos = photos || [];
       var manualCount = 0;
       var realCount = 0;
       photos.forEach(function(p) {
-        if (p.manual_gps === true) manualCount++;
+        // manual if flag true, OR if lat/lng missing (no real fix)
+        var isManual = (p.manual_gps === true) || (p.latitude == null && p.longitude == null);
+        if (isManual) manualCount++;
         else realCount++;
       });
       var total = manualCount + realCount;
@@ -5010,13 +5133,14 @@ function loadGpsSplit() {
         bar.innerHTML = '<div style="flex:1; background:var(--bg); display:flex; align-items:center; justify-content:center; color:var(--text-3); font-size:12px;">No data in last 30 days</div>';
       }
       
-      $('gpsLegend').innerHTML = 
+      if ($('gpsLegend')) $('gpsLegend').innerHTML = 
         '<div><span class="dot" style="background:var(--success);"></span> <strong>' + realCount.toLocaleString('en-IN') + '</strong> Real GPS photos</div>' +
         '<div><span class="dot" style="background:var(--warn);"></span> <strong>' + manualCount.toLocaleString('en-IN') + '</strong> Manual GPS photos</div>';
     })
     .catch(function(err) {
       console.warn('GPS split load failed:', err);
-      $('gpsSplitBar').innerHTML = '<div style="flex:1; background:var(--bg); display:flex; align-items:center; justify-content:center; color:var(--text-3); font-size:12px;">Load failed</div>';
+      if ($('gpsSplitBar')) $('gpsSplitBar').innerHTML = '<div style="flex:1; background:var(--bg); display:flex; align-items:center; justify-content:center; color:var(--text-3); font-size:12px;">No GPS data available</div>';
+      if ($('statGpsQuality')) $('statGpsQuality').textContent = '—';
     });
 }
 
