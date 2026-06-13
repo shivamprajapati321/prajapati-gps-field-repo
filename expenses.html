@@ -735,6 +735,8 @@ async function saveExpense(){
     }
     toast('✓ Expense saved');
     resetEntry();
+    // Refresh list + summary so new entry shows immediately (no manual reload)
+    if (typeof loadExpenses === 'function') { try { loadExpenses(); } catch(e){} }
   }catch(e){
     st.innerHTML='<span style="color:var(--danger);font-size:12.5px">'+esc(e.message||'Save failed')+'</span>';
   }finally{ btn.disabled=false; btn.textContent='💾 Save Expense'; }
