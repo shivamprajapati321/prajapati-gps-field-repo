@@ -1225,6 +1225,19 @@ label {
 .md-rc-name { flex:1; font-size:12.5px; font-weight:600; color:#0B1957; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .md-rc-meta { font-size:11px; color:var(--text-3); }
 .md-rc-badge { font-size:10px; font-weight:700; padding:2px 8px; border-radius:5px; }
+.md-rc-chev { transition:transform .2s; }
+
+/* Campaign detail (expandable) */
+.md-rc-detail { padding:10px 4px 14px; border-bottom:1px solid var(--border); }
+.md-cd-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:10px; }
+.md-cd-item { background:#F7F8FC; border-radius:9px; padding:9px 11px; }
+.md-cd-lbl { font-size:10.5px; font-weight:600; color:var(--text-2); text-transform:uppercase; letter-spacing:.3px; display:flex; align-items:center; gap:5px; }
+.md-cd-lbl i { font-size:13px; color:#26d0ce; }
+.md-cd-val { font-size:15px; font-weight:800; font-family:'JetBrains Mono',monospace; color:#0B1957; margin-top:3px; }
+.md-cd-bar { background:#E6E4DC; border-radius:4px; height:5px; overflow:hidden; margin-top:6px; }
+.md-cd-fill { height:5px; border-radius:4px; transition:width .5s; }
+.md-cd-out { display:flex; justify-content:space-between; align-items:center; font-size:12.5px; font-weight:600; color:var(--text-1); background:#FDF4EC; border-radius:9px; padding:9px 12px; }
+.md-cd-out strong { font-family:'JetBrains Mono',monospace; color:#A32D2D; }
 .md-action {
   border-radius: 14px; padding: 16px 18px; cursor: pointer; transition: transform .18s ease, box-shadow .18s ease; border-left: 4px solid;
   box-shadow: 0 1px 3px rgba(11,25,87,0.04);
@@ -4948,6 +4961,7 @@ function loadOutstandingSummary() {
 }
 
 // ── Recent campaigns quick-view ──
+window.__recentCamps = {};
 function loadRecentCampaigns() {
   var box = $('recentCampaigns');
   if (!box) return;
@@ -4957,8 +4971,11 @@ function loadRecentCampaigns() {
       camps.sort(function(a,b){ return String(b.created_at||b.start_date||'').localeCompare(String(a.created_at||a.start_date||'')); });
       camps = camps.slice(0, 6);
       if (camps.length === 0) { box.innerHTML = '<div class="empty-state" style="padding:14px;"><i class="ti ti-flag"></i>Koi campaign nahi</div>'; return; }
+      window.__recentCamps = {};
       var html = '';
-      camps.forEach(function(c){
+      camps.forEach(function(c, i){
+        var cid = 'rc' + i;
+        window.__recentCamps[cid] = c;
         var name = c.name || c.campaign_name || c.key || 'Campaign';
         var done = c.completed === true;
         var active = c.active === true && !done;
@@ -4968,18 +4985,120 @@ function loadRecentCampaigns() {
                   : '<span class="md-rc-badge" style="background:#FBF3E0;color:#8A6D1E;">Draft</span>');
         var created = (c.created_at || c.start_date || '').slice(0,10);
         var sales = c.sales_member_name ? ' · ' + escapeHtml(c.sales_member_name) : '';
-        html += '<div class="md-rc-row" onclick="switchTab(\'campaigns\')">' +
+        html += '<div class="md-rc-row" onclick="toggleCampDetail(\'' + cid + '\')">' +
                   '<span class="md-rc-dot" style="background:' + dotColor + ';"></span>' +
                   '<span class="md-rc-name">' + escapeHtml(name) + '</span>' +
                   '<span class="md-rc-meta">' + (created || '') + sales + '</span>' +
                   badge +
-                '</div>';
+                  '<i class="ti ti-chevron-down md-rc-chev" id="chev-' + cid + '" style="font-size:14px;color:var(--text-3);margin-left:4px;"></i>' +
+                '</div>' +
+                '<div class="md-rc-detail" id="detail-' + cid + '" style="display:none;"><div class="spinner" style="margin:14px auto;"></div></div>';
       });
       box.innerHTML = html;
     }).catch(function(){
       box.innerHTML = '<div class="empty-state" style="padding:14px;"><i class="ti ti-alert-circle"></i>Load failed</div>';
     });
 }
+
+// Expand/collapse a campaign's progress detail (lazy-loaded once).
+function toggleCampDetail(cid) {
+  var panel = $('detail-' + cid);
+  var chev = $('chev-' + cid);
+  if (!panel) return;
+  var open = panel.style.display !== 'none';
+  if (open) {
+    panel.style.display = 'none';
+    if (chev) chev.style.transform = '';
+    return;
+  }
+  panel.style.display = 'block';
+  if (chev) chev.style.transform = 'rotate(180deg)';
+  if (panel.getAttribute('data-loaded') === '1') return; // already loaded
+  loadCampDetail(cid);
+}
+
+// Fetch Field/Print/Stitch/Exec progress + outstanding for one campaign.
+function loadCampDetail(cid) {
+  var c = window.__recentCamps[cid];
+  var panel = $('detail-' + cid);
+  if (!c || !panel) return;
+  var key = c.key || c.campaign_key || c.id;
+  var cidVal = c.id;
+  var target = Number(c.target_vehicles || 0) || 0;
+
+  Promise.all([
+    // Field: unique vehicles for this campaign
+    api('/rest/v1/trial_photos?select=vehicle_number,mode&campaign_key=eq.' + encodeURIComponent(key) + '&deleted_at=is.null&limit=20000').catch(function(){ return []; }),
+    // Stitching: qty for this campaign (try campaign_id then campaign_key)
+    api('/rest/v1/prajapati_stitching_log?select=*&limit=20000').catch(function(){ return []; }),
+    // Printing: trial_work_logs for this campaign
+    api('/rest/v1/trial_work_logs?select=*&limit=20000').catch(function(){ return []; }),
+    // Execution: amount for this campaign
+    api('/rest/v1/execution_daily_log?select=*&limit=20000').catch(function(){ return []; })
+  ]).then(function(res){
+    var photos = res[0]||[], stitch = res[1]||[], print = res[2]||[], exec = res[3]||[];
+
+    // Field: unique vehicles
+    var fv = new Set();
+    photos.forEach(function(p){ if (p.vehicle_number) fv.add(p.vehicle_number.toUpperCase()); });
+    var fieldDone = fv.size;
+    var fieldPct = target > 0 ? Math.min(100, Math.round((fieldDone/target)*100)) : null;
+
+    // Stitching qty (match this campaign by id or key)
+    var stQty = sumForCampaign(stitch, c, ['quantity','qty']);
+    // Printing qty
+    var prQty = sumForCampaign(print, c, ['quantity','qty','count']);
+    // Execution amount
+    var exAmt = sumForCampaign(exec, c, ['total_amount','amount']);
+
+    // Outstanding: client (campaign-level) + execution-team unpaid not easily per-campaign,
+    // so show client outstanding from campaign fields if present.
+    var clientOut = Number(c.outstanding || c.client_outstanding || c.balance_amount || 0) || 0;
+
+    var html = '<div class="md-cd-grid">';
+    // Field with progress bar
+    html += '<div class="md-cd-item">' +
+            '<div class="md-cd-lbl"><i class="ti ti-camera"></i> Field</div>' +
+            '<div class="md-cd-val">' + fieldDone + (target>0 ? ' / ' + target : '') + ' veh</div>' +
+            (fieldPct !== null ? '<div class="md-cd-bar"><div class="md-cd-fill" style="width:' + fieldPct + '%;background:' + (fieldPct>=80?'#1D9E75':fieldPct>=50?'#B89B4E':'#E24B4A') + ';"></div></div>' : '') +
+            '</div>';
+    html += cdItem('ti-printer', 'Printing', prQty + ' done');
+    html += cdItem('ti-needle', 'Stitching', stQty + ' pcs');
+    html += cdItem('ti-tools', 'Execution', '₹' + Math.round(exAmt).toLocaleString('en-IN'));
+    html += '</div>';
+    // Outstanding row
+    html += '<div class="md-cd-out">' +
+            '<span><i class="ti ti-cash" style="color:#E0792E;"></i> Client outstanding</span>' +
+            '<strong>' + (clientOut > 0 ? '₹' + clientOut.toLocaleString('en-IN') : '—') + '</strong>' +
+            '</div>';
+    panel.innerHTML = html;
+    panel.setAttribute('data-loaded', '1');
+  }).catch(function(){
+    panel.innerHTML = '<div class="empty-state" style="padding:10px;font-size:12px;"><i class="ti ti-alert-circle"></i>Detail load nahi hua</div>';
+  });
+}
+
+// Sum a numeric field across rows that belong to campaign c (match id or key or name).
+function sumForCampaign(rows, c, fields) {
+  var id = String(c.id||''), key = String(c.key||c.campaign_key||''), nm = String(c.campaign_name||c.name||'').toLowerCase();
+  var total = 0;
+  (rows||[]).forEach(function(r){
+    var rid = String(r.campaign_id||''), rkey = String(r.campaign_key||''), rnm = String(r.campaign_name||'').toLowerCase();
+    var match = (id && rid===id) || (key && (rkey===key || rid===key)) || (nm && rnm && rnm===nm);
+    if (!match) return;
+    for (var i=0;i<fields.length;i++){
+      if (r[fields[i]] != null) { total += Number(r[fields[i]])||0; break; }
+    }
+  });
+  return total;
+}
+
+function cdItem(icon, label, val) {
+  return '<div class="md-cd-item">' +
+         '<div class="md-cd-lbl"><i class="ti ' + icon + '"></i> ' + label + '</div>' +
+         '<div class="md-cd-val">' + val + '</div></div>';
+}
+
 
 function loadDashStats() {
   var R = window.dashDate;
