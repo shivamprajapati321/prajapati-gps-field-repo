@@ -665,6 +665,11 @@ async function verifyOTP() {
   
   // Save session
   WatiClient.saveSession(result);
+  // Clear any leftover field-app session so HR/admin login doesn't collide
+  // with an old field session (field app uses separate pf_* keys).
+  try {
+    ['pf_member_phone','pf_last_activity','pf_session_captures','pf_session_captures_date','pf_member_name'].forEach(function(k){ localStorage.removeItem(k); });
+  } catch(e) {}
   
   // Stop timers
   if (otpTimerInt) clearInterval(otpTimerInt);
@@ -745,19 +750,15 @@ async function verifyPassword() {
   showAlert('success', '✓ Logged in! Redirecting...');
   
   setTimeout(() => {
-    let home = '/owner.html';
+    let home = '/app.html#v2';
     try {
       if (typeof AccessGuard !== 'undefined' && AccessGuard.getDefaultHome) {
-        home = AccessGuard.getDefaultHome() || '/owner.html';
+        home = AccessGuard.getDefaultHome() || '/app.html#v2';
       } else {
         const role = String(currentMember.role || '').toLowerCase();
-        if (role === 'owner' || role === 'admin') home = '/owner.html';
-        else if (role === 'sales' || role === 'hr_sales' || role === 'sales_admin') home = '/crm.html';
-        else if (role === 'field' || role === 'field_worker') home = '/field.html';
-        else if (role === 'printing') home = '/printing.html';
-        else if (role === 'stitching') home = '/stitching.html';
-        else if (role === 'delivery') home = '/delivery.html';
-        else if (role === 'verifier') home = '/verifier.html';
+        // Only actual field workers go to field app; everyone else (incl. helper) → V2 Admin
+        if (role === 'field' || role === 'field_worker') home = '/field.html';
+        else home = '/app.html#v2';
       }
     } catch(e) { console.error('Routing error:', e); }
     window.location.replace(home);
