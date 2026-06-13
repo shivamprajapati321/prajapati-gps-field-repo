@@ -449,14 +449,26 @@ let otpTimerInt = null;
 let resendTimerInt = null;
 let otpExpiresAt = null;
 
+// ═══ RETURN-URL SUPPORT ═══
+// If a page sent the user here with ?return=/hr.html, send them back there
+// after login (instead of the role default). Only same-origin relative paths
+// are honoured (security: no external redirects).
+function getReturnUrl() {
+  try {
+    var rt = new URLSearchParams(window.location.search).get('return');
+    if (rt && rt.charAt(0) === '/' && rt.indexOf('//') !== 0) return rt;
+  } catch (e) {}
+  return null;
+}
+
 // ═══ AUTO-REDIRECT IF ALREADY LOGGED IN ═══
 (function(){
   try{
     const session = WatiClient.getSession();
     if (session && session.member) {
-      let home = '/app.html#v2';
+      let home = getReturnUrl() || '/app.html#v2';
       try {
-        if (typeof AccessGuard !== 'undefined' && AccessGuard.getDefaultHome) {
+        if (!getReturnUrl() && typeof AccessGuard !== 'undefined' && AccessGuard.getDefaultHome) {
           home = AccessGuard.getDefaultHome() || '/app.html#v2';
         }
       } catch(e) { console.warn('AccessGuard error:', e); }
@@ -680,6 +692,8 @@ async function verifyOTP() {
   // Route by role - BULLETPROOF version
   setTimeout(() => {
     let home = '/app.html#v2';  // Safe default — V2 Admin UI for everyone
+    var ret = getReturnUrl();
+    if (ret) { window.location.replace(ret); return; }  // came from a page → go back
     try {
       // Try AccessGuard first
       if (typeof AccessGuard !== 'undefined' && AccessGuard.getDefaultHome) {
@@ -751,6 +765,8 @@ async function verifyPassword() {
   
   setTimeout(() => {
     let home = '/app.html#v2';
+    var ret = getReturnUrl();
+    if (ret) { window.location.replace(ret); return; }  // came from a page → go back
     try {
       if (typeof AccessGuard !== 'undefined' && AccessGuard.getDefaultHome) {
         home = AccessGuard.getDefaultHome() || '/app.html#v2';
