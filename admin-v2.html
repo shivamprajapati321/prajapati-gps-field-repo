@@ -4105,6 +4105,20 @@ function bootFromSession() {
   }
   state.admin = m;
   enterDashboard();
+  // Live-check hr_role (session may be stale: owner granted HR after last login).
+  // Refreshes HR Admin sidebar link without forcing re-login.
+  (function(){
+    var role = String(m.role || '').toLowerCase();
+    if (role === 'owner' || role === 'admin' || m.hr_role === true) return; // already shown
+    if (!m.phone) return;
+    api('/rest/v1/trial_team_members?select=hr_role&phone=eq.' + encodeURIComponent(m.phone) + '&limit=1')
+      .then(function(rows){
+        if (rows && rows[0] && rows[0].hr_role === true) {
+          state.admin.hr_role = true;
+          if (typeof applyModuleFilter === 'function') applyModuleFilter();
+        }
+      }).catch(function(){});
+  })();
   return true;
 }
 
@@ -4168,14 +4182,14 @@ var ROLE_MODULE_DEFAULTS = {
   'admin': '*',
   'hr_manager':  ['hr-admin','hr-app','dashboard','reports'],
   'hr':          ['hr-admin','hr-app'],
-  'sales':       ['crm','leads','quotations','pi','invoices','clients','sales-hub','report-campaign','archive-viewer','ppt','design-tasks','expenses','hr-app'],
+  'sales':       ['crm','leads','quotations','pi','invoices','clients','sales-hub','report-campaign','archive-viewer','ppt','design-tasks','hr-app'],
   'hr_sales':    ['crm','leads','quotations','pi','invoices','clients','sales-hub','report-campaign','archive-viewer','ppt'],
   'sales_admin': ['crm','leads','quotations','pi','invoices','clients','sales-hub','report-campaign','report-team','archive-viewer','ppt'],
-  'data_manager':['dashboard','photos','verifier','ppt','master-cache','reports','report-daily','report-team','report-campaign','campaign-status','reassignment-history','archive-viewer','manual-upload','expenses'],
+  'data_manager':['dashboard','photos','verifier','ppt','master-cache','reports','report-daily','report-team','report-campaign','campaign-status','reassignment-history','archive-viewer','manual-upload'],
   'data_entry':  ['dashboard','photos','verifier','reports'],
   'deo':         ['dashboard','photos','verifier','reports'],
-  'operations_manager': ['dashboard','campaigns','assignments','photos','launch-campaign','campaign-status','assign-operators','designer-uploads','execution-plan','execution-entry','ops-dashboard','printing','stitching','delivery','field','verifier','ppt','reports','report-daily','report-team','report-campaign','reassignment-history','archive-viewer','design-tasks','expenses'],
-  'ops_manager':        ['dashboard','campaigns','assignments','photos','launch-campaign','campaign-status','assign-operators','designer-uploads','execution-plan','execution-entry','ops-dashboard','printing','stitching','delivery','field','verifier','ppt','reports','report-daily','report-team','report-campaign','reassignment-history','archive-viewer','design-tasks','expenses'],
+  'operations_manager': ['dashboard','campaigns','assignments','photos','launch-campaign','campaign-status','assign-operators','designer-uploads','execution-plan','execution-entry','ops-dashboard','printing','stitching','delivery','field','verifier','ppt','reports','report-daily','report-team','report-campaign','reassignment-history','archive-viewer','design-tasks'],
+  'ops_manager':        ['dashboard','campaigns','assignments','photos','launch-campaign','campaign-status','assign-operators','designer-uploads','execution-plan','execution-entry','ops-dashboard','printing','stitching','delivery','field','verifier','ppt','reports','report-daily','report-team','report-campaign','reassignment-history','archive-viewer','design-tasks'],
   'operations':  ['dashboard','campaign-status','execution-entry','launch-campaign'],
   'designer':    ['dashboard','designer-uploads','design-tasks','campaign-status','launch-campaign'],
   'design':      ['dashboard','designer-uploads','design-tasks','campaign-status','launch-campaign'],
@@ -4187,7 +4201,7 @@ var ROLE_MODULE_DEFAULTS = {
   'delivery':    ['delivery','campaign-status'],
   'driver':      ['delivery','campaign-status'],
   'verifier':    ['verifier','photos','reports'],
-  'accountant':  ['payments','outstanding','report-campaign','expenses'],
+  'accountant':  ['payments','outstanding','report-campaign'],
   'field':       ['field'],
   'field_worker':['field']
 };
@@ -4230,7 +4244,16 @@ function applyModuleFilter() {
     var ownerOnly = el.getAttribute('data-owner-only') === 'true';
 
     var allowed;
-    if (ownerOnly) {
+    if (mod === 'hr-admin' || mod === 'hr-app') {
+      // HR links controlled by hr_role (not module_access).
+      // owner/admin auto; others need hr_role=true. hr-app(attendance) for all non-field.
+      var isField = ['field','field_worker'].indexOf(role) !== -1;
+      if (mod === 'hr-app') {
+        allowed = !isField;  // attendance for everyone except field workers
+      } else { // hr-admin
+        allowed = isAdmin || member.hr_role === true;
+      }
+    } else if (ownerOnly) {
       allowed = isAdmin; // owner-only items: only owner/admin
     } else {
       allowed = userCanSeeModule(member, mod);
@@ -4281,7 +4304,7 @@ var TA_SECTIONS = [
   { name:'Production', mods:[
     ['printing','Printing'],['stitching','Stitching'],['delivery','Delivery'],['field','Field App'] ]},
   { name:'Finance', mods:[
-    ['expenses','Expenses'],['payments','Payments'],['outstanding','Outstanding'] ]},
+    ['Expenses'],['payments','Payments'],['outstanding','Outstanding'] ]},
   { name:'HR & Attendance', mods:[
     ['hr-admin','HR Admin Panel'],['hr-app','My Attendance'] ]},
   { name:'Reports Suite', mods:[
