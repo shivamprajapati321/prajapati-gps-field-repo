@@ -513,7 +513,16 @@ async function loadOperatorData() {
   state.completedJobs = completedJobs || [];
   
   // Reports: date-wise breakdown last 14 days
-  const dateWise = await api(`/rest/v1/trial_work_logs?operator_id=eq.${state.user.id}&stage=eq.printing&log_date=gte.${nDaysAgo(14)}&select=id,log_date,qty_done,design_id,campaign_id,campaign_name,design_name,notes&order=log_date.desc`);
+  const dateWise = await api(`/rest/v1/trial_work_logs?operator_id=eq.${state.user.id}&stage=eq.printing&log_date=gte.${nDaysAgo(14)}&select=*&order=log_date.desc`);
+  // Enrich entries with campaign/design names (work_logs only stores IDs).
+  const campNameById = {};
+  (state.jobs || []).forEach(j => {
+    if (j.campaign_id) campNameById[String(j.campaign_id)] = j.campaign_name || j.design_name;
+    if (j.design_id) campNameById[String(j.design_id)] = campNameById[String(j.design_id)] || j.design_name || j.campaign_name;
+  });
+  (dateWise || []).forEach(e => {
+    if (!e.campaign_name) e.campaign_name = campNameById[String(e.campaign_id)] || campNameById[String(e.design_id)] || null;
+  });
   state.reports.dateWise = aggregateByDate(dateWise || []);
   state.reports.rawEntries = dateWise || [];   // individual entries for edit/delete
 }
