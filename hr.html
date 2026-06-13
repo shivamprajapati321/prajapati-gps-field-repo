@@ -963,8 +963,19 @@ AccessGuard.protect({
 const user = AccessGuard.getUser();
 const isField = ['field', 'field_worker'].includes(String(user.role || '').toLowerCase());
 if (isField) {
-  alert('Field workers please use the Field App');
-  window.location.href = '/field.html';
+  // Do NOT redirect to field.html — field app has its own separate login/session.
+  // Redirecting here mixes sessions (HR login lands on someone else's field session).
+  // Instead, show a clean block screen and let them sign out cleanly.
+  document.body.innerHTML =
+    '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0B1957;color:#fff;font-family:system-ui,sans-serif;padding:24px;text-align:center">' +
+      '<div style="max-width:340px">' +
+        '<div style="font-size:46px;margin-bottom:14px">🚧</div>' +
+        '<div style="font-size:20px;font-weight:700;font-family:Georgia,serif;margin-bottom:10px">HR access nahi hai</div>' +
+        '<div style="font-size:14px;opacity:.85;line-height:1.6;margin-bottom:22px">Aapka role <b>Field</b> hai. HR app abhi field staff ke liye available nahi hai. Field work ke liye <b>Field App</b> alag se use karein.</div>' +
+        '<button onclick="AccessGuard.logout()" style="background:#D4B45F;color:#0B1957;border:none;padding:12px 26px;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer">Sign out</button>' +
+      '</div>' +
+    '</div>';
+  throw new Error('HR blocked for field role'); // stop the rest of the script
 }
 
 // CONFIG
