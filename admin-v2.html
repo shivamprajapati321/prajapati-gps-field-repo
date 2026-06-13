@@ -2851,7 +2851,7 @@ label {
         <button class="md-quick" onclick="openExternal('launch-campaign.html')"><i class="ti ti-rocket"></i> New Campaign</button>
         <button class="md-quick" onclick="openExternal('verifier.html')"><i class="ti ti-shield-check"></i> Verify</button>
         <button class="md-quick" onclick="openInTab('ppt.html','PPT Generator')"><i class="ti ti-presentation"></i> Make PPT</button>
-        <button class="md-quick" onclick="openExternal('outstanding.html')"><i class="ti ti-cash"></i> Outstanding</button>
+        <button class="md-quick" id="quickOutstandingBtn" onclick="openExternal('outstanding.html')"><i class="ti ti-cash"></i> Outstanding</button>
         <button class="md-quick" onclick="switchTab('members')"><i class="ti ti-users"></i> Team</button>
       </div>
 
@@ -4484,6 +4484,17 @@ function enterDashboard() {
   if (userCanSeeModule(state.admin, 'dashboard')) {
     loadDashboard();
   }
+
+  // If arrived from Sales-Hub "My Campaigns", jump straight to Campaigns tab.
+  try {
+    var wantTab = sessionStorage.getItem('v2_open_tab');
+    if (wantTab) {
+      sessionStorage.removeItem('v2_open_tab');
+      if (userCanSeeModule(state.admin, wantTab)) {
+        setTimeout(function(){ try { switchTab(wantTab); } catch(e){} }, 200);
+      }
+    }
+  } catch(e) {}
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -4498,7 +4509,7 @@ function enterDashboard() {
 var ROLE_MODULE_DEFAULTS = {
   'owner': '*',
   'admin': '*',
-  'sales':       ['crm','leads','quotations','pi','invoices','clients','sales-hub','report-campaign','archive-viewer','ppt','design-tasks'],
+  'sales':       ['dashboard','campaigns','crm','leads','quotations','pi','invoices','clients','sales-hub','report-campaign','archive-viewer','ppt','design-tasks'],
   'hr_sales':    ['crm','leads','quotations','pi','invoices','clients','sales-hub','report-campaign','archive-viewer','ppt'],
   'sales_admin': ['crm','leads','quotations','pi','invoices','clients','sales-hub','report-campaign','report-team','archive-viewer','ppt'],
   'data_manager':['dashboard','photos','verifier','ppt','master-cache','reports','report-daily','report-team','report-campaign','campaign-status','reassignment-history','archive-viewer','manual-upload'],
@@ -4517,7 +4528,7 @@ var ROLE_MODULE_DEFAULTS = {
   'delivery':    ['delivery'],
   'driver':      ['delivery','campaign-status'],
   'verifier':    ['verifier','photos','reports'],
-  'accountant':  ['payments','outstanding','report-campaign'],
+  'accountant':  ['dashboard','payments','outstanding','report-campaign'],
   'field':       ['field'],
   'field_worker':['field']
 };
@@ -4907,6 +4918,13 @@ function loadDashboard() {
 }
 
 function runDashboardWidgets() {
+  // Hide finance-only quick action for non-finance roles
+  var qoBtn = $('quickOutstandingBtn');
+  if (qoBtn) {
+    var qRole = String((state.admin && state.admin.role) || '').toLowerCase();
+    var qMoney = ['owner','admin','accountant','operations_manager','ops_manager'].indexOf(qRole) !== -1;
+    qoBtn.style.display = qMoney ? '' : 'none';
+  }
   loadDashStats();
   loadGpsSplit();
   loadTopPerformers();
@@ -5075,6 +5093,16 @@ function loadCityCoverage() {
 function loadOutstandingSummary() {
   var box = $('outstandingSummary');
   if (!box) return;
+  // PRIVACY: Outstanding/payments are sensitive — only finance-capable roles see them.
+  // Others (data_entry, designer, verifier, etc.) get a blank/hidden card.
+  var oRole = String((state.admin && state.admin.role) || '').toLowerCase();
+  var canSeeMoney = ['owner','admin','accountant','operations_manager','ops_manager'].indexOf(oRole) !== -1;
+  if (!canSeeMoney) {
+    var card = box.closest ? box.closest('.md-card') : null;
+    if (card) card.style.display = 'none';
+    else box.innerHTML = '';
+    return;
+  }
   Promise.all([
     api('/rest/v1/execution_daily_log?select=member_name,member_phone,total_amount&limit=20000').catch(function(){ return []; }),
     api('/rest/v1/execution_payments?select=member_phone,amount&limit=20000').catch(function(){ return []; })
@@ -5297,6 +5325,25 @@ function openCampaignDetail(campId, campKey) {
   var name = camp.name || camp.campaign_name || campKey;
   $('cdmTitle').textContent = name;
   $('cdmSub').textContent = 'Key: ' + (campKey || '—');
+
+  // ── SCOPE GUARD: scoped users (sales) can only open their OWN campaigns. ──
+  // Defends against opening someone else's detail via a stale/guessed id.
+  var gRole = String((state.admin && state.admin.role) || '').toLowerCase();
+  var gId = String((state.admin && state.admin.id) || '');
+  var gPhone = String((state.admin && state.admin.phone) || '');
+  var gName = String((state.admin && state.admin.name) || '').toLowerCase();
+  var fullView = ['owner','admin','operations_manager','ops_manager','data_manager'].indexOf(gRole) !== -1;
+  if (!fullView) {
+    var mine = (gId && String(camp.created_by||'')===gId) ||
+               (gId && String(camp.sales_member_id||'')===gId) ||
+               (gPhone && String(camp.sales_member_phone||'')===gPhone) ||
+               (gName && String(camp.sales_member_name||'').toLowerCase()===gName);
+    if (!mine) {
+      $('cdmBody').innerHTML = '<div class="empty-state" style="padding:30px;text-align:center;"><i class="ti ti-lock" style="font-size:28px;color:#A32D2D;"></i><div style="margin-top:8px;font-weight:700;color:#A32D2D;">Yeh campaign aapki nahi hai</div><div style="font-size:12px;color:var(--text-2);margin-top:4px;">Sirf apni campaigns ki detail dekh sakte hain.</div></div>';
+      var eb = $('cdmEditBtn'); if (eb) eb.style.display = 'none';
+      return;
+    }
+  }
 
   // Edit/Add-Design access: owner/admin OR the sales who owns this campaign.
   var meRole = String((state.admin && state.admin.role) || '').toLowerCase();
@@ -6059,11 +6106,24 @@ function loadCampaigns() {
   
   api('/rest/v1/trial_campaigns?select=*&order=active.desc,name.asc')
     .then(function(campaigns) {
-      state.campaigns = (campaigns || []).map(function(c){ c.key = c.key || c.campaign_key || c.id; return c; });
+      campaigns = campaigns || [];
+      // Scope: sales (non-full-view) sees ONLY their own campaigns.
+      if (dashIsScoped()) {
+        var myId = String((state.admin && state.admin.id) || '');
+        var myPhone = String((state.admin && state.admin.phone) || '');
+        var myName = String((state.admin && state.admin.name) || '').toLowerCase();
+        campaigns = campaigns.filter(function(c){
+          return (myId && String(c.created_by||'')===myId) ||
+                 (myId && String(c.sales_member_id||'')===myId) ||
+                 (myPhone && String(c.sales_member_phone||'')===myPhone) ||
+                 (myName && String(c.sales_member_name||'').toLowerCase()===myName);
+        });
+      }
+      state.campaigns = campaigns.map(function(c){ c.key = c.key || c.campaign_key || c.id; return c; });
       if (!state._campaignFilter) state._campaignFilter = 'active';
       $('navCampaignsCount').textContent = state.campaigns.length;
       var active = state.campaigns.filter(function(c){ return c.active; }).length;
-      $('campaignsSubtitle').textContent = state.campaigns.length + ' total · ' + active + ' active';
+      $('campaignsSubtitle').textContent = state.campaigns.length + ' total · ' + active + ' active' + (dashIsScoped() ? ' · your campaigns' : '');
       renderCampaigns();
     })
     .catch(function(err) {
