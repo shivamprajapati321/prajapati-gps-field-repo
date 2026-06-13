@@ -5234,6 +5234,7 @@ function renderCampaigns() {
               '<div class="campaign-card-actions">' +
                 '<button class="btn btn-sm btn-ghost" onclick="openCampaignForm(\'' + c.id + '\')"><i class="ti ti-edit"></i> Edit</button>' +
                 '<button class="btn btn-sm btn-ghost" onclick="toggleCampaignActive(\'' + c.id + '\', ' + (!c.active) + ')"><i class="ti ti-' + (c.active ? 'pause' : 'play') + '"></i> ' + (c.active ? 'Deactivate' : 'Activate') + '</button>' +
+                '<button class="btn btn-sm btn-ghost" style="color:' + (c.serial_tracking ? 'var(--gold-deep,#8B7430)' : 'var(--text-2)') + '" onclick="toggleSerialTracking(\'' + c.id + '\', ' + (!c.serial_tracking) + ')"><i class="ti ti-hash"></i> Serial: ' + (c.serial_tracking ? 'ON' : 'OFF') + '</button>' +
                 (isCompleted
                   ? '<button class="btn btn-sm btn-ghost" onclick="markCampaignComplete(\'' + c.id + '\', false)"><i class="ti ti-rotate"></i> Reopen</button>'
                   : '<button class="btn btn-sm btn-ghost" style="color:var(--success)" onclick="markCampaignComplete(\'' + c.id + '\', true)"><i class="ti ti-checks"></i> Mark Complete</button>') +
@@ -5294,6 +5295,23 @@ function markCampaignComplete(id, complete) {
     loadCampaigns();
   }).catch(function(e) {
     showToast('Update failed — CAMPAIGN_STATUS_COLUMN.sql chalao', 'error');
+  });
+}
+
+function toggleSerialTracking(id, turnOn) {
+  if (!confirm(turnOn
+    ? 'Serial Number tracking ON karna hai? Is campaign ke vehicles verify karte waqt serial number daalna hoga.'
+    : 'Serial Number tracking OFF karna hai? Verifier mein serial input nahi dikhega.')) return;
+  fetch(CONFIG.supabaseUrl + '/rest/v1/trial_campaigns?id=eq.' + id, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', apikey: CONFIG.supabaseKey, Authorization: 'Bearer ' + CONFIG.supabaseKey },
+    body: JSON.stringify({ serial_tracking: turnOn })
+  }).then(function(r) {
+    if (!r.ok) return r.text().then(function(t){ throw new Error(t); });
+    showToast(turnOn ? '🔢 Serial tracking ON' : 'Serial tracking OFF', 'success');
+    loadCampaigns();
+  }).catch(function(e) {
+    showToast('Update failed — SERIAL_NUMBER_FEATURE.sql chalao', 'error');
   });
 }
 
