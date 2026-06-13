@@ -1246,6 +1246,9 @@ label {
 .cdm-bill-row { display:flex; justify-content:space-between; padding:5px 0; font-size:13px; }
 .cdm-bill-row strong { font-family:'JetBrains Mono',monospace; }
 .cdm-owner-only { font-size:10px; font-weight:700; color:#8A6D1E; background:#FBF3E0; padding:2px 7px; border-radius:5px; }
+.cdm-fix-btn { background:none; border:1px solid var(--border); border-radius:6px; padding:3px 7px; cursor:pointer; font-size:13px; margin:0 1px; transition:all .15s; }
+.cdm-fix-btn.edit:hover { background:#FBF3E0; border-color:#B89B4E; }
+.cdm-fix-btn.del:hover { background:#FDECEC; border-color:#E24B4A; }
 
 /* Campaign detail (expandable) */
 .md-rc-detail { padding:10px 4px 14px; border-bottom:1px solid var(--border); }
@@ -4219,6 +4222,49 @@ function dashUtcBounds(from, to) {
   };
 }
 
+// ═══ DASHBOARD SCOPE (sales sees only own campaigns) ═══
+// Roles that see EVERYTHING. Everyone else gets scoped to their own campaigns.
+function dashIsFullView() {
+  var role = String((state.admin && state.admin.role) || '').toLowerCase();
+  return ['owner','admin','operations_manager','ops_manager','data_manager'].indexOf(role) !== -1;
+}
+function dashIsScoped() { return !dashIsFullView(); }
+
+window.__myCampKeys = null;
+window.__myCampSet = null;
+// Resolve campaigns owned by the current user (created_by === my id).
+function dashLoadMyCampaigns() {
+  return api('/rest/v1/trial_campaigns?select=*&limit=2000')
+    .then(function(camps){
+      camps = camps || [];
+      var myId = String((state.admin && state.admin.id) || '');
+      var myPhone = String((state.admin && state.admin.phone) || '');
+      var myName = String((state.admin && state.admin.name) || '').toLowerCase();
+      var mine = camps.filter(function(c){
+        if (!dashIsScoped()) return true;
+        var cb = String(c.created_by || '');
+        var sm = String(c.sales_member_phone || '');
+        var smn = String(c.sales_member_name || '').toLowerCase();
+        return (myId && cb === myId) || (myPhone && sm === myPhone) || (myName && smn && smn === myName);
+      });
+      var keys = new Set();
+      mine.forEach(function(c){
+        if (c.key) keys.add(String(c.key));
+        if (c.campaign_key) keys.add(String(c.campaign_key));
+        if (c.id) keys.add(String(c.id));
+      });
+      window.__myCampKeys = keys;
+      window.__myCampSet = mine;
+      return { keys: keys, camps: mine };
+    });
+}
+// Does a campaign key/id belong to the current user's scope?
+function dashInScope(key) {
+  if (!dashIsScoped()) return true;
+  if (!window.__myCampKeys) return true;
+  return window.__myCampKeys.has(String(key));
+}
+
 // Human label for current range.
 function dashRangeLabel() {
   var p = window.dashDate.preset;
@@ -4814,6 +4860,16 @@ function openInTab(file, title) {
 
 // ─── DASHBOARD ───
 function loadDashboard() {
+  // Resolve scope (sales → own campaigns) BEFORE loading scoped widgets.
+  dashLoadMyCampaigns().then(function(){
+    runDashboardWidgets();
+  }).catch(function(){
+    window.__myCampKeys = null;
+    runDashboardWidgets();
+  });
+}
+
+function runDashboardWidgets() {
   loadDashStats();
   loadGpsSplit();
   loadTopPerformers();
@@ -4830,6 +4886,7 @@ function loadDashboard() {
   if (ccTitle) ccTitle.innerHTML = '<i class="ti ti-map-pin"></i> City coverage · ' + lbl;
   var tpTitle = document.getElementById('topPerfTitle');
   if (tpTitle) tpTitle.innerHTML = '<i class="ti ti-trophy" style="color:#B89B4E;"></i> Top performers · ' + lbl;
+  updateGreetingSub();
 }
 
 // ── Action center: overdue campaigns, 48h-old pending, deliveries due, idle members ──
@@ -4882,6 +4939,7 @@ function loadCampaignHealth() {
   api('/rest/v1/trial_campaigns?select=*&active=eq.true&limit=50')
     .then(function(camps){
       camps = (camps || []).filter(function(c){ return c.completed !== true; });
+      camps = camps.filter(function(c){ return dashInScope(c.key || c.campaign_key || c.id); });
       // newest first (client-side, robust against missing created_at)
       camps.sort(function(a,b){ return String(b.created_at||b.start_date||'').localeCompare(String(a.created_at||a.start_date||'')); });
       camps = camps.slice(0, 8);
@@ -4931,9 +4989,9 @@ function load7DayChart() {
     days.push({ label: ist.toLocaleDateString('en-IN', { weekday: 'short' }).charAt(0), date: ist.toISOString().slice(0,10), count: 0 });
   }
   var since = new Date(days[0].date + 'T00:00:00+05:30').toISOString();
-  api('/rest/v1/trial_photos?select=captured_at&captured_at=gte.' + since + '&deleted_at=is.null&limit=10000')
+  api('/rest/v1/trial_photos?select=captured_at,campaign_key&captured_at=gte.' + since + '&deleted_at=is.null&limit=10000')
     .then(function(photos){
-      photos = photos || [];
+      photos = (photos || []).filter(function(p){ return dashInScope(p.campaign_key); });
       photos.forEach(function(p){
         var d = new Date(new Date(p.captured_at).getTime() + 5.5*3600*1000).toISOString().slice(0,10);
         var day = days.find(function(x){ return x.date === d; });
@@ -4959,9 +5017,9 @@ function load7DayChart() {
 function loadCityCoverage() {
   var R = window.dashDate;
   var b = dashUtcBounds(R.from, R.to);
-  api('/rest/v1/trial_photos?select=city&captured_at=gte.' + b.start + '&captured_at=lte.' + b.end + '&deleted_at=is.null&limit=20000')
+  api('/rest/v1/trial_photos?select=city,campaign_key&captured_at=gte.' + b.start + '&captured_at=lte.' + b.end + '&deleted_at=is.null&limit=20000')
     .then(function(photos){
-      photos = photos || [];
+      photos = (photos || []).filter(function(p){ return dashInScope(p.campaign_key); });
       var byCity = {};
       photos.forEach(function(p){ if (p.city) byCity[p.city] = (byCity[p.city]||0) + 1; });
       var sorted = Object.keys(byCity).map(function(c){ return { city: c, count: byCity[c] }; }).sort(function(a,b){ return b.count - a.count; }).slice(0, 6);
@@ -5023,7 +5081,7 @@ function loadRecentCampaigns() {
   if (!box) return;
   api('/rest/v1/trial_campaigns?select=*&limit=200')
     .then(function(camps){
-      camps = camps || [];
+      camps = (camps || []).filter(function(c){ return dashInScope(c.key || c.campaign_key || c.id); });
       camps.sort(function(a,b){ return String(b.created_at||b.start_date||'').localeCompare(String(a.created_at||a.start_date||'')); });
       camps = camps.slice(0, 6);
       if (camps.length === 0) { box.innerHTML = '<div class="empty-state" style="padding:14px;"><i class="ti ti-flag"></i>Koi campaign nahi</div>'; return; }
@@ -5097,7 +5155,7 @@ function loadCampDetail(cid) {
     var fieldColor = fieldPct === null ? '#26d0ce' : (fieldPct>=80?'#1D9E75':fieldPct>=50?'#B89B4E':'#E24B4A');
 
     // Printing & Stitching qty for this campaign
-    var prQty = sumForCampaign(print, c, ['quantity','qty','count']);
+    var prQty = sumForCampaign(print, c, ['qty_done','quantity','qty','count']);
     var stQty = sumForCampaign(stitch, c, ['quantity','qty']);
 
     // Outstanding: Client (campaign total) + Team (work value on this campaign)
@@ -5172,15 +5230,19 @@ function openCampaignDetail(campId, campKey) {
   $('cdmSub').textContent = 'Key: ' + (campKey || '—');
 
   var isOwner = String((state.admin && state.admin.role) || '').toLowerCase() === 'owner';
+  var isAdmin = ['owner','admin'].indexOf(String((state.admin && state.admin.role) || '').toLowerCase()) !== -1;
   var target = Number(camp.target_vehicles || camp.target_count || 0) || 0;
 
   Promise.all([
     api('/rest/v1/trial_photos?select=vehicle_number,mode,city&campaign_key=eq.' + encodeURIComponent(campKey) + '&deleted_at=is.null&limit=20000').catch(function(){ return []; }),
     api('/rest/v1/trial_campaign_designs?select=*&campaign_id=eq.' + encodeURIComponent(campId)).catch(function(){ return []; }),
     api('/rest/v1/prajapati_stitching_log?select=*&limit=20000').catch(function(){ return []; }),
-    api('/rest/v1/trial_work_logs?select=*&limit=20000').catch(function(){ return []; })
+    api('/rest/v1/trial_work_logs?select=*&limit=20000').catch(function(){ return []; }),
+    api('/rest/v1/trial_team_members?select=id,name,phone&limit=2000').catch(function(){ return []; })
   ]).then(function(res){
-    var photos = res[0]||[], designs = res[1]||[], stitch = res[2]||[], print = res[3]||[];
+    var photos = res[0]||[], designs = res[1]||[], stitch = res[2]||[], print = res[3]||[], members = res[4]||[];
+    var idName = {};
+    members.forEach(function(m){ if (m.id) idName[String(m.id)] = m.name || m.phone; });
 
     // Field progress
     var fv = new Set(), cities = {};
@@ -5192,7 +5254,7 @@ function openCampaignDetail(campId, campKey) {
     var fieldPct = target>0 ? Math.min(100, Math.round((fieldDone/target)*100)) : null;
     var fColor = fieldPct===null?'#26d0ce':(fieldPct>=80?'#1D9E75':fieldPct>=50?'#B89B4E':'#E24B4A');
 
-    var prQty = sumForCampaign(print, camp, ['quantity','qty','count']);
+    var prQty = sumForCampaign(print, camp, ['qty_done','quantity','qty','count']);
     var stQty = sumForCampaign(stitch, camp, ['quantity','qty']);
 
     var html = '';
@@ -5231,6 +5293,30 @@ function openCampaignDetail(campId, campKey) {
       html += '</tbody></table>';
     }
 
+    // Printing entries — ADMIN/OWNER can correct (edit/delete) any operator's entry
+    if (isAdmin) {
+      var campPrint = (print || []).filter(function(l){
+        var rid = String(l.campaign_id||''), rkey = String(l.campaign_key||'');
+        return rid===String(camp.id) || rkey===String(camp.key) || rid===String(camp.key);
+      }).sort(function(a,b){ return String(b.log_date||'').localeCompare(String(a.log_date||'')); });
+      if (campPrint.length) {
+        html += '<div class="cdm-sec-title"><i class="ti ti-printer"></i> Printing entries <span class="cdm-owner-only">EDIT / DELETE</span></div>';
+        html += '<table class="cdm-loc-table"><thead><tr><th>Date</th><th>Operator</th><th>Units</th><th style="text-align:center;">Fix</th></tr></thead><tbody>';
+        campPrint.forEach(function(l){
+          var opName = idName[String(l.operator_id||'')] || l.operator_name || ('#'+String(l.operator_id||'').slice(-4));
+          var dt = String(l.log_date||'').slice(0,10);
+          var qty = Number(l.qty_done||l.quantity||l.qty||0)||0;
+          html += '<tr><td>' + dt + '</td><td>' + escapeHtml(opName) + '</td>' +
+                  '<td><span class="qty">' + qty + '</span></td>' +
+                  '<td style="text-align:center;white-space:nowrap;">' +
+                    '<button class="cdm-fix-btn edit" onclick="adminEditPrint(\'' + l.id + '\', ' + qty + ', \'' + campId + '\', \'' + escapeHtml(campKey) + '\')" title="Edit">✏️</button>' +
+                    '<button class="cdm-fix-btn del" onclick="adminDeletePrint(\'' + l.id + '\', \'' + campId + '\', \'' + escapeHtml(campKey) + '\')" title="Delete">🗑️</button>' +
+                  '</td></tr>';
+        });
+        html += '</tbody></table>';
+      }
+    }
+
     // Billing — OWNER ONLY
     if (isOwner) {
       var clientTotal = Number(camp.total_amount || 0) || 0;
@@ -5255,6 +5341,35 @@ function closeCampaignDetail() {
   if (m) m.classList.remove('active');
 }
 
+// ─── Admin/Owner: correct any operator's printing entry ───
+function adminEditPrint(entryId, curQty, campId, campKey) {
+  var val = prompt('Correct printing units\n\nCurrent: ' + curQty + ' units\nEnter correct value:', curQty);
+  if (val === null) return;
+  var newQty = parseInt(val);
+  if (isNaN(newQty) || newQty < 0) { showToast('Valid number daalein (0+)', 'error'); return; }
+  if (newQty === curQty) return;
+  api('/rest/v1/trial_work_logs?id=eq.' + entryId, {
+    method: 'PATCH',
+    headers: { 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ qty_done: newQty, updated_at: new Date().toISOString() })
+  }).then(function(){
+    showToast('Updated: ' + curQty + ' → ' + newQty + ' units', 'success');
+    openCampaignDetail(campId, campKey); // refresh modal
+  }).catch(function(e){ showToast('Update failed', 'error'); });
+}
+
+function adminDeletePrint(entryId, campId, campKey) {
+  if (!confirm('Yeh printing entry delete karein? Poori entry hat jayegi.')) return;
+  api('/rest/v1/trial_work_logs?id=eq.' + entryId, {
+    method: 'DELETE',
+    headers: { 'Prefer': 'return=minimal' }
+  }).then(function(){
+    showToast('Entry deleted', 'success');
+    openCampaignDetail(campId, campKey);
+  }).catch(function(e){ showToast('Delete failed', 'error'); });
+}
+
+
 
 
 function loadDashStats() {
@@ -5263,9 +5378,9 @@ function loadDashStats() {
   var compareOn = $('dashCompare') && $('dashCompare').checked;
 
   // ── Main range: one photo fetch → photos, vehicles, hood, back ──
-  api('/rest/v1/trial_photos?select=vehicle_number,mode,id&captured_at=gte.' + b.start + '&captured_at=lte.' + b.end + '&deleted_at=is.null&limit=20000')
+  api('/rest/v1/trial_photos?select=vehicle_number,mode,id,campaign_key&captured_at=gte.' + b.start + '&captured_at=lte.' + b.end + '&deleted_at=is.null&limit=20000')
     .then(function(photos){
-      photos = photos || [];
+      photos = (photos || []).filter(function(p){ return dashInScope(p.campaign_key); });
       var photoCount = photos.length;
       var allV = new Set(), hoodV = new Set(), backV = new Set();
       photos.forEach(function(p){
@@ -5288,9 +5403,9 @@ function loadDashStats() {
       if (compareOn) {
         var prev = dashComparePrev(R.from, R.to);
         var pb = dashUtcBounds(prev.from, prev.to);
-        api('/rest/v1/trial_photos?select=vehicle_number,mode&captured_at=gte.' + pb.start + '&captured_at=lte.' + pb.end + '&deleted_at=is.null&limit=20000')
+        api('/rest/v1/trial_photos?select=vehicle_number,mode,campaign_key&captured_at=gte.' + pb.start + '&captured_at=lte.' + pb.end + '&deleted_at=is.null&limit=20000')
           .then(function(pp){
-            pp = pp || [];
+            pp = (pp || []).filter(function(p){ return dashInScope(p.campaign_key); });
             var pV = new Set(), pHood = new Set(), pBack = new Set();
             pp.forEach(function(p){
               var vn = p.vehicle_number ? p.vehicle_number.toUpperCase() : null;
@@ -5312,9 +5427,9 @@ function loadDashStats() {
     });
 
   // ── New campaigns launched in range ──
-  api('/rest/v1/trial_campaigns?select=created_at,start_date&limit=2000')
+  api('/rest/v1/trial_campaigns?select=*&limit=2000')
     .then(function(camps){
-      camps = camps || [];
+      camps = (camps || []).filter(function(c){ return dashInScope(c.key || c.campaign_key || c.id); });
       var inRange = camps.filter(function(c){
         var d = (c.created_at || c.start_date || '').slice(0,10);
         return d && d >= R.from && d <= R.to;
@@ -5370,9 +5485,15 @@ function setMeta(id, html) {
 function updateGreetingSub() {
   var n = window.__dashCampaigns;
   var m = window.__dashMembers;
-  if (n == null || m == null) return;
   var dateStr = new Date().toLocaleDateString('en-IN', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
-  if ($('greetingSub')) $('greetingSub').textContent = n + ' campaign' + (n!==1?'s':'') + ' active · ' + m + ' team · ' + dateStr + ' · live';
+  if ($('greetingSub')) {
+    if (dashIsScoped()) {
+      var myCount = window.__myCampSet ? window.__myCampSet.length : '—';
+      $('greetingSub').innerHTML = '<i class="ti ti-user" style="font-size:12px;"></i> Your view · ' + myCount + ' campaign' + (myCount!==1?'s':'') + ' · ' + dateStr + ' · live';
+    } else if (n != null && m != null) {
+      $('greetingSub').textContent = n + ' campaign' + (n!==1?'s':'') + ' active · ' + m + ' team · ' + dateStr + ' · live';
+    }
+  }
 }
 
 function loadGpsSplit() {
@@ -5459,7 +5580,7 @@ function loadTopPerformers() {
     // Field work: trial_photos grouped by member, count = unique vehicles
     api('/rest/v1/trial_photos?select=member_phone,member_name,campaign_key,vehicle_number&captured_at=gte.' + b.start + '&captured_at=lte.' + b.end + '&deleted_at=is.null&limit=20000')
       .then(function(photos){
-        photos = photos || [];
+        photos = (photos || []).filter(function(p){ return dashInScope(p.campaign_key); });
         var byM = {};
         photos.forEach(function(p){
           var key = p.member_phone || p.member_name || 'unknown';
@@ -5479,8 +5600,9 @@ function loadTopPerformers() {
       .then(function(logs){
         logs = (logs||[]).filter(function(l){
           var raw = l.log_date || l.date || l.created_at || '';
-          var d = String(raw).slice(0,10);   // normalise to YYYY-MM-DD
-          return d && d >= R.from && d <= R.to;
+          var d = String(raw).slice(0,10);
+          if (!(d && d >= R.from && d <= R.to)) return false;
+          return dashInScope(l.campaign_id || l.campaign_key);
         });
         var byM = {};
         logs.forEach(function(l){
@@ -5495,25 +5617,31 @@ function loadTopPerformers() {
       }).catch(function(){ renderLeaders(null, 'Stitching data load failed'); });
 
   } else if (mode === 'printing') {
-    // Printing: trial_work_logs grouped by operator
-    api('/rest/v1/trial_work_logs?select=*&limit=20000')
-      .then(function(logs){
-        logs = (logs||[]).filter(function(l){
-          var raw = l.log_date || l.date || l.created_at || l.completed_at || '';
-          var d = String(raw).slice(0,10);
-          return d && d >= R.from && d <= R.to;
-        });
-        var byM = {};
-        logs.forEach(function(l){
-          var name = l.operator_name || l.member_name || l.operator || l.done_by || 'Unknown';
-          var qty = Number(l.qty || l.quantity || l.count || 1) || 1;
-          if (!byM[name]) byM[name] = 0;
-          byM[name] += qty;
-        });
-        var rows = Object.keys(byM).map(function(k){ return { name:k, count:byM[k] }; })
-          .filter(function(r){ return r.name!=='Unknown' && r.count>0; }).sort(function(a,b){ return b.count-a.count; });
-        renderLeaders(rows, 'Is range mein koi printing nahi', 'jobs');
-      }).catch(function(){ renderLeaders(null, 'Printing data load failed'); });
+    // Printing: trial_work_logs grouped by operator. operator_id → name via team list.
+    Promise.all([
+      api('/rest/v1/trial_work_logs?select=*&limit=20000').catch(function(){ return []; }),
+      api('/rest/v1/trial_team_members?select=id,name,phone&limit=2000').catch(function(){ return []; })
+    ]).then(function(res){
+      var logs = res[0]||[], members = res[1]||[];
+      var idName = {};
+      members.forEach(function(m){ if (m.id) idName[String(m.id)] = m.name || m.phone; });
+      logs = logs.filter(function(l){
+        var raw = l.log_date || l.date || l.created_at || l.completed_at || '';
+        var d = String(raw).slice(0,10);
+        if (!(d && d >= R.from && d <= R.to)) return false;
+        return dashInScope(l.campaign_id || l.campaign_key);
+      });
+      var byM = {};
+      logs.forEach(function(l){
+        var name = l.operator_name || l.member_name || idName[String(l.operator_id||'')] || l.operator || ('#' + String(l.operator_id||'').slice(-4));
+        var qty = Number(l.qty_done || l.qty || l.quantity || l.count || 0) || 0;
+        if (!byM[name]) byM[name] = 0;
+        byM[name] += qty;
+      });
+      var rows = Object.keys(byM).map(function(k){ return { name:k, count:byM[k] }; })
+        .filter(function(r){ return r.count>0; }).sort(function(a,b){ return b.count-a.count; });
+      renderLeaders(rows, 'Is range mein koi printing nahi', 'units');
+    }).catch(function(){ renderLeaders(null, 'Printing data load failed'); });
   }
 }
 

@@ -156,6 +156,9 @@ a{color:inherit;text-decoration:none}
 .report-table{width:100%;border-collapse:collapse;font-size:13px}
 .report-table th{background:var(--paper);color:var(--navy);padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;text-align:left;border-bottom:2px solid var(--rule)}
 .report-table td{padding:10px 12px;border-bottom:1px solid var(--rule)}
+.btn-icon-edit,.btn-icon-del{background:none;border:1px solid var(--rule);border-radius:7px;padding:4px 8px;cursor:pointer;font-size:14px;margin:0 2px;transition:all .15s}
+.btn-icon-edit:hover{background:#FBF3E0;border-color:#B89B4E}
+.btn-icon-del:hover{background:#FDECEC;border-color:#E24B4A}
 .report-table tr:hover td{background:var(--cream)}
 .report-table .num{text-align:right;font-family:'JetBrains Mono',monospace;font-weight:700}
 
@@ -340,7 +343,7 @@ const state = {
   activeTab: 'jobs',
   jobs: [],
   progress: null,
-  reports: { today: [], yesterday: [], week: [], dateWise: [] },
+  reports: { today: [], yesterday: [], week: [], dateWise: [], rawEntries: [] },
   currentLogJob: null
 };
 
@@ -510,8 +513,9 @@ async function loadOperatorData() {
   state.completedJobs = completedJobs || [];
   
   // Reports: date-wise breakdown last 14 days
-  const dateWise = await api(`/rest/v1/trial_work_logs?operator_id=eq.${state.user.id}&stage=eq.printing&log_date=gte.${nDaysAgo(14)}&select=log_date,qty_done,design_id,campaign_id&order=log_date.desc`);
+  const dateWise = await api(`/rest/v1/trial_work_logs?operator_id=eq.${state.user.id}&stage=eq.printing&log_date=gte.${nDaysAgo(14)}&select=id,log_date,qty_done,design_id,campaign_id,campaign_name,design_name,notes&order=log_date.desc`);
   state.reports.dateWise = aggregateByDate(dateWise || []);
+  state.reports.rawEntries = dateWise || [];   // individual entries for edit/delete
 }
 
 function renderOperatorView() {
@@ -788,36 +792,40 @@ function renderReportsTab() {
 }
 
 function renderHistoryTab() {
-  const d = state.reports.dateWise;
-  if (!d.length) {
+  const entries = state.reports.rawEntries || [];
+  if (!entries.length) {
     return '<div class="empty">No work history yet. Start logging work from My Active Jobs tab.</div>';
   }
-  
+
   return `
     <div class="section">
       <div class="section-head">
         <div class="section-title">Date-Wise <em>Work History</em></div>
-        <div class="section-meta">Last 14 days</div>
+        <div class="section-meta">Last 14 days · tap ✏️ to correct a wrong entry</div>
       </div>
       <div class="section-body flush">
         <table class="report-table">
           <thead>
             <tr>
               <th>Date</th>
-              <th>Day</th>
-              <th class="num">Total Units</th>
-              <th class="num">Jobs Worked</th>
+              <th>Work</th>
+              <th class="num">Units</th>
+              <th style="text-align:center;">Correct</th>
             </tr>
           </thead>
           <tbody>
-            ${d.map(row => {
+            ${entries.map(row => {
               const date = new Date(row.log_date);
+              const work = getWorkName(row);
               return `
                 <tr>
-                  <td>${date.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })}</td>
-                  <td>${date.toLocaleDateString('en-IN', { weekday:'long' })}</td>
-                  <td class="num">${row.qty_done.toLocaleString('en-IN')}</td>
-                  <td class="num">${row.job_count}</td>
+                  <td>${date.toLocaleDateString('en-IN', { day:'2-digit', month:'short' })}<br><span style="font-size:11px;color:var(--muted,#888);">${date.toLocaleDateString('en-IN', { weekday:'short' })}</span></td>
+                  <td>${escapeHtml(work)}</td>
+                  <td class="num"><strong>${(row.qty_done||0).toLocaleString('en-IN')}</strong></td>
+                  <td style="text-align:center;white-space:nowrap;">
+                    <button class="btn-icon-edit" onclick="editEntry('${row.id}')" title="Edit qty">✏️</button>
+                    <button class="btn-icon-del" onclick="deleteEntry('${row.id}')" title="Delete entry">🗑️</button>
+                  </td>
                 </tr>
               `;
             }).join('')}
@@ -826,6 +834,44 @@ function renderHistoryTab() {
       </div>
     </div>
   `;
+}
+
+// ─── Edit a logged entry (operator self-correction) ───
+function editEntry(entryId) {
+  const entry = (state.reports.rawEntries || []).find(e => String(e.id) === String(entryId));
+  if (!entry) return;
+  const cur = entry.qty_done || 0;
+  const work = getWorkName(entry);
+  const dateStr = new Date(entry.log_date).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+  const val = prompt(`Correct units for "${work}" (${dateStr})\n\nCurrent: ${cur} units\nEnter correct value:`, cur);
+  if (val === null) return;
+  const newQty = parseInt(val);
+  if (isNaN(newQty) || newQty < 0) { alert('Please enter a valid number (0 or more).'); return; }
+  if (newQty === cur) return;
+  api(`/rest/v1/trial_work_logs?id=eq.${entryId}`, {
+    method: 'PATCH',
+    headers: { 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ qty_done: newQty, updated_at: new Date().toISOString() })
+  }).then(() => {
+    alert(`✅ Updated: ${cur} → ${newQty} units`);
+    loadData();
+  }).catch(e => alert('❌ Update failed: ' + (e.message || e)));
+}
+
+// ─── Delete a logged entry (operator self-correction) ───
+function deleteEntry(entryId) {
+  const entry = (state.reports.rawEntries || []).find(e => String(e.id) === String(entryId));
+  if (!entry) return;
+  const work = getWorkName(entry);
+  const dateStr = new Date(entry.log_date).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+  if (!confirm(`Delete this entry?\n\n"${work}" — ${entry.qty_done || 0} units (${dateStr})\n\nYeh poori entry hat jayegi. Pakka?`)) return;
+  api(`/rest/v1/trial_work_logs?id=eq.${entryId}`, {
+    method: 'DELETE',
+    headers: { 'Prefer': 'return=minimal' }
+  }).then(() => {
+    alert('🗑️ Entry deleted.');
+    loadData();
+  }).catch(e => alert('❌ Delete failed: ' + (e.message || e)));
 }
 
 // ═══════════════════════════════════════════════════════════════
