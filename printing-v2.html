@@ -610,7 +610,7 @@ function renderCompletedTab() {
         <div class="job-head">
           <div style="flex:1;min-width:0">
             <div class="job-title">
-              ${job.job_type_icon || '🖨️'} ${escapeHtml(job.design_name || 'Job')}
+              ${job.job_type_icon || '🖨️'} ${escapeHtml(getWorkName(job))}
             </div>
             <div class="job-meta">
               <span>🎟️ <strong>Job #${(job.assignment_id || '').slice(-6).toUpperCase()}</strong></span>
@@ -666,7 +666,7 @@ function renderJobsTab() {
         <div class="job-head">
           <div style="flex:1;min-width:0">
             <div class="job-title">
-              ${job.job_type_icon || '🖨️'} ${escapeHtml(job.design_name || 'Design Job')}
+              ${job.job_type_icon || '🖨️'} ${escapeHtml(getWorkName(job))}
             </div>
             <div class="job-meta">
               <span>🎟️ <strong>Job #${(job.assignment_id || '').slice(-6).toUpperCase()}</strong></span>
@@ -838,12 +838,12 @@ function openLogModal(assignmentId) {
   
   state.currentLogJob = job;
   
-  document.getElementById('logModalTitle').textContent = '✏️ Log Work — ' + (job.design_name || 'Job #' + (job.assignment_id || '').slice(-6).toUpperCase());
+  document.getElementById('logModalTitle').textContent = '✏️ Log Work — ' + getWorkName(job);
   document.getElementById('logJobInfo').innerHTML = `
     <div class="callout info" style="margin-bottom:0">
       <span>📋</span>
       <div>
-        <strong>${escapeHtml(job.design_name || 'Design Job')}</strong> · Job #${(job.assignment_id || '').slice(-6).toUpperCase()}<br>
+        <strong>${escapeHtml(getWorkName(job))}</strong> · Job #${(job.assignment_id || '').slice(-6).toUpperCase()}<br>
         <small>${escapeHtml(job.location_name || job.location_city || '')} · Total: ${(job.quantity_assigned || 0).toLocaleString('en-IN')} · Done: ${(job.quantity_done || 0).toLocaleString('en-IN')} · Outstanding: ${Math.max(0, (job.quantity_assigned || 0) - (job.quantity_done || 0)).toLocaleString('en-IN')}</small>
       </div>
     </div>
@@ -1079,7 +1079,7 @@ function renderManagerView() {
             <div class="job-card ${job.is_urgent ? 'urgent' : ''}">
               <div class="job-head">
                 <div style="flex:1">
-                  <div class="job-title">${escapeHtml(job.design_name || job.campaign_name)}</div>
+                  <div class="job-title">${escapeHtml(getWorkName(job))}</div>
                   <div class="job-meta">
                     <span>📋 ${escapeHtml(job.campaign_name || '')}</span>
                     ${job.client_name ? `<span>👤 ${escapeHtml(job.client_name)}</span>` : ''}
@@ -1143,7 +1143,7 @@ async function openReassignModal(assignmentId) {
     <div class="callout info" style="margin-bottom:0">
       <span>📋</span>
       <div>
-        <strong>${escapeHtml(job.design_name || job.campaign_name)}</strong><br>
+        <strong>${escapeHtml(getWorkName(job))}</strong><br>
         <small>${escapeHtml(job.location_name || job.location_city || '')} · 
         ${(job.quantity_done || 0).toLocaleString('en-IN')} / ${(job.quantity_assigned || 0).toLocaleString('en-IN')} done · 
         ${Math.max(0, (job.quantity_assigned || 0) - (job.quantity_done || 0)).toLocaleString('en-IN')} outstanding</small>
@@ -1237,6 +1237,23 @@ async function saveReassignment() {
 function escapeHtml(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+
+// Operator-safe job label: show the campaign/work name with the company/client
+// part stripped (split on separators, keep only the first segment). Falls back
+// to design_name, then a generic job number. Operators never see company names.
+function getWorkName(job) {
+  job = job || {};
+  var raw = job.campaign_name || job.design_name || '';
+  if (raw) {
+    // split on · - – — | and keep the first part (the work, not the company)
+    var first = String(raw).split(/[·\-\u2013\u2014|]/)[0].trim();
+    if (first) return first;
+  }
+  if (job.design_name) return job.design_name;
+  var id = job.assignment_id || job.campaign_id || job.id || '';
+  return 'Job #' + String(id).slice(-6).toUpperCase();
+}
+
 
 function nDaysAgo(n) {
   const d = new Date();
