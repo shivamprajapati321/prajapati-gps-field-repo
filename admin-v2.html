@@ -1227,6 +1227,26 @@ label {
 .md-rc-badge { font-size:10px; font-weight:700; padding:2px 8px; border-radius:5px; }
 .md-rc-chev { transition:transform .2s; }
 
+/* Campaign detail modal (Operations view) */
+.cdm-prog-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:18px; }
+.cdm-prog { background:#F7F8FC; border:1px solid var(--border); border-radius:12px; padding:14px; text-align:center; }
+.cdm-prog .ic { font-size:20px; margin-bottom:4px; }
+.cdm-prog .lbl { font-size:10.5px; font-weight:700; color:var(--text-2); text-transform:uppercase; letter-spacing:.4px; }
+.cdm-prog .val { font-size:24px; font-weight:800; font-family:'JetBrains Mono',monospace; color:#0B1957; letter-spacing:-1px; margin-top:3px; }
+.cdm-prog .sub { font-size:10.5px; color:var(--text-3); margin-top:2px; }
+.cdm-field-bar { background:#E6E4DC; border-radius:5px; height:7px; overflow:hidden; margin-top:8px; }
+.cdm-field-fill { height:7px; border-radius:5px; transition:width .5s; }
+.cdm-sec-title { font-size:12px; font-weight:700; color:#0B1957; margin:18px 0 10px; display:flex; align-items:center; gap:7px; }
+.cdm-loc-table { width:100%; border-collapse:collapse; font-size:13px; }
+.cdm-loc-table th { text-align:left; font-size:10.5px; font-weight:700; color:var(--text-2); text-transform:uppercase; letter-spacing:.3px; padding:7px 10px; background:#F4F5F9; }
+.cdm-loc-table th:last-child, .cdm-loc-table td:last-child { text-align:right; }
+.cdm-loc-table td { padding:8px 10px; border-top:1px solid var(--border); }
+.cdm-loc-table td .qty { font-family:'JetBrains Mono',monospace; font-weight:700; color:#0B1957; }
+.cdm-billing { background:linear-gradient(135deg,#FDF4EC,#FBEDE0); border:1px solid #F0D9C0; border-radius:12px; padding:14px; margin-top:16px; }
+.cdm-bill-row { display:flex; justify-content:space-between; padding:5px 0; font-size:13px; }
+.cdm-bill-row strong { font-family:'JetBrains Mono',monospace; }
+.cdm-owner-only { font-size:10px; font-weight:700; color:#8A6D1E; background:#FBF3E0; padding:2px 7px; border-radius:5px; }
+
 /* Campaign detail (expandable) */
 .md-rc-detail { padding:10px 4px 14px; border-bottom:1px solid var(--border); }
 .md-cd-field { background:linear-gradient(135deg,#EEF7FF,#E8F5F4); border:1px solid #D4E8E6; border-radius:11px; padding:12px 14px; margin-bottom:10px; }
@@ -4078,6 +4098,22 @@ label {
   </div>
 </div>
 
+<!-- ═════════════ CAMPAIGN DETAIL (Operations view) ═════════════ -->
+<div class="modal-overlay" id="campaignDetailModal">
+  <div class="modal" style="max-width:760px;width:96%;">
+    <div class="modal-header">
+      <div>
+        <h2 id="cdmTitle">Campaign Details</h2>
+        <div id="cdmSub" style="font-size:12px;color:var(--text-2);margin-top:2px;"></div>
+      </div>
+      <button class="modal-close" onclick="closeCampaignDetail()">×</button>
+    </div>
+    <div class="modal-body" id="cdmBody" style="max-height:74vh;overflow-y:auto;">
+      <div class="spinner" style="margin:30px auto;"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ═════════════ TOAST ═════════════ -->
 <div class="toast" id="toast"></div>
 
@@ -5107,6 +5143,105 @@ function cdItem(icon, label, val) {
          '<div class="md-cd-val">' + val + '</div></div>';
 }
 
+// ═══ CAMPAIGN DETAIL MODAL (Operations view) ═══
+// Shows Field/Printing/Stitching progress + location-wise quantity from launcher.
+// Billing/payment/outstanding visible to OWNER only.
+function openCampaignDetail(campId, campKey) {
+  var modal = $('campaignDetailModal');
+  if (!modal) return;
+  modal.classList.add('active');
+  $('cdmBody').innerHTML = '<div class="spinner" style="margin:30px auto;"></div>';
+  // find campaign object
+  var camp = (state.campaignsAll || state.campaigns || []).filter(function(c){ return String(c.id)===String(campId) || String(c.key)===String(campKey); })[0] || { id: campId, key: campKey };
+  var name = camp.name || camp.campaign_name || campKey;
+  $('cdmTitle').textContent = name;
+  $('cdmSub').textContent = 'Key: ' + (campKey || '—');
+
+  var isOwner = String((state.admin && state.admin.role) || '').toLowerCase() === 'owner';
+  var target = Number(camp.target_vehicles || camp.target_count || 0) || 0;
+
+  Promise.all([
+    api('/rest/v1/trial_photos?select=vehicle_number,mode,city&campaign_key=eq.' + encodeURIComponent(campKey) + '&deleted_at=is.null&limit=20000').catch(function(){ return []; }),
+    api('/rest/v1/trial_campaign_designs?select=*&campaign_id=eq.' + encodeURIComponent(campId)).catch(function(){ return []; }),
+    api('/rest/v1/prajapati_stitching_log?select=*&limit=20000').catch(function(){ return []; }),
+    api('/rest/v1/trial_work_logs?select=*&limit=20000').catch(function(){ return []; })
+  ]).then(function(res){
+    var photos = res[0]||[], designs = res[1]||[], stitch = res[2]||[], print = res[3]||[];
+
+    // Field progress
+    var fv = new Set(), cities = {};
+    photos.forEach(function(p){
+      if (p.vehicle_number) fv.add(p.vehicle_number.toUpperCase());
+      if (p.city) cities[p.city] = (cities[p.city]||0) + 1;
+    });
+    var fieldDone = fv.size;
+    var fieldPct = target>0 ? Math.min(100, Math.round((fieldDone/target)*100)) : null;
+    var fColor = fieldPct===null?'#26d0ce':(fieldPct>=80?'#1D9E75':fieldPct>=50?'#B89B4E':'#E24B4A');
+
+    var prQty = sumForCampaign(print, camp, ['quantity','qty','count']);
+    var stQty = sumForCampaign(stitch, camp, ['quantity','qty']);
+
+    var html = '';
+    // Progress cards
+    html += '<div class="cdm-prog-grid">';
+    html += '<div class="cdm-prog"><div class="ic">📸</div><div class="lbl">Field</div><div class="val">' + fieldDone + (target>0?' <span style="font-size:13px;color:var(--text-3);">/' + target + '</span>':'') + '</div>' +
+            (fieldPct!==null?'<div class="cdm-field-bar"><div class="cdm-field-fill" style="width:' + fieldPct + '%;background:' + fColor + ';"></div></div><div class="sub" style="color:' + fColor + ';font-weight:700;">' + fieldPct + '%</div>':'<div class="sub">no target</div>') + '</div>';
+    html += '<div class="cdm-prog"><div class="ic">🖨️</div><div class="lbl">Printing</div><div class="val">' + prQty.toLocaleString('en-IN') + '</div><div class="sub">units done</div></div>';
+    html += '<div class="cdm-prog"><div class="ic">🪡</div><div class="lbl">Stitching</div><div class="val">' + stQty.toLocaleString('en-IN') + '</div><div class="sub">pcs done</div></div>';
+    html += '</div>';
+
+    // Location-wise quantity (from launcher designs)
+    html += '<div class="cdm-sec-title"><i class="ti ti-map-pin"></i> Location-wise plan (from launch)</div>';
+    if (designs.length === 0) {
+      html += '<div class="empty-state" style="padding:14px;"><i class="ti ti-info-circle"></i>Koi design/location detail nahi mili</div>';
+    } else {
+      html += '<table class="cdm-loc-table"><thead><tr><th>Design</th><th>Location</th><th>Qty</th></tr></thead><tbody>';
+      designs.forEach(function(d){
+        html += '<tr><td>' + escapeHtml(d.design_name || '—') + '</td>' +
+                '<td>' + escapeHtml(d.location_name || d.location || '—') + '</td>' +
+                '<td><span class="qty">' + (d.quantity || d.qty || 0) + '</span></td></tr>';
+      });
+      var totalQty = designs.reduce(function(s,d){ return s + (Number(d.quantity||d.qty)||0); }, 0);
+      html += '<tr style="background:#F4F5F9;font-weight:700;"><td colspan="2" style="text-align:right;">Total planned</td><td><span class="qty">' + totalQty + '</span></td></tr>';
+      html += '</tbody></table>';
+    }
+
+    // City coverage (actual)
+    var cityKeys = Object.keys(cities).sort(function(a,b){ return cities[b]-cities[a]; });
+    if (cityKeys.length) {
+      html += '<div class="cdm-sec-title"><i class="ti ti-building"></i> Cities covered (actual)</div>';
+      html += '<table class="cdm-loc-table"><tbody>';
+      cityKeys.slice(0,8).forEach(function(ct){
+        html += '<tr><td colspan="2">' + escapeHtml(ct) + '</td><td><span class="qty">' + cities[ct] + '</span> photos</td></tr>';
+      });
+      html += '</tbody></table>';
+    }
+
+    // Billing — OWNER ONLY
+    if (isOwner) {
+      var clientTotal = Number(camp.total_amount || 0) || 0;
+      var received = Number(camp.amount_received || camp.paid_amount || 0) || 0;
+      var outstanding = clientTotal - received;
+      html += '<div class="cdm-billing">' +
+              '<div class="cdm-sec-title" style="margin:0 0 8px;"><i class="ti ti-cash" style="color:#E0792E;"></i> Billing <span class="cdm-owner-only">OWNER ONLY</span></div>' +
+              '<div class="cdm-bill-row"><span>Total value</span><strong>' + (clientTotal>0?'₹'+clientTotal.toLocaleString('en-IN'):'—') + '</strong></div>' +
+              '<div class="cdm-bill-row"><span>Received</span><strong style="color:#0F6E56;">' + (received>0?'₹'+received.toLocaleString('en-IN'):'—') + '</strong></div>' +
+              '<div class="cdm-bill-row" style="border-top:1px solid #F0D9C0;padding-top:8px;margin-top:4px;"><span><b>Outstanding</b></span><strong style="color:#A32D2D;">' + (outstanding>0?'₹'+outstanding.toLocaleString('en-IN'):'₹0') + '</strong></div>' +
+              '</div>';
+    }
+
+    $('cdmBody').innerHTML = html;
+  }).catch(function(){
+    $('cdmBody').innerHTML = '<div class="empty-state" style="padding:20px;"><i class="ti ti-alert-circle"></i>Detail load nahi hua</div>';
+  });
+}
+
+function closeCampaignDetail() {
+  var m = $('campaignDetailModal');
+  if (m) m.classList.remove('active');
+}
+
+
 
 function loadDashStats() {
   var R = window.dashDate;
@@ -5755,6 +5890,7 @@ function renderCampaigns() {
                 '<div class="mini-stat"><div class="label">Cities</div><div class="value" data-campaign-cities="' + escapeHtml(c.key) + '">—</div></div>' +
               '</div>' +
               '<div class="campaign-card-actions">' +
+                '<button class="btn btn-sm btn-primary" onclick="openCampaignDetail(\'' + c.id + '\', \'' + escapeHtml(c.key) + '\')"><i class="ti ti-layout-dashboard"></i> View Details</button>' +
                 '<button class="btn btn-sm btn-ghost" onclick="openCampaignForm(\'' + c.id + '\')"><i class="ti ti-edit"></i> Edit</button>' +
                 '<button class="btn btn-sm btn-ghost" onclick="toggleCampaignActive(\'' + c.id + '\', ' + (!c.active) + ')"><i class="ti ti-' + (c.active ? 'pause' : 'play') + '"></i> ' + (c.active ? 'Deactivate' : 'Activate') + '</button>' +
                 '<button class="btn btn-sm btn-ghost" style="color:' + (c.serial_tracking ? 'var(--gold-deep,#8B7430)' : 'var(--text-2)') + '" onclick="toggleSerialTracking(\'' + c.id + '\', ' + (!c.serial_tracking) + ')"><i class="ti ti-hash"></i> Serial: ' + (c.serial_tracking ? 'ON' : 'OFF') + '</button>' +
