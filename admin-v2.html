@@ -2219,6 +2219,92 @@ label {
   .member-tags { grid-column: 1 / -1; justify-content: flex-start; }
   .member-actions { grid-column: 1 / -1; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   COMPREHENSIVE RESPONSIVE — desktop / tablet / mobile (added)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Sidebar backdrop overlay (mobile drawer) */
+.sidebar-overlay {
+  position: fixed; inset: 0; background: rgba(5,11,46,0.5);
+  z-index: 997; opacity: 0; transition: opacity .25s; pointer-events: auto;
+}
+.sidebar-overlay.show { opacity: 1; }
+
+/* Better hamburger: top-left, easy thumb reach is fine bottom-right too — keep both safe */
+@media (max-width: 768px) {
+  .mobile-menu-btn { top: 14px; left: 14px; right: auto; bottom: auto; }
+}
+
+/* ── Tablet (≤1024px) ── */
+@media (max-width: 1024px) {
+  .stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .dash-grid, .dash-grid-2, .two-col { grid-template-columns: 1fr !important; }
+  .srp-cards { grid-template-columns: repeat(3, 1fr) !important; }
+  .pbtns, .photo-actions { flex-wrap: wrap; }
+}
+
+/* ── Mobile (≤768px) — make every major block stack & scroll ── */
+@media (max-width: 768px) {
+  /* layout */
+  .main { padding: 16px 12px !important; padding-top: 60px !important; } /* room for top hamburger */
+  .topbar { flex-direction: column; align-items: stretch !important; gap: 12px; }
+  .topbar-actions { flex-wrap: wrap; gap: 8px; }
+  .topbar-actions .btn, .topbar-actions select, .topbar-actions input { flex: 1 1 auto; }
+  .page-title { font-size: 19px; }
+
+  /* grids → single/҂two column */
+  .stat-grid { grid-template-columns: 1fr 1fr !important; }
+  .three, .row.three, .field-row.cols-2, .field-row.cols-3 { grid-template-columns: 1fr !important; }
+  .campaign-card-stats { grid-template-columns: 1fr 1fr !important; }
+
+  /* photos browser filters → stack */
+  .filters-row, .photo-filters, #photoFilters { grid-template-columns: 1fr !important; display: grid !important; gap: 10px !important; }
+  .filters-row > div, .photo-filters > div { width: 100%; }
+  .filters-row select, .filters-row input { width: 100% !important; }
+
+  /* photos grid → 1-2 columns */
+  .photos-grid, #photosGrid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important; }
+
+  /* action button rows wrap */
+  .pbtns { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pbtn { flex: 1 1 calc(50% - 8px); justify-content: center; font-size: 12px; }
+
+  /* stat chips wrap */
+  .stat-chips, .photo-stats { flex-wrap: wrap !important; }
+
+  /* tables scroll horizontally instead of breaking */
+  .table-wrap, .data-table-wrap, .srp-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { min-width: 520px; }
+
+  /* Staff report modal */
+  .srp-overlay { padding: 0; }
+  .srp-modal { max-width: 100%; max-height: 100vh; border-radius: 0; }
+  .srp-head { flex-wrap: wrap; gap: 10px; }
+  .srp-cards { grid-template-columns: repeat(2, 1fr) !important; }
+  .srp-btn { font-size: 12px; padding: 8px 11px; }
+
+  /* generic modals fit screen */
+  .modal-box, .modal-content, .p2-modal { max-width: 100% !important; width: 100% !important; max-height: 92vh; }
+
+  /* campaign filter tabs wrap */
+  .cf-tab { flex: 1 1 auto; }
+}
+
+/* ── Small phones (≤480px) ── */
+@media (max-width: 480px) {
+  .stat-grid { grid-template-columns: 1fr !important; }
+  .srp-cards { grid-template-columns: 1fr 1fr !important; }
+  .campaign-card-stats { grid-template-columns: 1fr 1fr !important; }
+  .pbtn { flex: 1 1 100%; }
+  .page-title { font-size: 18px; }
+  .brand-name { font-size: 14px; }
+}
+
+/* Touch targets — comfortable tap size on phones */
+@media (hover: none) and (pointer: coarse) {
+  .btn, .pbtn, .nav-item, select, .cf-tab { min-height: 40px; }
+}
 /* ============ MOVE / REASSIGN FEATURE ============ */
 .photo-card { position: relative; }
 .photo-card.is-selected { outline: 3px solid var(--gold, #B89B4E); outline-offset: -1px; }
@@ -2468,6 +2554,11 @@ label {
     <!-- ═══ FINANCE ═══ -->
     <div class="nav-section">
       <div class="nav-section-title">💰 Finance</div>
+      <div data-module="expenses" class="nav-item" onclick="openInTab('expenses.html','Expenses')">
+        <i class="ti ti-receipt"></i>
+        <span>Expenses</span>
+        <i class="ti ti-external-link" style="font-size:13px; margin-left:auto; opacity:0.5;"></i>
+      </div>
       <div data-module="payments" class="nav-item" onclick="openExternal('payments.html')">
         <i class="ti ti-cash"></i>
         <span>Payments</span>
@@ -4060,14 +4151,14 @@ function enterDashboard() {
 var ROLE_MODULE_DEFAULTS = {
   'owner': '*',
   'admin': '*',
-  'sales':       ['crm','leads','quotations','pi','invoices','clients','sales-hub','report-campaign','archive-viewer','ppt','design-tasks'],
+  'sales':       ['crm','leads','quotations','pi','invoices','clients','sales-hub','report-campaign','archive-viewer','ppt','design-tasks','expenses'],
   'hr_sales':    ['crm','leads','quotations','pi','invoices','clients','sales-hub','report-campaign','archive-viewer','ppt'],
   'sales_admin': ['crm','leads','quotations','pi','invoices','clients','sales-hub','report-campaign','report-team','archive-viewer','ppt'],
-  'data_manager':['dashboard','photos','verifier','ppt','master-cache','reports','report-daily','report-team','report-campaign','campaign-status','reassignment-history','archive-viewer','manual-upload'],
+  'data_manager':['dashboard','photos','verifier','ppt','master-cache','reports','report-daily','report-team','report-campaign','campaign-status','reassignment-history','archive-viewer','manual-upload','expenses'],
   'data_entry':  ['dashboard','photos','verifier','reports'],
   'deo':         ['dashboard','photos','verifier','reports'],
-  'operations_manager': ['dashboard','campaigns','assignments','photos','launch-campaign','campaign-status','assign-operators','designer-uploads','execution-plan','execution-entry','ops-dashboard','printing','stitching','delivery','field','verifier','ppt','reports','report-daily','report-team','report-campaign','reassignment-history','archive-viewer','design-tasks'],
-  'ops_manager':        ['dashboard','campaigns','assignments','photos','launch-campaign','campaign-status','assign-operators','designer-uploads','execution-plan','execution-entry','ops-dashboard','printing','stitching','delivery','field','verifier','ppt','reports','report-daily','report-team','report-campaign','reassignment-history','archive-viewer','design-tasks'],
+  'operations_manager': ['dashboard','campaigns','assignments','photos','launch-campaign','campaign-status','assign-operators','designer-uploads','execution-plan','execution-entry','ops-dashboard','printing','stitching','delivery','field','verifier','ppt','reports','report-daily','report-team','report-campaign','reassignment-history','archive-viewer','design-tasks','expenses'],
+  'ops_manager':        ['dashboard','campaigns','assignments','photos','launch-campaign','campaign-status','assign-operators','designer-uploads','execution-plan','execution-entry','ops-dashboard','printing','stitching','delivery','field','verifier','ppt','reports','report-daily','report-team','report-campaign','reassignment-history','archive-viewer','design-tasks','expenses'],
   'operations':  ['dashboard','campaign-status','execution-entry','launch-campaign'],
   'designer':    ['dashboard','designer-uploads','design-tasks','campaign-status','launch-campaign'],
   'design':      ['dashboard','designer-uploads','design-tasks','campaign-status','launch-campaign'],
@@ -4079,7 +4170,7 @@ var ROLE_MODULE_DEFAULTS = {
   'delivery':    ['delivery','campaign-status'],
   'driver':      ['delivery','campaign-status'],
   'verifier':    ['verifier','photos','reports'],
-  'accountant':  ['payments','outstanding','report-campaign'],
+  'accountant':  ['payments','outstanding','report-campaign','expenses'],
   'field':       ['field'],
   'field_worker':['field']
 };
@@ -4173,7 +4264,7 @@ var TA_SECTIONS = [
   { name:'Production', mods:[
     ['printing','Printing'],['stitching','Stitching'],['delivery','Delivery'],['field','Field App'] ]},
   { name:'Finance', mods:[
-    ['payments','Payments'],['outstanding','Outstanding'] ]},
+    ['expenses','Expenses'],['payments','Payments'],['outstanding','Outstanding'] ]},
   { name:'Reports Suite', mods:[
     ['report-daily','Daily Report'],['report-team','Team Report'],['report-campaign','Campaign Report'],
     ['reassignment-history','Reassignment Log'],['archive-viewer','Archive Viewer'] ]},
@@ -4350,6 +4441,7 @@ function taSave() {
 
 // ─── TAB SWITCHING ───
 function switchTab(tab) {
+  if (typeof closeSidebarMobile === 'function') closeSidebarMobile();
   document.querySelectorAll('.nav-item[data-tab]').forEach(function(n) {
     n.classList.toggle('active', n.dataset.tab === tab);
   });
@@ -4375,7 +4467,29 @@ function switchTab(tab) {
 }
 
 function toggleSidebar() {
-  $('sidebar').classList.toggle('open');
+  var sb = $('sidebar');
+  if (!sb) return;
+  var isOpen = sb.classList.toggle('open');
+  // backdrop overlay
+  var ov = document.getElementById('sidebarOverlay');
+  if (isOpen) {
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = 'sidebarOverlay';
+      ov.className = 'sidebar-overlay';
+      ov.onclick = function(){ toggleSidebar(); };
+      document.body.appendChild(ov);
+    }
+    requestAnimationFrame(function(){ ov.classList.add('show'); });
+  } else if (ov) {
+    ov.classList.remove('show');
+    setTimeout(function(){ if (ov && ov.parentNode) ov.parentNode.removeChild(ov); }, 250);
+  }
+}
+// Close drawer after navigating (mobile) when a nav item is tapped
+function closeSidebarMobile() {
+  var sb = $('sidebar');
+  if (sb && sb.classList.contains('open') && window.innerWidth <= 768) toggleSidebar();
 }
 
 function openExternal(file) {
