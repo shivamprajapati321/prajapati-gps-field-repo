@@ -4395,7 +4395,12 @@ function enterDashboard() {
   applyModuleFilter();
   // Team Access is now a separate page (access-control.html) opened from sidebar.
 
-  loadDashboard();
+  // Only load the dashboard (and its data) if this user can actually see it.
+  // Printing/stitching/etc. without dashboard access must NOT trigger any
+  // dashboard queries — that would leak outstanding/billing/all-campaign data.
+  if (userCanSeeModule(state.admin, 'dashboard')) {
+    loadDashboard();
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -4422,11 +4427,11 @@ var ROLE_MODULE_DEFAULTS = {
   'designer':    ['dashboard','designer-uploads','design-tasks','campaign-status','launch-campaign'],
   'design':      ['dashboard','designer-uploads','design-tasks','campaign-status','launch-campaign'],
   'execution':   ['execution-entry','execution-plan','campaign-status'],
-  'printing':    ['printing','campaign-status'],
+  'printing':    ['printing'],
   'printer':     ['printing','campaign-status'],
-  'stitching':   ['stitching','campaign-status'],
+  'stitching':   ['stitching'],
   'tailor':      ['stitching','campaign-status'],
-  'delivery':    ['delivery','campaign-status'],
+  'delivery':    ['delivery'],
   'driver':      ['delivery','campaign-status'],
   'verifier':    ['verifier','photos','reports'],
   'accountant':  ['payments','outstanding','report-campaign'],
@@ -4495,7 +4500,15 @@ function applyModuleFilter() {
     sec.style.display = anyVisible ? '' : 'none';
   });
 
-  // If current active inner-tab is now hidden, switch to first visible one
+  // If current active inner-tab is now hidden, switch to first visible one.
+  // Also force-hide the dashboard content if the user can't see dashboard,
+  // so no leaked data is ever visible behind a hidden nav item.
+  var dashItem = document.querySelector('.nav-item[data-tab="dashboard"]');
+  if (dashItem && dashItem.style.display === 'none') {
+    var dashTab = document.getElementById('tab-dashboard');
+    if (dashTab) dashTab.classList.remove('active');
+    dashItem.classList.remove('active');
+  }
   var active = document.querySelector('.nav-item[data-tab].active');
   if ((!active || active.style.display === 'none') && firstVisibleTab) {
     switchTab(firstVisibleTab);
@@ -5104,14 +5117,15 @@ function loadCampDetail(cid) {
                 : '<div class="md-cd-field-pct" style="color:var(--text-3);">No target set</div>') +
             '</div>';
 
-    // Print / Stitch / Outstanding row (3 small)
+    // Print / Stitch / Remaining row (3 small) — Remaining = target minus done
+    var remaining = target > 0 ? Math.max(0, target - fieldDone) : null;
     html += '<div class="md-cd-grid3">';
     html += cdItem('ti-printer', 'Printing', prQty.toLocaleString('en-IN') + ' done');
     html += cdItem('ti-needle', 'Stitching', stQty.toLocaleString('en-IN') + ' pcs');
     html += '<div class="md-cd-item">' +
-            '<div class="md-cd-lbl"><i class="ti ti-cash" style="color:#E0792E;"></i> Outstanding</div>' +
-            '<div class="md-cd-val" style="color:#A32D2D;font-size:13px;">' + (clientOut>0 ? '₹' + clientOut.toLocaleString('en-IN') : '—') + '</div>' +
-            '<div class="md-cd-out-sub">Client' + (teamWork>0 ? ' · Team ₹' + Math.round(teamWork).toLocaleString('en-IN') : '') + '</div>' +
+            '<div class="md-cd-lbl"><i class="ti ti-target-arrow" style="color:#E0792E;"></i> Remaining</div>' +
+            '<div class="md-cd-val" style="color:' + (remaining===0?'#0F6E56':'#A32D2D') + ';">' + (remaining !== null ? remaining.toLocaleString('en-IN') : '—') + '</div>' +
+            '<div class="md-cd-out-sub">' + (remaining !== null ? (remaining===0 ? 'target poora! ✓' : 'veh baaki lagana') : 'no target') + '</div>' +
             '</div>';
     html += '</div>';
 
