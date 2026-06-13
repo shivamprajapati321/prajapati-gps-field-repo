@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Expenses · Prajapati Advertising</title>
+<meta name="theme-color" content="#0B1957">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght,ital@9..144,300..900,0..1&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+:root{
+  --navy:#0B1957;--navy-deep:#050B2E;--navy-mid:#1A237E;
+  --gold:#B89B4E;--gold-bright:#D4B45F;--gold-deep:#8B7430;--gold-soft:#F4E4B0;
+  --teal:#26d0ce;
+  --cream:#FAF8F3;--paper:#F7F4EC;--rule:#E5E0D2;
+  --ink-950:#0F172A;--ink-700:#475569;--text-dim:#94A3B8;
+  --success:#047857;--success-bg:#D1FAE5;
+  --warn:#C2410C;--warn-bg:#FED7AA;
+  --danger:#BE123C;--danger-bg:#FECACA;
+  --info:#1E40AF;--info-bg:#DBEAFE;
+}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--cream);color:var(--ink-950);font-size:14px;line-height:1.5;min-height:100vh}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+a{color:inherit;text-decoration:none}
+
+.topbar{background:var(--navy);color:#fff;padding:12px 24px;border-bottom:3px solid var(--gold);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.tb-brand{display:flex;align-items:center;gap:12px}
+.tb-logo{width:34px;height:34px;background:var(--gold);color:var(--navy);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:700;font-size:19px}
+.tb-name{font-size:14px;font-weight:700}
+.tb-tag{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--gold-bright);letter-spacing:0.16em;text-transform:uppercase;margin-top:2px}
+.tb-user{display:flex;align-items:center;gap:9px;padding:4px 12px 4px 4px;background:rgba(255,255,255,0.08);border:1px solid rgba(212,180,95,0.3);border-radius:999px}
+.tb-ava{width:28px;height:28px;border-radius:50%;background:var(--gold);color:var(--navy);display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-style:italic;font-weight:700;font-size:13px}
+.tb-info .name{font-size:12px;font-weight:700;line-height:1.1}
+.tb-info .role{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--gold-bright);letter-spacing:0.12em;text-transform:uppercase}
+
+.main{padding:22px;max-width:1150px;margin:0 auto;padding-bottom:60px}
+.page-head{margin-bottom:18px}
+.page-title{font-family:'Fraunces',serif;font-size:26px;font-weight:600;color:var(--navy);letter-spacing:-0.02em}
+.page-title em{font-style:italic;color:var(--gold-deep)}
+.page-sub{font-size:12.5px;color:var(--text-dim);margin-top:2px}
+
+/* Tabs */
+.tabs{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;border-bottom:1px solid var(--rule);padding-bottom:0}
+.tab{padding:10px 18px;font-size:13.5px;font-weight:600;color:var(--ink-700);border-bottom:2px solid transparent;cursor:pointer;transition:all .15s}
+.tab.active{color:var(--navy);border-bottom-color:var(--gold)}
+.tab:hover{color:var(--navy)}
+
+.panel{display:none}
+.panel.active{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+.section{background:#fff;border:1px solid var(--rule);border-radius:12px;margin-bottom:16px;overflow:hidden}
+.section-head{padding:13px 18px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,var(--paper),#fff)}
+.section-title{font-family:'Fraunces',serif;font-size:15px;font-weight:600;color:var(--navy)}
+.section-body{padding:18px}
+
+.row{display:flex;gap:14px;margin-bottom:14px;flex-wrap:wrap}
+.row.three .field{flex:1;min-width:160px}
+.field{flex:1;min-width:180px}
+.label{font-size:11.5px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+.hint{font-weight:500;color:var(--text-dim);text-transform:none;letter-spacing:0}
+.req{color:var(--danger)}
+.input{width:100%;padding:10px 12px;border:1px solid var(--rule);border-radius:8px;font-family:inherit;font-size:14px;background:#fff;outline:none;color:var(--ink-950)}
+.input:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(38,208,206,.12)}
+select.input{cursor:pointer}
+
+.btn{padding:10px 18px;border-radius:8px;font-family:inherit;font-weight:600;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:all .15s}
+.btn-gold{background:var(--gold);color:#3a2f12}
+.btn-gold:hover{background:var(--gold-bright)}
+.btn-navy{background:var(--navy);color:#fff}
+.btn-navy:hover{background:var(--navy-mid)}
+.btn-teal{background:var(--teal);color:#04282a}
+.btn-secondary{background:#fff;border:1px solid var(--rule);color:var(--ink-700)}
+.btn-secondary:hover{border-color:var(--gold-deep);color:var(--navy)}
+.btn-sm{padding:6px 12px;font-size:12.5px}
+.btn-danger{background:var(--danger-bg);color:var(--danger)}
+
+/* Expense type toggle */
+.etype-wrap{display:flex;gap:10px;margin-bottom:6px}
+.etype{flex:1;border:2px solid var(--rule);border-radius:10px;padding:14px;text-align:center;cursor:pointer;transition:all .15s}
+.etype.active{border-color:var(--gold);background:var(--gold-soft)}
+.etype .ico{font-size:22px}
+.etype .nm{font-weight:700;color:var(--navy);margin-top:4px}
+.etype .ds{font-size:11px;color:var(--text-dim);margin-top:2px}
+
+/* Amount grid */
+.amt-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:680px){.amt-grid{grid-template-columns:repeat(2,1fr)}}
+
+.total-box{background:linear-gradient(135deg,var(--gold-soft),#fff);border:2px solid var(--gold);border-radius:12px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;margin-top:14px}
+.total-box .pl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--gold-deep)}
+.total-box .pv{font-size:26px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--navy)}
+
+/* Pay status toggle */
+.pay-toggle{display:flex;gap:8px}
+.pay-opt{flex:1;border:2px solid var(--rule);border-radius:8px;padding:9px;text-align:center;cursor:pointer;font-weight:600;font-size:13px}
+.pay-opt.active[data-v="unpaid"]{border-color:var(--warn);background:var(--warn-bg);color:var(--warn)}
+.pay-opt.active[data-v="paid"]{border-color:var(--success);background:var(--success-bg);color:var(--success)}
+
+/* List/table */
+.exp-table{width:100%;border-collapse:collapse;font-size:13px}
+.exp-table th{background:var(--paper);color:var(--navy);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:10px 12px;text-align:left;border-bottom:1px solid var(--rule)}
+.exp-table td{padding:10px 12px;border-bottom:1px solid #F1F1F1}
+.exp-table tr:hover td{background:#FBFAF6}
+.tag{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.tag-paid{background:var(--success-bg);color:var(--success)}
+.tag-unpaid{background:var(--warn-bg);color:var(--warn)}
+.tag-camp{background:var(--info-bg);color:var(--info)}
+.tag-int{background:#EDE9FE;color:#7C3AED}
+
+/* Team payment card */
+.pay-card{border:1px solid var(--rule);border-radius:11px;padding:14px 16px;margin-bottom:10px;background:#fff;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.pay-card .pc-name{font-weight:700;color:var(--navy);font-size:14px}
+.pay-card .pc-phone{font-size:12px;color:var(--text-dim);font-family:'JetBrains Mono',monospace}
+.pay-card .pc-detail{font-size:12.5px;color:var(--ink-700);margin-top:6px;line-height:1.6}
+.pay-card .pc-detail b{color:var(--navy)}
+.pay-card .pc-qr{width:56px;height:56px;border-radius:8px;border:1px solid var(--rule);object-fit:cover;cursor:pointer}
+.has-pay{border-left:3px solid var(--success)}
+.no-pay{border-left:3px solid var(--warn)}
+
+/* Summary cards */
+.sum-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+@media(max-width:680px){.sum-cards{grid-template-columns:repeat(2,1fr)}}
+.sum-card{background:#fff;border:1px solid var(--rule);border-radius:11px;padding:14px;border-top:3px solid var(--gold)}
+.sum-card .sv{font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--navy)}
+.sum-card .sl{font-size:10.5px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.4px;margin-top:4px;font-weight:600}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(11,25,87,.5);display:none;align-items:center;justify-content:center;z-index:1000;padding:18px}
+.modal-bg.show{display:flex}
+.modal-box{background:#fff;border-radius:14px;max-width:500px;width:100%;padding:22px;max-height:92vh;overflow:auto}
+.modal-box h3{font-family:'Fraunces',serif;font-size:18px;color:var(--navy);margin-bottom:16px}
+
+.empty{padding:40px;text-align:center;color:var(--text-dim);font-size:13px}
+.cat-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border:1px solid var(--rule);border-radius:999px;font-size:12.5px;margin:0 6px 6px 0;background:#fff}
+.cat-chip button{color:var(--danger);font-size:14px;line-height:1}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:12px 22px;border-radius:10px;font-size:13.5px;font-weight:600;z-index:2000;opacity:0;transition:opacity .2s;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+.toast.show{opacity:1}
+.spinner{width:34px;height:34px;border:3px solid var(--rule);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;margin:40px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="tb-brand">
+    <div class="tb-logo">P</div>
+    <div><div class="tb-name">Expense Manager</div><div class="tb-tag">Prajapati Advertising</div></div>
+  </div>
+  <div class="tb-user">
+    <div class="tb-ava" id="tbAva">?</div>
+    <div class="tb-info"><div class="name" id="tbName">User</div><div class="role" id="tbRole">role</div></div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="page-head">
+    <div class="page-title">Expense <em>Manager</em> <span style="font-size:11px;font-weight:600;color:#26d0ce;vertical-align:middle">v1</span></div>
+    <div class="page-sub" id="todayDate">…</div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="entry" onclick="switchTab('entry')">➕ New Expense</div>
+    <div class="tab" data-tab="list" onclick="switchTab('list')">📋 Expense List</div>
+    <div class="tab" data-tab="payments" onclick="switchTab('payments')">💳 Team Payments</div>
+    <div class="tab" data-tab="categories" onclick="switchTab('categories')">🏷️ Categories</div>
+  </div>
+
+  <!-- ════════ TAB: NEW EXPENSE ════════ -->
+  <div class="panel active" id="panel-entry">
+    <div class="section">
+      <div class="section-head"><div class="section-title">Expense Type</div></div>
+      <div class="section-body">
+        <div class="etype-wrap">
+          <div class="etype active" data-et="campaign" onclick="pickType('campaign')">
+            <div class="ico">🚖</div><div class="nm">Campaign Expense</div><div class="ds">Field — food, hotel, transport</div>
+          </div>
+          <div class="etype" data-et="internal" onclick="pickType('internal')">
+            <div class="ico">🏢</div><div class="nm">Internal Expense</div><div class="ds">Office, salary, production…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CAMPAIGN fields -->
+    <div class="section" id="campaignFields">
+      <div class="section-head"><div class="section-title">Campaign Details</div></div>
+      <div class="section-body">
+        <div class="row">
+          <div class="field">
+            <div class="label">Campaign <span class="req">*</span></div>
+            <select class="input" id="expCampaign"><option value="">Select campaign…</option></select>
+          </div>
+          <div class="field">
+            <div class="label">Team Member <span class="hint">Kiske liye</span></div>
+            <select class="input" id="expMember"><option value="">Select member…</option></select>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <div class="label">Location</div>
+            <input class="input" id="expLocation" placeholder="City / area">
+          </div>
+          <div class="field">
+            <div class="label">Date <span class="req">*</span></div>
+            <input class="input" type="date" id="expDate">
+          </div>
+        </div>
+        <div class="label" style="margin-top:6px">Expense Heads (₹)</div>
+        <div class="amt-grid">
+          <div class="field"><div class="label" style="font-size:10px">🍽️ Food</div><input class="input" type="number" id="amtFood" value="0" oninput="calcTotal()"></div>
+          <div class="field"><div class="label" style="font-size:10px">🏨 Hotel</div><input class="input" type="number" id="amtHotel" value="0" oninput="calcTotal()"></div>
+          <div class="field"><div class="label" style="font-size:10px">🚗 Transport</div><input class="input" type="number" id="amtTransport" value="0" oninput="calcTotal()"></div>
+          <div class="field"><div class="label" style="font-size:10px">➕ Other</div><input class="input" type="number" id="amtOther" value="0" oninput="calcTotal()"></div>
+        </div>
+        <div class="field" style="margin-top:12px">
+          <div class="label">Other Description <span class="hint">Agar 'Other' bhara</span></div>
+          <input class="input" id="otherDesc" placeholder="e.g. parking, recharge…">
+        </div>
+      </div>
+    </div>
+
+    <!-- INTERNAL fields -->
+    <div class="section" id="internalFields" style="display:none">
+      <div class="section-head"><div class="section-title">Internal Details</div></div>
+      <div class="section-body">
+        <div class="row">
+          <div class="field">
+            <div class="label">Category <span class="req">*</span></div>
+            <select class="input" id="intCategory"><option value="">Select…</option></select>
+          </div>
+          <div class="field">
+            <div class="label">Party / Vendor <span class="hint">Optional</span></div>
+            <input class="input" id="intParty" placeholder="Supplier name">
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <div class="label">Amount (₹) <span class="req">*</span></div>
+            <input class="input" type="number" id="intAmount" value="0" oninput="calcTotal()">
+          </div>
+          <div class="field">
+            <div class="label">Date <span class="req">*</span></div>
+            <input class="input" type="date" id="intDate">
+          </div>
+        </div>
+        <div class="field">
+          <div class="label">Details</div>
+          <input class="input" id="intDetails" placeholder="What was this expense for?">
+        </div>
+      </div>
+    </div>
+
+    <!-- TOTAL + PAYMENT -->
+    <div class="section">
+      <div class="section-head"><div class="section-title">Total & Payment</div></div>
+      <div class="section-body">
+        <div class="total-box">
+          <div class="pl">Total Amount</div>
+          <div class="pv" id="totalAmt">₹0</div>
+        </div>
+        <div class="row" style="margin-top:14px">
+          <div class="field">
+            <div class="label">Payment Status</div>
+            <div class="pay-toggle">
+              <div class="pay-opt active" data-v="unpaid" onclick="pickPay('unpaid')">⏳ Unpaid</div>
+              <div class="pay-opt" data-v="paid" onclick="pickPay('paid')">✓ Paid</div>
+            </div>
+          </div>
+          <div class="field" id="paidViaField" style="display:none">
+            <div class="label">Paid Via</div>
+            <select class="input" id="paidVia"><option value="upi">UPI</option><option value="bank">Bank</option><option value="cash">Cash</option></select>
+          </div>
+        </div>
+        <div class="field" id="receiptField" style="display:none">
+          <div class="label">Receipt <span class="hint">Upload bill/screenshot</span></div>
+          <input class="input" type="file" id="expReceipt" accept="image/*,application/pdf">
+        </div>
+        <div class="field" style="margin-top:4px">
+          <div class="label">Notes</div>
+          <input class="input" id="expNotes" placeholder="Optional remark">
+        </div>
+        <div id="entryStatus" style="margin-top:10px"></div>
+        <button class="btn btn-gold" style="margin-top:12px" id="saveExpBtn" onclick="saveExpense()">💾 Save Expense</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ TAB: EXPENSE LIST ════════ -->
+  <div class="panel" id="panel-list">
+    <div class="sum-cards" id="sumCards"></div>
+    <div class="row">
+      <div class="field"><div class="label">From</div><input class="input" type="date" id="fltFrom" onchange="loadExpenses()"></div>
+      <div class="field"><div class="label">To</div><input class="input" type="date" id="fltTo" onchange="loadExpenses()"></div>
+      <div class="field"><div class="label">Type</div><select class="input" id="fltType" onchange="loadExpenses()"><option value="">All</option><option value="campaign">Campaign</option><option value="internal">Internal</option></select></div>
+      <div class="field"><div class="label">Status</div><select class="input" id="fltStatus" onchange="loadExpenses()"><option value="">All</option><option value="paid">Paid</option><option value="unpaid">Unpaid</option></select></div>
+    </div>
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">Expenses</div>
+        <button class="btn btn-teal btn-sm" onclick="exportExpensesExcel()">⬇️ Excel</button>
+      </div>
+      <div style="overflow:auto"><table class="exp-table" id="expTable"><tbody><tr><td><div class="spinner"></div></td></tr></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- ════════ TAB: TEAM PAYMENTS ════════ -->
+  <div class="panel" id="panel-payments">
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">Team Payment Details</div>
+        <button class="btn btn-gold btn-sm" onclick="openPayModal(null)">➕ Add Payment Info</button>
+      </div>
+      <div class="section-body">
+        <div style="position:relative;margin-bottom:14px">
+          <input class="input" id="paySearch" placeholder="🔍 Search member…" oninput="renderPayCards()">
+        </div>
+        <div id="payList"><div class="spinner"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ TAB: CATEGORIES ════════ -->
+  <div class="panel" id="panel-categories">
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">Expense Categories</div>
+        <button class="btn btn-gold btn-sm" onclick="openCatModal()">➕ Add Category</button>
+      </div>
+      <div class="section-body">
+        <div class="label">Campaign Heads</div>
+        <div id="catCampaign" style="margin-bottom:18px"></div>
+        <div class="label">Internal Categories</div>
+        <div id="catInternal"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAYMENT INFO MODAL -->
+<div class="modal-bg" id="payModal">
+  <div class="modal-box">
+    <h3 id="payModalTitle">Add Payment Info</h3>
+    <input type="hidden" id="payEditId">
+    <div class="row">
+      <div class="field"><div class="label">Member <span class="req">*</span></div>
+        <select class="input" id="payMember"><option value="">Select member…</option></select>
+      </div>
+    </div>
+    <div class="field"><div class="label">Account Holder Name</div><input class="input" id="payHolder" placeholder="As per bank"></div>
+    <div class="row">
+      <div class="field"><div class="label">UPI ID</div><input class="input" id="payUpi" placeholder="name@okhdfc"></div>
+      <div class="field"><div class="label">Preferred</div><select class="input" id="payPref"><option value="upi">UPI</option><option value="bank">Bank</option></select></div>
+    </div>
+    <div class="row">
+      <div class="field"><div class="label">Bank Account No.</div><input class="input" id="payAcc" placeholder="Account number"></div>
+      <div class="field"><div class="label">IFSC</div><input class="input" id="payIfsc" placeholder="HDFC0001234"></div>
+    </div>
+    <div class="field"><div class="label">Bank Name</div><input class="input" id="payBank" placeholder="HDFC Bank"></div>
+    <div class="field"><div class="label">QR Scanner <span class="hint">Upload image</span></div><input class="input" type="file" id="payQr" accept="image/*"></div>
+    <div id="payQrPreview" style="margin-top:8px"></div>
+    <div id="payStatus" style="margin-top:8px"></div>
+    <div style="display:flex;justify-content:space-between;gap:9px;margin-top:14px">
+      <button class="btn btn-danger btn-sm" id="payDeleteBtn" onclick="deletePayInfo()" style="display:none">🗑️ Delete</button>
+      <div style="display:flex;gap:9px;margin-left:auto">
+        <button class="btn btn-secondary" onclick="closePayModal()">Cancel</button>
+        <button class="btn btn-gold" id="paySaveBtn" onclick="savePayInfo()">💾 Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CATEGORY MODAL -->
+<div class="modal-bg" id="catModal">
+  <div class="modal-box" style="max-width:400px">
+    <h3>Add Category</h3>
+    <div class="field"><div class="label">Name <span class="req">*</span></div><input class="input" id="catName" placeholder="e.g. Diesel"></div>
+    <div class="field"><div class="label">Type</div><select class="input" id="catKind"><option value="internal">Internal</option><option value="campaign">Campaign Head</option></select></div>
+    <div id="catStatus" style="margin-top:8px"></div>
+    <div style="display:flex;justify-content:flex-end;gap:9px;margin-top:14px">
+      <button class="btn btn-secondary" onclick="closeCatModal()">Cancel</button>
+      <button class="btn btn-gold" onclick="saveCategory()">💾 Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/lib/access-guard.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+// ── Iframe-safe + login bridge ──
+(function(){
+  try {
+    if (window.AccessGuard && AccessGuard.getSession) {
+      var s = AccessGuard.getSession();
+      if (s && s.member && s.member.phone) localStorage.setItem('prajapati_admin_phone', s.member.phone);
+    }
+  } catch(e){}
+})();
+
+var SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
+var SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
+
+if (window.AccessGuard && AccessGuard.protect) {
+  AccessGuard.protect({ module:'expenses', redirectTo:'/login.html', allowedRoles:['owner','admin','sales','hr_sales','sales_admin','operations_manager','ops_manager','data_manager','accountant','finance'] });
+}
+var user = ((window.AccessGuard && AccessGuard.getUser) ? AccessGuard.getUser() : null) || { name:'User', role:'user', phone:'' };
+var db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+var state = { type:'campaign', pay:'unpaid', members:[], campaigns:[], categories:[], expenses:[], payInfo:[] };
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+function fmt(n){ return '₹' + Math.round(n||0).toLocaleString('en-IN'); }
+function toast(msg){ var t=$('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(function(){t.classList.remove('show');},2600); }
+function todayIST(){ return new Date(new Date().getTime()+5.5*3600*1000).toISOString().slice(0,10); }
+
+async function api(path, opts){
+  opts = opts || {};
+  var headers = { apikey:SUPABASE_KEY, Authorization:'Bearer '+SUPABASE_KEY, 'Content-Type':'application/json' };
+  if (opts.prefer) headers['Prefer']=opts.prefer;
+  var res = await fetch(SUPABASE_URL+'/rest/v1'+path, { method:opts.method||'GET', headers:headers, body:opts.body?JSON.stringify(opts.body):undefined });
+  if (!res.ok){ var t=await res.text(); throw new Error(t||('HTTP '+res.status)); }
+  var txt = await res.text();
+  return txt ? JSON.parse(txt) : null;
+}
+
+function switchTab(tab){
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.toggle('active', t.getAttribute('data-tab')===tab); });
+  document.querySelectorAll('.panel').forEach(function(p){ p.classList.toggle('active', p.id==='panel-'+tab); });
+  if (tab==='list') loadExpenses();
+  if (tab==='payments') renderPayCards();
+  if (tab==='categories') renderCategories();
+}
+
+function pickType(t){
+  state.type=t;
+  document.querySelectorAll('.etype').forEach(function(e){ e.classList.toggle('active', e.getAttribute('data-et')===t); });
+  $('campaignFields').style.display = t==='campaign'?'':'none';
+  $('internalFields').style.display = t==='internal'?'':'none';
+  calcTotal();
+}
+function pickPay(v){
+  state.pay=v;
+  document.querySelectorAll('.pay-opt').forEach(function(e){ e.classList.toggle('active', e.getAttribute('data-v')===v); });
+  $('receiptField').style.display = v==='paid'?'':'none';
+  $('paidViaField').style.display = v==='paid'?'':'none';
+}
+function calcTotal(){
+  var total=0;
+  if (state.type==='campaign'){
+    total = (+$('amtFood').value||0)+(+$('amtHotel').value||0)+(+$('amtTransport').value||0)+(+$('amtOther').value||0);
+  } else {
+    total = (+$('intAmount').value||0);
+  }
+  $('totalAmt').textContent = fmt(total);
+  return total;
+}
+
+async function init(){
+  $('tbAva').textContent = (user.name||'?').charAt(0).toUpperCase();
+  $('tbName').textContent = user.name||'User';
+  $('tbRole').textContent = (user.role||'user').replace(/_/g,' ');
+  $('todayDate').textContent = new Date().toLocaleDateString('en-IN',{weekday:'long',day:'2-digit',month:'long',year:'numeric',timeZone:'Asia/Kolkata'});
+  $('expDate').value = todayIST();
+  $('intDate').value = todayIST();
+  // default list range = this month
+  $('fltFrom').value = todayIST().slice(0,8)+'01';
+  $('fltTo').value = todayIST();
+  await Promise.all([loadMembers(), loadCampaigns(), loadCategories(), loadPayInfo()]);
+}
+
+async function loadMembers(){
+  try{
+    var d = await api('/trial_team_members?select=name,phone,role&order=name');
+    state.members = d||[];
+    var opts = '<option value="">Select member…</option>' + state.members.map(function(m){ return '<option value="'+esc(m.phone)+'">'+esc(m.name||m.phone)+'</option>'; }).join('');
+    $('expMember').innerHTML = opts;
+    $('payMember').innerHTML = opts;
+  }catch(e){ console.warn('members',e); }
+}
+async function loadCampaigns(){
+  try{
+    var d = await api('/trial_campaigns?select=campaign_name,campaign_key,id,key&order=campaign_name');
+    state.campaigns = (d||[]).map(function(c){ return { key:c.campaign_key||c.key||c.id, name:c.campaign_name||c.campaign_key||c.key }; });
+    $('expCampaign').innerHTML = '<option value="">Select campaign…</option>' + state.campaigns.map(function(c){ return '<option value="'+esc(c.key)+'">'+esc(c.name)+'</option>'; }).join('');
+  }catch(e){ console.warn('campaigns',e); }
+}
+async function loadCategories(){
+  try{
+    var d = await api('/prajapati_expense_categories?select=*&active=eq.true&order=sort_order');
+    state.categories = d||[];
+    var internal = state.categories.filter(function(c){ return c.kind==='internal'; });
+    $('intCategory').innerHTML = '<option value="">Select…</option>' + internal.map(function(c){ return '<option value="'+esc(c.name)+'">'+esc(c.name)+'</option>'; }).join('');
+  }catch(e){ console.warn('cats',e); }
+}
+async function loadPayInfo(){
+  try{ state.payInfo = await api('/prajapati_team_payment_info?select=*&order=member_name') || []; }
+  catch(e){ console.warn('payinfo',e); state.payInfo=[]; }
+}
+
+// ── Save expense ──
+async function saveExpense(){
+  var btn=$('saveExpBtn'); var st=$('entryStatus');
+  st.innerHTML='';
+  var total = calcTotal();
+  var payload = {
+    expense_type: state.type,
+    payment_status: state.pay,
+    total_amount: total,
+    notes: $('expNotes').value.trim()||null,
+    created_by: user.phone||null,
+    created_by_name: user.name||null
+  };
+  if (state.type==='campaign'){
+    var ck=$('expCampaign').value;
+    if(!ck){ st.innerHTML='<span style="color:var(--danger);font-size:12.5px">Campaign select karo</span>'; return; }
+    var cname=(state.campaigns.find(function(c){return c.key===ck})||{}).name||ck;
+    var mph=$('expMember').value;
+    var mname=(state.members.find(function(m){return m.phone===mph})||{}).name||'';
+    payload.campaign_key=ck; payload.campaign_name=cname;
+    payload.team_member_phone=mph||null; payload.team_member_name=mname||null;
+    payload.location=$('expLocation').value.trim()||null;
+    payload.expense_date=$('expDate').value||todayIST();
+    payload.food_amount=+$('amtFood').value||0;
+    payload.hotel_amount=+$('amtHotel').value||0;
+    payload.transport_amount=+$('amtTransport').value||0;
+    payload.other_amount=+$('amtOther').value||0;
+    payload.other_description=$('otherDesc').value.trim()||null;
+  } else {
+    var cat=$('intCategory').value;
+    if(!cat){ st.innerHTML='<span style="color:var(--danger);font-size:12.5px">Category select karo</span>'; return; }
+    if(total<=0){ st.innerHTML='<span style="color:var(--danger);font-size:12.5px">Amount daalo</span>'; return; }
+    payload.internal_category=cat;
+    payload.internal_party=$('intParty').value.trim()||null;
+    payload.internal_details=$('intDetails').value.trim()||null;
+    payload.expense_date=$('intDate').value||todayIST();
+  }
+  if (state.pay==='paid'){ payload.paid_via=$('paidVia').value; payload.paid_date=todayIST(); }
+
+  btn.disabled=true; btn.textContent='Saving…';
+  try{
+    var rows = await api('/prajapati_expenses', { method:'POST', body:payload, prefer:'return=representation' });
+    var newId = rows && rows[0] && rows[0].id;
+    // receipt upload (best effort)
+    var rcFile = $('expReceipt').files[0];
+    if (state.pay==='paid' && rcFile && newId){
+      try{
+        var safe=rcFile.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+        var path='expense-receipts/'+newId+'_'+Date.now()+'_'+safe;
+        var up=await fetch(SUPABASE_URL+'/storage/v1/object/payment-receipts/'+encodeURI(path),{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY,'Content-Type':rcFile.type,'x-upsert':'true'},body:rcFile});
+        if(up.ok){ var rcUrl=SUPABASE_URL+'/storage/v1/object/public/payment-receipts/'+encodeURI(path); await api('/prajapati_expenses?id=eq.'+newId,{method:'PATCH',body:{receipt_url:rcUrl}}); }
+      }catch(rcErr){ console.warn('receipt',rcErr); }
+    }
+    toast('✓ Expense saved');
+    resetEntry();
+  }catch(e){
+    st.innerHTML='<span style="color:var(--danger);font-size:12.5px">'+esc(e.message||'Save failed')+'</span>';
+  }finally{ btn.disabled=false; btn.textContent='💾 Save Expense'; }
+}
+function resetEntry(){
+  ['amtFood','amtHotel','amtTransport','amtOther','otherDesc','expLocation','expNotes','intAmount','intParty','intDetails'].forEach(function(id){ if($(id))$(id).value = (id.indexOf('amt')===0||id==='intAmount')?'0':''; });
+  $('expCampaign').value=''; $('expMember').value=''; $('intCategory').value='';
+  pickPay('unpaid'); calcTotal();
+}
+
+// ── Expense list ──
+async function loadExpenses(){
+  var tbody=$('expTable').querySelector('tbody');
+  tbody.innerHTML='<tr><td colspan="7"><div class="spinner"></div></td></tr>';
+  var qs='/prajapati_expenses?select=*&order=expense_date.desc&limit=2000';
+  var from=$('fltFrom').value, to=$('fltTo').value, typ=$('fltType').value, sts=$('fltStatus').value;
+  if(from) qs+='&expense_date=gte.'+from;
+  if(to) qs+='&expense_date=lte.'+to;
+  if(typ) qs+='&expense_type=eq.'+typ;
+  if(sts) qs+='&payment_status=eq.'+sts;
+  try{
+    state.expenses = await api(qs) || [];
+    renderExpenseTable();
+    renderSummary();
+  }catch(e){ tbody.innerHTML='<tr><td style="color:var(--danger);padding:18px">'+esc(e.message)+'</td></tr>'; }
+}
+function renderSummary(){
+  var total=0, paid=0, unpaid=0, camp=0, intl=0;
+  state.expenses.forEach(function(e){
+    var amt=+e.total_amount||0; total+=amt;
+    if(e.payment_status==='paid')paid+=amt; else unpaid+=amt;
+    if(e.expense_type==='campaign')camp+=amt; else intl+=amt;
+  });
+  $('sumCards').innerHTML =
+    card(fmt(total),'Total','#0B1957')+card(fmt(unpaid),'Unpaid','#C2410C')+card(fmt(camp),'Campaign','#1E40AF')+card(fmt(intl),'Internal','#7C3AED');
+}
+function card(v,l,c){ return '<div class="sum-card" style="border-top-color:'+c+'"><div class="sv" style="color:'+c+'">'+v+'</div><div class="sl">'+l+'</div></div>'; }
+function renderExpenseTable(){
+  var tbody=$('expTable').querySelector('tbody');
+  if(!state.expenses.length){ tbody.innerHTML='<tr><td colspan="7"><div class="empty">Koi expense nahi is filter mein</div></td></tr>'; return; }
+  // header
+  $('expTable').querySelector('thead')?.remove();
+  var thead=document.createElement('thead');
+  thead.innerHTML='<tr><th>Date</th><th>Type</th><th>For / Category</th><th>Detail</th><th>Amount</th><th>Status</th><th>Receipt</th></tr>';
+  $('expTable').insertBefore(thead, tbody);
+  tbody.innerHTML = state.expenses.map(function(e){
+    var d = e.expense_date ? new Date(e.expense_date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}) : '—';
+    var typeTag = e.expense_type==='campaign' ? '<span class="tag tag-camp">Campaign</span>' : '<span class="tag tag-int">Internal</span>';
+    var forCol = e.expense_type==='campaign' ? (esc(getWork(e.campaign_name))+(e.team_member_name?'<br><small style="color:var(--text-dim)">'+esc(e.team_member_name)+'</small>':'')) : esc(e.internal_category||'—');
+    var detail = e.expense_type==='campaign'
+      ? [e.location, headsSummary(e)].filter(Boolean).join(' · ')
+      : [e.internal_party, e.internal_details].filter(Boolean).join(' · ');
+    var statusTag = e.payment_status==='paid' ? '<span class="tag tag-paid">Paid</span>' : '<span class="tag tag-unpaid">Unpaid</span>';
+    var rc = e.receipt_url ? '<a href="'+esc(e.receipt_url)+'" target="_blank" style="color:var(--info)">📎</a>' : '—';
+    var payBtn = e.payment_status!=='paid' ? '<button class="btn btn-sm btn-secondary" style="margin-left:6px" onclick="markPaid(\''+e.id+'\')">Pay</button>' : '';
+    return '<tr><td>'+d+'</td><td>'+typeTag+'</td><td>'+forCol+'</td><td style="color:var(--ink-700)">'+esc(detail||'—')+'</td><td style="font-weight:700;font-family:JetBrains Mono,monospace">'+fmt(e.total_amount)+'</td><td>'+statusTag+payBtn+'</td><td>'+rc+'</td></tr>';
+  }).join('');
+}
+function getWork(name){ var s=String(name||'').trim(); var i=s.search(/[·\-–—|]/); if(i>0)s=s.slice(0,i).trim(); return s||name||'—'; }
+function headsSummary(e){ var p=[]; if(+e.food_amount)p.push('F'+e.food_amount); if(+e.hotel_amount)p.push('H'+e.hotel_amount); if(+e.transport_amount)p.push('T'+e.transport_amount); if(+e.other_amount)p.push('O'+e.other_amount); return p.join('+'); }
+async function markPaid(id){
+  if(!confirm('Paid mark karna hai?')) return;
+  try{ await api('/prajapati_expenses?id=eq.'+id,{method:'PATCH',body:{payment_status:'paid',paid_date:todayIST()}}); toast('✓ Marked paid'); loadExpenses(); }
+  catch(e){ toast('Failed'); }
+}
+
+function exportExpensesExcel(){
+  if(typeof XLSX==='undefined'){ toast('Excel lib loading…'); return; }
+  var aoa=[['Date','Type','For/Category','Member','Location','Food','Hotel','Transport','Other','Detail','Total','Status','Paid Via']];
+  var total=0;
+  state.expenses.forEach(function(e){
+    total+=+e.total_amount||0;
+    aoa.push([e.expense_date,e.expense_type,e.expense_type==='campaign'?getWork(e.campaign_name):e.internal_category,e.team_member_name||'',e.location||'',e.food_amount||0,e.hotel_amount||0,e.transport_amount||0,e.other_amount||0,e.internal_details||e.other_description||'',e.total_amount||0,e.payment_status,e.paid_via||'']);
+  });
+  aoa.push(['','','','','','','','','','TOTAL',total,'','']);
+  var ws=XLSX.utils.aoa_to_sheet(aoa); var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Expenses');
+  XLSX.writeFile(wb,'Expenses_'+($('fltFrom').value||'all')+'_to_'+($('fltTo').value||'all')+'.xlsx');
+  toast('✓ Excel downloaded');
+}
+
+// ── Team payment cards ──
+function renderPayCards(){
+  var q=($('paySearch').value||'').toLowerCase().trim();
+  var wrap=$('payList');
+  // Show ALL members, with/without payment info
+  var html = state.members.filter(function(m){
+    if(!q) return true;
+    return ((m.name||'')+' '+(m.phone||'')).toLowerCase().indexOf(q)!==-1;
+  }).map(function(m){
+    var info = state.payInfo.find(function(p){ return p.member_phone===m.phone; });
+    if(info){
+      var details=[];
+      if(info.upi_id) details.push('<b>UPI:</b> '+esc(info.upi_id));
+      if(info.bank_account_no) details.push('<b>A/c:</b> '+esc(info.bank_account_no)+(info.ifsc_code?' ('+esc(info.ifsc_code)+')':''));
+      if(info.bank_name) details.push('<b>Bank:</b> '+esc(info.bank_name));
+      var qr = info.qr_scanner_url ? '<img src="'+esc(info.qr_scanner_url)+'" class="pc-qr" onclick="window.open(this.src)">' : '';
+      return '<div class="pay-card has-pay"><div><div class="pc-name">'+esc(m.name||m.phone)+' <span class="tag tag-paid" style="font-size:9px">✓ Setup</span></div><div class="pc-phone">'+esc(m.phone)+'</div><div class="pc-detail">'+(details.join('<br>')||'—')+'</div></div><div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">'+qr+'<button class="btn btn-sm btn-secondary" onclick="openPayModal(\''+esc(m.phone)+'\')">✏️ Edit</button></div></div>';
+    } else {
+      return '<div class="pay-card no-pay"><div><div class="pc-name">'+esc(m.name||m.phone)+'</div><div class="pc-phone">'+esc(m.phone)+'</div><div class="pc-detail" style="color:var(--warn)">⚠️ Payment info nahi — add karo</div></div><button class="btn btn-sm btn-gold" onclick="openPayModal(\''+esc(m.phone)+'\')">➕ Add</button></div>';
+    }
+  }).join('');
+  wrap.innerHTML = html || '<div class="empty">Koi member nahi</div>';
+}
+function openPayModal(phone){
+  $('payEditId').value=''; $('payStatus').innerHTML=''; $('payQrPreview').innerHTML='';
+  $('payDeleteBtn').style.display='none';
+  ['payHolder','payUpi','payAcc','payIfsc','payBank'].forEach(function(id){ $(id).value=''; });
+  $('payPref').value='upi';
+  if(phone){
+    $('payMember').value=phone;
+    var info=state.payInfo.find(function(p){ return p.member_phone===phone; });
+    if(info){
+      $('payModalTitle').textContent='Edit Payment Info';
+      $('payEditId').value=info.id;
+      $('payHolder').value=info.account_holder_name||'';
+      $('payUpi').value=info.upi_id||''; $('payAcc').value=info.bank_account_no||'';
+      $('payIfsc').value=info.ifsc_code||''; $('payBank').value=info.bank_name||'';
+      $('payPref').value=info.preferred_method||'upi';
+      $('payDeleteBtn').style.display='';
+      if(info.qr_scanner_url) $('payQrPreview').innerHTML='<img src="'+esc(info.qr_scanner_url)+'" style="width:70px;border-radius:8px;border:1px solid var(--rule)">';
+    } else { $('payModalTitle').textContent='Add Payment Info'; }
+  } else { $('payModalTitle').textContent='Add Payment Info'; $('payMember').value=''; }
+  $('payModal').classList.add('show');
+}
+function closePayModal(){ $('payModal').classList.remove('show'); }
+async function savePayInfo(){
+  var phone=$('payMember').value;
+  if(!phone){ $('payStatus').innerHTML='<span style="color:var(--danger);font-size:12px">Member select karo</span>'; return; }
+  var mname=(state.members.find(function(m){return m.phone===phone})||{}).name||'';
+  var btn=$('paySaveBtn'); btn.disabled=true; btn.textContent='Saving…';
+  var payload={ member_phone:phone, member_name:mname, account_holder_name:$('payHolder').value.trim()||null, upi_id:$('payUpi').value.trim()||null, bank_account_no:$('payAcc').value.trim()||null, ifsc_code:$('payIfsc').value.trim()||null, bank_name:$('payBank').value.trim()||null, preferred_method:$('payPref').value, updated_at:new Date().toISOString() };
+  try{
+    var editId=$('payEditId').value;
+    var saved;
+    if(editId){ saved=await api('/prajapati_team_payment_info?id=eq.'+editId,{method:'PATCH',body:payload,prefer:'return=representation'}); }
+    else {
+      // upsert on member_phone
+      saved=await api('/prajapati_team_payment_info',{method:'POST',body:payload,prefer:'resolution=merge-duplicates,return=representation'});
+    }
+    var rowId = (saved&&saved[0]&&saved[0].id) || editId;
+    // QR upload
+    var qrFile=$('payQr').files[0];
+    if(qrFile && rowId){
+      try{
+        var safe=qrFile.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+        var path='qr-scanners/'+phone+'_'+Date.now()+'_'+safe;
+        var up=await fetch(SUPABASE_URL+'/storage/v1/object/payment-receipts/'+encodeURI(path),{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY,'Content-Type':qrFile.type,'x-upsert':'true'},body:qrFile});
+        if(up.ok){ var qrUrl=SUPABASE_URL+'/storage/v1/object/public/payment-receipts/'+encodeURI(path); await api('/prajapati_team_payment_info?id=eq.'+rowId,{method:'PATCH',body:{qr_scanner_url:qrUrl}}); }
+      }catch(qe){ console.warn('qr',qe); }
+    }
+    await loadPayInfo(); renderPayCards(); closePayModal(); toast('✓ Payment info saved');
+  }catch(e){ $('payStatus').innerHTML='<span style="color:var(--danger);font-size:12px">'+esc(e.message||'Failed')+'</span>'; }
+  finally{ btn.disabled=false; btn.textContent='💾 Save'; }
+}
+async function deletePayInfo(){
+  var id=$('payEditId').value; if(!id) return;
+  if(!confirm('Payment info delete karna hai?')) return;
+  try{ await api('/prajapati_team_payment_info?id=eq.'+id,{method:'DELETE'}); await loadPayInfo(); renderPayCards(); closePayModal(); toast('✓ Deleted'); }
+  catch(e){ toast('Delete failed'); }
+}
+
+// ── Categories ──
+function renderCategories(){
+  var camp=state.categories.filter(function(c){return c.kind==='campaign';});
+  var intl=state.categories.filter(function(c){return c.kind==='internal';});
+  $('catCampaign').innerHTML = camp.map(catChip).join('') || '<span style="color:var(--text-dim);font-size:12px">None</span>';
+  $('catInternal').innerHTML = intl.map(catChip).join('') || '<span style="color:var(--text-dim);font-size:12px">None</span>';
+}
+function catChip(c){ return '<span class="cat-chip">'+esc(c.name)+' <button onclick="deleteCategory(\''+c.id+'\',\''+esc(c.name)+'\')">×</button></span>'; }
+function openCatModal(){ $('catName').value=''; $('catKind').value='internal'; $('catStatus').innerHTML=''; $('catModal').classList.add('show'); }
+function closeCatModal(){ $('catModal').classList.remove('show'); }
+async function saveCategory(){
+  var name=$('catName').value.trim();
+  if(!name){ $('catStatus').innerHTML='<span style="color:var(--danger);font-size:12px">Name daalo</span>'; return; }
+  try{
+    await api('/prajapati_expense_categories',{method:'POST',body:{name:name,kind:$('catKind').value,sort_order:200}});
+    await loadCategories(); renderCategories(); closeCatModal(); toast('✓ Category added');
+  }catch(e){ $('catStatus').innerHTML='<span style="color:var(--danger);font-size:12px">'+esc(/duplicate|unique/i.test(e.message)?'Already exists':e.message)+'</span>'; }
+}
+async function deleteCategory(id,name){
+  if(!confirm('"'+name+'" delete karna hai?')) return;
+  try{ await api('/prajapati_expense_categories?id=eq.'+id,{method:'DELETE'}); await loadCategories(); renderCategories(); toast('✓ Deleted'); }
+  catch(e){ toast('Delete failed'); }
+}
+
+// close modals on backdrop
+['payModal','catModal'].forEach(function(id){ var m=$(id); if(m) m.addEventListener('click',function(e){ if(e.target===m) m.classList.remove('show'); }); });
+
+init();
+</script>
+</body>
+</html>
