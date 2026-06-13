@@ -720,16 +720,36 @@ AccessGuard.protect({
 
 const user = AccessGuard.getUser();
 const userRole = String(user.role || '').toLowerCase();
-const isHR = user.hr_role === true || ['owner', 'admin'].includes(userRole);
-
-if (!isHR) {
-  alert('HR access only. You are not authorized.');
-  window.location.href = '/sales-hub.html';
-}
 
 const SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// HR access check — owner/admin always; others need LIVE hr_role from DB
+// (session may be stale: owner granted HR after this user's last login)
+(async function verifyHrAccess() {
+  if (['owner', 'admin'].includes(userRole)) return; // auto-HR, skip DB check
+  if (user.hr_role === true) return; // session already has it
+  // session stale — re-check live from DB by phone
+  try {
+    const { data } = await db.from('trial_team_members')
+      .select('hr_role, role').eq('phone', user.phone).maybeSingle();
+    const liveHr = data && (data.hr_role === true || ['owner','admin'].includes(String(data.role||'').toLowerCase()));
+    if (liveHr) {
+      // refresh session copy so other pages see it too
+      try {
+        const sess = JSON.parse(localStorage.getItem('prajapati_session') || '{}');
+        if (sess.member) { sess.member.hr_role = true; localStorage.setItem('prajapati_session', JSON.stringify(sess)); }
+      } catch (e) {}
+      return; // access granted
+    }
+    alert('HR access only. You are not authorized.');
+    window.location.href = '/sales-hub.html';
+  } catch (e) {
+    alert('HR access check failed. Please login again.');
+    window.location.href = '/login.html';
+  }
+})();
 
 document.getElementById('tbAva').textContent = (user.name || '?').charAt(0).toUpperCase();
 document.getElementById('tbName').textContent = user.name || 'HR';
