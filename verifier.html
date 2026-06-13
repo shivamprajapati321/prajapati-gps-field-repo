@@ -252,7 +252,7 @@ var CONFIG = {
   supabaseKey: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j',
   storageBucket: 'trial-photos'
 };
-var state = { user: null, currentMode: 'hood', currentTab: 'pending', allPhotos: [], vehicles: [], pendingAction: null };
+var state = { user: null, currentMode: 'hood', currentTab: 'pending', allPhotos: [], vehicles: [], pendingAction: null, serialCampaigns: {} };
 
 function $(id) { return document.getElementById(id); }
 function toast(msg, type) {
@@ -349,9 +349,13 @@ function resetFilters() {
   $('filterCampaign').value = ''; $('filterMember').value = ''; loadQueue();
 }
 function loadFilters() {
-  api('/rest/v1/trial_campaigns?select=key,name&active=eq.true&order=name.asc').then(function(c){
+  api('/rest/v1/trial_campaigns?select=key,name,serial_tracking&active=eq.true&order=name.asc').then(function(c){
     var sel = $('filterCampaign'); sel.innerHTML = '<option value="">All Campaigns</option>';
-    (c || []).forEach(function(x){ sel.innerHTML += '<option value="' + escHtml(x.key) + '">' + escHtml(x.name) + '</option>'; });
+    state.serialCampaigns = {};
+    (c || []).forEach(function(x){
+      sel.innerHTML += '<option value="' + escHtml(x.key) + '">' + escHtml(x.name) + '</option>';
+      if (x.serial_tracking) state.serialCampaigns[x.key] = true;
+    });
   });
   api('/rest/v1/trial_team_members?select=phone,name&active=eq.true&role=eq.field&order=name.asc').then(function(m){
     var sel = $('filterMember'); sel.innerHTML = '<option value="">All Members</option>';
@@ -554,7 +558,11 @@ function renderVehicleCard(v, idx) {
     var ocrChips = uniqueOcr.map(function(p){ return '<span class="suggestion-chip" onclick="usePlate(' + idx + ', \'' + escHtml(p) + '\')">' + escHtml(p) + '</span>'; }).join('');
     var ocrRow = uniqueOcr.length > 0 ? '<div class="vc-ocr-row"><b>OCR Detected:</b> ' + ocrChips + '</div>' : '<div class="vc-ocr-row" style="background:#fee2e2;border-color:#fecaca;color:#991b1b;"><b>⚠️ No plate by OCR</b> — read manually</div>';
     var photoLabel = v.mode === 'hood' ? 'Plate (will apply to all 3 hood photos)' : 'Plate (will apply to back panel)';
-    formHtml = ocrRow + '<div class="vc-form"><div class="vc-input-row"><label>' + photoLabel + '</label><input type="text" class="vc-input" data-idx="' + idx + '" id="plate-input-' + idx + '" value="' + escHtml(suggested) + '" placeholder="MH12AB1234" maxlength="20" /></div><div class="vc-actions"><button class="btn-verify" data-idx="' + idx + '" onclick="verifyVehicle(' + idx + ')" ' + (!suggested ? 'disabled' : '') + '>✓ Verify & Save</button><button class="btn-reject" onclick="openRejectModal(' + idx + ')">❌ Reject</button><button class="btn-delete" onclick="openDeleteModal(' + idx + ')">🗑️ Delete</button></div></div>';
+    var needsSerial = state.serialCampaigns && state.serialCampaigns[v.campaign];
+    var existingSerial = '';
+    for (var si=0; si<v.photos.length; si++){ if(v.photos[si].serial_number){ existingSerial=v.photos[si].serial_number; break; } }
+    var serialRow = needsSerial ? '<div class="vc-input-row" style="margin-top:8px"><label>🔢 Serial No. <span style="font-weight:400;color:#6b7280">(vehicle pe likha)</span></label><input type="text" class="vc-input" id="serial-input-' + idx + '" value="' + escHtml(existingSerial) + '" placeholder="e.g. 59" maxlength="20" style="border-color:#B89B4E" /></div>' : '';
+    formHtml = ocrRow + '<div class="vc-form"><div class="vc-input-row"><label>' + photoLabel + '</label><input type="text" class="vc-input" data-idx="' + idx + '" id="plate-input-' + idx + '" value="' + escHtml(suggested) + '" placeholder="MH12AB1234" maxlength="20" /></div>' + serialRow + '<div class="vc-actions"><button class="btn-verify" data-idx="' + idx + '" onclick="verifyVehicle(' + idx + ')" ' + (!suggested ? 'disabled' : '') + '>✓ Verify & Save</button><button class="btn-reject" onclick="openRejectModal(' + idx + ')">❌ Reject</button><button class="btn-delete" onclick="openDeleteModal(' + idx + ')">🗑️ Delete</button></div></div>';
   }
   
   return '<div class="vehicle-card ' + statusClass + ' ' + modeClass + '">' +
@@ -695,12 +703,19 @@ async function verifyVehicle(idx) {
       vehicle_group_id: groupId, is_verified: true,
       rejected: false, rejection_reason: null, mode: v.mode
     };
+    // serial number (only if campaign uses serial tracking)
+    var serialInput = $('serial-input-' + idx);
+    if (serialInput) {
+      var serialVal = serialInput.value.trim();
+      updateBody.serial_number = serialVal || null;
+    }
     var url = '/rest/v1/trial_photos?id=in.(' + photoIds.join(',') + ')';
     var result = await api(url, { method: 'PATCH', headers: { 'Prefer': 'return=representation' }, body: updateBody });
     if (Array.isArray(result) && result.length === 0) throw new Error('0 rows updated - check RLS');
     
     v.verified = true; v.verifiedPlate = plate; v.groupId = groupId;
-    v.photos.forEach(function(p){ p.is_verified = true; p.verified_plate = plate; p.vehicle_number = plate; });
+    var savedSerial = (serialInput ? serialInput.value.trim() : '') || null;
+    v.photos.forEach(function(p){ p.is_verified = true; p.verified_plate = plate; p.vehicle_number = plate; if(savedSerial!==null) p.serial_number = savedSerial; });
     toast('✅ ' + (v.mode === 'hood' ? 'HOOD' : 'BACK PANEL') + ' Verified: ' + plate + ' (' + v.photos.length + ' photos)', 'success');
     renderVehicles();
   } catch(err) {
