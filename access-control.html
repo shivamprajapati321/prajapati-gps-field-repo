@@ -152,6 +152,15 @@ label.lbl{display:block;font-size:11px;font-weight:600;text-transform:uppercase;
     </div>
 
     <div class="card presets" id="presets"></div>
+    <div class="card" id="hrAccessCard" style="display:none;border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--navy,#0B1957)">👥 HR Manager Access</div>
+          <div style="font-size:12px;color:var(--text-2,#64748B);margin-top:3px">HR Admin Panel — sab employees ki attendance, leave approve, payroll. <b>Sirf owner</b> de sakta hai.</div>
+        </div>
+        <button id="hrToggleBtn" onclick="toggleMemberHr()" style="padding:8px 16px;border-radius:8px;border:none;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap">—</button>
+      </div>
+    </div>
     <div class="card features" id="features"></div>
   </div>
 </div>
@@ -252,10 +261,10 @@ function showBlocked(msg){ document.body.innerHTML='<div class="blocked"><i clas
 function finishBoot(me){
   var role=String(me.role||'').toLowerCase();
   if(role!=='owner'&&role!=='admin'){ showBlocked('Sirf Owner/Admin. Aapka role: '+role); return; }
-  state.me=me; loadMembers();
+  state.me=me; window._me=me; loadMembers();
 }
 function loadMembers(){
-  api('/rest/v1/trial_team_members?select=id,name,phone,role,active,module_access&active=eq.true&order=role.asc,name.asc')
+  api('/rest/v1/trial_team_members?select=id,name,phone,role,active,module_access,hr_role&active=eq.true&order=role.asc,name.asc')
     .then(function(rows){
       state.members=(rows||[]).map(function(m){
         if(m.module_access&&typeof m.module_access==='string'){ try{m.module_access=JSON.parse(m.module_access);}catch(e){m.module_access={};} }
@@ -296,7 +305,34 @@ function selectMember(id){
   $('memberHead').classList.add('show');
   closeEditProfile();
   buildPresets(); renderFeatures();
+  renderHrAccessCard(m);
   $('presets').classList.add('show'); $('features').classList.add('show'); $('saveBar').classList.add('show');
+}
+
+// HR Manager access card — only OWNER can grant/revoke
+function renderHrAccessCard(m){
+  var card=$('hrAccessCard'); if(!card) return;
+  var iAmOwner = window._me && String(window._me.role||'').toLowerCase()==='owner';
+  var theirRole = String(m.role||'').toLowerCase();
+  if(!iAmOwner || ['owner','admin'].includes(theirRole)){ card.style.display='none'; return; }
+  card.style.display='';
+  var btn=$('hrToggleBtn');
+  var isHr = m.hr_role===true;
+  btn.textContent = isHr ? '✕ Remove HR' : '+ Make HR Manager';
+  btn.style.background = isHr ? '#FECACA' : '#B89B4E';
+  btn.style.color = isHr ? '#BE123C' : '#3a2f12';
+}
+async function toggleMemberHr(){
+  var m=state.selected; if(!m) return;
+  if(!(window._me && String(window._me.role||'').toLowerCase()==='owner')){ toast('Sirf owner HR access de sakta hai','error'); return; }
+  var makeHr = !(m.hr_role===true);
+  if(!confirm(makeHr ? (m.name||'Member')+' ko HR Manager access dena hai? Yeh sab employees ki attendance/leave/payroll dekh sakega.' : 'HR Manager access hatana hai?')) return;
+  try{
+    await api('/rest/v1/trial_team_members?id=eq.'+m.id,{method:'PATCH',headers:{Prefer:'return=minimal'},body:{hr_role:makeHr}});
+    m.hr_role=makeHr;
+    renderHrAccessCard(m);
+    toast(makeHr?'✓ HR Manager access diya':'HR access hataya','success');
+  }catch(e){ toast('Failed: '+e.message,'error'); }
 }
 
 // ─── Edit name + phone ───

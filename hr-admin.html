@@ -1092,9 +1092,10 @@ async function loadTeam() {
     .select('*').eq('active', true)
     .not('role', 'in', '(field,field_worker)').order('name');
   
+  const isOwner = userRole === 'owner';
   const el = document.getElementById('teamTable');
   el.innerHTML = `<table class="table"><thead><tr>
-    <th>Name</th><th>Role</th><th>Phone</th><th>Work Hours</th><th>Salary</th><th>Petrol/km</th>
+    <th>Name</th><th>Role</th><th>Phone</th><th>Work Hours</th><th>Salary</th><th>Petrol/km</th>${isOwner ? '<th>HR Access</th>' : ''}
   </tr></thead><tbody>${(data || []).map(m => `
     <tr>
       <td><span class="avatar-cell">${(m.name || '?').charAt(0)}</span>${m.name}${m.hr_role ? ' <span class="pill present" style="margin-left:6px">HR</span>' : ''}</td>
@@ -1103,8 +1104,20 @@ async function loadTeam() {
       <td>${m.work_start_time || '09:00'} - ${m.work_end_time || '19:00'}</td>
       <td>${fmtMoney(m.monthly_salary || 0)}</td>
       <td>${m.petrol_rate_per_km ? '₹' + m.petrol_rate_per_km : '—'}</td>
+      ${isOwner ? `<td>${['owner','admin'].includes(String(m.role||'').toLowerCase())
+        ? '<span class="pill present">Auto</span>'
+        : `<button onclick="toggleHrRole('${m.id}', ${!m.hr_role})" style="padding:5px 12px;border-radius:6px;border:1px solid ${m.hr_role ? '#E11D48' : '#B89B4E'};background:${m.hr_role ? '#FECACA' : '#FBF6E4'};color:${m.hr_role ? '#BE123C' : '#8B7430'};font-size:12px;font-weight:700;cursor:pointer">${m.hr_role ? '✕ Remove HR' : '+ Make HR'}</button>`}</td>` : ''}
     </tr>
   `).join('')}</tbody></table>`;
+}
+
+// Only OWNER can grant/revoke HR Manager access
+async function toggleHrRole(memberId, makeHr) {
+  if (userRole !== 'owner') { alert('Sirf owner HR access de sakta hai'); return; }
+  if (!confirm(makeHr ? 'Is member ko HR Manager access dena hai? Yeh sab employees ki attendance/leave/payroll dekh sakega.' : 'HR Manager access hatana hai?')) return;
+  const { error } = await db.from('trial_team_members').update({ hr_role: makeHr }).eq('id', memberId);
+  if (error) { alert('Failed: ' + error.message); return; }
+  loadTeam();
 }
 
 // ═══ ANNOUNCEMENTS ═══
