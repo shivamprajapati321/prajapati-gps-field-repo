@@ -942,6 +942,7 @@ async function loadVehicles() {
           mode: p.mode,
           owner_name: p.owner_name,
           contact_number: p.contact_number,    // 22-May-2026: for PPT details
+          serial_number: p.serial_number || null,  // serial tracking
           pincode: p.pincode || null,           // 22-May-2026: from trial_photos if present
           member_name: p.member_name,
           city: p.city,
@@ -1322,6 +1323,13 @@ function updateProgress(percent, text) {
   document.getElementById('progressText').textContent = text;
 }
 
+// Get serial number for a vehicle (from grouped value or any of its photos)
+function vehicleSerial(v){
+  if (v.serial_number) return v.serial_number;
+  if (v.photos) { for (var i=0;i<v.photos.length;i++){ if(v.photos[i].serial_number) return v.photos[i].serial_number; } }
+  return '';
+}
+
 async function generateExcel() {
   const btn = document.getElementById('excelBtn');
   if (!state.vehicles || state.vehicles.length === 0) {
@@ -1338,18 +1346,26 @@ async function generateExcel() {
     const campaignName = (state.selectedCampaign && (state.selectedCampaign.name || state.selectedCampaign.client_name)) || 'Report';
     const today = istDateStr();
 
+    const useSerial = state.selectedCampaign && state.selectedCampaign.serial_tracking;
     // Build rows — one per vehicle (quantity = unique vehicles)
-    const rows = state.vehicles.map((v, i) => ({
-      'Sr No': i + 1,
-      'Vehicle Number': v.vehicle_number || '',
-      'Mode': v.mode === 'hood' ? 'Auto Hood' : (v.mode === 'back_panel' ? 'Back Panel' : (v.mode || '')),
-      'Photos': v.photos ? v.photos.length : 0,
-      'Owner Name': v.owner_name || '',
-      'Contact': v.contact_number || '',
-      'City': v.city || '',
-      'Captured By': v.member_name || '',
-      'Date': v.captured_at ? formatDateFromTimestamp(v.captured_at) : ''
-    }));
+    const rows = state.vehicles.map((v, i) => {
+      const row = { 'Sr No': i + 1 };
+      if (useSerial) row['Serial No'] = vehicleSerial(v) || '';
+      row['Vehicle Number'] = v.vehicle_number || '';
+      row['Mode'] = v.mode === 'hood' ? 'Auto Hood' : (v.mode === 'back_panel' ? 'Back Panel' : (v.mode || ''));
+      row['Photos'] = v.photos ? v.photos.length : 0;
+      row['Owner Name'] = v.owner_name || '';
+      row['Contact'] = v.contact_number || '';
+      row['City'] = v.city || '';
+      row['Captured By'] = v.member_name || '';
+      row['Date'] = v.captured_at ? formatDateFromTimestamp(v.captured_at) : '';
+      return row;
+    });
+    // Sort by serial (numeric) then city when serial tracking ON, else by city
+    if (useSerial) {
+      rows.sort(function(a,b){ var sa=parseInt(a['Serial No'])||9999, sb=parseInt(b['Serial No'])||9999; if(sa!==sb)return sa-sb; return String(a.City).localeCompare(String(b.City)); });
+      rows.forEach(function(r,i){ r['Sr No']=i+1; });
+    }
 
     // Summary sheet
     const totalVehicles = state.vehicles.length;
@@ -1712,6 +1728,8 @@ function addHoodSlide(pptx, vehicle, photoData, campaign, brand) {
   
   // Build fields conditionally based on role
   const detailsData = [];
+  var vSerial = vehicleSerial(vehicle);
+  if (vSerial) { detailsData.push({ label: 'SERIAL NO.', value: vSerial, mono: true }); }
   detailsData.push({ label: 'VEHICLE OWNER', value: ownerStr });
   
   if (canSeeContact()) {
@@ -1866,6 +1884,8 @@ function addBackPanelSlide(pptx, vehicle, photoData, campaign, brand) {
   
   // Build fields conditionally based on role
   const detailsData = [];
+  var vSerial = vehicleSerial(vehicle);
+  if (vSerial) { detailsData.push({ label: 'SERIAL NO.', value: vSerial, mono: true }); }
   detailsData.push({ label: 'VEHICLE OWNER', value: ownerStr });
   
   if (canSeeContact()) {
