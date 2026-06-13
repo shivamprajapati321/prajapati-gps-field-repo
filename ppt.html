@@ -7,6 +7,22 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
 <script>
+// ── Login bridge: feed new session system into legacy prajapati_admin_phone key ──
+(function(){
+  try {
+    if (!localStorage.getItem('prajapati_admin_phone')) {
+      var raw = localStorage.getItem('prajapati_session');
+      if (raw) {
+        var s = JSON.parse(raw);
+        var ph = s && s.member && s.member.phone;
+        if (ph) localStorage.setItem('prajapati_admin_phone', ph);
+      }
+    }
+  } catch(e){}
+})();
+</script>
+
+<script>
 window.PPTX_LIB_LOADED = false;
 function loadPptxLib() {
   return new Promise((resolve, reject) => {
@@ -551,23 +567,26 @@ async function detectUserRole() {
 }
 
 function canSeeContact() {
-  // Admin/Owner/DEO can see contact in PPT; client and guest cannot
-  return ['admin', 'owner', 'data_entry'].includes(state.userRole);
+  // Any logged-in team member (who has PPT access) can see contact.
+  // Only external client (token link) and guest (not logged in) are hidden — privacy.
+  return !['client', 'guest'].includes(state.userRole);
 }
 
 function canFetchSurepass() {
-  // Only admin/owner/data roles can trigger Surepass fetch (cost-controlled)
-  // Client cannot incur API costs
-  return ['admin', 'owner', 'data_entry', 'data_manager', 'operations_manager', 'ops_manager'].includes(state.userRole);
+  // Any logged-in team member (with PPT access) can fetch owner/contact data.
+  // Only external client and guest are blocked (cost + privacy control).
+  return !['client', 'guest'].includes(state.userRole);
 }
 
 function getRoleBadge() {
   switch(state.userRole) {
     case 'admin':
     case 'owner':      return { text: '👤 Admin Access', color: '#10b981', bg: '#d1fae5' };
-    case 'data_entry': return { text: '📝 Data Entry Access', color: '#0B1957', bg: '#dbeafe' };
+    case 'data_entry':
+    case 'data_manager': return { text: '📝 Data Access', color: '#0B1957', bg: '#dbeafe' };
     case 'client':     return { text: '🤝 Client Access', color: '#7c3aed', bg: '#ede9fe' };
-    default:           return { text: '🔓 Public View', color: '#6b7280', bg: '#f3f4f6' };
+    case 'guest':      return { text: '🔓 Public View', color: '#6b7280', bg: '#f3f4f6' };
+    default:           return { text: '✅ Team Access', color: '#10b981', bg: '#d1fae5' };
   }
 }
 
