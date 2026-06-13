@@ -1229,15 +1229,22 @@ label {
 
 /* Campaign detail (expandable) */
 .md-rc-detail { padding:10px 4px 14px; border-bottom:1px solid var(--border); }
-.md-cd-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:10px; }
-.md-cd-item { background:#F7F8FC; border-radius:9px; padding:9px 11px; }
-.md-cd-lbl { font-size:10.5px; font-weight:600; color:var(--text-2); text-transform:uppercase; letter-spacing:.3px; display:flex; align-items:center; gap:5px; }
-.md-cd-lbl i { font-size:13px; color:#26d0ce; }
-.md-cd-val { font-size:15px; font-weight:800; font-family:'JetBrains Mono',monospace; color:#0B1957; margin-top:3px; }
+.md-cd-field { background:linear-gradient(135deg,#EEF7FF,#E8F5F4); border:1px solid #D4E8E6; border-radius:11px; padding:12px 14px; margin-bottom:10px; }
+.md-cd-field-top { display:flex; justify-content:space-between; align-items:baseline; }
+.md-cd-field-lbl { font-size:11px; font-weight:700; color:var(--text-2); text-transform:uppercase; letter-spacing:.4px; display:flex; align-items:center; gap:6px; }
+.md-cd-field-lbl i { font-size:15px; color:#0fa6a4; }
+.md-cd-field-val { font-size:22px; font-weight:800; font-family:'JetBrains Mono',monospace; color:#0B1957; letter-spacing:-1px; }
+.md-cd-field-val small { font-size:12px; font-weight:600; color:var(--text-3); }
+.md-cd-field-pct { font-size:11px; font-weight:700; margin-top:5px; text-align:right; }
 .md-cd-bar { background:#E6E4DC; border-radius:4px; height:5px; overflow:hidden; margin-top:6px; }
-.md-cd-fill { height:5px; border-radius:4px; transition:width .5s; }
-.md-cd-out { display:flex; justify-content:space-between; align-items:center; font-size:12.5px; font-weight:600; color:var(--text-1); background:#FDF4EC; border-radius:9px; padding:9px 12px; }
-.md-cd-out strong { font-family:'JetBrains Mono',monospace; color:#A32D2D; }
+.md-cd-bar.big { height:8px; border-radius:5px; margin-top:8px; }
+.md-cd-fill { height:100%; border-radius:5px; transition:width .5s; }
+.md-cd-grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.md-cd-item { background:#F7F8FC; border-radius:9px; padding:9px 11px; }
+.md-cd-lbl { font-size:10px; font-weight:600; color:var(--text-2); text-transform:uppercase; letter-spacing:.3px; display:flex; align-items:center; gap:4px; }
+.md-cd-lbl i { font-size:12px; color:#26d0ce; }
+.md-cd-val { font-size:15px; font-weight:800; font-family:'JetBrains Mono',monospace; color:#0B1957; margin-top:3px; }
+.md-cd-out-sub { font-size:9.5px; color:var(--text-3); margin-top:2px; font-weight:600; }
 .md-action {
   border-radius: 14px; padding: 16px 18px; cursor: pointer; transition: transform .18s ease, box-shadow .18s ease; border-left: 4px solid;
   box-shadow: 0 1px 3px rgba(11,25,87,0.04);
@@ -5017,60 +5024,61 @@ function toggleCampDetail(cid) {
   loadCampDetail(cid);
 }
 
-// Fetch Field/Print/Stitch/Exec progress + outstanding for one campaign.
+// Fetch Field/Print/Stitch progress + outstanding for one campaign.
 function loadCampDetail(cid) {
   var c = window.__recentCamps[cid];
   var panel = $('detail-' + cid);
   if (!c || !panel) return;
   var key = c.key || c.campaign_key || c.id;
-  var cidVal = c.id;
   var target = Number(c.target_vehicles || 0) || 0;
 
   Promise.all([
-    // Field: unique vehicles for this campaign
     api('/rest/v1/trial_photos?select=vehicle_number,mode&campaign_key=eq.' + encodeURIComponent(key) + '&deleted_at=is.null&limit=20000').catch(function(){ return []; }),
-    // Stitching: qty for this campaign (try campaign_id then campaign_key)
     api('/rest/v1/prajapati_stitching_log?select=*&limit=20000').catch(function(){ return []; }),
-    // Printing: trial_work_logs for this campaign
     api('/rest/v1/trial_work_logs?select=*&limit=20000').catch(function(){ return []; }),
-    // Execution: amount for this campaign
     api('/rest/v1/execution_daily_log?select=*&limit=20000').catch(function(){ return []; })
   ]).then(function(res){
     var photos = res[0]||[], stitch = res[1]||[], print = res[2]||[], exec = res[3]||[];
 
-    // Field: unique vehicles
+    // Field: unique vehicles done vs target
     var fv = new Set();
     photos.forEach(function(p){ if (p.vehicle_number) fv.add(p.vehicle_number.toUpperCase()); });
     var fieldDone = fv.size;
     var fieldPct = target > 0 ? Math.min(100, Math.round((fieldDone/target)*100)) : null;
+    var fieldColor = fieldPct === null ? '#26d0ce' : (fieldPct>=80?'#1D9E75':fieldPct>=50?'#B89B4E':'#E24B4A');
 
-    // Stitching qty (match this campaign by id or key)
-    var stQty = sumForCampaign(stitch, c, ['quantity','qty']);
-    // Printing qty
+    // Printing & Stitching qty for this campaign
     var prQty = sumForCampaign(print, c, ['quantity','qty','count']);
-    // Execution amount
-    var exAmt = sumForCampaign(exec, c, ['total_amount','amount']);
+    var stQty = sumForCampaign(stitch, c, ['quantity','qty']);
 
-    // Outstanding: client (campaign-level) + execution-team unpaid not easily per-campaign,
-    // so show client outstanding from campaign fields if present.
-    var clientOut = Number(c.outstanding || c.client_outstanding || c.balance_amount || 0) || 0;
+    // Outstanding: Client (campaign total) + Team (work value on this campaign)
+    var clientOut = Number(c.total_amount || c.outstanding || c.client_outstanding || c.balance_amount || 0) || 0;
+    var teamWork = sumForCampaign(exec, c, ['total_amount','amount']);
 
-    var html = '<div class="md-cd-grid">';
-    // Field with progress bar
+    var html = '';
+    // Field — big with progress bar
+    html += '<div class="md-cd-field">' +
+              '<div class="md-cd-field-top">' +
+                '<span class="md-cd-field-lbl"><i class="ti ti-camera"></i> Field branding</span>' +
+                '<span class="md-cd-field-val">' + fieldDone.toLocaleString('en-IN') + (target>0 ? ' <small>/ ' + target.toLocaleString('en-IN') + ' veh</small>' : ' <small>veh</small>') + '</span>' +
+              '</div>' +
+              (fieldPct !== null
+                ? '<div class="md-cd-bar big"><div class="md-cd-fill" style="width:' + fieldPct + '%;background:' + fieldColor + ';"></div></div>' +
+                  '<div class="md-cd-field-pct" style="color:' + fieldColor + ';">' + fieldPct + '% complete</div>'
+                : '<div class="md-cd-field-pct" style="color:var(--text-3);">No target set</div>') +
+            '</div>';
+
+    // Print / Stitch / Outstanding row (3 small)
+    html += '<div class="md-cd-grid3">';
+    html += cdItem('ti-printer', 'Printing', prQty.toLocaleString('en-IN') + ' done');
+    html += cdItem('ti-needle', 'Stitching', stQty.toLocaleString('en-IN') + ' pcs');
     html += '<div class="md-cd-item">' +
-            '<div class="md-cd-lbl"><i class="ti ti-camera"></i> Field</div>' +
-            '<div class="md-cd-val">' + fieldDone + (target>0 ? ' / ' + target : '') + ' veh</div>' +
-            (fieldPct !== null ? '<div class="md-cd-bar"><div class="md-cd-fill" style="width:' + fieldPct + '%;background:' + (fieldPct>=80?'#1D9E75':fieldPct>=50?'#B89B4E':'#E24B4A') + ';"></div></div>' : '') +
+            '<div class="md-cd-lbl"><i class="ti ti-cash" style="color:#E0792E;"></i> Outstanding</div>' +
+            '<div class="md-cd-val" style="color:#A32D2D;font-size:13px;">' + (clientOut>0 ? '₹' + clientOut.toLocaleString('en-IN') : '—') + '</div>' +
+            '<div class="md-cd-out-sub">Client' + (teamWork>0 ? ' · Team ₹' + Math.round(teamWork).toLocaleString('en-IN') : '') + '</div>' +
             '</div>';
-    html += cdItem('ti-printer', 'Printing', prQty + ' done');
-    html += cdItem('ti-needle', 'Stitching', stQty + ' pcs');
-    html += cdItem('ti-tools', 'Execution', '₹' + Math.round(exAmt).toLocaleString('en-IN'));
     html += '</div>';
-    // Outstanding row
-    html += '<div class="md-cd-out">' +
-            '<span><i class="ti ti-cash" style="color:#E0792E;"></i> Client outstanding</span>' +
-            '<strong>' + (clientOut > 0 ? '₹' + clientOut.toLocaleString('en-IN') : '—') + '</strong>' +
-            '</div>';
+
     panel.innerHTML = html;
     panel.setAttribute('data-loaded', '1');
   }).catch(function(){
