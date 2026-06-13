@@ -2848,7 +2848,6 @@ label {
             <button class="md-perf-tab active" data-perf="field" onclick="switchPerf('field')"><i class="ti ti-camera"></i> Field</button>
             <button class="md-perf-tab" data-perf="stitching" onclick="switchPerf('stitching')"><i class="ti ti-needle"></i> Stitching</button>
             <button class="md-perf-tab" data-perf="printing" onclick="switchPerf('printing')"><i class="ti ti-printer"></i> Printing</button>
-            <button class="md-perf-tab" data-perf="execution" onclick="switchPerf('execution')"><i class="ti ti-tools"></i> Execution</button>
           </div>
           <div class="leader-list" id="leaderList"><div class="spinner" style="margin:18px auto;"></div></div>
         </div>
@@ -5075,17 +5074,18 @@ function loadTopPerformers() {
       }).catch(function(){ renderLeaders(null, 'Load failed'); });
 
   } else if (mode === 'stitching') {
-    // Stitching: prajapati_stitching_log grouped by master_name, sum qty
+    // Stitching: prajapati_stitching_log grouped by master_name, sum quantity
     api('/rest/v1/prajapati_stitching_log?select=*&limit=20000')
       .then(function(logs){
         logs = (logs||[]).filter(function(l){
-          var d = (l.log_date || (l.created_at||'').slice(0,10) || '');
+          var raw = l.log_date || l.date || l.created_at || '';
+          var d = String(raw).slice(0,10);   // normalise to YYYY-MM-DD
           return d && d >= R.from && d <= R.to;
         });
         var byM = {};
         logs.forEach(function(l){
           var name = l.master_name || l.member_name || 'Unknown';
-          var qty = Number(l.qty || l.quantity || 0) || 0;
+          var qty = Number(l.quantity || l.qty || 0) || 0;
           if (!byM[name]) byM[name] = 0;
           byM[name] += qty;
         });
@@ -5099,7 +5099,8 @@ function loadTopPerformers() {
     api('/rest/v1/trial_work_logs?select=*&limit=20000')
       .then(function(logs){
         logs = (logs||[]).filter(function(l){
-          var d = (l.log_date || (l.created_at||'').slice(0,10) || (l.completed_at||'').slice(0,10) || '');
+          var raw = l.log_date || l.date || l.created_at || l.completed_at || '';
+          var d = String(raw).slice(0,10);
           return d && d >= R.from && d <= R.to;
         });
         var byM = {};
@@ -5113,26 +5114,6 @@ function loadTopPerformers() {
           .filter(function(r){ return r.name!=='Unknown' && r.count>0; }).sort(function(a,b){ return b.count-a.count; });
         renderLeaders(rows, 'Is range mein koi printing nahi', 'jobs');
       }).catch(function(){ renderLeaders(null, 'Printing data load failed'); });
-
-  } else if (mode === 'execution') {
-    // Execution: execution_daily_log grouped by member, sum total_amount
-    api('/rest/v1/execution_daily_log?select=*&limit=20000')
-      .then(function(logs){
-        logs = (logs||[]).filter(function(l){
-          var d = (l.log_date || (l.created_at||'').slice(0,10) || '');
-          return d && d >= R.from && d <= R.to;
-        });
-        var byM = {};
-        logs.forEach(function(l){
-          var name = l.member_name || l.member_phone || 'Unknown';
-          var amt = Number(l.total_amount || l.amount || 0) || 0;
-          if (!byM[name]) byM[name] = 0;
-          byM[name] += amt;
-        });
-        var rows = Object.keys(byM).map(function(k){ return { name:k, count:Math.round(byM[k]) }; })
-          .filter(function(r){ return r.count>0; }).sort(function(a,b){ return b.count-a.count; });
-        renderLeaders(rows, 'Is range mein koi execution nahi', '₹');
-      }).catch(function(){ renderLeaders(null, 'Execution data load failed'); });
   }
 }
 
