@@ -4870,6 +4870,32 @@ function openExternal(file) {
   window.location.href = file;
 }
 
+// PWA-safe external link opener. In an installed PWA (standalone), window.open
+// with _blank is often blocked/stuck, so we open external URLs by navigating
+// (which hands off to the system browser for off-origin links) while keeping
+// internal pages inside the app.
+function openLink(url, opts) {
+  opts = opts || {};
+  var isStandalone = false;
+  try {
+    isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                   window.navigator.standalone === true;
+  } catch(e) {}
+  var isExternal = /^https?:\/\//i.test(url) && url.indexOf(location.host) === -1;
+  // For external links (maps, wa.me, tel) try a new tab; if blocked or in PWA,
+  // fall back to a top-level navigation so the OS handles it.
+  if (isExternal || opts.external) {
+    var w = null;
+    try { w = window.open(url, '_blank', 'noopener'); } catch(e) {}
+    if (!w) { // popup blocked or PWA → navigate top window
+      try { (window.top || window).location.href = url; } catch(e) { window.location.href = url; }
+    }
+    return;
+  }
+  // Internal page → keep it inside the app (same tab / top window).
+  openExternal(url);
+}
+
 // ═══ Open an external page INSIDE admin-v2 as an embedded tab (iframe) ═══
 // Same window, sidebar stays, role-filtering stays. No new browser tab.
 function openInTab(file, title) {
@@ -7882,8 +7908,7 @@ function renderDailyTrend(photos, dateFrom, dateTo) {
 function exportReportExcel() {
   // Open V1 admin's Excel Report function (full SheetJS-based)
   if (confirm('Excel report V1 admin se generate hoga (full Excel with all sheets). Open karna hai?')) {
-    var url = 'admin.html';
-    window.open(url, '_blank');
+    openExternal('admin.html');
   }
 }
 
@@ -8685,7 +8710,7 @@ function openPhotoMaps() {
     showToast('No GPS coordinates', 'error');
     return;
   }
-  window.open('https://www.google.com/maps?q=' + p.latitude + ',' + p.longitude, '_blank');
+  openLink('https://www.google.com/maps?q=' + p.latitude + ',' + p.longitude, {external:true});
 }
 
 // Lightbox close on ESC + outside click
@@ -8883,7 +8908,7 @@ function shareClientWhatsApp(idx) {
               'Aapke campaign ka live dashboard yahan dekhein:%0A' + 
               encodeURIComponent(url) + '%0A%0A' +
               'Prajapati Advertising%0A%2B91 99 22 138 138';
-    window.open('https://wa.me/?text=' + msg, '_blank');
+    openLink('https://wa.me/?text=' + msg, {external:true});
   });
 }
 
@@ -12171,7 +12196,7 @@ function openPPTGenerator() {
   if (mode && mode !== 'all') params.push('mode=' + encodeURIComponent(mode));
   
   var url = '/ppt.html' + (params.length ? '?' + params.join('&') : '');
-  window.open(url, '_blank');
+  openExternal(url);
 }
 
 // ──── inferMediaType (ported from V1) ────
