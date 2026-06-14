@@ -2297,9 +2297,12 @@ label {
     top: 0; left: 0;
     width: 280px;
     height: 100vh;
+    max-height: 100vh;
     z-index: 998;
     transform: translateX(-100%);
     transition: transform 0.25s;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
   .sidebar.open { transform: translateX(0); }
   .main { padding: 18px 16px; }
@@ -2508,6 +2511,11 @@ label {
         <div class="brand-name">Prajapati GPS<span class="brand-version">V2</span></div>
         <div class="brand-sub">Admin Console</div>
       </div>
+    </div>
+
+    <!-- Switch to V1 Classic (the old admin) — shown for owner/admin -->
+    <div id="v1SwitchLink" class="nav-item" style="display:none;background:rgba(255,255,255,0.06);margin-bottom:8px;" onclick="openExternal('app.html#v1')">
+      <i class="ti ti-tool"></i><span>V1 Classic Admin</span><span style="margin-left:auto;font-size:9px;background:#B89B4E;color:#0B1957;padding:1px 6px;border-radius:4px;font-weight:700;">v16.5</span>
     </div>
 
     <!-- ═══ WORKSPACE (Admin tabs inside this page) ═══ -->
@@ -4477,6 +4485,13 @@ function enterDashboard() {
   // Step 2: hide tabs this user can't access (role + module_access)
   applyModuleFilter();
   // Team Access is now a separate page (access-control.html) opened from sidebar.
+
+  // Show "V1 Classic" switch only for owner/admin (others don't need the old admin)
+  var v1Link = document.getElementById('v1SwitchLink');
+  if (v1Link) {
+    var r = String((state.admin && state.admin.role) || '').toLowerCase();
+    v1Link.style.display = (r === 'owner' || r === 'admin') ? 'flex' : 'none';
+  }
 
   // Only load the dashboard (and its data) if this user can actually see it.
   // Printing/stitching/etc. without dashboard access must NOT trigger any
