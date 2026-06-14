@@ -4899,6 +4899,20 @@ function openLink(url, opts) {
 // ═══ Open an external page INSIDE admin-v2 as an embedded tab (iframe) ═══
 // Same window, sidebar stays, role-filtering stays. No new browser tab.
 function openInTab(file, title) {
+  // On mobile / installed PWA, iframe-embedding is unreliable (auth redirects,
+  // small viewport, blocked navigation). Open the page directly instead so the
+  // link actually works. Desktop keeps the nice embedded-tab experience.
+  var isMobile = window.innerWidth <= 900;
+  var isStandalone = false;
+  try {
+    isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                   window.navigator.standalone === true;
+  } catch(e) {}
+  if (isMobile || isStandalone) {
+    openExternal(file);
+    return;
+  }
+
   var frame = $('embedFrame');
   var loader = $('embedLoader');
   if (!frame) { openExternal(file); return; }  // safety fallback
@@ -6183,14 +6197,15 @@ function renderCampaigns() {
   var q = (state._campaignSearch || '').toLowerCase().trim();
   var filt = state._campaignFilter || 'active';
   var visible = state.campaigns.filter(function(c){
-    // status filter
+    // status filter — "active" = not completed (active field may be null/undefined
+    // for older campaigns, so we don't require active===true, only NOT completed).
     var isCompleted = c.completed === true;
-    if (filt === 'active' && (isCompleted || !c.active)) return false;
+    if (filt === 'active' && isCompleted) return false;
     if (filt === 'completed' && !isCompleted) return false;
     // 'all' shows everything
     // search filter
     if (q) {
-      var hay = ((c.name||'') + ' ' + (c.client_name||'') + ' ' + (c.key||'') + ' ' + (c.campaign_key||'')).toLowerCase();
+      var hay = ((c.name||'') + ' ' + (c.campaign_name||'') + ' ' + (c.client_name||'') + ' ' + (c.key||'') + ' ' + (c.campaign_key||'')).toLowerCase();
       if (hay.indexOf(q) === -1) return false;
     }
     return true;
@@ -6230,7 +6245,14 @@ function renderCampaigns() {
               '<div class="campaign-card-header">' +
                 '<div>' +
                   '<div class="campaign-card-name">' + escapeHtml(c.name || c.key) + '</div>' +
-                  '<div class="campaign-card-client">' + escapeHtml(c.client_name || '—') + '</div>' +
+                  (function(){
+                    var nm = String(c.name || c.key || '').trim().toLowerCase();
+                    var cl = String(c.client_name || '').trim();
+                    // Skip client line if empty or identical to the campaign name (avoids
+                    // showing the same text twice).
+                    if (!cl || cl.toLowerCase() === nm) return '';
+                    return '<div class="campaign-card-client">' + escapeHtml(cl) + '</div>';
+                  })() +
                 '</div>' +
                 '<div class="campaign-card-key">' + escapeHtml(c.key) + '</div>' +
               '</div>' +

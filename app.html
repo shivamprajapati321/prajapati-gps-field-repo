@@ -552,6 +552,25 @@
   </div>
 
   <script>
+    // ── MOBILE / PWA: skip the iframe wrapper entirely ──
+    // On phones and installed PWAs the nested-iframe shell (app.html → iframe →
+    // admin-v2) causes a double header and broken link taps. Go straight to the
+    // V2 admin page so navigation works natively. Desktop keeps the V2/V1 shell.
+    (function(){
+      try {
+        var isMobile = Math.min(window.innerWidth, window.screen ? window.screen.width : 9999) <= 900;
+        var isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                           window.navigator.standalone === true;
+        var hash = (location.hash || '').replace('#','');
+        // If user explicitly wants V1 classic, let them through to the shell.
+        if (hash === 'v1') return;
+        if (isMobile || isStandalone) {
+          location.replace('admin-v2.html');
+        }
+      } catch(e) {}
+    })();
+  </script>
+  <script>
     const STORE = 'prajapati_admin_hub_tab';
     const frames = {
       v2: document.getElementById('frame-v2'),
