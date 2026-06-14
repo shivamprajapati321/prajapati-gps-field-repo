@@ -6377,15 +6377,21 @@ function setCampaignFilter(f) {
   renderCampaigns();
 }
 function markCampaignComplete(id, complete) {
-  if (!confirm(complete ? 'Campaign complete mark karna hai? List se hat jayega (Completed tab mein milega).' : 'Campaign dobara active karna hai?')) return;
-  // Use 'completed' boolean (status column is used for workflow: pending_execution_plan etc.)
+  if (!confirm(complete ? 'Campaign complete mark karna hai? List se hat jayega (Completed tab mein milega).' : 'Campaign dobara active karna hai? Daily entry phir se ho sakegi.')) return;
+  // 'completed' boolean drives the workflow list. On REOPEN we also force
+  // active=true so the campaign re-appears in operator active-jobs views and
+  // daily entry works again (a completed campaign may have active=false, which
+  // hides it from v_operator_active_jobs → daily entry fails).
+  var payload = complete
+    ? { completed: true, completed_at: new Date().toISOString() }
+    : { completed: false, completed_at: null, active: true };
   fetch(CONFIG.supabaseUrl + '/rest/v1/trial_campaigns?id=eq.' + id, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', apikey: CONFIG.supabaseKey, Authorization: 'Bearer ' + CONFIG.supabaseKey },
-    body: JSON.stringify({ completed: complete, completed_at: complete ? new Date().toISOString() : null })
+    body: JSON.stringify(payload)
   }).then(function(r) {
     if (!r.ok) return r.text().then(function(t){ throw new Error(t); });
-    showToast(complete ? '✓ Completed' : 'Reopened', 'success');
+    showToast(complete ? '✓ Completed' : '✓ Reopened — daily entry phir se chालू', 'success');
     loadCampaigns();
   }).catch(function(e) {
     showToast('Update failed — CAMPAIGN_STATUS_COLUMN.sql chalao', 'error');
