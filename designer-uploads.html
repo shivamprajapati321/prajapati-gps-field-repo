@@ -776,6 +776,14 @@ function openUploadModal(designId) {
   // card never carries over (type=file inputs persist their selection otherwise).
   document.getElementById('fileInput').value = '';
   document.getElementById('previewInput').value = '';
+
+  // CRITICAL: always reset the save button to fresh/enabled state — otherwise a
+  // stuck "Saving…" from a previous save carries into the next card's modal.
+  var saveBtn = document.getElementById('uploadSaveBtn');
+  if (saveBtn) {
+    saveBtn.disabled = false;
+    saveBtn.innerHTML = '💾 Save & Mark Ready';
+  }
   
   // Default to drive method
   pickMethod(design.drive_url ? 'drive' : (design.design_url ? 'supabase' : 'drive'));
@@ -791,6 +799,9 @@ function closeUploadModal() {
   var pi = document.getElementById('previewInput');
   if (fi) fi.value = '';
   if (pi) pi.value = '';
+  // reset save button so a stuck "Saving…" never carries over
+  var sb = document.getElementById('uploadSaveBtn');
+  if (sb) { sb.disabled = false; sb.innerHTML = '💾 Save & Mark Ready'; }
 }
 
 function pickMethod(method) {
@@ -1002,6 +1013,9 @@ async function saveUpload() {
     });
     
     document.getElementById('uploadStatus').innerHTML = '<div class="callout success"><span>✅</span><div>Saved! Design marked as ready.</div></div>';
+    // reset button immediately on success so it never stays stuck on "Saving…"
+    btn.disabled = false;
+    btn.innerHTML = '💾 Save & Mark Ready';
     setTimeout(() => {
       closeUploadModal();
       loadData();
