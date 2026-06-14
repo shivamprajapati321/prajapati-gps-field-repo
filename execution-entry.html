@@ -1413,6 +1413,20 @@ function esc(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+// JS-safe string for INSIDE inline on* attributes (single-quoted JS literals).
+// Apostrophes in names like "Advani's Finmart" or "D'Souza" were breaking the
+// onclick handler -> click did nothing. Backslash-escape JS-breaking chars
+// FIRST, then html-encode so the attribute stays well-formed.
+function jsq(s) {
+  if (s == null) return '';
+  const escaped = String(s)
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\r/g, '\\r')
+    .replace(/\n/g, '\\n');
+  return escaped.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
 function inr(n) {
   if (!n || isNaN(n)) return '₹0';
   return '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 });
@@ -1921,7 +1935,7 @@ function renderCampaignOptions(idx, filter) {
   }
   
   return filtered.slice(0, 30).map(c => `
-    <div class="dropdown-item" onclick="selectCampaign(${idx}, '${esc(c.key)}', '${esc(c.name)}')">
+    <div class="dropdown-item" onclick="selectCampaign(${idx}, '${jsq(c.key)}', '${jsq(c.name)}')">
       <strong>${esc(c.name)}</strong>
       <div class="sub">${esc(c.key)} · ${esc(c.branding_mode || 'default')}</div>
     </div>
@@ -1941,7 +1955,7 @@ function renderMemberOptions(idx, filter) {
   return filtered.slice(0, 30).map(m => {
     const lastRate = getLastRate(m.phone, state.rows[idx]?.media || 'auto_hood');
     return `
-      <div class="dropdown-item" onclick="selectMember(${idx}, '${esc(m.phone)}', '${esc(m.name)}')">
+      <div class="dropdown-item" onclick="selectMember(${idx}, '${jsq(m.phone)}', '${jsq(m.name)}')">
         <strong>${esc(m.name)}</strong>
         <div class="sub">${esc(m.phone)}${lastRate ? ' · Last: ₹' + lastRate : ''}${m.role === 'historical' ? ' · Historical' : ''}</div>
       </div>
