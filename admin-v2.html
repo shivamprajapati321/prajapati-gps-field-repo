@@ -2867,12 +2867,12 @@ label {
 
       <!-- Quick actions -->
       <div class="md-quick-bar">
-        <button class="md-quick" onclick="switchTab('photos')"><i class="ti ti-photo"></i> Photos</button>
-        <button class="md-quick" onclick="openExternal('launch-campaign.html')"><i class="ti ti-rocket"></i> New Campaign</button>
-        <button class="md-quick" onclick="openExternal('verifier.html')"><i class="ti ti-shield-check"></i> Verify</button>
-        <button class="md-quick" onclick="openInTab('ppt.html','PPT Generator')"><i class="ti ti-presentation"></i> Make PPT</button>
+        <button class="md-quick" data-need="photos" onclick="switchTab('photos')"><i class="ti ti-photo"></i> Photos</button>
+        <button class="md-quick" data-need="launch-campaign" onclick="openExternal('launch-campaign.html')"><i class="ti ti-rocket"></i> New Campaign</button>
+        <button class="md-quick" data-need="verifier" onclick="openExternal('verifier.html')"><i class="ti ti-shield-check"></i> Verify</button>
+        <button class="md-quick" data-need="ppt" onclick="openInTab('ppt.html','PPT Generator')"><i class="ti ti-presentation"></i> Make PPT</button>
         <button class="md-quick" id="quickOutstandingBtn" onclick="openExternal('outstanding.html')"><i class="ti ti-cash"></i> Outstanding</button>
-        <button class="md-quick" onclick="switchTab('members')"><i class="ti ti-users"></i> Team</button>
+        <button class="md-quick" data-need="members" onclick="switchTab('members')"><i class="ti ti-users"></i> Team</button>
       </div>
 
       <!-- Action center -->
@@ -4545,7 +4545,7 @@ var ROLE_MODULE_DEFAULTS = {
   'operations_manager': ['dashboard','campaigns','assignments','photos','launch-campaign','campaign-status','assign-operators','designer-uploads','execution-plan','execution-entry','ops-dashboard','printing','stitching','delivery','field','verifier','ppt','reports','report-daily','report-team','report-campaign','reassignment-history','archive-viewer','design-tasks'],
   'ops_manager':        ['dashboard','campaigns','assignments','photos','launch-campaign','campaign-status','assign-operators','designer-uploads','execution-plan','execution-entry','ops-dashboard','printing','stitching','delivery','field','verifier','ppt','reports','report-daily','report-team','report-campaign','reassignment-history','archive-viewer','design-tasks'],
   'operations':  ['dashboard','campaign-status','execution-entry','launch-campaign'],
-  'designer':    ['dashboard','designer-uploads','design-tasks','campaign-status','launch-campaign'],
+  'designer':    ['designer-uploads','design-tasks','campaign-status'],
   'design':      ['dashboard','designer-uploads','design-tasks','campaign-status','launch-campaign'],
   'execution':   ['execution-entry','execution-plan','campaign-status'],
   'printing':    ['printing'],
@@ -4633,6 +4633,17 @@ function applyModuleFilter() {
   var active = document.querySelector('.nav-item[data-tab].active');
   if ((!active || active.style.display === 'none') && firstVisibleTab) {
     switchTab(firstVisibleTab);
+  } else if (!firstVisibleTab) {
+    // No internal-tab module for this role (e.g. designer → designer-uploads is an
+    // external page, not an inner tab). Land them on their first visible nav item
+    // so they don't see a blank dashboard area.
+    var firstNav = Array.prototype.filter.call(
+      document.querySelectorAll('.nav-item[onclick]'),
+      function(n){ return n.style.display !== 'none' && n.id !== 'v1SwitchLink'; }
+    )[0];
+    if (firstNav && typeof firstNav.onclick === 'function') {
+      try { firstNav.onclick(); } catch(e) {}
+    }
   }
 }
 
@@ -4999,6 +5010,12 @@ function loadDashboard() {
 }
 
 function runDashboardWidgets() {
+  // Hide quick-action buttons the user has no access to (e.g. designer must not
+  // see Photos/Verify/PPT/Team). Each button declares data-need="module".
+  document.querySelectorAll('.md-quick[data-need]').forEach(function(btn){
+    var mod = btn.getAttribute('data-need');
+    btn.style.display = userCanSeeModule(state.admin, mod) ? '' : 'none';
+  });
   // Hide finance-only quick action for non-finance roles
   var qoBtn = $('quickOutstandingBtn');
   if (qoBtn) {
