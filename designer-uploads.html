@@ -95,6 +95,48 @@ a{color:inherit;text-decoration:none}
 .file-status.has-file{background:var(--success-bg);border:1px solid var(--success);color:var(--success)}
 .file-icon-lg{font-size:20px}
 
+/* 5-STAGE TAGS */
+.tag.st-pending{background:var(--warn-bg);color:var(--warn)}
+.tag.st-uploaded{background:var(--success-bg);color:var(--success)}
+.tag.st-sent{background:var(--warn-bg);color:#b45309}
+.tag.st-printing{background:var(--purple-bg);color:var(--purple)}
+.tag.st-completed{background:var(--success-bg);color:var(--success)}
+.stat-card.st-pending{border-left:4px solid var(--warn)}
+.stat-card.st-uploaded{border-left:4px solid var(--success)}
+.stat-card.st-sent{border-left:4px solid #f59e0b}
+.stat-card.st-printing{border-left:4px solid var(--purple)}
+.stat-card.st-completed{border-left:4px solid var(--gold-deep)}
+
+/* PIPELINE STEPPER */
+.pipe{display:flex;align-items:center;margin:4px 0 14px;overflow-x:auto;padding-bottom:2px}
+.pipe-step{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:62px;flex-shrink:0}
+.pipe-dot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;background:var(--cream);border:1.5px solid var(--rule);color:var(--text-dim)}
+.pipe-step.done .pipe-dot{background:var(--success-bg);border-color:var(--success);color:var(--success)}
+.pipe-step.now .pipe-dot{background:var(--navy);border-color:var(--navy);color:#fff}
+.pipe-lbl{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:0.04em;text-transform:uppercase;color:var(--text-dim);text-align:center;line-height:1.2}
+.pipe-step.now .pipe-lbl{color:var(--navy);font-weight:700}
+.pipe-step.done .pipe-lbl{color:var(--success)}
+.pipe-bar{flex:1;height:2px;background:var(--rule);min-width:14px;margin-bottom:18px}
+.pipe-bar.done{background:var(--success)}
+
+/* DRAFT vs PRINT FILE */
+.file-grid{display:grid;grid-template-columns:1fr 1.2fr;gap:12px;margin:10px 0}
+@media(max-width:560px){.file-grid{grid-template-columns:1fr}}
+.file-box{border:1px solid var(--rule);border-radius:10px;padding:10px 12px;background:var(--cream)}
+.file-box.has{border-color:var(--success);background:var(--success-bg)}
+.file-box.need{border:1.5px dashed var(--gold-deep);background:#fff}
+.fb-label{font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold-deep);margin-bottom:7px}
+.fb-ok{color:var(--success)}
+.fb-req{color:var(--danger)}
+.fb-row{display:flex;align-items:center;gap:8px}
+.fb-icon{font-size:18px}
+.fb-name{font-size:12px;color:var(--ink-950);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fb-link{font-size:11px;color:var(--gold-deep);font-weight:700;text-decoration:none}
+.fb-link:hover{text-decoration:underline}
+.fb-empty,.fb-hint{font-size:11px;color:var(--text-dim)}
+.stage-note{font-size:11.5px;color:var(--ink-700);background:var(--paper);border-radius:8px;padding:8px 12px;margin:8px 0}
+.btn-ghost{background:transparent;border:1px solid var(--rule);color:var(--text-dim)}
+
 /* BUTTONS */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.15s;font-family:inherit}
 .btn:hover{transform:translateY(-1px)}
@@ -422,7 +464,45 @@ function initApp() {
   loadData();
 }
 
-async function loadData() {
+// ═══════════════════════════════════════════════════════════════
+// PRINT PIPELINE — 5 stages
+// pending → uploaded → sent → printing → completed
+// Derived defensively from existing + new fields so nothing breaks
+// if print_status column is absent.
+// ═══════════════════════════════════════════════════════════════
+const STAGE_ORDER = ['pending', 'uploaded', 'sent', 'printing', 'completed'];
+
+const STAGE_META = {
+  pending:   { label: 'Pending',       icon: '⏳', cls: 'st-pending'   },
+  uploaded:  { label: 'Uploaded',      icon: '📤', cls: 'st-uploaded'  },
+  sent:      { label: 'Sent to Print', icon: '🖨️', cls: 'st-sent'      },
+  printing:  { label: 'Printing',      icon: '⚙️', cls: 'st-printing'  },
+  completed: { label: 'Completed',     icon: '✅', cls: 'st-completed' }
+};
+
+// The original print-ready file the designer uploads. Kept SEPARATE from the
+// launch-time draft (drive_url) — design_url is the printable file.
+function getPrintFileUrl(d) {
+  return d.design_url || '';
+}
+// The reference draft attached at campaign-launch time (read-only for designer).
+function getDraftUrl(d) {
+  return d.drive_url || d.draft_url || '';
+}
+function hasPrintFile(d) {
+  return !!getPrintFileUrl(d);
+}
+
+// Single source of truth for which stage a design is in.
+function getStage(d) {
+  const ps = String(d.print_status || '').toLowerCase().trim();
+  if (ps === 'completed') return 'completed';
+  if (ps === 'printing')  return 'printing';
+  if (ps === 'sent')      return 'sent';
+  // No explicit print_status → derive from file presence
+  if (hasPrintFile(d)) return 'uploaded';
+  return 'pending';
+}
   document.getElementById('contentArea').innerHTML = '<div class="empty">Loading designs…</div>';
   
   try {
@@ -448,58 +528,33 @@ async function loadData() {
 
 function renderUI() {
   const designs = state.designs;
-  
-  const pending = designs.filter(d => !d.drive_url && !d.design_url);
-  const inProgress = designs.filter(d => 
-    (d.drive_url || d.design_url) && d.design_status === 'in_design'
-  );
-  const ready = designs.filter(d => 
-    (d.drive_url || d.design_url) && ['ready', 'approved'].includes(d.design_status || '')
-  );
-  const all = designs;
-  
-  // Stats
+
+  // Bucket every design into its stage
+  const byStage = { pending: [], uploaded: [], sent: [], printing: [], completed: [] };
+  designs.forEach(d => { byStage[getStage(d)].push(d); });
+
+  // Stats — 5 stage cards
   document.getElementById('statsArea').innerHTML = `
     <div class="stats-grid">
-      <div class="stat-card pending">
-        <div class="stat-label">⏳ Pending Upload</div>
-        <div class="stat-value">${pending.length}</div>
-        <div class="stat-meta">designs need files</div>
-      </div>
-      <div class="stat-card in-progress">
-        <div class="stat-label">🎨 In Progress</div>
-        <div class="stat-value">${inProgress.length}</div>
-        <div class="stat-meta">being designed</div>
-      </div>
-      <div class="stat-card ready">
-        <div class="stat-label">✅ Ready</div>
-        <div class="stat-value">${ready.length}</div>
-        <div class="stat-meta">files uploaded</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">📋 Total Active</div>
-        <div class="stat-value">${all.length}</div>
-        <div class="stat-meta">all campaigns</div>
-      </div>
+      ${STAGE_ORDER.map(s => `
+        <div class="stat-card ${STAGE_META[s].cls}">
+          <div class="stat-label">${STAGE_META[s].icon} ${STAGE_META[s].label}</div>
+          <div class="stat-value">${byStage[s].length}</div>
+        </div>
+      `).join('')}
     </div>
   `;
-  
-  // Tabs
-  document.getElementById('tabBar').innerHTML = `
-    <div class="tab ${state.activeTab === 'pending' ? 'active' : ''}" onclick="switchTab('pending')">
-      ⏳ Pending <span class="count">${pending.length}</span>
+
+  // Tabs — 5 stages + All
+  const tabDef = STAGE_ORDER.map(s => ({ id: s, label: STAGE_META[s].label, icon: STAGE_META[s].icon, count: byStage[s].length }));
+  tabDef.push({ id: 'all', label: 'All', icon: '📋', count: designs.length });
+
+  document.getElementById('tabBar').innerHTML = tabDef.map(t => `
+    <div class="tab ${state.activeTab === t.id ? 'active' : ''}" onclick="switchTab('${t.id}')">
+      ${t.icon} ${t.label} <span class="count">${t.count}</span>
     </div>
-    <div class="tab ${state.activeTab === 'in_progress' ? 'active' : ''}" onclick="switchTab('in_progress')">
-      🎨 In Progress <span class="count">${inProgress.length}</span>
-    </div>
-    <div class="tab ${state.activeTab === 'ready' ? 'active' : ''}" onclick="switchTab('ready')">
-      ✅ Ready <span class="count">${ready.length}</span>
-    </div>
-    <div class="tab ${state.activeTab === 'all' ? 'active' : ''}" onclick="switchTab('all')">
-      📋 All <span class="count">${all.length}</span>
-    </div>
-  `;
-  
+  `).join('');
+
   renderContent();
 }
 
@@ -511,24 +566,95 @@ function switchTab(tab) {
 function renderContent() {
   const designs = state.designs;
   const tab = state.activeTab;
-  
-  let list;
-  if (tab === 'pending') list = designs.filter(d => !d.drive_url && !d.design_url);
-  else if (tab === 'in_progress') list = designs.filter(d => (d.drive_url || d.design_url) && d.design_status === 'in_design');
-  else if (tab === 'ready') list = designs.filter(d => (d.drive_url || d.design_url) && ['ready','approved'].includes(d.design_status));
-  else list = designs;
-  
+
+  let list = (tab === 'all') ? designs : designs.filter(d => getStage(d) === tab);
+
   if (!list.length) {
     document.getElementById('contentArea').innerHTML = '<div class="empty">No designs in this category.</div>';
     return;
   }
-  
+
   document.getElementById('contentArea').innerHTML = list.map(d => {
     const c = d.campaign || {};
     const isUrgent = c.is_urgent;
-    const hasFile = !!(d.drive_url || d.design_url);
-    const status = d.design_status || 'pending';
-    
+    const stage = getStage(d);
+    const meta = STAGE_META[stage];
+    const stageIdx = STAGE_ORDER.indexOf(stage);
+
+    const draftUrl = getDraftUrl(d);
+    const printUrl = getPrintFileUrl(d);
+
+    // ── pipeline stepper ──
+    const stepper = `
+      <div class="pipe">
+        ${STAGE_ORDER.map((s, i) => `
+          <div class="pipe-step ${i < stageIdx ? 'done' : ''} ${i === stageIdx ? 'now' : ''}">
+            <div class="pipe-dot">${i < stageIdx ? '✓' : (i + 1)}</div>
+            <div class="pipe-lbl">${STAGE_META[s].label}</div>
+          </div>
+          ${i < STAGE_ORDER.length - 1 ? `<div class="pipe-bar ${i < stageIdx ? 'done' : ''}"></div>` : ''}
+        `).join('')}
+      </div>
+    `;
+
+    // ── draft box (reference, read-only) ──
+    const draftBox = `
+      <div class="file-box">
+        <div class="fb-label">Draft (reference)</div>
+        ${draftUrl ? `
+          <div class="fb-row">
+            <span class="fb-icon">🖼️</span>
+            <a href="${draftUrl}" target="_blank" class="fb-link">View draft</a>
+          </div>
+        ` : `<div class="fb-empty">No draft attached</div>`}
+      </div>
+    `;
+
+    // ── print file box (designer's original) ──
+    const printBox = `
+      <div class="file-box ${printUrl ? 'has' : 'need'}">
+        <div class="fb-label">
+          Final print file
+          ${printUrl ? '<span class="fb-ok">✓</span>' : '<span class="fb-req">— required</span>'}
+        </div>
+        ${printUrl ? `
+          <div class="fb-row">
+            <span class="fb-icon">📄</span>
+            <div style="min-width:0">
+              <div class="fb-name">${escapeHtml(d.design_file_name || 'print file')}${d.design_file_size ? ' · ' + (d.design_file_size/1048576).toFixed(0) + ' MB' : ''}</div>
+              <a href="${printUrl}" target="_blank" class="fb-link">View file</a>
+            </div>
+          </div>
+        ` : `<div class="fb-hint">Original print-quality file upload karo</div>`}
+      </div>
+    `;
+
+    // ── stage-aware action buttons ──
+    let actions = '';
+    if (stage === 'pending') {
+      actions = `<button class="btn btn-purple sm" onclick="openUploadModal('${d.id}')">📎 Upload print file</button>`;
+    } else if (stage === 'uploaded') {
+      actions = `
+        <button class="btn btn-secondary sm" onclick="openUploadModal('${d.id}')">✏️ Replace file</button>
+        <button class="btn btn-purple sm" onclick="markStage('${d.id}','sent')">🖨️ Send to print</button>
+      `;
+    } else if (stage === 'sent') {
+      actions = `
+        ${printUrl ? `<a href="${printUrl}" target="_blank" class="btn btn-secondary sm">📄 View print file</a>` : ''}
+        <button class="btn btn-ghost sm" onclick="markStage('${d.id}','uploaded')">↩️ Undo send</button>
+      `;
+    } else if (stage === 'printing') {
+      actions = `${printUrl ? `<a href="${printUrl}" target="_blank" class="btn btn-secondary sm">📄 View print file</a>` : ''}`;
+    } else if (stage === 'completed') {
+      actions = `${printUrl ? `<a href="${printUrl}" target="_blank" class="btn btn-secondary sm">📄 View print file</a>` : ''}`;
+    }
+
+    // status line for stages handled elsewhere
+    let statusLine = '';
+    if (stage === 'sent')      statusLine = '🖨️ Operations manager assign karega · operator ko file dikhegi';
+    if (stage === 'printing')  statusLine = `⚙️ Printing chalu${d.print_operator_name ? ' · ' + escapeHtml(d.print_operator_name) : ''}`;
+    if (stage === 'completed') statusLine = '✅ Printing entry complete';
+
     return `
       <div class="design-card ${isUrgent ? 'urgent' : ''}">
         <div class="dc-head">
@@ -544,28 +670,18 @@ function renderContent() {
               ${isUrgent ? '<span class="tag urgent">🚨 URGENT</span>' : ''}
               ${d.location_city ? `<span class="tag location">📍 ${escapeHtml(d.location_city)}</span>` : ''}
               <span class="tag qty">📦 ${(d.quantity || 0).toLocaleString('en-IN')} units</span>
-              <span class="tag ${hasFile ? (status==='ready'?'ready':'in-progress') : 'pending'}">
-                ${hasFile ? (status==='ready' ? '✅ READY' : '🎨 IN PROGRESS') : '⏳ PENDING'}
-              </span>
+              <span class="tag ${meta.cls}">${meta.icon} ${meta.label.toUpperCase()}</span>
             </div>
           </div>
-          <div class="dc-actions">
-            ${hasFile && d.drive_url ? `
-              <a href="${d.drive_url}" target="_blank" class="btn btn-secondary sm">
-                📂 View Drive
-              </a>
-            ` : ''}
-            ${hasFile && d.design_url ? `
-              <a href="${d.design_url}" target="_blank" class="btn btn-secondary sm">
-                📄 View File
-              </a>
-            ` : ''}
-            <button class="btn ${hasFile ? 'btn-secondary' : 'btn-purple'} sm" onclick="openUploadModal('${d.id}')">
-              ${hasFile ? '✏️ Edit' : '📎 Upload'}
-            </button>
-          </div>
         </div>
-        
+
+        ${stepper}
+
+        <div class="file-grid">
+          ${draftBox}
+          ${printBox}
+        </div>
+
         ${d.design_specs ? `
           <div class="file-status has-file" style="background:var(--paper);color:var(--ink-700);border-color:var(--rule)">
             <span class="file-icon-lg">⚙️</span>
@@ -580,13 +696,42 @@ function renderContent() {
             </div>
           </div>
         ` : ''}
-        
-        ${d.preview_url ? `
-          <img src="${d.preview_url}" class="preview-img" alt="Preview">
-        ` : ''}
+
+        ${statusLine ? `<div class="stage-note">${statusLine}</div>` : ''}
+
+        <div class="dc-actions">${actions}</div>
       </div>
     `;
   }).join('');
+}
+
+// Move a design to a new stage (sent / uploaded undo).
+// Printing & completed are set by the printing page, not here.
+async function markStage(designId, newStage) {
+  const d = state.designs.find(x => x.id === designId);
+  if (!d) return;
+
+  const payload = { updated_at: new Date().toISOString() };
+  if (newStage === 'sent') {
+    payload.print_status = 'sent';
+    payload.print_sent_at = new Date().toISOString();
+  } else if (newStage === 'uploaded') {
+    payload.print_status = null;   // back to uploaded (derived from file presence)
+    payload.print_sent_at = null;
+  }
+
+  try {
+    await api(`/rest/v1/trial_campaign_designs?id=eq.${designId}`, {
+      method: 'PATCH',
+      headers: { 'Prefer': 'return=minimal' },
+      body: JSON.stringify(payload)
+    });
+    // update local + re-render (optimistic)
+    Object.assign(d, payload);
+    renderUI();
+  } catch (e) {
+    alert('Update failed: ' + e.message);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -755,6 +900,7 @@ async function saveUpload() {
       design_status: 'ready',
       designer_id: state.user.id,
       designed_at: new Date().toISOString(),
+      print_uploaded_at: new Date().toISOString(),
       design_specs: {
         size: document.getElementById('specSize').value.trim() || null,
         color: document.getElementById('specColor').value || null,
