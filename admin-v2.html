@@ -2296,15 +2296,27 @@ label {
     position: fixed;
     top: 0; left: 0;
     width: 280px;
-    height: 100vh;
-    max-height: 100vh;
-    z-index: 998;
+    height: 100%;
+    max-height: 100%;
+    /* Very high z-index so it sits ABOVE the overlay regardless of the
+       .app-shell stacking context (shell has z-index:1 which was trapping
+       the sidebar below the body-level overlay). */
+    z-index: 100000;
     transform: translateX(-100%);
-    transition: transform 0.25s;
+    transition: transform 0.25s ease;
     overflow-y: auto;
+    overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    /* Solid background so nothing shows through / looks dim */
+    background: var(--primary);
+    background-image: linear-gradient(180deg, var(--primary) 0%, #091547 100%);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.35);
+    padding-bottom: 40px;
   }
   .sidebar.open { transform: translateX(0); }
+  /* Every nav item fully opaque + tappable on mobile */
+  .sidebar .nav-item { opacity: 1 !important; pointer-events: auto !important; }
   .main { padding: 18px 16px; }
   .stat-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
   .stat { padding: 14px 16px; }
@@ -2324,7 +2336,7 @@ label {
 /* Sidebar backdrop overlay (mobile drawer) */
 .sidebar-overlay {
   position: fixed; inset: 0; background: rgba(5,11,46,0.5);
-  z-index: 997; opacity: 0; transition: opacity .25s; pointer-events: auto;
+  z-index: 99999; opacity: 0; transition: opacity .25s; pointer-events: auto;
 }
 .sidebar-overlay.show { opacity: 1; }
 
@@ -4854,6 +4866,18 @@ function toggleSidebar() {
   // backdrop overlay
   var ov = document.getElementById('sidebarOverlay');
   if (isOpen) {
+    // CRITICAL: the sidebar lives inside .app-shell which has its own stacking
+    // context (z-index:1). That traps the sidebar BELOW a body-level overlay,
+    // making links look dim & unclickable. Fix: lift the sidebar to <body> so it
+    // shares the top-level stacking order. Remember its home to restore later.
+    if (sb.parentNode && sb.parentNode.id !== 'sidebarHome' && sb.parentNode.tagName !== 'BODY') {
+      if (!sb.__home) {
+        var anchor = document.createComment('sidebar-home');
+        sb.parentNode.insertBefore(anchor, sb);
+        sb.__home = anchor;
+      }
+      document.body.appendChild(sb);
+    }
     if (!ov) {
       ov = document.createElement('div');
       ov.id = 'sidebarOverlay';
@@ -4861,6 +4885,8 @@ function toggleSidebar() {
       ov.onclick = function(){ toggleSidebar(); };
       document.body.appendChild(ov);
     }
+    // Ensure sidebar is the LAST body child (paints above the overlay)
+    document.body.appendChild(sb);
     requestAnimationFrame(function(){ ov.classList.add('show'); });
   } else if (ov) {
     ov.classList.remove('show');
@@ -4870,7 +4896,7 @@ function toggleSidebar() {
 // Close drawer after navigating (mobile) when a nav item is tapped
 function closeSidebarMobile() {
   var sb = $('sidebar');
-  if (sb && sb.classList.contains('open') && window.innerWidth <= 768) toggleSidebar();
+  if (sb && sb.classList.contains("open") && window.innerWidth <= 900) toggleSidebar();
 }
 
 function openExternal(file) {
