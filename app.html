@@ -466,6 +466,20 @@
   </style>
 </head>
 <body>
+  <script>
+    // GUARD: if app.html somehow ends up loaded INSIDE another frame (nested
+    // app.html → app.html), that produces a duplicate header. Detect it and
+    // break out by loading admin-v2 directly in this frame instead.
+    (function(){
+      try {
+        if (window.self !== window.top) {
+          // We are inside an iframe. The shell should never be nested.
+          document.documentElement.style.visibility = 'hidden';
+          location.replace('admin-v2.html');
+        }
+      } catch(e) {}
+    })();
+  </script>
   <header class="hub-header">
     <div class="brand">
       <img src="icon-192.png" alt="Prajapati" onerror="this.style.display='none'">
