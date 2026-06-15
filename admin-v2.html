@@ -1697,6 +1697,76 @@ label {
 }
 .client-link-stats span { display: inline-flex; align-items: center; gap: 4px; }
 
+/* ── Client Links upgrade: summary + filters ── */
+.cl-summary {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.cl-summary .cl-stat {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md, 10px);
+  padding: 11px 14px;
+}
+.cl-summary .cl-stat .lbl { font-size: 11px; color: var(--text-3); margin-bottom: 2px; }
+.cl-summary .cl-stat .val { font-size: 22px; font-weight: 700; color: var(--text-1); line-height: 1.1; }
+.cl-summary .cl-stat.active .val { color: var(--success); }
+.cl-summary .cl-stat.live .val { color: var(--info); }
+.cl-summary .cl-stat.done .val { color: var(--text-2); }
+.cl-summary .cl-stat.nonum .val { color: var(--warn); }
+
+.cl-filters {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.cl-chip {
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 13px;
+  border-radius: 18px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.cl-chip:hover { border-color: var(--accent); color: var(--primary); }
+.cl-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.cl-chip.live-chip { color: var(--info); }
+.cl-chip.live-chip.active { background: var(--info); color: #fff; border-color: var(--info); }
+
+.cl-search {
+  width: 100%;
+  max-width: 320px;
+  padding: 9px 13px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  margin-bottom: 14px;
+  background: var(--card);
+  color: var(--text-1);
+}
+.cl-search:focus { outline: none; border-color: var(--accent); }
+
+/* live pulse dot */
+.live-dot {
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--info);
+  margin-right: 4px;
+  animation: clpulse 1.8s infinite;
+}
+@keyframes clpulse { 0%,100%{opacity:1;} 50%{opacity:0.35;} }
+
 /* QR Modal */
 .qr-display {
   text-align: center;
@@ -3272,6 +3342,10 @@ label {
           <button class="btn btn-ghost btn-sm" onclick="loadClientLinks()"><i class="ti ti-refresh"></i> Refresh</button>
         </div>
       </div>
+
+      <div id="clSummary" class="cl-summary"></div>
+      <input type="text" id="clSearch" class="cl-search" placeholder="Search campaign or client…" oninput="renderClientLinks()">
+      <div id="clFilters" class="cl-filters"></div>
 
       <div id="clientLinksList">
         <div class="spinner"></div>
@@ -8141,6 +8215,8 @@ var p4state = {
   realtimeChannel: null,
   currentPhoto: null,
   clientLinks: [],
+  clFilter: 'all',
+  clPhotoStats: {},
   bulkData: null,
   bulkExistingVehicles: {},
   selectedIds: [],          // MOVE FEATURE: selected photo IDs
@@ -8893,8 +8969,12 @@ function loadClientLinks() {
         client_phone: (saved && saved.client_phone) || c.client_phone || '',
         token: (saved && saved.token) || genClientToken(),
         active: saved ? saved.active : true,
+        status: c.status || '',
+        start_date: c.start_date || null,
         view_count: (saved && saved.view_count) || 0,
         last_viewed_at: saved && saved.last_viewed_at,
+        photo_count: 0,
+        last_activity: null,
         _saved: !!saved
       };
     });
@@ -8902,6 +8982,28 @@ function loadClientLinks() {
     $('navLinksCount').textContent = p4state.clientLinks.length;
     $('linksSubtitle').textContent = p4state.clientLinks.length + ' campaigns · share unique URL with each client';
     renderClientLinks();
+
+    // ⭐ Fetch photo stats per campaign — ONE efficient query.
+    // Pulls recent photos (campaign_key + captured_at), aggregates client-side.
+    (function fetchPhotoStats() {
+      api('/rest/v1/trial_photos?select=campaign_key,captured_at&deleted_at=is.null&order=captured_at.desc&limit=20000')
+        .then(function(photos){
+          var stats = {};
+          (photos || []).forEach(function(p){
+            var k = p.campaign_key;
+            if (!k) return;
+            if (!stats[k]) stats[k] = { count: 0, last: null };
+            stats[k].count++;
+            if (!stats[k].last || p.captured_at > stats[k].last) stats[k].last = p.captured_at;
+          });
+          p4state.clientLinks.forEach(function(l){
+            var s = stats[l.campaign_key];
+            if (s) { l.photo_count = s.count; l.last_activity = s.last; }
+          });
+          renderClientLinks();
+        })
+        .catch(function(e){ console.warn('[ClientLinks] photo stats fetch failed:', e && e.message); });
+    })();
 
     // ⭐ Fetch client phones from trial_clients for any campaign still missing one.
     // Robust: match by client_id; the number entered in Launch Campaign lives in trial_clients.phone
@@ -8960,31 +9062,136 @@ function getClientUrlBase() {
   return base + 'client.html';
 }
 
+// ── Classify a campaign link for filtering/badges ──
+function clClassify(l) {
+  var nowIST = new Date(new Date().getTime() + 5.5 * 3600 * 1000);
+  var todayStr = nowIST.toISOString().slice(0, 10);
+  var yestStr = new Date(nowIST.getTime() - 86400000).toISOString().slice(0, 10);
+  var lastActIST = l.last_activity ? new Date(new Date(l.last_activity).getTime() + 5.5 * 3600 * 1000).toISOString().slice(0, 10) : null;
+  var st = String(l.status || '').toLowerCase();
+  return {
+    isCompleted: st === 'completed' || st === 'complete' || !l.active,
+    isActive: l.active && st !== 'completed' && st !== 'complete',
+    liveToday: lastActIST === todayStr,
+    activeYesterday: lastActIST === yestStr,
+    hasPhone: !!(l.client_phone && String(l.client_phone).replace(/\D/g, '').length >= 10),
+    todayCount: 0
+  };
+}
+
+function clTodayCount(l) {
+  // count photos captured today for this campaign (from photo stats we approximate via last_activity only)
+  return l._todayCount || 0;
+}
+
 function renderClientLinks() {
+  var links = p4state.clientLinks || [];
+  var q = ($('clSearch') ? $('clSearch').value : '').trim().toLowerCase();
+
+  // ── Compute summary counts ──
+  var sum = { total: links.length, active: 0, live: 0, completed: 0, nonum: 0, shared: 0 };
+  links.forEach(function(l) {
+    var c = clClassify(l);
+    if (c.isActive) sum.active++;
+    if (c.liveToday) sum.live++;
+    if (c.isCompleted) sum.completed++;
+    if (!c.hasPhone) sum.nonum++;
+    if (l.view_count > 0) sum.shared++;
+  });
+
+  // ── Summary bar ──
+  if ($('clSummary')) {
+    $('clSummary').innerHTML =
+      '<div class="cl-stat"><div class="lbl">Total</div><div class="val">' + sum.total + '</div></div>' +
+      '<div class="cl-stat active"><div class="lbl">Active</div><div class="val">' + sum.active + '</div></div>' +
+      '<div class="cl-stat live"><div class="lbl">Live today</div><div class="val">' + sum.live + '</div></div>' +
+      '<div class="cl-stat done"><div class="lbl">Completed</div><div class="val">' + sum.completed + '</div></div>' +
+      '<div class="cl-stat nonum"><div class="lbl">No number</div><div class="val">' + sum.nonum + '</div></div>';
+  }
+
+  // ── Filter tabs ──
+  if ($('clFilters')) {
+    var f = p4state.clFilter || 'all';
+    function chip(id, label, cls) {
+      return '<button class="cl-chip' + (cls ? ' ' + cls : '') + (f === id ? ' active' : '') + '" onclick="setClFilter(\'' + id + '\')">' + label + '</button>';
+    }
+    $('clFilters').innerHTML =
+      chip('all', 'All · ' + sum.total) +
+      chip('live', '<span class="live-dot"></span>Live today · ' + sum.live, 'live-chip') +
+      chip('active', 'Active · ' + sum.active) +
+      chip('completed', 'Completed · ' + sum.completed) +
+      chip('shared', 'Shared · ' + sum.shared) +
+      chip('nonum', 'No number · ' + sum.nonum) +
+      chip('recent', 'Recently viewed');
+  }
+
+  // ── Filter + search the list ──
+  var filtered = links.filter(function(l) {
+    var c = clClassify(l);
+    var f = p4state.clFilter || 'all';
+    var pass = true;
+    if (f === 'live') pass = c.liveToday;
+    else if (f === 'active') pass = c.isActive;
+    else if (f === 'completed') pass = c.isCompleted;
+    else if (f === 'shared') pass = l.view_count > 0;
+    else if (f === 'nonum') pass = !c.hasPhone;
+    else if (f === 'recent') pass = !!l.last_viewed_at;
+    if (!pass) return false;
+    if (q) {
+      var hay = (l.campaign_name + ' ' + l.client_name).toLowerCase();
+      if (hay.indexOf(q) === -1) return false;
+    }
+    return true;
+  });
+
+  // recently-viewed sort
+  if ((p4state.clFilter || 'all') === 'recent') {
+    filtered.sort(function(a, b) { return (b.last_viewed_at || '') < (a.last_viewed_at || '') ? -1 : 1; });
+  }
+
+  if (filtered.length === 0) {
+    $('clientLinksList').innerHTML = '<div class="empty-state"><i class="ti ti-filter-off"></i>Is filter mein koi campaign nahi</div>';
+    return;
+  }
+
+  // ── Render cards ──
   var html = '';
-  p4state.clientLinks.forEach(function(l, idx) {
+  filtered.forEach(function(l) {
+    var idx = p4state.clientLinks.indexOf(l);
+    var c = clClassify(l);
     var url = getClientUrlBase() + '?c=' + encodeURIComponent(l.campaign_key) + '&t=' + l.token;
     var lastViewed = l.last_viewed_at ? fmtTimeAgo(l.last_viewed_at) : 'never';
-    var activeTag = l.active ? '<span class="tag tag-success"><i class="ti ti-circle-filled" style="font-size:7px;"></i> Active</span>' : '<span class="tag" style="background:var(--bg); color:var(--text-3);">Inactive</span>';
+    var lastAct = l.last_activity ? fmtTimeAgo(l.last_activity) : '—';
 
-    var hasPhone = !!(l.client_phone && String(l.client_phone).replace(/\D/g,'').length >= 10);
-    var phoneRow = hasPhone
-      ? '<div class="client" style="color:var(--ok,#1a8a5a);"><i class="ti ti-brand-whatsapp"></i> ' + escapeHtml(String(l.client_phone)) + '</div>'
-      : '<div class="client" style="color:var(--warn,#c47d00);"><i class="ti ti-alert-triangle"></i> Number nahi — bhejte waqt poocha jayega</div>';
-    var waLabel = hasPhone ? 'WhatsApp' : 'WhatsApp +';
+    // status badge
+    var statusTag;
+    if (c.isCompleted) statusTag = '<span class="tag" style="background:var(--bg); color:var(--text-3);">Completed</span>';
+    else statusTag = '<span class="tag tag-success"><i class="ti ti-circle-filled" style="font-size:7px;"></i> Active</span>';
+    var liveTag = c.liveToday ? '<span class="tag tag-info"><span class="live-dot"></span>Live today</span>' : '';
+
+    var startTxt = l.start_date ? (' · Started ' + new Date(l.start_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })) : '';
+
+    var phoneRow = c.hasPhone
+      ? '<span style="color:var(--success);"><i class="ti ti-brand-whatsapp"></i> ' + escapeHtml(String(l.client_phone)) + '</span>'
+      : '<span style="color:var(--warn);"><i class="ti ti-alert-triangle"></i> Number nahi</span>';
+    var waLabel = c.hasPhone ? 'WhatsApp' : 'WhatsApp +';
 
     html += '<div class="client-link-card">' +
               '<div class="client-link-info">' +
-                '<div class="name">' + escapeHtml(l.campaign_name) + ' ' + activeTag + '</div>' +
-                (l.client_name ? '<div class="client">Client: ' + escapeHtml(l.client_name) + '</div>' : '') +
-                phoneRow +
+                '<div class="name">' + escapeHtml(l.campaign_name) + ' ' + statusTag + ' ' + liveTag + '</div>' +
+                '<div class="client">' + (l.client_name ? 'Client: ' + escapeHtml(l.client_name) : 'No client') + escapeHtml(startTxt) + '</div>' +
+                '<div class="client-link-stats" style="margin-bottom:8px;">' +
+                  '<span><i class="ti ti-photo"></i> ' + (l.photo_count || 0) + ' photos</span>' +
+                  '<span><i class="ti ti-clock"></i> Activity: ' + escapeHtml(lastAct) + '</span>' +
+                  '<span><i class="ti ti-eye"></i> ' + l.view_count + ' views</span>' +
+                  phoneRow +
+                '</div>' +
                 '<div class="link-box">' +
                   '<span style="flex:1;" title="' + escapeHtml(url) + '">' + escapeHtml(url.substring(0, 70)) + (url.length > 70 ? '...' : '') + '</span>' +
                   '<button class="copy-btn" onclick="copyClientLink(' + idx + ')"><i class="ti ti-copy"></i> Copy</button>' +
                 '</div>' +
                 '<div class="client-link-stats">' +
-                  '<span><i class="ti ti-eye"></i> ' + l.view_count + ' views</span>' +
-                  '<span><i class="ti ti-clock"></i> Last: ' + escapeHtml(lastViewed) + '</span>' +
+                  '<span><i class="ti ti-clock"></i> Last viewed: ' + escapeHtml(lastViewed) + '</span>' +
                 '</div>' +
               '</div>' +
               '<div class="client-link-actions">' +
@@ -8996,6 +9203,11 @@ function renderClientLinks() {
             '</div>';
   });
   $('clientLinksList').innerHTML = html;
+}
+
+function setClFilter(f) {
+  p4state.clFilter = f;
+  renderClientLinks();
 }
 
 function copyClientLink(idx) {
