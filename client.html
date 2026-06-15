@@ -497,101 +497,109 @@ body::before {
 
 .gallery {
   display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  gap: 20px;
-  grid-auto-flow: dense;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 18px;
 }
 .photo {
   position: relative;
+  background: var(--paper);
+  border: 1px solid rgba(11,25,87,0.12);
+  border-radius: 10px;
   overflow: hidden;
-  background: var(--paper-2);
   cursor: pointer;
-  transition: transform 0.4s cubic-bezier(0.65, 0, 0.35, 1);
-}
-.photo:hover { transform: translateY(-4px); }
-.photo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  transition: transform 0.6s cubic-bezier(0.65, 0, 0.35, 1);
-}
-.photo:hover img { transform: scale(1.04); }
-.photo-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, transparent 40%, rgba(11,25,87,0.85));
-  opacity: 0;
-  transition: opacity 0.3s;
+  box-shadow: 0 1px 3px rgba(11,25,87,0.06);
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
-  padding: 20px;
-  color: var(--paper);
 }
-.photo:hover .photo-overlay { opacity: 1; }
+.photo:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(11,25,87,0.14);
+  border-color: var(--gold);
+}
+.photo img {
+  width: 100%;
+  aspect-ratio: 3/4;
+  object-fit: cover;
+  display: block;
+  background: var(--paper-2);
+}
+/* top overlay: vehicle number + mode badge */
+.photo-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  padding: 9px 10px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.6) 0%, transparent 100%);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  pointer-events: none;
+  opacity: 1;
+}
 .photo-vehicle {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 1px;
-  color: var(--gold);
-  margin-bottom: 6px;
-}
-.photo-place {
-  font-family: 'Fraunces', serif;
-  font-variation-settings: 'opsz' 144, 'wght' 500;
-  font-size: 19px;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-}
-.photo-time {
+  background: rgba(0,0,0,0.72);
+  color: #fff;
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
-  color: rgba(250,247,240,0.65);
-  margin-top: 6px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 5px;
   letter-spacing: 0.5px;
+  backdrop-filter: blur(4px);
 }
-
-.photo-badge {
-  position: absolute;
-  top: 12px;
-  left: 12px;
+.photo-mode {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  background: rgba(92,138,78,0.95);
+  color: #fff;
+}
+.photo-mode.back { background: rgba(201,166,84,0.96); color: #2E1F00; }
+/* bottom info strip (member + time + city) */
+.photo-info {
+  padding: 9px 11px 11px;
+  border-top: 1px solid rgba(11,25,87,0.08);
+  background: var(--paper);
+}
+.photo-info .pi-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+.photo-info .pi-member {
+  font-weight: 600;
+  font-size: 12.5px;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+.photo-info .pi-time {
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 1.5px;
-  background: var(--paper);
-  color: var(--ink);
-  padding: 4px 8px;
-  z-index: 2;
+  color: var(--ink-mute);
+  flex-shrink: 0;
 }
-.photo-verify {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--green);
+.photo-info .pi-city {
+  font-size: 11px;
+  color: var(--ink-soft);
   display: flex;
   align-items: center;
-  justify-content: center;
-  z-index: 2;
+  gap: 4px;
 }
-.photo-verify i { font-size: 14px; color: var(--paper); }
-
-/* Photo grid spans (editorial asymmetry) */
-.photo:nth-child(1) { grid-column: span 5; grid-row: span 2; aspect-ratio: 5/6; }
-.photo:nth-child(2) { grid-column: span 4; aspect-ratio: 4/3; }
-.photo:nth-child(3) { grid-column: span 3; aspect-ratio: 3/4; }
-.photo:nth-child(4) { grid-column: span 4; aspect-ratio: 4/3; }
-.photo:nth-child(5) { grid-column: span 3; aspect-ratio: 3/4; }
-.photo:nth-child(6) { grid-column: span 4; grid-row: span 2; aspect-ratio: 4/5; }
-.photo:nth-child(7) { grid-column: span 4; aspect-ratio: 4/3; }
-.photo:nth-child(8) { grid-column: span 4; aspect-ratio: 4/3; }
-.photo:nth-child(9) { grid-column: span 3; aspect-ratio: 3/4; }
-.photo:nth-child(10) { grid-column: span 5; aspect-ratio: 5/4; }
+.photo-info .pi-city i { font-size: 13px; color: var(--gold-deep); }
+.photo-verify {
+  position: absolute;
+  top: 8px; right: 8px;
+  display: none; /* mode badge already in overlay; verify dot optional */
+}
 
 /* ─────────── PERFORMERS ─────────── */
 .performers {
@@ -881,9 +889,7 @@ body::before {
   .stat-cell:nth-child(1), .stat-cell:nth-child(2) { border-bottom: 1px solid var(--line); }
   .progress-wrap { grid-template-columns: 1fr; gap: 40px; }
   .performers { grid-template-columns: 1fr; }
-  .gallery { grid-template-columns: repeat(6, 1fr); }
-  .photo:nth-child(n) { grid-column: span 3; aspect-ratio: 4/3; grid-row: auto; }
-  .photo:nth-child(1) { grid-column: span 6; aspect-ratio: 4/3; }
+  .gallery { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
   .footer { grid-template-columns: 1fr; }
   .cta-block { padding: 60px 24px; }
   .headline { font-size: 44px; }
@@ -1189,10 +1195,19 @@ body::before {
         <h2 class="section-title">From the <em>Field</em></h2>
       </div>
       <div class="filters" id="filterChips">
-        <button class="chip active" data-filter="all">All · <span id="cAll">—</span></button>
+        <button class="chip active" data-filter="all">All time · <span id="cAll">—</span></button>
         <button class="chip" data-filter="today">Today · <span id="cToday">—</span></button>
         <button class="chip" data-filter="yesterday">Yesterday · <span id="cYesterday">—</span></button>
-        <button class="chip" data-filter="week">Last 7 days · <span id="cWeek">—</span></button>
+        <button class="chip" data-filter="custom" id="customChip"><i class="ti ti-calendar"></i> Custom <span id="cCustom"></span></button>
+      </div>
+      <div id="customDateRow" style="display:none; gap:10px; align-items:center; margin-top:12px; flex-wrap:wrap;">
+        <label style="font-size:12px; color:var(--ink-mute);">From
+          <input type="date" id="customFrom" style="margin-left:6px; padding:7px 10px; border:1px solid var(--line); border-radius:7px; font-family:inherit; font-size:13px; background:var(--paper); color:var(--ink);">
+        </label>
+        <label style="font-size:12px; color:var(--ink-mute);">To
+          <input type="date" id="customTo" style="margin-left:6px; padding:7px 10px; border:1px solid var(--line); border-radius:7px; font-family:inherit; font-size:13px; background:var(--paper); color:var(--ink);">
+        </label>
+        <button onclick="applyCustomRange()" style="padding:8px 16px; background:var(--ink); color:var(--paper); border:none; border-radius:7px; font-size:13px; font-weight:600; cursor:pointer;">Apply</button>
       </div>
     </div>
 
@@ -1419,6 +1434,8 @@ const state = {
   totalPhotos: 0,
   filteredPhotos: [],
   currentFilter: 'all',
+  customFrom: null,
+  customTo: null,
   cities: [],
   members: [],
   dailyData: [],
@@ -1612,11 +1629,9 @@ async function loadPhotos() {
 function applyFilter() {
   const today = todayISTDateStr();
   const yesterday = istDateMinusDays(1);
-  const weekAgo = istDateMinusDays(7);
   
   const todayUtc = istRangeToUTC(today, today);
   const yestUtc = istRangeToUTC(yesterday, yesterday);
-  const weekUtc = istRangeToUTC(weekAgo, today);
   
   let f;
   switch (state.currentFilter) {
@@ -1626,8 +1641,13 @@ function applyFilter() {
     case 'yesterday':
       f = state.photos.filter(p => p.captured_at >= yestUtc.fromUtc && p.captured_at <= yestUtc.toUtc);
       break;
-    case 'week':
-      f = state.photos.filter(p => p.captured_at >= weekUtc.fromUtc && p.captured_at <= weekUtc.toUtc);
+    case 'custom':
+      if (state.customFrom && state.customTo) {
+        const cUtc = istRangeToUTC(state.customFrom, state.customTo);
+        f = state.photos.filter(p => p.captured_at >= cUtc.fromUtc && p.captured_at <= cUtc.toUtc);
+      } else {
+        f = state.photos.slice();
+      }
       break;
     default:
       f = state.photos.slice();
@@ -1638,7 +1658,20 @@ function applyFilter() {
   $('cAll').textContent = fmtNum(state.photos.length);
   $('cToday').textContent = fmtNum(state.photos.filter(p => p.captured_at >= todayUtc.fromUtc && p.captured_at <= todayUtc.toUtc).length);
   $('cYesterday').textContent = fmtNum(state.photos.filter(p => p.captured_at >= yestUtc.fromUtc && p.captured_at <= yestUtc.toUtc).length);
-  $('cWeek').textContent = fmtNum(state.photos.filter(p => p.captured_at >= weekUtc.fromUtc && p.captured_at <= weekUtc.toUtc).length);
+}
+
+function applyCustomRange() {
+  const from = $('customFrom').value;
+  const to = $('customTo').value;
+  if (!from || !to) { toast('Dono date select karein', 'error'); return; }
+  if (from > to) { toast('From date, To se pehle honi chahiye', 'error'); return; }
+  state.customFrom = from;
+  state.customTo = to;
+  state.currentFilter = 'custom';
+  const cUtc = istRangeToUTC(from, to);
+  const n = state.photos.filter(p => p.captured_at >= cUtc.fromUtc && p.captured_at <= cUtc.toUtc).length;
+  $('cCustom').textContent = '· ' + fmtNum(n);
+  renderGallery();
 }
 
 // ─── Aggregate stats ───
@@ -1821,18 +1854,7 @@ function renderGallery() {
   }
   $('galleryEmpty').style.display = 'none';
   
-  $('galleryContainer').innerHTML = photos.map((p, idx) => `
-    <div class="photo" onclick="openLightbox(${idx})">
-      <span class="photo-badge">${escapeHtml(p.vehicle_number || '—')}</span>
-      ${p.is_verified ? '<span class="photo-verify"><i class="ti ti-check"></i></span>' : ''}
-      <img src="${escapeHtml(p.public_url || '')}" alt="" loading="lazy">
-      <div class="photo-overlay">
-        <div class="photo-vehicle">${escapeHtml(p.vehicle_number || '')} ${p.mode ? ' · ' + p.mode.toUpperCase() : ''}</div>
-        <div class="photo-place">${escapeHtml(p.city || 'Location')}</div>
-        <div class="photo-time">${escapeHtml(fmtIST(p.captured_at))} · By ${escapeHtml(p.member_name || '—')}</div>
-      </div>
-    </div>
-  `).join('');
+  $('galleryContainer').innerHTML = photos.map((p, idx) => photoCardHtml(p, idx)).join('');
   
   if (total > 30) {
     $('galleryLoadMore').style.display = 'block';
@@ -1842,21 +1864,33 @@ function renderGallery() {
   }
 }
 
+// Shared card builder — matches admin Photos-browser grid style
+function photoCardHtml(p, idx) {
+  const modeRaw = (p.mode || '').toLowerCase();
+  const isBack = modeRaw === 'back_panel' || modeRaw === 'back';
+  const modeLabel = modeRaw === 'hood' ? 'HOOD' : (isBack ? 'BACK' : (p.mode ? p.mode.toUpperCase() : ''));
+  const modeBadge = modeLabel ? '<span class="photo-mode' + (isBack ? ' back' : '') + '">' + escapeHtml(modeLabel) + '</span>' : '';
+  const timeStr = p.captured_at ? new Date(p.captured_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }) : '';
+  return '<div class="photo" onclick="openLightbox(' + idx + ')">' +
+           '<div class="photo-overlay">' +
+             '<span class="photo-vehicle">' + escapeHtml(p.vehicle_number || '—') + '</span>' +
+             modeBadge +
+           '</div>' +
+           '<img src="' + escapeHtml(p.public_url || '') + '" alt="" loading="lazy">' +
+           '<div class="photo-info">' +
+             '<div class="pi-row">' +
+               '<span class="pi-member">' + escapeHtml(p.member_name || '—') + '</span>' +
+               '<span class="pi-time">' + escapeHtml(timeStr) + '</span>' +
+             '</div>' +
+             (p.city ? '<div class="pi-city"><i class="ti ti-map-pin"></i>' + escapeHtml(p.city) + '</div>' : '') +
+           '</div>' +
+         '</div>';
+}
+
 function loadMorePhotos() {
   // Show all filtered photos (no pagination since we already have all 2000)
   const photos = state.filteredPhotos;
-  $('galleryContainer').innerHTML = photos.map((p, idx) => `
-    <div class="photo" onclick="openLightbox(${idx})">
-      <span class="photo-badge">${escapeHtml(p.vehicle_number || '—')}</span>
-      ${p.is_verified ? '<span class="photo-verify"><i class="ti ti-check"></i></span>' : ''}
-      <img src="${escapeHtml(p.public_url || '')}" alt="" loading="lazy">
-      <div class="photo-overlay">
-        <div class="photo-vehicle">${escapeHtml(p.vehicle_number || '')} ${p.mode ? ' · ' + p.mode.toUpperCase() : ''}</div>
-        <div class="photo-place">${escapeHtml(p.city || 'Location')}</div>
-        <div class="photo-time">${escapeHtml(fmtIST(p.captured_at))} · By ${escapeHtml(p.member_name || '—')}</div>
-      </div>
-    </div>
-  `).join('');
+  $('galleryContainer').innerHTML = photos.map((p, idx) => photoCardHtml(p, idx)).join('');
   $('galleryLoadMore').style.display = 'none';
   toast('All ' + fmtNum(photos.length) + ' photos loaded', 'success');
 }
@@ -1868,7 +1902,15 @@ document.addEventListener('click', function(e) {
     document.querySelectorAll('#filterChips .chip').forEach(c => c.classList.remove('active'));
     chip.classList.add('active');
     state.currentFilter = chip.dataset.filter || 'all';
-    renderGallery();
+    // Toggle custom date row
+    var customRow = document.getElementById('customDateRow');
+    if (customRow) customRow.style.display = (state.currentFilter === 'custom') ? 'flex' : 'none';
+    // For non-custom filters, render immediately. For custom, wait for Apply.
+    if (state.currentFilter !== 'custom') {
+      renderGallery();
+    } else if (state.customFrom && state.customTo) {
+      renderGallery();
+    }
   }
 });
 
