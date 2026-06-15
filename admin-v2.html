@@ -8959,11 +8959,19 @@ function renderClientLinks() {
     var url = getClientUrlBase() + '?c=' + encodeURIComponent(l.campaign_key) + '&t=' + l.token;
     var lastViewed = l.last_viewed_at ? fmtTimeAgo(l.last_viewed_at) : 'never';
     var activeTag = l.active ? '<span class="tag tag-success"><i class="ti ti-circle-filled" style="font-size:7px;"></i> Active</span>' : '<span class="tag" style="background:var(--bg); color:var(--text-3);">Inactive</span>';
-    
+
+    // Phone status — number Launch Campaign se aata hai; agar nahi to warning
+    var hasPhone = !!(l.client_phone && String(l.client_phone).replace(/\D/g,'').length >= 10);
+    var phoneRow = hasPhone
+      ? '<div class="client" style="color:var(--ok,#1a8a5a);"><i class="ti ti-brand-whatsapp"></i> ' + escapeHtml(String(l.client_phone)) + '</div>'
+      : '<div class="client" style="color:var(--warn,#c47d00);"><i class="ti ti-alert-triangle"></i> Number nahi — bhejte waqt poocha jayega</div>';
+    var waLabel = hasPhone ? 'WhatsApp' : 'WhatsApp +';
+
     html += '<div class="client-link-card">' +
               '<div class="client-link-info">' +
                 '<div class="name">' + escapeHtml(l.campaign_name) + ' ' + activeTag + '</div>' +
                 (l.client_name ? '<div class="client">Client: ' + escapeHtml(l.client_name) + '</div>' : '') +
+                phoneRow +
                 '<div class="link-box">' +
                   '<span style="flex:1;" title="' + escapeHtml(url) + '">' + escapeHtml(url.substring(0, 70)) + (url.length > 70 ? '...' : '') + '</span>' +
                   '<button class="copy-btn" onclick="copyClientLink(' + idx + ')"><i class="ti ti-copy"></i> Copy</button>' +
@@ -8974,7 +8982,7 @@ function renderClientLinks() {
                 '</div>' +
               '</div>' +
               '<div class="client-link-actions">' +
-                '<button class="btn btn-sm btn-primary" onclick="shareClientWhatsApp(' + idx + ')"><i class="ti ti-brand-whatsapp"></i> WhatsApp</button>' +
+                '<button class="btn btn-sm btn-primary" onclick="shareClientWhatsApp(' + idx + ')"><i class="ti ti-brand-whatsapp"></i> ' + waLabel + '</button>' +
                 '<button class="btn btn-sm btn-ghost" onclick="showClientQR(' + idx + ')"><i class="ti ti-qrcode"></i> QR code</button>' +
                 '<button class="btn btn-sm btn-ghost" onclick="toggleClientLinkActive(' + idx + ')"><i class="ti ti-' + (l.active ? 'pause' : 'play') + '"></i> ' + (l.active ? 'Disable' : 'Enable') + '</button>' +
                 '<button class="btn btn-sm btn-ghost" onclick="regenerateClientToken(' + idx + ')"><i class="ti ti-refresh"></i> New URL</button>' +
@@ -9025,13 +9033,35 @@ function shareClientWhatsApp(idx) {
   var l = p4state.clientLinks[idx];
   var url = getClientUrlBase() + '?c=' + encodeURIComponent(l.campaign_key) + '&t=' + l.token;
 
-  // Ask for / confirm the client's WhatsApp number (prefilled if known)
-  var entered = prompt(
-    'Client ka WhatsApp number? (10 digit)\n\nCampaign: ' + l.campaign_name +
-    '\nClient: ' + (l.client_name || '—'),
-    l.client_phone || ''
-  );
-  if (entered === null) return; // cancelled
+  var saved = normalizePhoneIN(l.client_phone || '');
+  var entered;
+
+  if (saved) {
+    // Number Launch Campaign se mil gaya — seedha use karo, sirf confirm karo
+    var ok = confirm(
+      (l.client_name || 'Client') + ' ko WhatsApp bhejein?\n\n' +
+      'Number: +' + saved + '\n' +
+      'Campaign: ' + l.campaign_name + '\n\n' +
+      'OK = bhejo   ·   Cancel = number badlo'
+    );
+    if (ok) {
+      entered = l.client_phone;
+    } else {
+      // user wants to change the number
+      entered = prompt('Naya WhatsApp number? (10 digit)', l.client_phone || '');
+      if (entered === null) return; // fully cancelled
+    }
+  } else {
+    // Number nahi hai (na order mein, na saved) — entry ke liye pucho
+    entered = prompt(
+      'Is campaign ka client number nahi mila.\n' +
+      'WhatsApp number daalein (10 digit):\n\n' +
+      'Campaign: ' + l.campaign_name +
+      '\nClient: ' + (l.client_name || '—'),
+      ''
+    );
+    if (entered === null) return; // cancelled
+  }
 
   var phone = normalizePhoneIN(entered);
   if (!phone) {
