@@ -1,2245 +1,531 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Field Report · Prajapati Advertising</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.40.0/tabler-icons.min.css">
-
-<!-- Functional libraries -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
-
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Campaign Report — Prajapati Advertising</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<!-- Libraries -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-:root {
-  --paper: #FAF7F0;
-  --paper-2: #F2EEE3;
-  --ink: #0B1957;
-  --ink-soft: #2E3759;
-  --ink-mute: #7B7F92;
-  --gold: #C9A654;
-  --gold-deep: #A88A3F;
-  --cyan: #26d0ce;
-  --cyan-deep: #0fa6a4;
-  --red: #C2542E;
-  --green: #5C8A4E;
-  --line: #D8D2C2;
-  --line-soft: #E8E4D7;
-  --shadow: 0 1px 0 rgba(11,25,87,0.04), 0 4px 24px -8px rgba(11,25,87,0.08);
-  --shadow-lg: 0 4px 0 rgba(11,25,87,0.03), 0 32px 64px -24px rgba(11,25,87,0.18);
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0B1957;--orange:#FF6B00;--bg:#f0f2f8;--card:#fff;
+  --tx:#0f172a;--tx2:#64748b;--tx3:#94a3b8;--border:#e2e8f0;
+  --gr:#22c55e;--bl:#3b82f6;--am:#f59e0b;
 }
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh}
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
+.hdr{background:var(--navy);padding:16px 20px;position:sticky;top:0;z-index:50}
+.hdr-top{display:flex;justify-content:space-between;align-items:center;max-width:1300px;margin:0 auto;flex-wrap:wrap;gap:10px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-mark{width:38px;height:38px;background:var(--orange);border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;font-size:15px}
+.brand-name{color:#fff;font-size:15px;font-weight:800}
+.brand-tag{color:rgba(255,255,255,.5);font-size:10px;letter-spacing:.5px;text-transform:uppercase}
+.camp-badge{background:rgba(255,255,255,.1);color:#fff;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600}
+.camp-badge b{color:var(--orange)}
 
-body {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  background: var(--paper);
-  color: var(--ink);
-  font-size: 15px;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-  position: relative;
-  overflow-x: hidden;
-}
+.container{max-width:1300px;margin:0 auto;padding:20px}
 
-/* Paper grain texture overlay */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4'/%3E%3CfeColorMatrix values='0 0 0 0 0.043 0 0 0 0 0.098 0 0 0 0 0.341 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
-  opacity: 0.5;
-  pointer-events: none;
-  z-index: 1;
-  mix-blend-mode: multiply;
-}
+.date-bar{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:16px;scrollbar-width:none}
+.date-bar::-webkit-scrollbar{display:none}
+.dp{padding:8px 16px;border-radius:20px;background:#fff;border:1px solid var(--border);font-size:12px;font-weight:600;color:var(--tx2);cursor:pointer;white-space:nowrap;transition:all 0.15s}
+.dp.act{background:var(--navy);color:#fff;border-color:var(--navy)}
+.dp:hover:not(.act){border-color:var(--navy)}
 
-/* Container */
-.wrap { max-width: 1280px; margin: 0 auto; padding: 0 32px; position: relative; z-index: 2; }
+.custom-range{display:none;gap:8px;align-items:center;margin-bottom:16px;background:#fff;padding:12px;border-radius:10px}
+.custom-range.show{display:flex}
 
-/* ─────────── TOP BAR ─────────── */
-.topbar {
-  border-bottom: 1px solid var(--line);
-  padding: 14px 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  color: var(--ink-mute);
-}
-.topbar-left { display: flex; align-items: center; gap: 14px; }
-.live-dot {
-  width: 7px; height: 7px;
-  background: var(--cyan);
-  border-radius: 50%;
-  box-shadow: 0 0 0 4px rgba(38,208,206,0.18);
-  animation: pulse 2s ease-in-out infinite;
-}
-@keyframes pulse {
-  50% { box-shadow: 0 0 0 8px rgba(38,208,206,0); }
-}
-.topbar-right { display: flex; gap: 18px; align-items: center; }
-.topbar-link { color: var(--ink-soft); text-decoration: none; transition: color 0.2s; }
-.topbar-link:hover { color: var(--gold-deep); }
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+.kpi{background:var(--card);border-radius:12px;padding:16px;border-top:3px solid var(--c)}
+.kpi-v{font-size:26px;font-weight:900;color:var(--navy)}
+.kpi-l{font-size:11px;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-top:2px}
 
-/* ─────────── MASTHEAD ─────────── */
-.masthead {
-  padding: 64px 0 48px;
-  border-bottom: 2px solid var(--ink);
-  position: relative;
-}
-.masthead::after {
-  content: '';
-  position: absolute;
-  bottom: -7px;
-  left: 0;
-  right: 0;
-  border-bottom: 1px solid var(--ink);
-}
-.masthead-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 28px;
-}
-.brand-mark {
-  font-family: 'Fraunces', serif;
-  font-variation-settings: 'opsz' 144, 'wght' 700, 'SOFT' 100;
-  font-size: 22px;
-  letter-spacing: -0.02em;
-  color: var(--ink);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.brand-mark::before {
-  content: 'P';
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  background: var(--ink);
-  color: var(--paper);
-  font-family: 'Fraunces', serif;
-  font-variation-settings: 'opsz' 144, 'wght' 900, 'SOFT' 100;
-  font-size: 24px;
-  line-height: 1;
-}
-.report-meta {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--ink-mute);
-  text-align: right;
-}
-.report-meta strong { color: var(--ink); font-weight: 600; }
+.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px;background:var(--card);padding:14px 16px;border-radius:12px}
+.tb-left{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sel,.inp{background:#fff;border:1px solid var(--border);color:var(--tx);padding:8px 12px;border-radius:8px;font-size:12px;font-family:inherit;outline:none}
+.sel:focus,.inp:focus{border-color:var(--navy)}
+.tb-right{display:flex;gap:8px;flex-wrap:wrap}
+.dl-btn{display:flex;align-items:center;gap:6px;padding:9px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:none;font-family:inherit;transition:all 0.15s}
+.dl-zip{background:#1e293b;color:#fff}
+.dl-ppt{background:#d04727;color:#fff}
+.dl-excel{background:#1d6f42;color:#fff}
+.dl-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.15)}
+.dl-btn:disabled{opacity:.5;cursor:not-allowed}
 
-.kicker {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  letter-spacing: 4px;
-  text-transform: uppercase;
-  color: var(--gold-deep);
-  margin-bottom: 14px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-.kicker::before, .kicker::after {
-  content: '';
-  flex: 0 0 40px;
-  height: 1px;
-  background: var(--gold);
-}
-.kicker::after { display: none; }
+.view-toggle{display:flex;background:#f1f5f9;border-radius:8px;padding:3px}
+.vt{padding:7px 14px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;color:var(--tx2);border:none;background:none;font-family:inherit}
+.vt.act{background:#fff;color:var(--navy);box-shadow:0 1px 3px rgba(0,0,0,.1)}
 
-.headline {
-  font-family: 'Fraunces', serif;
-  font-variation-settings: 'opsz' 144, 'wght' 400, 'SOFT' 50;
-  font-size: clamp(48px, 7vw, 96px);
-  line-height: 0.95;
-  letter-spacing: -0.035em;
-  margin-bottom: 24px;
-  color: var(--ink);
-}
-.headline em {
-  font-style: italic;
-  font-variation-settings: 'opsz' 144, 'wght' 400, 'SOFT' 50, 'WONK' 1;
-  color: var(--gold-deep);
-}
+.loc-group{margin-bottom:24px}
+.loc-hdr{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.loc-icon{width:32px;height:32px;background:var(--orange);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px}
+.loc-name{font-size:15px;font-weight:800;color:var(--navy)}
+.loc-count{background:#dcfce7;color:#166534;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.loc-dl{margin-left:auto;font-size:11px;color:var(--navy);cursor:pointer;font-weight:600;display:flex;align-items:center;gap:4px}
 
-.subhead {
-  max-width: 720px;
-  font-size: 19px;
-  line-height: 1.55;
-  color: var(--ink-soft);
-  font-weight: 400;
-}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.pcard{background:var(--card);border-radius:12px;overflow:hidden;cursor:pointer;transition:all 0.15s;border:2px solid transparent}
+.pcard:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.12);border-color:var(--orange)}
+.pthumb{aspect-ratio:4/3;background:linear-gradient(135deg,#cbd5e1,#94a3b8);position:relative;display:flex;align-items:center;justify-content:center;font-size:36px;color:rgba(255,255,255,.6);overflow:hidden}
+.pthumb img{width:100%;height:100%;object-fit:cover}
+.p-rick{position:absolute;top:8px;left:8px;background:rgba(255,107,0,.9);padding:2px 8px;border-radius:5px;font-size:9px;font-weight:800;color:#fff;z-index:2}
+.p-info{padding:10px}
+.p-vehicle{font-size:13px;font-weight:800;color:var(--navy)}
+.p-time{font-size:10px;color:var(--tx2);margin-top:1px}
+.p-addr{font-size:9px;color:var(--tx3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-.subhead strong {
-  color: var(--ink);
-  font-weight: 600;
-  border-bottom: 2px solid var(--gold);
-  padding-bottom: 1px;
-}
+.lb{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;z-index:100;flex-direction:column}
+.lb.show{display:flex}
+.lb-img{max-width:90%;max-height:75vh;border-radius:10px}
+.lb-info{color:#fff;margin-top:16px;text-align:center;max-width:500px}
+.lb-close{position:absolute;top:20px;right:20px;color:#fff;font-size:24px;background:rgba(255,255,255,.15);border:none;width:40px;height:40px;border-radius:50%;cursor:pointer}
+.lb-nav{position:absolute;top:50%;transform:translateY(-50%);font-size:30px;color:#fff;background:rgba(255,255,255,.1);border:none;width:50px;height:50px;border-radius:50%;cursor:pointer}
 
-/* ─────────── ACTION BAR ─────────── */
-.actions {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-top: 36px;
-}
-.btn {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-weight: 600;
-  font-size: 14px;
-  padding: 14px 22px;
-  border-radius: 0;
-  border: 1px solid var(--ink);
-  background: var(--ink);
-  color: var(--paper);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  text-decoration: none;
-  transition: all 0.2s;
-  letter-spacing: -0.01em;
-  position: relative;
-  overflow: hidden;
-}
-.btn::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--gold);
-  transform: translateY(101%);
-  transition: transform 0.3s cubic-bezier(0.65, 0, 0.35, 1);
-  z-index: 0;
-}
-.btn:hover::after { transform: translateY(0); }
-.btn > * { position: relative; z-index: 1; }
-.btn:hover { color: var(--ink); border-color: var(--gold); }
-.btn i { font-size: 18px; }
+.dl-modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:110}
+.dl-modal.show{display:flex}
+.dl-box{background:#fff;border-radius:14px;padding:24px;width:340px;text-align:center}
+.dl-spin{width:50px;height:50px;border:4px solid #e2e8f0;border-top-color:var(--orange);border-radius:50%;margin:0 auto 16px;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.dl-prog{height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;margin-top:12px}
+.dl-prog-fill{height:8px;background:var(--orange);width:0%;transition:width 0.2s}
 
-.btn-ghost {
-  background: transparent;
-  color: var(--ink);
-}
-.btn-ghost::after { background: var(--ink); }
-.btn-ghost:hover { color: var(--paper); }
-
-.btn-shimmer::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -150%;
-  width: 70%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-  animation: shimmer 3s ease-in-out infinite;
-  z-index: 2;
-}
-@keyframes shimmer {
-  0%, 100% { left: -150%; }
-  50% { left: 150%; }
-}
-
-/* ─────────── STAT BAND ─────────── */
-.stat-band {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0;
-  border-bottom: 1px solid var(--line);
-  margin: 0 -32px;
-  padding: 0 32px;
-}
-.stat-cell {
-  padding: 36px 28px 36px 0;
-  border-right: 1px solid var(--line);
-  position: relative;
-}
-.stat-cell:last-child { border-right: none; }
-.stat-cell .num {
-  font-family: 'Fraunces', serif;
-  font-variation-settings: 'opsz' 144, 'wght' 500;
-  font-size: 64px;
-  line-height: 1;
-  letter-spacing: -0.04em;
-  color: var(--ink);
-  display: block;
-}
-.stat-cell .num small {
-  font-size: 22px;
-  color: var(--ink-mute);
-  margin-left: 4px;
-  letter-spacing: 0;
-}
-.stat-cell .lbl {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--ink-mute);
-  margin-top: 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.stat-cell .delta {
-  font-size: 12px;
-  color: var(--green);
-  background: rgba(92,138,78,0.1);
-  padding: 2px 8px;
-  border-radius: 2px;
-  font-family: 'JetBrains Mono', monospace;
-  letter-spacing: 0.5px;
-}
-.stat-cell .delta.minus { color: var(--red); background: rgba(194,84,46,0.1); }
-
-/* ─────────── SECTION ─────────── */
-.section {
-  padding: 80px 0 60px;
-  border-bottom: 1px solid var(--line);
-}
-.section:last-child { border-bottom: none; }
-
-.section-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 36px;
-  gap: 24px;
-  flex-wrap: wrap;
-}
-.section-title {
-  font-family: 'Fraunces', serif;
-  font-variation-settings: 'opsz' 144, 'wght' 500, 'SOFT' 30;
-  font-size: 38px;
-  letter-spacing: -0.025em;
-  line-height: 1.05;
-  color: var(--ink);
-}
-.section-title em {
-  font-style: italic;
-  color: var(--gold-deep);
-  font-variation-settings: 'opsz' 144, 'wght' 500, 'WONK' 1;
-}
-.section-num {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 3px;
-  color: var(--gold-deep);
-  text-transform: uppercase;
-  display: block;
-  margin-bottom: 10px;
-}
-.section-tag {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  color: var(--ink-mute);
-  padding: 6px 10px;
-  border: 1px solid var(--line);
-}
-
-/* ─────────── PROGRESS ─────────── */
-.progress-wrap {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: 60px;
-  align-items: start;
-}
-
-.progress-card {
-  background: var(--ink);
-  color: var(--paper);
-  padding: 40px;
-  position: relative;
-  overflow: hidden;
-}
-.progress-card::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  right: -10%;
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, rgba(201,166,84,0.25), transparent 70%);
-  pointer-events: none;
-}
-.progress-label {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  color: var(--gold);
-  margin-bottom: 16px;
-}
-.progress-big {
-  font-family: 'Fraunces', serif;
-  font-variation-settings: 'opsz' 144, 'wght' 400, 'SOFT' 80;
-  font-size: 100px;
-  line-height: 1;
-  letter-spacing: -0.04em;
-  color: var(--paper);
-  margin-bottom: 4px;
-}
-.progress-big small {
-  font-size: 32px;
-  color: rgba(250,247,240,0.5);
-}
-.progress-of {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  color: rgba(250,247,240,0.6);
-  letter-spacing: 1px;
-  margin-bottom: 28px;
-}
-.progress-bar {
-  height: 6px;
-  background: rgba(250,247,240,0.1);
-  position: relative;
-  margin-bottom: 14px;
-}
-.progress-bar-fill {
-  position: absolute;
-  inset: 0;
-  width: 56%;
-  background: linear-gradient(90deg, var(--cyan), var(--gold));
-  animation: fillIn 1.5s cubic-bezier(0.65, 0, 0.35, 1) 0.3s both;
-}
-@keyframes fillIn {
-  from { width: 0; }
-}
-.progress-meta {
-  display: flex;
-  justify-content: space-between;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 1px;
-  color: rgba(250,247,240,0.7);
-}
-
-/* City bars */
-.cities-list { display: flex; flex-direction: column; gap: 20px; }
-.city-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 16px;
-  align-items: center;
-}
-.city-name {
-  font-family: 'Fraunces', serif;
-  font-variation-settings: 'opsz' 144, 'wght' 400;
-  font-size: 18px;
-  color: var(--ink);
-  letter-spacing: -0.01em;
-}
-.city-count {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ink);
-}
-.city-bar {
-  grid-column: 1 / -1;
-  height: 2px;
-  background: var(--line);
-  position: relative;
-  margin-top: 2px;
-}
-.city-bar-fill {
-  position: absolute;
-  inset: 0;
-  background: var(--ink);
-  transform: scaleX(var(--p, 0.5));
-  transform-origin: left;
-  animation: barFill 1.2s cubic-bezier(0.65, 0, 0.35, 1) both;
-}
-@keyframes barFill {
-  from { transform: scaleX(0); }
-}
-
-/* ─────────── GALLERY ─────────── */
-.filters {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-.chip {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  padding: 8px 16px;
-  border: 1px solid var(--line);
-  background: transparent;
-  color: var(--ink-soft);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.chip:hover { border-color: var(--ink); color: var(--ink); }
-.chip.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
-
-.gallery {
-  display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  gap: 20px;
-  grid-auto-flow: dense;
-}
-.photo {
-  position: relative;
-  overflow: hidden;
-  background: var(--paper-2);
-  cursor: pointer;
-  transition: transform 0.4s cubic-bezier(0.65, 0, 0.35, 1);
-}
-.photo:hover { transform: translateY(-4px); }
-.photo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  transition: transform 0.6s cubic-bezier(0.65, 0, 0.35, 1);
-}
-.photo:hover img { transform: scale(1.04); }
-.photo-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, transparent 40%, rgba(11,25,87,0.85));
-  opacity: 0;
-  transition: opacity 0.3s;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  padding: 20px;
-  color: var(--paper);
-}
-.photo:hover .photo-overlay { opacity: 1; }
-.photo-vehicle {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 1px;
-  color: var(--gold);
-  margin-bottom: 6px;
-}
-.photo-place {
-  font-family: 'Fraunces', serif;
-  font-variation-settings: 'opsz' 144, 'wght' 500;
-  font-size: 19px;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-}
-.photo-time {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: rgba(250,247,240,0.65);
-  margin-top: 6px;
-  letter-spacing: 0.5px;
-}
-
-.photo-badge {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 1.5px;
-  background: var(--paper);
-  color: var(--ink);
-  padding: 4px 8px;
-  z-index: 2;
-}
-.photo-verify {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--green);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2;
-}
-.photo-verify i { font-size: 14px; color: var(--paper); }
-
-/* Photo grid spans (editorial asymmetry) */
-.photo:nth-child(1) { grid-column: span 5; grid-row: span 2; aspect-ratio: 5/6; }
-.photo:nth-child(2) { grid-column: span 4; aspect-ratio: 4/3; }
-.photo:nth-child(3) { grid-column: span 3; aspect-ratio: 3/4; }
-.photo:nth-child(4) { grid-column: span 4; aspect-ratio: 4/3; }
-.photo:nth-child(5) { grid-column: span 3; aspect-ratio: 3/4; }
-.photo:nth-child(6) { grid-column: span 4; grid-row: span 2; aspect-ratio: 4/5; }
-.photo:nth-child(7) { grid-column: span 4; aspect-ratio: 4/3; }
-.photo:nth-child(8) { grid-column: span 4; aspect-ratio: 4/3; }
-.photo:nth-child(9) { grid-column: span 3; aspect-ratio: 3/4; }
-.photo:nth-child(10) { grid-column: span 5; aspect-ratio: 5/4; }
-
-/* ─────────── PERFORMERS ─────────── */
-.performers {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-}
-.performer {
-  border: 1px solid var(--line);
-  padding: 28px 24px;
-  background: var(--paper-2);
-  position: relative;
-  transition: all 0.3s;
-}
-.performer:hover {
-  background: var(--paper);
-  border-color: var(--ink);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow);
-}
-.performer-rank {
-  position: absolute;
-  top: 20px;
-  right: 24px;
-  font-family: 'Fraunces', serif;
-  font-variation-settings: 'opsz' 144, 'wght' 300';
-  font-size: 64px;
-  line-height: 1;
-  color: var(--line);
-  letter-spacing: -0.05em;
-}
-.performer:hover .performer-rank { color: var(--gold); }
-.performer-name {
-  font-family: 'Fraunces', serif;
-  font-variation-settings: 'opsz' 144, 'wght' 500';
-  font-size: 24px;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  margin-bottom: 8px;
-}
-.performer-location {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: var(--ink-mute);
-  margin-bottom: 20px;
-}
-.performer-stats {
-  display: flex;
-  gap: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--line);
-}
-.performer-stat .v {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 22px;
-  font-weight: 600;
-  color: var(--ink);
-  letter-spacing: -0.02em;
-}
-.performer-stat .l {
-  font-size: 11px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--ink-mute);
-  font-family: 'JetBrains Mono', monospace;
-}
-
-/* ─────────── TIMELINE CHART ─────────── */
-.timeline-chart {
-  height: 200px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 4px;
-  padding: 20px 0;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  position: relative;
-}
-.bar {
-  flex: 1;
-  background: var(--ink);
-  position: relative;
-  transition: all 0.3s;
-  min-height: 4px;
-  cursor: pointer;
-  animation: barRise 1s cubic-bezier(0.65, 0, 0.35, 1) backwards;
-}
-@keyframes barRise {
-  from { height: 0 !important; opacity: 0; }
-}
-.bar:hover { background: var(--gold-deep); }
-.bar.today { background: var(--gold); }
-.bar::after {
-  content: attr(data-val);
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%) translateY(-4px);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: var(--ink);
-  background: var(--paper);
-  padding: 2px 6px;
-  white-space: nowrap;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-.bar:hover::after { opacity: 1; }
-.timeline-labels {
-  display: flex;
-  justify-content: space-between;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: var(--ink-mute);
-  letter-spacing: 1px;
-  padding-top: 8px;
-}
-
-/* ─────────── MAP ─────────── */
-.map-block {
-  position: relative;
-  height: 460px;
-  background: var(--paper-2);
-  border: 1px solid var(--line);
-  overflow: hidden;
-}
-.map-block iframe { width: 100%; height: 100%; border: 0; filter: grayscale(0.4) contrast(0.95); }
-.map-overlay {
-  position: absolute;
-  top: 24px;
-  left: 24px;
-  background: var(--paper);
-  padding: 18px 22px;
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow);
-  max-width: 280px;
-}
-.map-overlay h4 {
-  font-family: 'Fraunces', serif;
-  font-variation-settings: 'opsz' 144, 'wght' 500';
-  font-size: 18px;
-  margin-bottom: 6px;
-  letter-spacing: -0.02em;
-}
-.map-overlay p {
-  font-size: 13px;
-  color: var(--ink-mute);
-  line-height: 1.5;
-}
-
-/* ─────────── DOWNLOAD CTA ─────────── */
-.cta-block {
-  background: var(--ink);
-  color: var(--paper);
-  padding: 80px 64px;
-  margin: 0 -32px;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
-}
-.cta-block::before {
-  content: '';
-  position: absolute;
-  top: -30%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 800px;
-  height: 800px;
-  background: radial-gradient(circle, rgba(201,166,84,0.2), transparent 60%);
-  pointer-events: none;
-}
-.cta-block > * { position: relative; z-index: 1; }
-.cta-kicker {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 4px;
-  text-transform: uppercase;
-  color: var(--gold);
-  margin-bottom: 20px;
-}
-.cta-title {
-  font-family: 'Fraunces', serif;
-  font-variation-settings: 'opsz' 144, 'wght' 400, 'SOFT' 50';
-  font-size: clamp(36px, 5vw, 68px);
-  line-height: 1.05;
-  letter-spacing: -0.03em;
-  margin-bottom: 24px;
-}
-.cta-title em {
-  font-style: italic;
-  font-variation-settings: 'opsz' 144, 'wght' 400, 'WONK' 1';
-  color: var(--gold);
-}
-.cta-sub {
-  font-size: 17px;
-  color: rgba(250,247,240,0.75);
-  max-width: 540px;
-  margin: 0 auto 40px;
-  line-height: 1.6;
-}
-.cta-buttons {
-  display: flex;
-  gap: 14px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-.btn-light {
-  background: var(--paper);
-  color: var(--ink);
-  border-color: var(--paper);
-}
-.btn-light::after { background: var(--gold); }
-.btn-light:hover { color: var(--ink); border-color: var(--gold); }
-
-.btn-outline-light {
-  background: transparent;
-  color: var(--paper);
-  border-color: rgba(250,247,240,0.4);
-}
-.btn-outline-light::after { background: var(--paper); }
-.btn-outline-light:hover { color: var(--ink); border-color: var(--paper); }
-
-/* ─────────── FOOTER ─────────── */
-.footer {
-  padding: 60px 0 40px;
-  border-top: 1px solid var(--line);
-  display: grid;
-  grid-template-columns: 1.5fr 1fr 1fr;
-  gap: 60px;
-  margin-top: 0;
-}
-.footer-brand {
-  font-family: 'Fraunces', serif;
-  font-variation-settings: 'opsz' 144, 'wght' 500';
-  font-size: 28px;
-  letter-spacing: -0.02em;
-  margin-bottom: 12px;
-}
-.footer-tag {
-  font-size: 14px;
-  color: var(--ink-mute);
-  max-width: 360px;
-  line-height: 1.55;
-}
-.footer-block h5 {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--ink-mute);
-  margin-bottom: 16px;
-}
-.footer-block p { font-size: 14px; line-height: 1.7; }
-.footer-block a { color: var(--ink); text-decoration: none; border-bottom: 1px solid transparent; transition: border-color 0.2s; }
-.footer-block a:hover { border-color: var(--gold); }
-.copyright {
-  border-top: 1px solid var(--line);
-  margin-top: 60px;
-  padding-top: 28px;
-  display: flex;
-  justify-content: space-between;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 1px;
-  color: var(--ink-mute);
-}
-
-/* ─────────── ANIMATIONS ─────────── */
-[data-reveal] {
-  opacity: 0;
-  transform: translateY(20px);
-  transition: opacity 0.8s cubic-bezier(0.5, 0, 0.1, 1), transform 0.8s cubic-bezier(0.5, 0, 0.1, 1);
-}
-[data-reveal].in {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* Responsive */
-@media (max-width: 900px) {
-  .wrap { padding: 0 20px; }
-  .stat-band { grid-template-columns: repeat(2, 1fr); }
-  .stat-cell:nth-child(2) { border-right: none; }
-  .stat-cell:nth-child(1), .stat-cell:nth-child(2) { border-bottom: 1px solid var(--line); }
-  .progress-wrap { grid-template-columns: 1fr; gap: 40px; }
-  .performers { grid-template-columns: 1fr; }
-  .gallery { grid-template-columns: repeat(6, 1fr); }
-  .photo:nth-child(n) { grid-column: span 3; aspect-ratio: 4/3; grid-row: auto; }
-  .photo:nth-child(1) { grid-column: span 6; aspect-ratio: 4/3; }
-  .footer { grid-template-columns: 1fr; }
-  .cta-block { padding: 60px 24px; }
-  .headline { font-size: 44px; }
-  .section { padding: 48px 0 36px; }
-}
-
-/* Decorative quote/note */
-.editorial-note {
-  font-family: 'Fraunces', serif;
-  font-variation-settings: 'opsz' 144, 'wght' 300, 'SOFT' 50';
-  font-style: italic;
-  font-size: 22px;
-  line-height: 1.4;
-  letter-spacing: -0.01em;
-  color: var(--ink-soft);
-  border-left: 2px solid var(--gold);
-  padding-left: 24px;
-  margin: 0;
-  max-width: 600px;
-}
-.editorial-attribution {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--ink-mute);
-  margin-top: 12px;
-  padding-left: 24px;
-}
-
-/* ─────────── GATE / LOADING SCREENS ─────────── */
-.screen {
-  position: fixed;
-  inset: 0;
-  background: var(--paper);
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 40px;
-  flex-direction: column;
-}
-.screen-content {
-  text-align: center;
-  max-width: 480px;
-}
-.screen-icon {
-  width: 64px;
-  height: 64px;
-  margin: 0 auto 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--ink);
-  color: var(--paper);
-  font-family: 'Fraunces', serif;
-  font-size: 36px;
-  font-variation-settings: 'opsz' 144, 'wght' 700, 'SOFT' 50;
-}
-.screen-kicker {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  color: var(--gold-deep);
-  margin-bottom: 18px;
-}
-.screen-title {
-  font-family: 'Fraunces', serif;
-  font-variation-settings: 'opsz' 144, 'wght' 500, 'SOFT' 50;
-  font-size: 42px;
-  line-height: 1.05;
-  letter-spacing: -0.03em;
-  margin-bottom: 14px;
-}
-.screen-msg {
-  font-size: 16px;
-  color: var(--ink-soft);
-  line-height: 1.55;
-  margin-bottom: 28px;
-}
-.screen-spinner {
-  width: 32px;
-  height: 32px;
-  border: 2px solid var(--line);
-  border-top-color: var(--ink);
-  border-radius: 50%;
-  margin: 0 auto 24px;
-  animation: spin 0.8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ─────────── PHOTO LIGHTBOX ─────────── */
-.lightbox {
-  position: fixed;
-  inset: 0;
-  background: rgba(11,25,87,0.96);
-  z-index: 200;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  padding: 40px;
-  animation: fadeIn 0.25s;
-}
-.lightbox.open { display: flex; }
-@keyframes fadeIn { from { opacity: 0; } }
-.lightbox-img {
-  max-width: 90vw;
-  max-height: 80vh;
-  object-fit: contain;
-  box-shadow: 0 30px 100px rgba(0,0,0,0.4);
-}
-.lightbox-meta {
-  position: absolute;
-  bottom: 28px;
-  left: 50%;
-  transform: translateX(-50%);
-  color: var(--paper);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  letter-spacing: 1px;
-  text-align: center;
-  background: rgba(11,25,87,0.6);
-  padding: 12px 20px;
-  border-radius: 4px;
-  backdrop-filter: blur(8px);
-}
-.lightbox-meta strong {
-  color: var(--gold);
-  font-weight: 600;
-  letter-spacing: 1.5px;
-}
-.lightbox-close {
-  position: absolute;
-  top: 28px;
-  right: 28px;
-  width: 44px;
-  height: 44px;
-  background: rgba(255,255,255,0.1);
-  border: none;
-  border-radius: 50%;
-  color: var(--paper);
-  cursor: pointer;
-  font-size: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s;
-}
-.lightbox-close:hover { background: rgba(255,255,255,0.2); }
-
-/* ─────────── TOAST ─────────── */
-.toast {
-  position: fixed;
-  bottom: 28px;
-  right: 28px;
-  background: var(--ink);
-  color: var(--paper);
-  padding: 14px 22px;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-  box-shadow: 0 8px 32px rgba(11,25,87,0.25);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  z-index: 300;
-  transform: translateY(120%);
-  transition: transform 0.3s cubic-bezier(0.65, 0, 0.35, 1);
-  border-left: 3px solid var(--gold);
-  max-width: 380px;
-}
-.toast.show { transform: translateY(0); }
-.toast.success { border-left-color: #4ADE80; }
-.toast.error { border-left-color: #EF4444; }
-.toast i { font-size: 18px; }
-
-/* ─────────── PROGRESS BAR (for downloads) ─────────── */
-.dl-progress {
-  position: fixed;
-  bottom: 28px;
-  left: 28px;
-  right: 28px;
-  max-width: 480px;
-  margin: 0 auto;
-  background: var(--paper);
-  color: var(--ink);
-  border: 1px solid var(--line);
-  padding: 18px 22px;
-  box-shadow: var(--shadow-lg);
-  z-index: 300;
-  display: none;
-}
-.dl-progress.show { display: block; }
-.dl-progress-label {
-  display: flex;
-  justify-content: space-between;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  letter-spacing: 0.5px;
-  margin-bottom: 10px;
-}
-.dl-progress-bar {
-  height: 4px;
-  background: var(--line);
-  position: relative;
-  overflow: hidden;
-}
-.dl-progress-bar-fill {
-  position: absolute;
-  inset: 0;
-  background: var(--ink);
-  width: 0;
-  transition: width 0.3s;
-}
+.loading{text-align:center;padding:60px 20px;color:var(--tx2)}
+.empty{text-align:center;padding:60px 20px;color:var(--tx2)}
+.footer{text-align:center;padding:24px;color:var(--tx3);font-size:11px}
 </style>
 </head>
 <body>
 
-<!-- ─────────── LOADING SCREEN ─────────── -->
-<div class="screen" id="loadingScreen">
-  <div class="screen-content">
-    <div class="screen-icon">P</div>
-    <div class="screen-kicker">Prajapati Advertising</div>
-    <div class="screen-spinner"></div>
-    <div class="screen-title" style="font-size:24px;">Loading Field Report…</div>
-    <p class="screen-msg" id="loadingMsg">Authenticating access · Fetching latest data</p>
+<div class="hdr">
+  <div class="hdr-top">
+    <div class="brand">
+      <div class="brand-mark" id="brandMark">PA</div>
+      <div>
+        <div class="brand-name" id="brandName">Prajapati Advertising</div>
+        <div class="brand-tag">Campaign Report</div>
+      </div>
+    </div>
+    <div class="camp-badge">📋 <b id="campName">Loading...</b></div>
   </div>
 </div>
 
-<!-- ─────────── GATE SCREEN (errors) ─────────── -->
-<div class="screen" id="gateScreen" style="display:none;">
-  <div class="screen-content">
-    <div class="screen-icon" id="gateIcon">!</div>
-    <div class="screen-kicker">Prajapati Advertising</div>
-    <h1 class="screen-title" id="gateTitle">Access Issue</h1>
-    <p class="screen-msg" id="gateMsg">Please check the link you received.</p>
-    <p style="font-size:13px; color:var(--ink-mute); font-family:'JetBrains Mono',monospace; letter-spacing:1px;">
-      Need help? Call <a href="tel:9922138138" style="color:var(--ink); border-bottom:1px solid var(--gold);">+91 99 22 138 138</a>
-    </p>
+<div class="container">
+  <div class="date-bar">
+    <div class="dp act" data-range="today">📅 Today</div>
+    <div class="dp" data-range="yesterday">Yesterday</div>
+    <div class="dp" data-range="week">This Week</div>
+    <div class="dp" data-range="month">This Month</div>
+    <div class="dp" data-range="custom">Custom Range</div>
+    <div class="dp" data-range="all">All Time</div>
+  </div>
+
+  <div class="custom-range" id="customRange">
+    <input type="date" class="inp" id="dateFrom">
+    <span style="color:var(--tx2)">to</span>
+    <input type="date" class="inp" id="dateTo">
+    <button class="dl-btn" style="background:var(--navy);color:#fff" onclick="applyCustom()">Apply</button>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="toolbar">
+    <div class="tb-left">
+      <select class="sel" id="areaFilter" onchange="render()"><option value="">All Areas</option></select>
+      <div class="view-toggle">
+        <button class="vt act" data-view="grid" onclick="setView('grid')">📷 Grid</button>
+        <button class="vt" data-view="area" onclick="setView('area')">📍 By Area</button>
+      </div>
+    </div>
+    <div class="tb-right">
+      <button class="dl-btn dl-zip" id="btnZip" onclick="downloadZIP()">⬇️ Photos ZIP</button>
+      <button class="dl-btn dl-ppt" id="btnPpt" onclick="downloadPPT()">📊 PPT Report</button>
+      <button class="dl-btn dl-excel" id="btnExcel" onclick="downloadExcel()">📗 Excel</button>
+    </div>
+  </div>
+
+  <div id="content">
+    <div class="loading">⏳ Loading photos...</div>
   </div>
 </div>
 
-<!-- ─────────── MAIN CONTENT (hidden until loaded) ─────────── -->
-<div class="wrap" id="mainContent" style="display:none;">
-
-  <!-- Top utility bar -->
-  <div class="topbar">
-    <div class="topbar-left">
-      <span class="live-dot"></span>
-      <span id="liveStatus">Live Report · Loading...</span>
-    </div>
-    <div class="topbar-right">
-      <a href="#" class="topbar-link" onclick="shareLink(event)"><i class="ti ti-share"></i> Share</a>
-      <a href="#" class="topbar-link" onclick="window.print();return false;"><i class="ti ti-printer"></i> Print</a>
-      <a href="https://www.prajapatiadvertising.com" target="_blank" class="topbar-link"><i class="ti ti-help"></i> Help</a>
-    </div>
-  </div>
-
-  <!-- Masthead -->
-  <header class="masthead">
-    <div class="masthead-top">
-      <div class="brand-mark">
-        Prajapati Advertising
-      </div>
-      <div class="report-meta">
-        Field Report · <span id="reportVol">Vol. — · No. —</span><br/>
-        <strong id="reportDate">Loading...</strong>
-      </div>
-    </div>
-
-    <div class="kicker" id="campaignKicker">Campaign Performance Brief · Loading</div>
-    
-    <h1 class="headline" id="headline">
-      Loading <em>Report</em>
-    </h1>
-    
-    <p class="subhead">
-      For <strong id="clientName">Loading…</strong> — Live performance of the <span id="campaignDesc">campaign</span> across <strong><span id="citiesText">— cities</span></strong>, executed by <strong><span id="membersText">— field operatives</span></strong> with GPS-verified, time-stamped documentation.
-    </p>
-
-    <div class="actions">
-      <button class="btn btn-shimmer" onclick="generatePPT()" id="pptBtn">
-        <i class="ti ti-file-type-ppt"></i>
-        <span>Generate PowerPoint</span>
-      </button>
-      <button class="btn btn-ghost" onclick="downloadZIP()" id="zipBtn">
-        <i class="ti ti-download"></i>
-        <span>Download All Photos (ZIP)</span>
-      </button>
-      <button class="btn btn-ghost" onclick="downloadExcel()">
-        <i class="ti ti-file-spreadsheet"></i>
-        <span>Excel Report</span>
-      </button>
-    </div>
-  </header>
-
-  <!-- ─────────── SECTION 01 · GALLERY (PHOTOS LEAD) ─────────── -->
-  <section class="section" id="gallery" style="padding-top: 56px;">
-    <div class="section-head">
-      <div>
-        <span class="section-num">§ 01</span>
-        <h2 class="section-title">From the <em>Field</em></h2>
-      </div>
-      <div class="filters" id="filterChips">
-        <button class="chip active" data-filter="all">All · <span id="cAll">—</span></button>
-        <button class="chip" data-filter="today">Today · <span id="cToday">—</span></button>
-        <button class="chip" data-filter="yesterday">Yesterday · <span id="cYesterday">—</span></button>
-        <button class="chip" data-filter="week">Last 7 days · <span id="cWeek">—</span></button>
-      </div>
-    </div>
-
-    <div class="gallery" id="galleryContainer">
-      <!-- JS populates this -->
-    </div>
-
-    <div id="galleryEmpty" style="display:none; text-align:center; padding:60px 20px; color:var(--ink-mute);">
-      <i class="ti ti-photo-off" style="font-size:48px; opacity:0.4;"></i>
-      <p style="margin-top:12px; font-family:'Fraunces',serif; font-size:20px;">No photographs in this range</p>
-      <p style="margin-top:6px; font-size:13px;">Try a wider date filter, or check back soon.</p>
-    </div>
-
-    <div id="galleryLoadMore" style="text-align:center; margin-top:40px; display:none;">
-      <button class="btn btn-ghost" onclick="loadMorePhotos()">
-        <i class="ti ti-arrow-down"></i>
-        <span>Show all <span id="galleryTotalCount">—</span> photographs</span>
-      </button>
-    </div>
-  </section>
-
-  <!-- Stat band -->
-  <div class="stat-band">
-    <div class="stat-cell">
-      <span class="num" id="statTotal">—</span>
-      <div class="lbl">Total Photos <span class="delta" id="statTodayDelta">—</span></div>
-    </div>
-    <div class="stat-cell">
-      <span class="num" id="statVehicles">—</span>
-      <div class="lbl">Unique Vehicles</div>
-    </div>
-    <div class="stat-cell">
-      <span class="num" id="statVerified">—<small>%</small></span>
-      <div class="lbl">Verified Quality</div>
-    </div>
-    <div class="stat-cell">
-      <span class="num" id="statCities">—</span>
-      <div class="lbl">Cities Covered</div>
-    </div>
-  </div>
-
-  <!-- ─────────── SECTION 02 · PROGRESS ─────────── -->
-  <section class="section">
-    <div class="section-head">
-      <div>
-        <span class="section-num">§ 02</span>
-        <h2 class="section-title">Campaign <em>Progress</em></h2>
-      </div>
-      <span class="section-tag">Updated Live</span>
-    </div>
-
-    <div class="progress-wrap">
-      <div class="progress-card">
-        <div class="progress-label">Overall Achievement</div>
-        <div class="progress-big"><span id="progressNum">—</span><small id="progressTarget">/—</small></div>
-        <div class="progress-of">photos delivered against contracted target</div>
-        <div class="progress-bar">
-          <div class="progress-bar-fill" id="progressBar" style="width:0%;"></div>
-        </div>
-        <div class="progress-meta">
-          <span id="progressPct">— complete</span>
-          <span id="progressRem">— remaining</span>
-        </div>
-      </div>
-
-      <div>
-        <h3 style="font-family:'Fraunces',serif; font-variation-settings:'opsz' 144,'wght' 500; font-size:22px; letter-spacing:-0.02em; margin-bottom:24px;">By Geography</h3>
-        <div class="cities-list" id="citiesList">
-          <!-- JS populates this -->
-        </div>
-      </div>
-    </div>
-  </section>
-
-
-  <!-- ─────────── SECTION 03 · DAILY TIMELINE ─────────── -->
-  <section class="section">
-    <div class="section-head">
-      <div>
-        <span class="section-num">§ 03</span>
-        <h2 class="section-title">Daily <em>Pulse</em></h2>
-      </div>
-      <span class="section-tag">Last 14 Days</span>
-    </div>
-
-    <div class="timeline-chart" id="timelineChart"></div>
-    <div class="timeline-labels" id="timelineLabels"></div>
-
-    <p class="editorial-note" style="margin-top:36px;" id="insightNote">
-      "Loading insight..."
-    </p>
-    <p class="editorial-attribution">— Auto-generated insight</p>
-  </section>
-
-  <!-- ─────────── SECTION 04 · MAP ─────────── -->
-  <section class="section">
-    <div class="section-head">
-      <div>
-        <span class="section-num">§ 04</span>
-        <h2 class="section-title">Geographic <em>Footprint</em></h2>
-      </div>
-      <span class="section-tag">GPS Verified</span>
-    </div>
-
-    <div class="map-block">
-      <iframe id="mapIframe" src="about:blank" frameborder="0"></iframe>
-      <div class="map-overlay">
-        <h4><span id="mapVehicles">—</span> unique vehicles</h4>
-        <p>Documented across <span id="mapCities">—</span> cities of Maharashtra. Every photo has GPS coordinates, timestamp, and reverse-geocoded address.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- ─────────── SECTION 05 · TEAM ─────────── -->
-  <section class="section">
-    <div class="section-head">
-      <div>
-        <span class="section-num">§ 05</span>
-        <h2 class="section-title">Top <em>Performers</em></h2>
-      </div>
-      <span class="section-tag">By Photos Today</span>
-    </div>
-
-    <div class="performers" id="performersList">
-      <!-- JS populates -->
-    </div>
-  </section>
-
-  <!-- ─────────── DOWNLOAD CTA ─────────── -->
-  <section class="cta-block">
-    <div class="cta-kicker">Take The Report With You</div>
-    <h2 class="cta-title">Boardroom-ready <em>artifacts</em>, on demand.</h2>
-    <p class="cta-sub">
-      Generate a polished PowerPoint deck with selected photographs and key insights, or download the entire photo archive as a ZIP organized by city, date, and vehicle.
-    </p>
-    <div class="cta-buttons">
-      <button class="btn btn-light btn-shimmer" onclick="generatePPT()">
-        <i class="ti ti-file-type-ppt"></i>
-        <span>Generate PowerPoint Deck</span>
-      </button>
-      <button class="btn btn-outline-light" onclick="downloadZIP()">
-        <i class="ti ti-package"></i>
-        <span>Download ZIP · <span id="zipSizeEst">—</span></span>
-      </button>
-    </div>
-  </section>
-
-  <!-- Footer -->
-  <footer class="footer">
-    <div>
-      <div class="footer-brand">Prajapati Advertising</div>
-      <p class="footer-tag">
-        India's first GPS-verified out-of-home advertising network. Every photo timestamped, geo-tagged, and verified by hand before reaching this report.
-      </p>
-    </div>
-    <div class="footer-block">
-      <h5>Contact</h5>
-      <p>
-        <a href="tel:9922138138">+91 99 22 138 138</a><br/>
-        <a href="https://www.prajapatiadvertising.com">prajapatiadvertising.com</a><br/>
-        Nashik · Pune · Maharashtra
-      </p>
-    </div>
-    <div class="footer-block">
-      <h5>This Report</h5>
-      <p>
-        Generated for <span id="footerClient">—</span><br/>
-        Campaign · <span id="footerCampaign">—</span><br/>
-        Updates every 60 seconds<br/>
-        Viewed <span id="footerViews">—</span> times
-      </p>
-    </div>
-  </footer>
-
-  <div class="copyright">
-    <span>© 2026 Prajapati Advertising · Confidential</span>
-    <span>Report ID · <span id="reportId">—</span></span>
-  </div>
-
+<div class="footer">
+  Powered by Prajapati Advertising · GPS-verified field photography<br>
+  <span id="genTime"></span>
 </div>
 
-<!-- Photo Lightbox -->
-<div class="lightbox" id="lightbox" onclick="closeLightbox(event)">
-  <button class="lightbox-close" onclick="closeLightbox(event)"><i class="ti ti-x"></i></button>
-  <img class="lightbox-img" id="lightboxImg" alt="">
-  <div class="lightbox-meta" id="lightboxMeta">—</div>
+<div class="lb" id="lightbox" onclick="if(event.target.id==='lightbox')closeLB()">
+  <button class="lb-close" onclick="closeLB()">✕</button>
+  <button class="lb-nav" style="left:20px" onclick="navLB(-1)">‹</button>
+  <button class="lb-nav" style="right:20px" onclick="navLB(1)">›</button>
+  <img class="lb-img" id="lbImg" src="" alt="">
+  <div class="lb-info" id="lbInfo"></div>
 </div>
 
-<!-- Toast -->
-<div class="toast" id="toast">
-  <i class="ti ti-check"></i>
-  <span id="toastMsg">Done</span>
-</div>
-
-<!-- Download progress -->
-<div class="dl-progress" id="dlProgress">
-  <div class="dl-progress-label">
-    <span id="dlLabel">Preparing download…</span>
-    <span id="dlPct">0%</span>
-  </div>
-  <div class="dl-progress-bar">
-    <div class="dl-progress-bar-fill" id="dlBarFill"></div>
+<div class="dl-modal" id="dlModal">
+  <div class="dl-box">
+    <div class="dl-spin"></div>
+    <div style="font-weight:800;font-size:15px" id="dlText">Preparing...</div>
+    <div style="font-size:12px;color:#64748b;margin-top:6px" id="dlSub">Please wait...</div>
+    <div class="dl-prog"><div class="dl-prog-fill" id="dlProg"></div></div>
   </div>
 </div>
 
 <script>
-// ═══════════════════════════════════════════════════════════════
-//  PRAJAPATI CLIENT PORTAL — FUNCTIONAL VERSION
-//  • Token-based access (?t=TOKEN)
-//  • Live Supabase data + Realtime updates
-//  • PPT Generator + ZIP Download + Excel
-// ═══════════════════════════════════════════════════════════════
+// ── CONFIG ──────────────────────────────────────────
+const SU = 'https://fpbktcgtspqsqpaytslv.supabase.co';
+const SK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwYmt0Y2d0c3Bxc3FwYXl0c2x2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MDI0NTksImV4cCI6MjA5MjI3ODQ1OX0._iXN3-rQ9tAW1OuzY4cZZT-Jdvysv4bJlkwT3TwvSJI';
 
-const CONFIG = {
-  supabaseUrl: 'https://fpbktcgtspqsqpaytslv.supabase.co',
-  supabaseKey: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j'
-};
+// URL params
+const params = new URLSearchParams(location.search);
+const campaignId = params.get('c');  // e.g. camp_xxx or actual campaign id
+const token = params.get('t');
 
-const state = {
-  token: null,
-  campaign: null,
-  link: null,
-  photos: [],
-  totalPhotos: 0,
-  filteredPhotos: [],
-  currentFilter: 'all',
-  cities: [],
-  members: [],
-  dailyData: [],
-  realtimeChannel: null,
-  loadingMore: false
-};
+let allPhotos = [];
+let filteredPhotos = [];
+let currentView = 'grid';
+let currentRange = 'today';
+let campaign = null;
+let lbIndex = 0;
 
-// ─── Utilities ───
-function $(id) { return document.getElementById(id); }
-function escapeHtml(s) {
-  if (s == null) return '';
-  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-}
-function fmtNum(n) { return (n || 0).toLocaleString('en-IN'); }
-function pad2(n) { return n < 10 ? '0' + n : '' + n; }
-
-function todayISTDateStr() {
-  const ist = new Date(new Date().getTime() + 5.5 * 60 * 60 * 1000);
-  return ist.toISOString().slice(0, 10);
-}
-function istDateMinusDays(d) {
-  const now = new Date(new Date().getTime() + 5.5 * 60 * 60 * 1000);
-  now.setDate(now.getDate() - d);
-  return now.toISOString().slice(0, 10);
-}
-function istRangeToUTC(fromDate, toDate) {
-  return {
-    fromUtc: new Date(fromDate + 'T00:00:00+05:30').toISOString(),
-    toUtc: new Date(toDate + 'T23:59:59+05:30').toISOString()
-  };
-}
-function fmtIST(iso) {
-  if (!iso) return '';
-  return new Date(iso).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true });
-}
-function relTime(iso) {
-  if (!iso) return '';
-  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
-  if (diff < 60) return Math.floor(diff) + 's ago';
-  if (diff < 3600) return Math.floor(diff / 60) + ' min ago';
-  if (diff < 86400) return Math.floor(diff / 3600) + ' hr ago';
-  return Math.floor(diff / 86400) + ' days ago';
-}
-
-// ─── API helper ───
-function api(path, options) {
-  options = options || {};
-  options.headers = Object.assign({
-    apikey: CONFIG.supabaseKey,
-    Authorization: 'Bearer ' + CONFIG.supabaseKey
-  }, options.headers || {});
-  if (options.body && typeof options.body !== 'string') {
-    options.headers['Content-Type'] = 'application/json';
-    options.body = JSON.stringify(options.body);
-  }
-  return fetch(CONFIG.supabaseUrl + path, options).then(function(r) {
-    if (!r.ok) return r.text().then(function(t) { throw new Error('API ' + r.status + ': ' + t); });
-    if (r.status === 204) return null;
-    return r.text().then(function(t) { return t.trim() ? JSON.parse(t) : null; });
+// ── DB HELPER ───────────────────────────────────────
+async function db(path) {
+  const r = await fetch(SU + '/rest/v1/' + path, {
+    headers: { apikey: SK, Authorization: 'Bearer ' + SK }
   });
+  return r.json();
 }
 
-// ─── Toast ───
-function toast(msg, type) {
-  const t = $('toast');
-  $('toastMsg').textContent = msg;
-  t.className = 'toast ' + (type || '');
-  t.querySelector('i').className = type === 'error' ? 'ti ti-alert-triangle' : type === 'success' ? 'ti ti-check' : 'ti ti-info-circle';
-  t.classList.add('show');
-  clearTimeout(t._hideT);
-  t._hideT = setTimeout(() => t.classList.remove('show'), 3500);
-}
+// ── DATE RANGE ──────────────────────────────────────
+function getDateRange(range) {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let from, to = new Date(today.getTime() + 86400000);
 
-// ─── Gate screen ───
-function showGate(title, msg, iconChar, detail) {
-  $('loadingScreen').style.display = 'none';
-  $('gateScreen').style.display = 'flex';
-  $('gateTitle').textContent = title;
-  $('gateMsg').textContent = msg;
-  $('gateIcon').textContent = iconChar || '!';
-  // Add debug detail if provided
-  var existing = document.getElementById('gateDetail');
-  if (existing) existing.remove();
-  if (detail) {
-    var d = document.createElement('p');
-    d.id = 'gateDetail';
-    d.style.cssText = 'font-family:JetBrains Mono,monospace; font-size:11px; color:#A88A3F; background:rgba(201,166,84,0.08); padding:10px 14px; margin:20px auto 0; max-width:480px; text-align:left; border-left:2px solid #C9A654; line-height:1.5; word-break:break-word;';
-    d.textContent = 'Technical: ' + detail;
-    $('gateScreen').querySelector('.screen-content').appendChild(d);
+  switch(range) {
+    case 'today': from = today; break;
+    case 'yesterday': from = new Date(today.getTime() - 86400000); to = today; break;
+    case 'week': from = new Date(today.getTime() - 6*86400000); break;
+    case 'month': from = new Date(now.getFullYear(), now.getMonth(), 1); break;
+    case 'all': from = new Date(2020, 0, 1); break;
+    case 'custom':
+      from = new Date(document.getElementById('dateFrom').value || today);
+      to = new Date(new Date(document.getElementById('dateTo').value || today).getTime() + 86400000);
+      break;
+    default: from = today;
   }
+  return { from: from.toISOString(), to: to.toISOString() };
 }
 
-// ─── INIT ───
+// ── LOAD DATA ───────────────────────────────────────
 async function init() {
-  const params = new URLSearchParams(location.search);
-  const t = params.get('t') || params.get('token');
-  
-  if (!t) {
-    showGate('Invalid Link', 'No access token provided in the URL. Please check the link you received.', '?');
-    return;
-  }
-  state.token = t;
-  $('reportId').textContent = t.substring(0, 18) + '…';
-  
-  try {
-    $('loadingMsg').textContent = 'Authenticating access…';
-    
-    // Step 1: validate token
-    const links = await api('/rest/v1/trial_client_links?token=eq.' + encodeURIComponent(t) + '&active=eq.true&select=*');
-    if (!links || !links.length) {
-      showGate('Link Expired', 'This report link is no longer active. Please contact your account manager for a fresh link.', 'X');
-      return;
-    }
-    state.link = links[0];
-    
-    // Step 2: load campaign
-    $('loadingMsg').textContent = 'Loading campaign details…';
-    const camps = await api('/rest/v1/trial_campaigns?key=eq.' + encodeURIComponent(state.link.campaign_key) + '&select=*');
-    if (!camps || !camps.length) {
-      showGate('Campaign Not Found', 'This campaign no longer exists in our system.', '?');
-      return;
-    }
-    state.campaign = camps[0];
-    if (!state.campaign.active) {
-      showGate('Campaign Paused', 'This campaign is currently paused. Please contact us for more details.', '||');
-      return;
-    }
-    
-    // Step 3: load photos
-    $('loadingMsg').textContent = 'Fetching field photographs…';
-    await loadPhotos();
-    
-    // Step 4: increment view count (fire-and-forget)
-    api('/rest/v1/trial_client_links?id=eq.' + state.link.id, {
-      method: 'PATCH',
-      headers: { 'Prefer': 'return=representation' },
-      body: {
-        view_count: (state.link.view_count || 0) + 1,
-        last_viewed_at: new Date().toISOString()
+  document.getElementById('genTime').textContent = 'Report generated: ' + new Date().toLocaleString('en-IN');
+
+  // Load campaign info
+  if (campaignId) {
+    try {
+      const campField = campaignId.startsWith('camp_') ? 'campaign_code' : 'id';
+      const camps = await db(`fc_campaigns?${campField}=eq.${campaignId}&select=*`);
+      if (camps?.[0]) {
+        campaign = camps[0];
+        document.getElementById('campName').textContent = campaign.name || 'Campaign';
+        // Branding
+        if (campaign.branding === 'agency') {
+          document.getElementById('brandName').textContent = campaign.agency_name || 'Agency';
+          document.getElementById('brandMark').textContent = (campaign.agency_name || 'AG')[0];
+        }
       }
-    }).then(rows => { if (rows && rows[0]) state.link = rows[0]; updateFooterViews(); }).catch(() => {});
-    
-    // Step 5: setup realtime
-    setupRealtime();
-    
-    // Step 6: render everything
-    renderAll();
-    
-    // Step 7: hide loading, show content
-    $('loadingScreen').style.display = 'none';
-    $('mainContent').style.display = 'block';
-    
-    // Step 8: auto-refresh every 60s
-    setInterval(refreshSilent, 60000);
-    updateLiveStatus();
-    setInterval(updateLiveStatus, 15000);
-    
-  } catch (err) {
-    console.error('Init failed:', err);
-    showGate('Connection Issue', 'Unable to load report data. Please check your internet and refresh the page.', 'X', err.message || String(err));
+    } catch(e) { console.error(e); }
   }
+
+  loadPhotos();
 }
 
-// ─── Load photos ───
 async function loadPhotos() {
-  const qs = '/rest/v1/trial_photos?campaign_key=eq.' + encodeURIComponent(state.campaign.key) +
-             '&deleted_at=is.null&select=*&order=captured_at.desc&limit=2000';
-  
-  const r = await fetch(CONFIG.supabaseUrl + qs, {
-    headers: {
-      apikey: CONFIG.supabaseKey,
-      Authorization: 'Bearer ' + CONFIG.supabaseKey,
-      'Prefer': 'count=exact'
-    }
-  });
-  if (!r.ok) throw new Error('Failed to load photos: ' + r.status);
-  const cr = r.headers.get('Content-Range') || '';
-  state.totalPhotos = parseInt(cr.split('/').pop()) || 0;
-  state.photos = await r.json();
-  
-  applyFilter();
+  document.getElementById('content').innerHTML = '<div class="loading">⏳ Loading photos...</div>';
+  const { from, to } = getDateRange(currentRange);
+
+  let query = `fc_photos?select=*&order=captured_at.desc&captured_at=gte.${from}&captured_at=lt.${to}`;
+  if (campaign?.id) query += `&campaign_id=eq.${campaign.id}`;
+
+  try {
+    allPhotos = await db(query) || [];
+    filteredPhotos = allPhotos;
+    populateAreaFilter();
+    updateKPIs();
+    render();
+  } catch(e) {
+    document.getElementById('content').innerHTML = '<div class="empty">❌ Error loading photos</div>';
+  }
 }
 
-// ─── Filter ───
-function applyFilter() {
-  const today = todayISTDateStr();
-  const yesterday = istDateMinusDays(1);
-  const weekAgo = istDateMinusDays(7);
-  
-  const todayUtc = istRangeToUTC(today, today);
-  const yestUtc = istRangeToUTC(yesterday, yesterday);
-  const weekUtc = istRangeToUTC(weekAgo, today);
-  
-  let f;
-  switch (state.currentFilter) {
-    case 'today':
-      f = state.photos.filter(p => p.captured_at >= todayUtc.fromUtc && p.captured_at <= todayUtc.toUtc);
-      break;
-    case 'yesterday':
-      f = state.photos.filter(p => p.captured_at >= yestUtc.fromUtc && p.captured_at <= yestUtc.toUtc);
-      break;
-    case 'week':
-      f = state.photos.filter(p => p.captured_at >= weekUtc.fromUtc && p.captured_at <= weekUtc.toUtc);
-      break;
-    default:
-      f = state.photos.slice();
-  }
-  state.filteredPhotos = f;
-  
-  // Update chip counts (all chips based on total, not filtered)
-  $('cAll').textContent = fmtNum(state.photos.length);
-  $('cToday').textContent = fmtNum(state.photos.filter(p => p.captured_at >= todayUtc.fromUtc && p.captured_at <= todayUtc.toUtc).length);
-  $('cYesterday').textContent = fmtNum(state.photos.filter(p => p.captured_at >= yestUtc.fromUtc && p.captured_at <= yestUtc.toUtc).length);
-  $('cWeek').textContent = fmtNum(state.photos.filter(p => p.captured_at >= weekUtc.fromUtc && p.captured_at <= weekUtc.toUtc).length);
+function populateAreaFilter() {
+  const areas = [...new Set(allPhotos.map(p => getArea(p)))].filter(Boolean).sort();
+  const sel = document.getElementById('areaFilter');
+  sel.innerHTML = '<option value="">All Areas</option>' + areas.map(a => `<option value="${a}">${a}</option>`).join('');
 }
 
-// ─── Aggregate stats ───
-function aggregateStats() {
-  const photos = state.photos;
-  const vehicles = new Set();
-  const cityMap = {};
-  const memberMap = {};
-  let verified = 0;
-  let today = 0;
-  const todayStr = todayISTDateStr();
-  const todayUtcStart = new Date(todayStr + 'T00:00:00+05:30').toISOString();
-  
-  photos.forEach(p => {
-    if (p.vehicle_number) vehicles.add(p.vehicle_number.toUpperCase());
-    if (p.is_verified) verified++;
-    if (p.captured_at >= todayUtcStart) today++;
-    
-    if (p.city) {
-      cityMap[p.city] = (cityMap[p.city] || 0) + 1;
-    }
-    
-    if (p.member_phone) {
-      if (!memberMap[p.member_phone]) {
-        memberMap[p.member_phone] = {
-          phone: p.member_phone,
-          name: p.member_name || 'Unknown',
-          total: 0,
-          today: 0,
-          verified: 0,
-          location: p.city || ''
-        };
-      }
-      memberMap[p.member_phone].total++;
-      if (p.is_verified) memberMap[p.member_phone].verified++;
-      if (p.captured_at >= todayUtcStart) memberMap[p.member_phone].today++;
-    }
-  });
-  
-  state.cities = Object.keys(cityMap)
-    .map(c => ({ name: c, count: cityMap[c] }))
-    .sort((a, b) => b.count - a.count);
-  
-  state.members = Object.values(memberMap)
-    .filter(m => m.today > 0 || m.total > 0)
-    .sort((a, b) => b.today - a.today || b.total - a.total);
-  
-  // Daily 14-day data
-  const daily = {};
-  for (let i = 13; i >= 0; i--) {
-    const d = istDateMinusDays(i);
-    daily[d] = 0;
-  }
-  photos.forEach(p => {
-    const dt = new Date(p.captured_at);
-    const ist = new Date(dt.getTime() + 5.5 * 60 * 60 * 1000);
-    const dStr = ist.toISOString().slice(0, 10);
-    if (daily[dStr] !== undefined) daily[dStr]++;
-  });
-  state.dailyData = Object.keys(daily).map(d => ({
-    date: d,
-    count: daily[d],
-    label: d.slice(8)
-  }));
-  
-  return {
-    total: photos.length,
-    serverTotal: state.totalPhotos,
-    todayCount: today,
-    vehicles: vehicles.size,
-    verified,
-    verifiedPct: photos.length ? Math.round((verified / photos.length) * 100) : 0,
-    cities: state.cities.length
+function getArea(p) {
+  if (p.city) return p.city.split(',')[0].trim();
+  if (p.address) return p.address.split(',')[0].trim();
+  return 'Unknown Area';
+}
+
+function updateKPIs() {
+  const photos = filteredPhotos.length;
+  const rickshaws = new Set(filteredPhotos.map(p => p.rickshaw_session + '_' + p.assignment_id)).size;
+  const areas = new Set(filteredPhotos.map(p => getArea(p))).size;
+  const withGps = filteredPhotos.filter(p => p.latitude).length;
+  const gpsPct = photos ? Math.round(withGps/photos*100) : 0;
+
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi" style="--c:#0B1957"><div class="kpi-v">${photos}</div><div class="kpi-l">Total Photos</div></div>
+    <div class="kpi" style="--c:#FF6B00"><div class="kpi-v">${rickshaws}</div><div class="kpi-l">Rickshaws</div></div>
+    <div class="kpi" style="--c:#22c55e"><div class="kpi-v">${areas}</div><div class="kpi-l">Areas Covered</div></div>
+    <div class="kpi" style="--c:#8b5cf6"><div class="kpi-v">${gpsPct}%</div><div class="kpi-l">GPS Tagged</div></div>
+  `;
+}
+
+// ── DATE PILLS ──────────────────────────────────────
+document.querySelectorAll('.dp').forEach(pill => {
+  pill.onclick = () => {
+    document.querySelectorAll('.dp').forEach(p => p.classList.remove('act'));
+    pill.classList.add('act');
+    currentRange = pill.dataset.range;
+    document.getElementById('customRange').classList.toggle('show', currentRange === 'custom');
+    if (currentRange !== 'custom') loadPhotos();
   };
-}
-
-// ─── Render all ───
-function renderAll() {
-  const stats = aggregateStats();
-  const c = state.campaign;
-  
-  // Masthead
-  const today = new Date();
-  $('reportDate').textContent = today.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  $('reportVol').textContent = 'Vol. ' + ['I','II','III','IV','V'][today.getMonth() % 5] + ' · No. ' + Math.ceil((today - new Date(today.getFullYear(),0,1)) / 86400000);
-  $('campaignKicker').textContent = 'Campaign Performance Brief · ' + escapeHtml(c.name || c.key);
-  
-  // Split campaign name into hero headline (max 3-4 words first part)
-  const campName = c.name || 'Campaign';
-  const words = campName.split(' ');
-  const firstHalf = words.slice(0, Math.ceil(words.length / 2)).join(' ');
-  const secondHalf = words.slice(Math.ceil(words.length / 2)).join(' ');
-  $('headline').innerHTML = escapeHtml(firstHalf) + (secondHalf ? '<br/><em>' + escapeHtml(secondHalf) + '</em>' : ' <em>Report</em>');
-  
-  $('clientName').textContent = c.client_name || c.name || 'Client';
-  $('campaignDesc').textContent = (c.hood_photo_count ? 'auto-rickshaw branding' : 'branding') + ' campaign';
-  $('citiesText').textContent = stats.cities + ' ' + (stats.cities === 1 ? 'city' : 'cities');
-  $('membersText').textContent = state.members.length + ' field ' + (state.members.length === 1 ? 'operative' : 'operatives');
-  
-  // ⚡ Update browser tab title dynamically based on campaign
-  const tabClientName = c.client_name || c.name || 'Campaign';
-  document.title = 'Field Report · ' + tabClientName + ' · Prajapati Advertising';
-  
-  // Stat band
-  $('statTotal').textContent = fmtNum(stats.total);
-  $('statTodayDelta').textContent = '+' + fmtNum(stats.todayCount) + ' today';
-  if (stats.todayCount === 0) $('statTodayDelta').style.display = 'none';
-  $('statVehicles').textContent = fmtNum(stats.vehicles);
-  $('statVerified').innerHTML = stats.verifiedPct + '<small>%</small>';
-  $('statCities').textContent = stats.cities;
-  
-  // Progress card
-  const target = c.target_count || 0;
-  $('progressNum').textContent = fmtNum(stats.total);
-  $('progressTarget').textContent = target ? '/' + fmtNum(target) : '';
-  const pct = target ? Math.min(100, Math.round((stats.total / target) * 100)) : 100;
-  $('progressBar').style.width = pct + '%';
-  $('progressPct').textContent = (target ? pct + '% complete' : fmtNum(stats.total) + ' delivered');
-  $('progressRem').textContent = target ? (fmtNum(Math.max(0, target - stats.total)) + ' remaining') : 'No target set';
-  
-  // Cities list
-  renderCities();
-  
-  // Gallery
-  renderGallery();
-  
-  // Timeline chart
-  renderTimeline();
-  
-  // Insight
-  renderInsight();
-  
-  // Map
-  renderMap();
-  $('mapVehicles').textContent = fmtNum(stats.vehicles);
-  $('mapCities').textContent = stats.cities;
-  
-  // Performers
-  renderPerformers();
-  
-  // CTA + footer
-  const avgKb = 250; // avg photo size estimate in KB
-  const totalMb = Math.round((stats.total * avgKb) / 1024);
-  $('zipSizeEst').textContent = totalMb > 1024 ? (totalMb / 1024).toFixed(1) + ' GB' : totalMb + ' MB';
-  $('footerClient').textContent = c.client_name || c.name || '—';
-  $('footerCampaign').textContent = c.key;
-  updateFooterViews();
-}
-
-function updateFooterViews() {
-  if (state.link) $('footerViews').textContent = fmtNum((state.link.view_count || 0) + 1);
-}
-
-// ─── Render cities ───
-function renderCities() {
-  const max = state.cities[0]?.count || 1;
-  const list = state.cities.slice(0, 8);
-  $('citiesList').innerHTML = list.length === 0
-    ? '<p style="color:var(--ink-mute); font-size:14px;">No city data yet.</p>'
-    : list.map(c => `
-      <div class="city-row">
-        <span class="city-name">${escapeHtml(c.name)}</span>
-        <span class="city-count">${fmtNum(c.count)}</span>
-        <div class="city-bar"><div class="city-bar-fill" style="--p:${(c.count / max).toFixed(2)};"></div></div>
-      </div>
-    `).join('');
-}
-
-// ─── Render gallery ───
-function renderGallery() {
-  applyFilter();
-  const photos = state.filteredPhotos.slice(0, 30); // first 30 visible
-  const total = state.filteredPhotos.length;
-  
-  if (total === 0) {
-    $('galleryContainer').innerHTML = '';
-    $('galleryEmpty').style.display = 'block';
-    $('galleryLoadMore').style.display = 'none';
-    return;
-  }
-  $('galleryEmpty').style.display = 'none';
-  
-  $('galleryContainer').innerHTML = photos.map((p, idx) => `
-    <div class="photo" onclick="openLightbox(${idx})">
-      <span class="photo-badge">${escapeHtml(p.vehicle_number || '—')}</span>
-      ${p.is_verified ? '<span class="photo-verify"><i class="ti ti-check"></i></span>' : ''}
-      <img src="${escapeHtml(p.public_url || '')}" alt="" loading="lazy">
-      <div class="photo-overlay">
-        <div class="photo-vehicle">${escapeHtml(p.vehicle_number || '')} ${p.mode ? ' · ' + p.mode.toUpperCase() : ''}</div>
-        <div class="photo-place">${escapeHtml(p.city || 'Location')}</div>
-        <div class="photo-time">${escapeHtml(fmtIST(p.captured_at))} · By ${escapeHtml(p.member_name || '—')}</div>
-      </div>
-    </div>
-  `).join('');
-  
-  if (total > 30) {
-    $('galleryLoadMore').style.display = 'block';
-    $('galleryTotalCount').textContent = fmtNum(total);
-  } else {
-    $('galleryLoadMore').style.display = 'none';
-  }
-}
-
-function loadMorePhotos() {
-  // Show all filtered photos (no pagination since we already have all 2000)
-  const photos = state.filteredPhotos;
-  $('galleryContainer').innerHTML = photos.map((p, idx) => `
-    <div class="photo" onclick="openLightbox(${idx})">
-      <span class="photo-badge">${escapeHtml(p.vehicle_number || '—')}</span>
-      ${p.is_verified ? '<span class="photo-verify"><i class="ti ti-check"></i></span>' : ''}
-      <img src="${escapeHtml(p.public_url || '')}" alt="" loading="lazy">
-      <div class="photo-overlay">
-        <div class="photo-vehicle">${escapeHtml(p.vehicle_number || '')} ${p.mode ? ' · ' + p.mode.toUpperCase() : ''}</div>
-        <div class="photo-place">${escapeHtml(p.city || 'Location')}</div>
-        <div class="photo-time">${escapeHtml(fmtIST(p.captured_at))} · By ${escapeHtml(p.member_name || '—')}</div>
-      </div>
-    </div>
-  `).join('');
-  $('galleryLoadMore').style.display = 'none';
-  toast('All ' + fmtNum(photos.length) + ' photos loaded', 'success');
-}
-
-// ─── Filter chips ───
-document.addEventListener('click', function(e) {
-  if (e.target.closest('.chip')) {
-    const chip = e.target.closest('.chip');
-    document.querySelectorAll('#filterChips .chip').forEach(c => c.classList.remove('active'));
-    chip.classList.add('active');
-    state.currentFilter = chip.dataset.filter || 'all';
-    renderGallery();
-  }
 });
 
-// ─── Lightbox ───
-function openLightbox(idx) {
-  const p = state.filteredPhotos[idx];
-  if (!p) return;
-  $('lightboxImg').src = p.public_url;
-  $('lightboxMeta').innerHTML = `<strong>${escapeHtml(p.vehicle_number || '')}</strong> · ${escapeHtml(p.city || '')} · ${escapeHtml(fmtIST(p.captured_at))} · By ${escapeHtml(p.member_name || '')}`;
-  $('lightbox').classList.add('open');
-}
-function closeLightbox(e) {
-  if (e && e.target.tagName === 'IMG') return;
-  $('lightbox').classList.remove('open');
+function applyCustom() { loadPhotos(); }
+
+// ── FILTER ──────────────────────────────────────────
+function applyFilters() {
+  const area = document.getElementById('areaFilter').value;
+  filteredPhotos = allPhotos.filter(p => !area || getArea(p) === area);
+  updateKPIs();
 }
 
-// ─── Timeline chart ───
-function renderTimeline() {
-  const data = state.dailyData;
-  const max = Math.max(...data.map(d => d.count), 1);
-  const today = todayISTDateStr();
-  
-  $('timelineChart').innerHTML = data.map((d, i) => `
-    <div class="bar${d.date === today ? ' today' : ''}" 
-         style="height:${(d.count / max * 100)}%; animation-delay:${i * 60}ms;" 
-         data-val="${d.count} photos · ${d.date.slice(5)}"></div>
-  `).join('');
-  
-  $('timelineLabels').innerHTML = data.map(d =>
-    `<span${d.date === today ? ' style="color:var(--gold-deep);"' : ''}>${d.label}</span>`
-  ).join('');
+// ── RENDER ──────────────────────────────────────────
+function setView(v) {
+  currentView = v;
+  document.querySelectorAll('.vt').forEach(b => b.classList.toggle('act', b.dataset.view === v));
+  render();
 }
 
-function renderInsight() {
-  const data = state.dailyData;
-  const max = Math.max(...data.map(d => d.count));
-  const avg = data.reduce((s, d) => s + d.count, 0) / Math.max(1, data.length);
-  const peakDay = data.find(d => d.count === max);
-  
-  if (!peakDay || max === 0) {
-    $('insightNote').innerHTML = '"Campaign just getting started. More data will appear as field photos roll in."';
+function render() {
+  applyFilters();
+  const content = document.getElementById('content');
+
+  if (!filteredPhotos.length) {
+    content.innerHTML = '<div class="empty">📷 No photos found for this period</div>';
     return;
   }
-  
-  const monthDay = new Date(peakDay.date).toLocaleDateString('en-IN', { month: 'long', day: 'numeric' });
-  const rise = avg > 0 ? Math.round(((max - avg) / avg) * 100) : 0;
-  
-  $('insightNote').innerHTML = `"The campaign hit peak velocity on ${escapeHtml(monthDay)} with <strong style="color:var(--ink);font-weight:600;">${fmtNum(max)} photographs</strong> captured in a single day${rise > 10 ? ` — a ${rise}% rise over the rolling 14-day average` : ''}."`;
-}
 
-// ─── Map ───
-function renderMap() {
-  // Calculate bbox from photos with coords
-  const coords = state.photos.filter(p => p.latitude && p.longitude).map(p => [p.latitude, p.longitude]);
-  if (coords.length === 0) {
-    $('mapIframe').src = 'https://www.openstreetmap.org/export/embed.html?bbox=72.5,16.5,79.5,21.0&layer=mapnik';
-    return;
-  }
-  const lats = coords.map(c => c[0]);
-  const lngs = coords.map(c => c[1]);
-  const pad = 0.2;
-  const minLat = Math.min(...lats) - pad;
-  const maxLat = Math.max(...lats) + pad;
-  const minLng = Math.min(...lngs) - pad;
-  const maxLng = Math.max(...lngs) + pad;
-  const url = `https://www.openstreetmap.org/export/embed.html?bbox=${minLng},${minLat},${maxLng},${maxLat}&layer=mapnik`;
-  $('mapIframe').src = url;
-}
-
-// ─── Performers ───
-function renderPerformers() {
-  const top = state.members.slice(0, 3);
-  if (top.length === 0) {
-    $('performersList').innerHTML = '<p style="color:var(--ink-mute); padding:20px;">No team data yet.</p>';
-    return;
-  }
-  $('performersList').innerHTML = top.map((m, i) => `
-    <div class="performer">
-      <div class="performer-rank">${pad2(i + 1)}</div>
-      <div class="performer-name">${escapeHtml(m.name)}</div>
-      <div class="performer-location">${escapeHtml(m.location || '—')}</div>
-      <div class="performer-stats">
-        <div class="performer-stat"><div class="v">${fmtNum(m.today)}</div><div class="l">today</div></div>
-        <div class="performer-stat"><div class="v">${fmtNum(m.total)}</div><div class="l">total</div></div>
-        <div class="performer-stat"><div class="v">${m.total ? Math.round((m.verified/m.total)*100) : 0}<small style="font-size:14px;">%</small></div><div class="l">verified</div></div>
-      </div>
-    </div>
-  `).join('');
-}
-
-// ─── Realtime ───
-function setupRealtime() {
-  if (!window.supabase) return;
-  if (state.realtimeChannel) return;
-  
-  const client = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey);
-  state.realtimeChannel = client.channel('client_portal_' + state.campaign.key)
-    .on('postgres_changes', {
-      event: 'INSERT',
-      schema: 'public',
-      table: 'trial_photos',
-      filter: 'campaign_key=eq.' + state.campaign.key
-    }, payload => {
-      if (payload.new && !payload.new.deleted_at) {
-        state.photos.unshift(payload.new);
-        state.totalPhotos++;
-        renderAll();
-        toast('New photo: ' + (payload.new.vehicle_number || ''), 'success');
-      }
-    })
-    .subscribe();
-}
-
-// ─── Silent refresh ───
-async function refreshSilent() {
-  try {
-    await loadPhotos();
-    renderAll();
-  } catch (err) {
-    console.warn('Silent refresh failed:', err);
-  }
-}
-
-function updateLiveStatus() {
-  $('liveStatus').textContent = 'Live Report · Auto-refresh every 60 sec';
-}
-
-// ─── Share ───
-function shareLink(e) {
-  e.preventDefault();
-  const url = location.href;
-  if (navigator.share) {
-    navigator.share({ title: 'Field Report', url }).catch(() => {});
-  } else {
-    navigator.clipboard.writeText(url).then(() => toast('Link copied to clipboard', 'success'));
-  }
-}
-
-// ─── EXCEL DOWNLOAD ───
-function downloadExcel() {
-  toast('Excel export will be ready in main admin', 'info');
-  // Could call out to V2 admin tab — placeholder for now
-}
-
-// ─── ZIP DOWNLOAD ───
-async function downloadZIP() {
-  if (!window.JSZip) {
-    toast('ZIP library failed to load', 'error');
-    return;
-  }
-  const photos = state.filteredPhotos.length ? state.filteredPhotos : state.photos;
-  if (!photos.length) {
-    toast('No photos to download', 'error');
-    return;
-  }
-  
-  if (!confirm(`Download ${fmtNum(photos.length)} photos as ZIP? May take 2–5 minutes for large sets.`)) return;
-  
-  $('zipBtn').disabled = true;
-  $('dlProgress').classList.add('show');
-  $('dlLabel').textContent = 'Preparing ZIP archive…';
-  
-  const zip = new JSZip();
-  let done = 0;
-  let failed = 0;
-  
-  for (const p of photos) {
-    if (!p.public_url) { failed++; continue; }
-    try {
-      const r = await fetch(p.public_url);
-      if (!r.ok) throw new Error(r.status);
-      const blob = await r.blob();
-      
-      // Folder structure: city/date/vehicle_mode.jpg
-      const city = (p.city || 'Unknown').replace(/[\\/:*?"<>|]/g, '_');
-      const date = p.captured_at ? p.captured_at.slice(0, 10) : 'unknown';
-      const fname = (p.vehicle_number || 'unknown') + '_' + (p.mode || 'photo') + '_' + (p.id || done) + '.jpg';
-      zip.file(city + '/' + date + '/' + fname, blob);
-    } catch (e) {
-      failed++;
-      console.warn('Photo skip:', p.id, e);
-    }
-    done++;
-    const pct = Math.round((done / photos.length) * 100);
-    $('dlPct').textContent = pct + '%';
-    $('dlBarFill').style.width = pct + '%';
-    $('dlLabel').textContent = `Fetching photo ${done} of ${photos.length}…`;
-  }
-  
-  $('dlLabel').textContent = 'Compressing archive…';
-  $('dlPct').textContent = '–';
-  
-  try {
-    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } }, meta => {
-      $('dlPct').textContent = Math.round(meta.percent) + '%';
-      $('dlBarFill').style.width = meta.percent + '%';
+  if (currentView === 'area') {
+    // Group by area
+    const groups = {};
+    filteredPhotos.forEach(p => {
+      const area = getArea(p);
+      if (!groups[area]) groups[area] = [];
+      groups[area].push(p);
     });
-    const fname = (state.campaign.key || 'campaign') + '_' + todayISTDateStr() + '.zip';
-    saveAs(blob, fname);
-    toast(`ZIP downloaded · ${fmtNum(done - failed)} photos · ${failed ? failed + ' skipped' : 'all OK'}`, 'success');
-  } catch (e) {
-    toast('ZIP creation failed: ' + e.message, 'error');
+    content.innerHTML = Object.entries(groups).map(([area, photos]) => {
+      const ricks = new Set(photos.map(p => p.rickshaw_session)).size;
+      return `<div class="loc-group">
+        <div class="loc-hdr">
+          <div class="loc-icon">📍</div>
+          <div class="loc-name">${area}</div>
+          <div class="loc-count">${photos.length} photos · ${ricks} rickshaws</div>
+          <div class="loc-dl" onclick="downloadArea('${area}')">⬇️ Download area</div>
+        </div>
+        <div class="pgrid">${photos.map(p => photoCard(p)).join('')}</div>
+      </div>`;
+    }).join('');
+  } else {
+    // Simple grid
+    content.innerHTML = `<div class="pgrid">${filteredPhotos.map(p => photoCard(p)).join('')}</div>`;
   }
-  
-  $('dlProgress').classList.remove('show');
-  $('zipBtn').disabled = false;
 }
 
-// ─── PPT GENERATION ───
-function loadPptxGen() {
-  return new Promise((resolve, reject) => {
-    if (window.PptxGenJS) return resolve(window.PptxGenJS);
-    const urls = [
-      'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js',
-      'https://cdn.jsdelivr.net/gh/gitbrent/PptxGenJS@3.12.0/dist/pptxgen.bundle.js',
-      'https://unpkg.com/pptxgenjs@3.12.0/dist/pptxgen.bundle.js'
-    ];
-    let i = 0;
-    function tryNext() {
-      if (i >= urls.length) return reject(new Error('All CDNs failed'));
-      const s = document.createElement('script');
-      s.src = urls[i++];
-      s.onload = () => window.PptxGenJS ? resolve(window.PptxGenJS) : tryNext();
-      s.onerror = tryNext;
-      document.head.appendChild(s);
+function photoCard(p) {
+  const idx = filteredPhotos.indexOf(p);
+  const url = p.storage_url || '';
+  const time = p.captured_at ? new Date(p.captured_at).toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'}) : '';
+  return `<div class="pcard" onclick="openLB(${idx})">
+    <div class="pthumb">
+      ${url ? `<img src="${url}" loading="lazy" onerror="this.style.display='none';this.parentElement.innerHTML='📸'+this.parentElement.innerHTML">` : '📸'}
+      <div class="p-rick">Rick ${String(p.rickshaw_session || 1).padStart(3,'0')}</div>
+    </div>
+    <div class="p-info">
+      <div class="p-vehicle">${p.vehicle_number || 'Photo ' + (p.photo_number||1) + '/3'}</div>
+      <div class="p-time">${time} · Photo ${p.photo_number || 1}/3</div>
+      <div class="p-addr">📍 ${getArea(p)}</div>
+    </div>
+  </div>`;
+}
+
+// ── LIGHTBOX ────────────────────────────────────────
+function openLB(idx) {
+  lbIndex = idx;
+  showLB();
+  document.getElementById('lightbox').classList.add('show');
+}
+function showLB() {
+  const p = filteredPhotos[lbIndex];
+  document.getElementById('lbImg').src = p.storage_url || '';
+  document.getElementById('lbInfo').innerHTML = `
+    <div style="font-size:16px;font-weight:800">Rick ${String(p.rickshaw_session||1).padStart(3,'0')} · Photo ${p.photo_number||1}/3</div>
+    <div style="font-size:12px;opacity:.8;margin-top:4px">${p.address || getArea(p)}</div>
+    <div style="font-size:11px;opacity:.6;margin-top:2px">Lat ${p.latitude?.toFixed(6)||'—'}° Long ${p.longitude?.toFixed(6)||'—'}°</div>
+    <a href="${p.storage_url}" download class="dl-btn dl-zip" style="margin-top:12px;display:inline-flex;text-decoration:none">⬇️ Download</a>
+  `;
+}
+function navLB(dir) {
+  lbIndex = (lbIndex + dir + filteredPhotos.length) % filteredPhotos.length;
+  showLB();
+}
+function closeLB() { document.getElementById('lightbox').classList.remove('show'); }
+
+// ── DOWNLOAD MODAL ──────────────────────────────────
+function showModal(text, sub) {
+  document.getElementById('dlText').textContent = text;
+  document.getElementById('dlSub').textContent = sub || 'Please wait...';
+  document.getElementById('dlProg').style.width = '0%';
+  document.getElementById('dlModal').classList.add('show');
+}
+function updateProg(pct, sub) {
+  document.getElementById('dlProg').style.width = pct + '%';
+  if (sub) document.getElementById('dlSub').textContent = sub;
+}
+function hideModal() { document.getElementById('dlModal').classList.remove('show'); }
+
+// ── ZIP DOWNLOAD ────────────────────────────────────
+async function downloadZIP(photos) {
+  const list = photos || filteredPhotos;
+  if (!list.length) { alert('No photos to download'); return; }
+  showModal('Preparing ZIP...', `Downloading ${list.length} photos...`);
+  const zip = new JSZip();
+
+  for (let i = 0; i < list.length; i++) {
+    const p = list[i];
+    if (!p.storage_url) continue;
+    try {
+      const resp = await fetch(p.storage_url);
+      const blob = await resp.blob();
+      const area = getArea(p).replace(/\W/g, '_');
+      const folder = `${area}/Rick_${String(p.rickshaw_session||1).padStart(3,'0')}`;
+      zip.file(`${folder}/photo_${p.photo_number||i}.jpg`, blob);
+    } catch(e) { console.warn('Skip:', p.id); }
+    updateProg(Math.round((i+1)/list.length*100), `${i+1}/${list.length} photos`);
+  }
+
+  updateProg(100, 'Compressing...');
+  const content = await zip.generateAsync({ type: 'blob' });
+  const name = (campaign?.name || 'Campaign').replace(/\W/g, '_');
+  saveAs(content, `${name}_Photos_${new Date().toISOString().slice(0,10)}.zip`);
+  hideModal();
+}
+
+function downloadArea(area) {
+  const photos = filteredPhotos.filter(p => getArea(p) === area);
+  downloadZIP(photos);
+}
+
+// ── PPT DOWNLOAD ────────────────────────────────────
+async function downloadPPT() {
+  if (!filteredPhotos.length) { alert('No photos'); return; }
+  showModal('Generating PPT...', 'Creating presentation...');
+  const pptx = new PptxGenJS();
+  pptx.layout = 'LAYOUT_WIDE';
+
+  // Title slide
+  const title = pptx.addSlide();
+  title.background = { color: '0B1957' };
+  title.addText(campaign?.name || 'Campaign Report', { x: 0.5, y: 2, w: 12, h: 1, fontSize: 36, bold: true, color: 'FF6B00', align: 'center' });
+  title.addText('Prajapati Advertising', { x: 0.5, y: 3, w: 12, h: 0.5, fontSize: 18, color: 'FFFFFF', align: 'center' });
+  title.addText(`${filteredPhotos.length} Photos · ${new Date().toLocaleDateString('en-IN')}`, { x: 0.5, y: 3.6, w: 12, h: 0.4, fontSize: 14, color: 'AAAAAA', align: 'center' });
+
+  const mediaType = campaign?.media_type || filteredPhotos[0]?.media_type || 'Hood';
+  const perSlide = mediaType === 'Hood' ? 3 : 1;
+
+  for (let i = 0; i < filteredPhotos.length; i += perSlide) {
+    const slide = pptx.addSlide();
+    const batch = filteredPhotos.slice(i, i + perSlide);
+    updateProg(Math.round(i/filteredPhotos.length*100), `Slide ${Math.floor(i/perSlide)+1}`);
+
+    for (let j = 0; j < batch.length; j++) {
+      const p = batch[j];
+      try {
+        const dataUrl = await urlToBase64(p.storage_url);
+        if (perSlide === 1) {
+          slide.addImage({ data: dataUrl, x: 1, y: 0.5, w: 11, h: 6 });
+        } else {
+          slide.addImage({ data: dataUrl, x: 0.3 + j*4.4, y: 1.5, w: 4.2, h: 4 });
+        }
+      } catch(e) {}
     }
-    tryNext();
-  });
+  }
+
+  updateProg(100, 'Saving...');
+  const name = (campaign?.name || 'Campaign').replace(/\W/g, '_');
+  await pptx.writeFile({ fileName: `${name}_Report.pptx` });
+  hideModal();
 }
 
-async function imgToDataUrl(url) {
-  const r = await fetch(url);
-  const blob = await r.blob();
-  return new Promise(resolve => {
+// ── EXCEL DOWNLOAD ──────────────────────────────────
+function downloadExcel() {
+  if (!filteredPhotos.length) { alert('No photos'); return; }
+  showModal('Building Excel...', 'Creating report...');
+
+  const rows = filteredPhotos.map((p, i) => ({
+    'Sr': i + 1,
+    'Rickshaw': 'Rick_' + String(p.rickshaw_session||1).padStart(3,'0'),
+    'Photo': (p.photo_number||1) + '/3',
+    'Vehicle': p.vehicle_number || '',
+    'Area': getArea(p),
+    'Address': p.address || '',
+    'Latitude': p.latitude || '',
+    'Longitude': p.longitude || '',
+    'Pincode': p.pincode || '',
+    'Captured': p.captured_at ? new Date(p.captured_at).toLocaleString('en-IN') : '',
+    'Photo URL': p.storage_url || ''
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{wch:5},{wch:12},{wch:8},{wch:15},{wch:15},{wch:40},{wch:12},{wch:12},{wch:10},{wch:20},{wch:50}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Photos');
+
+  const name = (campaign?.name || 'Campaign').replace(/\W/g, '_');
+  XLSX.writeFile(wb, `${name}_Report_${new Date().toISOString().slice(0,10)}.xlsx`);
+  hideModal();
+}
+
+// ── HELPER: URL to Base64 ──────────────────────────
+async function urlToBase64(url) {
+  const resp = await fetch(url);
+  const blob = await resp.blob();
+  return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onloadend = () => resolve(reader.result);
     reader.readAsDataURL(blob);
   });
 }
 
-async function generatePPT() {
-  $('pptBtn').disabled = true;
-  $('dlProgress').classList.add('show');
-  $('dlLabel').textContent = 'Loading PowerPoint engine…';
-  $('dlPct').textContent = '';
-  $('dlBarFill').style.width = '5%';
-  
-  try {
-    const PPT = await loadPptxGen();
-    const pptx = new PPT();
-    pptx.layout = 'LAYOUT_16x9';
-    pptx.title = (state.campaign.name || state.campaign.key) + ' — Field Report';
-    pptx.author = 'Prajapati Advertising';
-    
-    const photos = state.filteredPhotos.length ? state.filteredPhotos : state.photos;
-    
-    // Branding mode handling
-    const brandMode = state.campaign.branding_mode || 'full_prajapati';
-    const showBrand = brandMode !== 'white_label';
-    const customBrand = state.campaign.custom_brand_name;
-    const brandName = brandMode === 'custom' && customBrand ? customBrand : (showBrand ? 'Prajapati Advertising' : '');
-    
-    // Slide 1: Cover
-    const cover = pptx.addSlide();
-    cover.background = { color: '0B1957' };
-    cover.addText('Field Report', { x: 0.5, y: 0.4, w: 9, h: 0.4, fontSize: 11, color: 'C9A654', fontFace: 'Calibri', bold: true, charSpacing: 8 });
-    cover.addText(state.campaign.name || state.campaign.key, { x: 0.5, y: 1.3, w: 9, h: 1.4, fontSize: 44, color: 'FAF7F0', fontFace: 'Georgia', bold: false });
-    cover.addText('For ' + (state.campaign.client_name || ''), { x: 0.5, y: 3.0, w: 9, h: 0.4, fontSize: 18, color: 'C9A654', fontFace: 'Calibri' });
-    cover.addText('GPS-verified · Time-stamped · ' + fmtNum(photos.length) + ' photographs · ' + state.cities.length + ' cities',
-                  { x: 0.5, y: 3.8, w: 9, h: 0.4, fontSize: 13, color: 'A8B0C8', fontFace: 'Calibri' });
-    cover.addText(new Date().toLocaleDateString('en-IN', { month: 'long', day: 'numeric', year: 'numeric' }),
-                  { x: 0.5, y: 4.8, w: 9, h: 0.3, fontSize: 11, color: '5B6480', fontFace: 'Courier New', charSpacing: 4 });
-    if (showBrand) {
-      cover.addText(brandName, { x: 0.5, y: 5.3, w: 9, h: 0.3, fontSize: 11, color: 'FAF7F0', fontFace: 'Calibri', bold: true, charSpacing: 6 });
-    }
-    
-    // Slide 2: Stats
-    const stats = aggregateStats();
-    const s2 = pptx.addSlide();
-    s2.background = { color: 'FAF7F0' };
-    s2.addText('Campaign at a glance', { x: 0.5, y: 0.4, w: 9, h: 0.6, fontSize: 28, color: '0B1957', fontFace: 'Georgia' });
-    s2.addText([{ text: fmtNum(stats.total), options: { fontSize: 60, color: '0B1957', bold: false, fontFace: 'Georgia' } }],
-               { x: 0.5, y: 1.5, w: 4, h: 1.2 });
-    s2.addText('TOTAL PHOTOS', { x: 0.5, y: 2.7, w: 4, h: 0.3, fontSize: 10, color: '7B7F92', charSpacing: 6 });
-    s2.addText([{ text: fmtNum(stats.vehicles), options: { fontSize: 60, color: '0B1957', fontFace: 'Georgia' } }],
-               { x: 5, y: 1.5, w: 4, h: 1.2 });
-    s2.addText('UNIQUE VEHICLES', { x: 5, y: 2.7, w: 4, h: 0.3, fontSize: 10, color: '7B7F92', charSpacing: 6 });
-    s2.addText([{ text: stats.verifiedPct + '%', options: { fontSize: 60, color: '5C8A4E', fontFace: 'Georgia' } }],
-               { x: 0.5, y: 3.5, w: 4, h: 1.2 });
-    s2.addText('VERIFIED QUALITY', { x: 0.5, y: 4.7, w: 4, h: 0.3, fontSize: 10, color: '7B7F92', charSpacing: 6 });
-    s2.addText([{ text: stats.cities, options: { fontSize: 60, color: '0B1957', fontFace: 'Georgia' } }],
-               { x: 5, y: 3.5, w: 4, h: 1.2 });
-    s2.addText('CITIES COVERED', { x: 5, y: 4.7, w: 4, h: 0.3, fontSize: 10, color: '7B7F92', charSpacing: 6 });
-    
-    // Cap photos for PPT (limit to ~150 photos = ~50 hood slides + ~50 back slides)
-    const maxPhotos = Math.min(photos.length, 150);
-    $('dlLabel').textContent = `Processing photos (${maxPhotos})…`;
-    
-    // Group by vehicle_number + mode
-    const groups = {};
-    photos.slice(0, maxPhotos).forEach(p => {
-      const key = (p.vehicle_number || '?') + '_' + (p.mode || 'photo');
-      if (!groups[key]) groups[key] = { vehicle: p.vehicle_number, mode: p.mode, photos: [], city: p.city, member: p.member_name, captured: p.captured_at };
-      groups[key].photos.push(p);
-    });
-    const groupKeys = Object.keys(groups);
-    
-    let idx = 0;
-    for (const k of groupKeys) {
-      const g = groups[k];
-      idx++;
-      $('dlBarFill').style.width = ((idx / groupKeys.length) * 90) + '%';
-      $('dlPct').textContent = idx + '/' + groupKeys.length;
-      
-      const slide = pptx.addSlide();
-      slide.background = { color: 'FAF7F0' };
-      
-      // Header strip
-      slide.addText(escapeHtml(g.vehicle), { x: 0.3, y: 0.25, w: 4, h: 0.4, fontSize: 18, color: '0B1957', fontFace: 'Georgia', bold: false });
-      slide.addText((g.mode || '').toUpperCase() + ' · ' + (g.city || '—') + ' · By ' + (g.member || '—'),
-                    { x: 0.3, y: 0.72, w: 6, h: 0.3, fontSize: 10, color: '7B7F92', fontFace: 'Courier New', charSpacing: 2 });
-      
-      const dateStr = g.captured ? new Date(g.captured).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
-      slide.addText(dateStr, { x: 8, y: 0.25, w: 1.8, h: 0.4, fontSize: 11, color: '0B1957', align: 'right', fontFace: 'Calibri', bold: true });
-      
-      // Photos layout
-      if (g.photos.length === 1) {
-        try {
-          const dataUrl = await imgToDataUrl(g.photos[0].public_url);
-          slide.addImage({ data: dataUrl, x: 1.5, y: 1.3, w: 7, h: 3.9, sizing: { type: 'contain', w: 7, h: 3.9 } });
-        } catch (e) {
-          slide.addText('[Image unavailable]', { x: 1.5, y: 1.3, w: 7, h: 3.9, fontSize: 14, color: '7B7F92', align: 'center', valign: 'middle' });
-        }
-      } else if (g.photos.length === 2) {
-        for (let i = 0; i < 2; i++) {
-          try {
-            const dataUrl = await imgToDataUrl(g.photos[i].public_url);
-            slide.addImage({ data: dataUrl, x: 0.4 + (i * 4.6), y: 1.3, w: 4.4, h: 3.9, sizing: { type: 'contain', w: 4.4, h: 3.9 } });
-          } catch (e) {}
-        }
-      } else {
-        // 3+ photos
-        for (let i = 0; i < Math.min(3, g.photos.length); i++) {
-          try {
-            const dataUrl = await imgToDataUrl(g.photos[i].public_url);
-            slide.addImage({ data: dataUrl, x: 0.3 + (i * 3.15), y: 1.3, w: 3.05, h: 3.9, sizing: { type: 'contain', w: 3.05, h: 3.9 } });
-          } catch (e) {}
-        }
-      }
-      
-      // Brand footer
-      if (showBrand) {
-        slide.addText(brandName, { x: 0.3, y: 5.4, w: 5, h: 0.2, fontSize: 9, color: '7B7F92', fontFace: 'Calibri', charSpacing: 4 });
-      }
-      slide.addText('Slide ' + (idx + 2) + ' of ' + (groupKeys.length + 2), { x: 8, y: 5.4, w: 1.8, h: 0.2, fontSize: 9, color: '7B7F92', align: 'right', fontFace: 'Calibri' });
-    }
-    
-    $('dlLabel').textContent = 'Saving PowerPoint…';
-    $('dlBarFill').style.width = '95%';
-    
-    const fname = (state.campaign.key || 'campaign') + '_FieldReport_' + todayISTDateStr() + '.pptx';
-    await pptx.writeFile({ fileName: fname });
-    
-    $('dlBarFill').style.width = '100%';
-    toast('PowerPoint generated · ' + groupKeys.length + ' vehicle slides', 'success');
-  } catch (err) {
-    console.error(err);
-    toast('PPT failed: ' + err.message, 'error');
-  }
-  
-  $('dlProgress').classList.remove('show');
-  $('pptBtn').disabled = false;
-}
+// ── KEYBOARD ────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('lightbox').classList.contains('show')) return;
+  if (e.key === 'ArrowLeft') navLB(-1);
+  if (e.key === 'ArrowRight') navLB(1);
+  if (e.key === 'Escape') closeLB();
+});
 
-// ─── START ───
+// ── START ───────────────────────────────────────────
 init();
 </script>
-
 </body>
 </html>
