@@ -8889,6 +8889,8 @@ function loadClientLinks() {
         campaign_key: c.key,
         campaign_name: c.name || c.key,
         client_name: c.client_name || '',
+        client_id: c.client_id || null,
+        client_phone: (saved && saved.client_phone) || c.client_phone || '',
         token: (saved && saved.token) || genClientToken(),
         active: saved ? saved.active : true,
         view_count: (saved && saved.view_count) || 0,
@@ -8896,6 +8898,24 @@ function loadClientLinks() {
         _saved: !!saved
       };
     });
+
+    // Fetch client phone numbers from trial_clients for any campaign missing one
+    var needPhone = p4state.clientLinks.filter(function(l){ return !l.client_phone && l.client_id; });
+    if (needPhone.length > 0) {
+      var ids = needPhone.map(function(l){ return l.client_id; });
+      var idList = '(' + ids.map(function(i){ return '"' + i + '"'; }).join(',') + ')';
+      api('/rest/v1/trial_clients?select=id,phone&id=in.' + encodeURIComponent(idList))
+        .then(function(clients){
+          (clients || []).forEach(function(cl){
+            p4state.clientLinks.forEach(function(l){
+              if (l.client_id === cl.id && !l.client_phone) l.client_phone = cl.phone || '';
+            });
+          });
+          renderClientLinks();
+        })
+        .catch(function(){ /* phones optional — will prompt at send time */ });
+    }
+
     
     $('navLinksCount').textContent = p4state.clientLinks.length;
     $('linksSubtitle').textContent = p4state.clientLinks.length + ' campaigns · share unique URL with each client';
@@ -8985,17 +9005,95 @@ function copyClientLink(idx) {
   });
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// Send "campaign_started" Wati template to client (image + dynamic text).
+// One click: prefills saved phone (editable), fires Wati, no manual WhatsApp.
+// ═══════════════════════════════════════════════════════════════════════
+var WATI_SEND_URL = CONFIG.supabaseUrl + '/functions/v1/wati-send';
+
+function normalizePhoneIN(raw) {
+  if (!raw) return null;
+  var c = String(raw).replace(/\D/g, '');
+  if (c.length === 10) return '91' + c;
+  if (c.length === 12 && c.indexOf('91') === 0) return c;
+  if (c.length === 11 && c.charAt(0) === '0') return '91' + c.slice(1);
+  if (c.length === 13 && c.indexOf('091') === 0) return '91' + c.slice(3);
+  return null;
+}
+
 function shareClientWhatsApp(idx) {
   var l = p4state.clientLinks[idx];
   var url = getClientUrlBase() + '?c=' + encodeURIComponent(l.campaign_key) + '&t=' + l.token;
+
+  // Ask for / confirm the client's WhatsApp number (prefilled if known)
+  var entered = prompt(
+    'Client ka WhatsApp number? (10 digit)\n\nCampaign: ' + l.campaign_name +
+    '\nClient: ' + (l.client_name || '—'),
+    l.client_phone || ''
+  );
+  if (entered === null) return; // cancelled
+
+  var phone = normalizePhoneIN(entered);
+  if (!phone) {
+    showToast('Galat number — 10 digit daalein', 'error');
+    return;
+  }
+
+  // remember for next time (in-memory + persist on link)
+  l.client_phone = entered;
+
+  showToast('Bhej rahe hain ' + (l.client_name || 'client') + ' ko…', 'info');
+
   persistClientLink(l).then(function() {
-    var msg = 'Namaste 🙏%0A%0A*Prajapati GPS Campaign Update*%0A' + 
-              encodeURIComponent(l.campaign_name) + '%0A%0A' +
-              'Aapke campaign ka live dashboard yahan dekhein:%0A' + 
-              encodeURIComponent(url) + '%0A%0A' +
-              'Prajapati Advertising%0A%2B91 99 22 138 138';
-    openLink('https://wa.me/?text=' + msg, {external:true});
+    return fetch(WATI_SEND_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': CONFIG.supabaseKey,
+        'Authorization': 'Bearer ' + CONFIG.supabaseKey
+      },
+      body: JSON.stringify({
+        action: 'send_template',
+        to_phone: phone,
+        to_name: l.client_name || '',
+        template_name: 'campaign_started',
+        // {{1}} client name · {{2}} campaign name · {{3}} dashboard link
+        params: [ l.client_name || 'Aapka', l.campaign_name || '', url ],
+        context_type: 'client_link',
+        context_id: l.campaign_key
+      })
+    });
+  }).then(function(r) {
+    return r.text().then(function(t) {
+      var data; try { data = JSON.parse(t); } catch(e) { data = null; }
+      if (r.ok && data && (data.success !== false)) {
+        showToast('✓ WhatsApp bhej diya — ' + (l.client_name || phone), 'success');
+      } else {
+        var msg = (data && (data.error || data.message)) || ('HTTP ' + r.status);
+        showToast('Bhejne mein dikkat: ' + msg, 'error');
+        // Fallback: offer manual WhatsApp so the send isn't lost
+        offerManualWhatsApp(l, url, entered);
+      }
+    });
+  }).catch(function(err) {
+    showToast('Network error — manual WhatsApp khol rahe hain', 'warn');
+    offerManualWhatsApp(l, url, entered);
   });
+}
+
+// Fallback if Wati fails — open normal WhatsApp with prefilled text
+function offerManualWhatsApp(l, url, rawPhone) {
+  var phone = String(rawPhone || '').replace(/\D/g, '');
+  if (phone.length === 10) phone = '91' + phone;
+  var msg = 'Namaste 🙏%0A%0A' + encodeURIComponent(l.client_name || 'Aapka') +
+            ' — aapka campaign LIVE ho gaya hai! 🚀%0A%0A📍 Campaign: ' +
+            encodeURIComponent(l.campaign_name) + '%0A✅ Status: Active%0A%0A' +
+            'Live dashboard:%0A' + encodeURIComponent(url) +
+            '%0A%0APrajapati Advertising%0A%2B91 99 22 138 138';
+  var waUrl = phone
+    ? 'https://wa.me/' + phone + '?text=' + msg
+    : 'https://wa.me/?text=' + msg;
+  openLink(waUrl, { external: true });
 }
 
 function showClientQR(idx) {
@@ -9072,12 +9170,15 @@ function persistClientLink(l) {
     active: l.active,
     created_by: (state.admin && state.admin.phone) || 'unknown'
   };
-  
+  if (l.client_phone) data.client_phone = l.client_phone;
+
   if (l._saved && l.id) {
+    var patchBody = { token: l.token, active: l.active };
+    if (l.client_phone) patchBody.client_phone = l.client_phone;
     return fetch(CONFIG.supabaseUrl + '/rest/v1/trial_client_links?id=eq.' + l.id, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', apikey: CONFIG.supabaseKey, Authorization: 'Bearer ' + CONFIG.supabaseKey },
-      body: JSON.stringify({ token: l.token, active: l.active })
+      body: JSON.stringify(patchBody)
     }).then(function(r){
       if (!r.ok) return r.text().then(function(t){ throw new Error('PATCH ' + r.status + ': ' + t); });
       return r;
@@ -10177,6 +10278,12 @@ async function downloadExcelReport() {
     }
     
     // Download
+    // ⭐ FIX: resolve filter values for filename (were undeclared → "Can't find variable: campaign")
+    var campaign = $('photosCampaign') ? ($('photosCampaign').value || '') : '';
+    if (campaign === 'undefined') campaign = '';
+    var _rng = (typeof getPhotosDateRange === 'function') ? getPhotosDateRange() : { from:'', to:'' };
+    var dateFrom = _rng.from || '';
+    var dateTo = _rng.to || '';
     var campaignLabel = campaign ? campaign : 'all';
     var dateLabel = dateFrom + (dateTo && dateTo !== dateFrom ? '_to_' + dateTo : '');
     var filename = 'Prajapati_Report_' + sanitizeName(campaignLabel) + '_' + (dateLabel || 'all') + '.xlsx';
@@ -12918,6 +13025,26 @@ function inferMediaType(hood, back) {
       var coverage = expectedTotal > 0 ? (totalPhotos / expectedTotal * 100).toFixed(1) + '%' : '—';
       
       // Determine campaign info
+      // ⭐ FIX: declare campaign/dateFrom/dateTo from live filters here.
+      //    These were referenced below for metadata but never declared in this
+      //    scope (caused "Can't find variable: campaign"). buildPhotoFilterQS()
+      //    handles the query; this only resolves display values for the report.
+      var campaign = $('photosCampaign') ? ($('photosCampaign').value || '') : '';
+      if ((!campaign || campaign === 'undefined') && $('photosCampaign')) {
+        var _sel = $('photosCampaign');
+        var _shown = (_sel.options && _sel.options[_sel.selectedIndex] ? _sel.options[_sel.selectedIndex].text : '') ||
+                     ($('photosCampaignSearch') ? $('photosCampaignSearch').value : '');
+        _shown = (_shown || '').trim();
+        if (_shown && _shown !== 'All campaigns' && window.state && state.campaigns) {
+          var _m = state.campaigns.find(function(c){ return (c.name || c.campaign_name || '') === _shown; });
+          if (_m) campaign = _m.key || _m.campaign_key || _m.id || '';
+        }
+      }
+      if (campaign === 'undefined') campaign = '';
+      var _range = (typeof getPhotosDateRange === 'function') ? getPhotosDateRange() : { from:'', to:'' };
+      var dateFrom = _range.from || '';
+      var dateTo = _range.to || '';
+
       var campaignNameMap = {};
       try {
         var campData = await window.api('/rest/v1/trial_campaigns?select=key,name&active=eq.true');
