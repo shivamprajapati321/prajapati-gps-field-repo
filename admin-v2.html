@@ -8898,28 +8898,35 @@ function loadClientLinks() {
         _saved: !!saved
       };
     });
-
-    // Fetch client phone numbers from trial_clients for any campaign missing one
-    var needPhone = p4state.clientLinks.filter(function(l){ return !l.client_phone && l.client_id; });
-    if (needPhone.length > 0) {
-      var ids = needPhone.map(function(l){ return l.client_id; });
-      var idList = '(' + ids.map(function(i){ return '"' + i + '"'; }).join(',') + ')';
-      api('/rest/v1/trial_clients?select=id,phone&id=in.' + encodeURIComponent(idList))
-        .then(function(clients){
-          (clients || []).forEach(function(cl){
-            p4state.clientLinks.forEach(function(l){
-              if (l.client_id === cl.id && !l.client_phone) l.client_phone = cl.phone || '';
-            });
-          });
-          renderClientLinks();
-        })
-        .catch(function(){ /* phones optional — will prompt at send time */ });
-    }
-
     
     $('navLinksCount').textContent = p4state.clientLinks.length;
     $('linksSubtitle').textContent = p4state.clientLinks.length + ' campaigns · share unique URL with each client';
     renderClientLinks();
+
+    // ⭐ Fetch client phones from trial_clients for any campaign still missing one.
+    // Robust: match by client_id; the number entered in Launch Campaign lives in trial_clients.phone
+    (function fetchClientPhones() {
+      var need = p4state.clientLinks.filter(function(l){ return !l.client_phone && l.client_id; });
+      if (need.length === 0) return;
+      var ids = need.map(function(l){ return l.client_id; });
+      // de-dup
+      ids = ids.filter(function(v,i){ return ids.indexOf(v) === i; });
+      var idList = '(' + ids.map(function(i){ return '"' + i + '"'; }).join(',') + ')';
+      api('/rest/v1/trial_clients?select=id,phone,name&id=in.' + encodeURIComponent(idList))
+        .then(function(clients){
+          var byId = {};
+          (clients || []).forEach(function(cl){ byId[String(cl.id)] = cl; });
+          var changed = false;
+          p4state.clientLinks.forEach(function(l){
+            if (!l.client_phone && l.client_id && byId[String(l.client_id)]) {
+              var ph = byId[String(l.client_id)].phone;
+              if (ph) { l.client_phone = ph; changed = true; }
+            }
+          });
+          if (changed) renderClientLinks();
+        })
+        .catch(function(e){ console.warn('[ClientLinks] phone fetch failed:', e && e.message); });
+    })();
     
     // AUTO-PERSIST: save any new tokens to DB immediately so URLs work without manual Copy
     var unsaved = p4state.clientLinks.filter(function(l){ return !l._saved; });
@@ -8960,7 +8967,6 @@ function renderClientLinks() {
     var lastViewed = l.last_viewed_at ? fmtTimeAgo(l.last_viewed_at) : 'never';
     var activeTag = l.active ? '<span class="tag tag-success"><i class="ti ti-circle-filled" style="font-size:7px;"></i> Active</span>' : '<span class="tag" style="background:var(--bg); color:var(--text-3);">Inactive</span>';
 
-    // Phone status — number Launch Campaign se aata hai; agar nahi to warning
     var hasPhone = !!(l.client_phone && String(l.client_phone).replace(/\D/g,'').length >= 10);
     var phoneRow = hasPhone
       ? '<div class="client" style="color:var(--ok,#1a8a5a);"><i class="ti ti-brand-whatsapp"></i> ' + escapeHtml(String(l.client_phone)) + '</div>'
@@ -9013,10 +9019,6 @@ function copyClientLink(idx) {
   });
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// Send "campaign_started" Wati template to client (image + dynamic text).
-// One click: prefills saved phone (editable), fires Wati, no manual WhatsApp.
-// ═══════════════════════════════════════════════════════════════════════
 var WATI_SEND_URL = CONFIG.supabaseUrl + '/functions/v1/wati-send';
 
 function normalizePhoneIN(raw) {
@@ -9037,41 +9039,29 @@ function shareClientWhatsApp(idx) {
   var entered;
 
   if (saved) {
-    // Number Launch Campaign se mil gaya — seedha use karo, sirf confirm karo
     var ok = confirm(
       (l.client_name || 'Client') + ' ko WhatsApp bhejein?\n\n' +
-      'Number: +' + saved + '\n' +
-      'Campaign: ' + l.campaign_name + '\n\n' +
+      'Number: +' + saved + '\nCampaign: ' + l.campaign_name + '\n\n' +
       'OK = bhejo   ·   Cancel = number badlo'
     );
-    if (ok) {
-      entered = l.client_phone;
-    } else {
-      // user wants to change the number
+    if (ok) { entered = l.client_phone; }
+    else {
       entered = prompt('Naya WhatsApp number? (10 digit)', l.client_phone || '');
-      if (entered === null) return; // fully cancelled
+      if (entered === null) return;
     }
   } else {
-    // Number nahi hai (na order mein, na saved) — entry ke liye pucho
     entered = prompt(
-      'Is campaign ka client number nahi mila.\n' +
-      'WhatsApp number daalein (10 digit):\n\n' +
-      'Campaign: ' + l.campaign_name +
-      '\nClient: ' + (l.client_name || '—'),
+      'Is campaign ka client number nahi mila.\nWhatsApp number daalein (10 digit):\n\n' +
+      'Campaign: ' + l.campaign_name + '\nClient: ' + (l.client_name || '—'),
       ''
     );
-    if (entered === null) return; // cancelled
+    if (entered === null) return;
   }
 
   var phone = normalizePhoneIN(entered);
-  if (!phone) {
-    showToast('Galat number — 10 digit daalein', 'error');
-    return;
-  }
+  if (!phone) { showToast('Galat number — 10 digit daalein', 'error'); return; }
 
-  // remember for next time (in-memory + persist on link)
   l.client_phone = entered;
-
   showToast('Bhej rahe hain ' + (l.client_name || 'client') + ' ko…', 'info');
 
   persistClientLink(l).then(function() {
@@ -9087,7 +9077,6 @@ function shareClientWhatsApp(idx) {
         to_phone: phone,
         to_name: l.client_name || '',
         template_name: 'campaign_started',
-        // {{1}} client name · {{2}} campaign name · {{3}} dashboard link
         params: [ l.client_name || 'Aapka', l.campaign_name || '', url ],
         context_type: 'client_link',
         context_id: l.campaign_key
@@ -9098,10 +9087,10 @@ function shareClientWhatsApp(idx) {
       var data; try { data = JSON.parse(t); } catch(e) { data = null; }
       if (r.ok && data && (data.success !== false)) {
         showToast('✓ WhatsApp bhej diya — ' + (l.client_name || phone), 'success');
+        renderClientLinks();
       } else {
         var msg = (data && (data.error || data.message)) || ('HTTP ' + r.status);
         showToast('Bhejne mein dikkat: ' + msg, 'error');
-        // Fallback: offer manual WhatsApp so the send isn't lost
         offerManualWhatsApp(l, url, entered);
       }
     });
@@ -9111,7 +9100,6 @@ function shareClientWhatsApp(idx) {
   });
 }
 
-// Fallback if Wati fails — open normal WhatsApp with prefilled text
 function offerManualWhatsApp(l, url, rawPhone) {
   var phone = String(rawPhone || '').replace(/\D/g, '');
   if (phone.length === 10) phone = '91' + phone;
@@ -9120,9 +9108,7 @@ function offerManualWhatsApp(l, url, rawPhone) {
             encodeURIComponent(l.campaign_name) + '%0A✅ Status: Active%0A%0A' +
             'Live dashboard:%0A' + encodeURIComponent(url) +
             '%0A%0APrajapati Advertising%0A%2B91 99 22 138 138';
-  var waUrl = phone
-    ? 'https://wa.me/' + phone + '?text=' + msg
-    : 'https://wa.me/?text=' + msg;
+  var waUrl = phone ? 'https://wa.me/' + phone + '?text=' + msg : 'https://wa.me/?text=' + msg;
   openLink(waUrl, { external: true });
 }
 
@@ -9201,7 +9187,7 @@ function persistClientLink(l) {
     created_by: (state.admin && state.admin.phone) || 'unknown'
   };
   if (l.client_phone) data.client_phone = l.client_phone;
-
+  
   if (l._saved && l.id) {
     var patchBody = { token: l.token, active: l.active };
     if (l.client_phone) patchBody.client_phone = l.client_phone;
@@ -10308,7 +10294,6 @@ async function downloadExcelReport() {
     }
     
     // Download
-    // ⭐ FIX: resolve filter values for filename (were undeclared → "Can't find variable: campaign")
     var campaign = $('photosCampaign') ? ($('photosCampaign').value || '') : '';
     if (campaign === 'undefined') campaign = '';
     var _rng = (typeof getPhotosDateRange === 'function') ? getPhotosDateRange() : { from:'', to:'' };
@@ -13055,10 +13040,6 @@ function inferMediaType(hood, back) {
       var coverage = expectedTotal > 0 ? (totalPhotos / expectedTotal * 100).toFixed(1) + '%' : '—';
       
       // Determine campaign info
-      // ⭐ FIX: declare campaign/dateFrom/dateTo from live filters here.
-      //    These were referenced below for metadata but never declared in this
-      //    scope (caused "Can't find variable: campaign"). buildPhotoFilterQS()
-      //    handles the query; this only resolves display values for the report.
       var campaign = $('photosCampaign') ? ($('photosCampaign').value || '') : '';
       if ((!campaign || campaign === 'undefined') && $('photosCampaign')) {
         var _sel = $('photosCampaign');
