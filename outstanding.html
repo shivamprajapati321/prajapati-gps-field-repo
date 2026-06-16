@@ -507,7 +507,7 @@ async function doLogin() {
     }
     const m = members[0];
     const role = (m.role || '').toLowerCase();
-    if (!['admin', 'owner', 'accounts'].includes(role)) {
+    if (!['admin', 'owner', 'accounts', 'accountant'].includes(role)) {
       errEl.textContent = 'Sirf Admin/Owner/Accounts ke liye';
       errEl.classList.add('show');
       btn.disabled = false; btn.innerHTML = 'View Outstanding →';
@@ -532,7 +532,7 @@ async function autoLogin() {
     const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
     if (!members || members.length === 0) return false;
     const m = members[0];
-    if (!['admin', 'owner', 'accounts'].includes((m.role || '').toLowerCase())) return false;
+    if (!['admin', 'owner', 'accounts', 'accountant'].includes((m.role || '').toLowerCase())) return false;
     state.admin = m;
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('mainApp').classList.add('active');

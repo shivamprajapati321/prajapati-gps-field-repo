@@ -343,7 +343,7 @@ async function doLogin() {
     const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
     if (!members || members.length === 0) { errEl.textContent = 'Number registered nahi'; errEl.classList.add('show'); btn.disabled = false; btn.innerHTML = 'View Campaigns →'; return; }
     const m = members[0];
-    if (!['admin','owner','operations','data_entry','accounts'].includes((m.role||'').toLowerCase())) {
+    if (!['admin','owner','operations','data_entry','accounts','accountant','data_manager'].includes((m.role||'').toLowerCase())) {
       errEl.textContent = 'Sirf Admin/Owner/Operations ke liye';
       errEl.classList.add('show'); btn.disabled = false; btn.innerHTML = 'View Campaigns →'; return;
     }
@@ -362,7 +362,7 @@ async function autoLogin() {
     const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
     if (!members || members.length === 0) return;
     const m = members[0];
-    if (!['admin','owner','operations','data_entry','accounts'].includes((m.role||'').toLowerCase())) return;
+    if (!['admin','owner','operations','data_entry','accounts','accountant','data_manager'].includes((m.role||'').toLowerCase())) return;
     state.admin = m;
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('mainApp').classList.add('active');
