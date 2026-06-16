@@ -548,7 +548,30 @@ async function runLocSearch(q){
     var sRes=await fetchTimeout(sUrl,{headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY}},2500);
     if(sRes.ok){ var sd=await sRes.json(); results=(sd||[]).map(function(s){ return { label:[s.name,s.city].filter(Boolean).join(', '), saved:true }; }); }
   }catch(e){}
+  // Google Places (primary — business + areas, India priority)
+  try{
+    var gRes=await fetchTimeout('https://places.googleapis.com/v1/places:searchText',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Goog-Api-Key':'AIzaSyDAWJsoxdpqznMDAE5YqbJ17t6g3Bqc15c','X-Goog-FieldMask':'places.displayName,places.formattedAddress,places.addressComponents'},
+      body:JSON.stringify({textQuery:q,regionCode:'IN',languageCode:'en',maxResultCount:6})
+    },3500);
+    if(gRes.ok){
+      var gd=await gRes.json(); var gplaces=(gd&&gd.places)||[];
+      gplaces.forEach(function(pl){
+        var city='',st='',adm2='';
+        (pl.addressComponents||[]).forEach(function(c){ var t=c.types||[],v=c.longText||c.shortText||'';
+          if(t.indexOf('locality')!==-1)city=v;
+          if(t.indexOf('administrative_area_level_2')!==-1)adm2=v;
+          if(t.indexOf('administrative_area_level_1')!==-1)st=v; });
+        if(!city)city=adm2;
+        var nm0=(pl.displayName&&pl.displayName.text)||(pl.formattedAddress||'').split(',')[0];
+        var nm=[nm0,city&&city!==nm0?city:'',st].filter(Boolean).join(', ');
+        if(nm)results.push({label:nm});
+      });
+    }
+  }catch(e){}
   // Photon
+  if(results.filter(function(r){return !r.saved;}).length===0){
   try{
     var pUrl='https://photon.komoot.io/api/?q='+encodeURIComponent(q)+'&limit=6&lang=en&lat=19.7&lon=75.7';
     var pRes=await fetchTimeout(pUrl,{headers:{'Accept-Language':'en'}},3000);
@@ -558,6 +581,7 @@ async function runLocSearch(q){
       (inIndia.length?inIndia:feats).forEach(function(f){ var p=f.properties||{}; var nm=[p.name,p.city,p.state].filter(Boolean).join(', '); if(nm) results.push({label:nm}); });
     }
   }catch(e){}
+  }
   // Nominatim fallback
   if(results.length===0){
     try{

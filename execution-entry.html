@@ -1378,11 +1378,12 @@
 const CONFIG = {
   supabaseUrl: 'https://fpbktcgtspqsqpaytslv.supabase.co',
   supabaseKey: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j',
-  // HERE Maps API (250K free transactions/month)
-  // App ID: 0BIedOs168KmurekSM8j
+  // Google Maps Places API (primary — business + areas, India priority)
+  googleMapsKey: 'AIzaSyDAWJsoxdpqznMDAE5YqbJ17t6g3Bqc15c',
+  // HERE Maps API (fallback)
   hereApiKey: 'v-t4mJogRPf3NonQsTU81-fz6cuDhcgTHGznSBdT9ro',
   hereAppId: '0BIedOs168KmurekSM8j',
-  // Fallback to OpenStreetMap if HERE fails
+  // Fallback to OpenStreetMap if all fail
   useOpenStreetMapFallback: true
 };
 
@@ -1635,12 +1636,19 @@ async function loadData() {
 //  LOCATION SEARCH (OpenStreetMap Nominatim - FREE)
 // ═══════════════════════════════════════════════════════════════
 async function searchLocation(query) {
-  // Try HERE first if key is set, fallback to OpenStreetMap
+  // Try Google first (business + areas, India priority), then HERE, then OpenStreetMap
+  if (CONFIG.googleMapsKey) {
+    try {
+      const results = await googleSearch(query);
+      if (results && results.length > 0) return results;
+    } catch (e) {
+      console.warn('Google failed, trying HERE:', e.message);
+    }
+  }
   if (CONFIG.hereApiKey) {
     try {
       const results = await hereSearch(query);
       if (results && results.length > 0) return results;
-      // Empty results, try fallback
       if (CONFIG.useOpenStreetMapFallback) return nominatimSearch(query);
       return [];
     } catch (e) {
@@ -1650,6 +1658,43 @@ async function searchLocation(query) {
     }
   }
   return nominatimSearch(query);
+}
+
+async function googleSearch(query) {
+  if (!CONFIG.googleMapsKey || !query || query.length < 3) return [];
+  const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': CONFIG.googleMapsKey,
+      'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.id,places.addressComponents,places.types'
+    },
+    body: JSON.stringify({ textQuery: query, regionCode: 'IN', languageCode: 'en', maxResultCount: 10 })
+  });
+  if (!res.ok) { const t = await res.text(); throw new Error('Google ' + res.status + ': ' + t); }
+  const data = await res.json();
+  return ((data && data.places) ? data.places : []).map(function(r){
+    var comp = { city:'', state:'', adm2:'', suburb:'' };
+    (r.addressComponents || []).forEach(function(c){
+      var types = c.types || []; var val = c.longText || c.shortText || '';
+      if (types.indexOf('locality') !== -1) comp.city = val;
+      if (types.indexOf('administrative_area_level_2') !== -1) comp.adm2 = val;
+      if (types.indexOf('sublocality') !== -1 || types.indexOf('sublocality_level_1') !== -1) comp.suburb = comp.suburb || val;
+      if (types.indexOf('administrative_area_level_1') !== -1) comp.state = val;
+    });
+    if (!comp.city) comp.city = comp.adm2 || comp.suburb;
+    var nm = (r.displayName && r.displayName.text) || (r.formattedAddress || '').split(',')[0];
+    return {
+      name: nm,
+      fullAddress: r.formattedAddress || nm,
+      city: comp.city || '',
+      state: comp.state || '',
+      lat: r.location ? r.location.latitude : null,
+      lng: r.location ? r.location.longitude : null,
+      type: (r.types && r.types[0]) || 'place',
+      source: 'google'
+    };
+  }).filter(function(d){ return d.name; });
 }
 
 async function nominatimSearch(query) {
@@ -2074,7 +2119,7 @@ function searchLocationDebounced(idx, query) {
         <div class="loading-msg">No matches. Press Enter to use "${esc(query)}" as-is.</div>
         <div class="powered">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          ${CONFIG.hereApiKey ? 'Powered by HERE Maps' : 'OpenStreetMap'}
+          Powered by Google
         </div>
       `;
       return;
@@ -2091,7 +2136,7 @@ function searchLocationDebounced(idx, query) {
     `).join('') + `
       <div class="powered">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-        ${results[0] && results[0].source === 'here' ? 'Powered by HERE Maps · India' : 'Powered by OpenStreetMap · India'}
+        ${results[0] && results[0].source === 'google' ? 'Powered by Google · India' : (results[0] && results[0].source === 'here' ? 'Powered by HERE Maps · India' : 'Powered by OpenStreetMap · India')}
       </div>
     `;
   }, 400);  // 400ms debounce

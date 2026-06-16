@@ -407,6 +407,27 @@ function runOCR(p){
 }
 
 function reverseGeocode(p){
+  // Google Geocoding (primary)
+  fetch('https://maps.googleapis.com/maps/api/geocode/json?latlng='+p.lat+','+p.lng+'&result_type=locality|administrative_area_level_2|sublocality&language=en&key=AIzaSyDAWJsoxdpqznMDAE5YqbJ17t6g3Bqc15c')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d&&d.status==='OK'&&d.results&&d.results.length){
+        var res=d.results[0];
+        var city='',adm2='',sub='';
+        (res.address_components||[]).forEach(function(c){
+          if(c.types.indexOf('locality')!==-1)city=c.long_name;
+          if(c.types.indexOf('administrative_area_level_2')!==-1)adm2=c.long_name;
+          if(c.types.indexOf('sublocality')!==-1)sub=sub||c.long_name;
+        });
+        if(!city)city=adm2||sub;
+        if(city){p.city=city;renderReview();}
+        if(!p.address&&res.formatted_address){p.address=res.formatted_address;renderReview();}
+      } else {
+        nominatimReverse(p);
+      }
+    }).catch(function(){ nominatimReverse(p); });
+}
+function nominatimReverse(p){
   fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+p.lat+'&lon='+p.lng+'&zoom=12',{headers:{'Accept-Language':'en'}})
     .then(function(r){return r.json();})
     .then(function(d){
