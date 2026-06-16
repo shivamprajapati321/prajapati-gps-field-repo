@@ -975,6 +975,23 @@ async function searchLocation(tempId, locId, query) {
         })
       });
       const data = await res.json();
+
+      // If Google returned an error (API not enabled / billing / key restriction), SHOW it
+      if (!res.ok || (data && data.error)) {
+        const gErr = (data && data.error) ? data.error : {};
+        const msg = gErr.message || ('HTTP ' + res.status);
+        const status = gErr.status || res.status;
+        dropdown.innerHTML = `
+          <div class="gp-section-label" style="color:var(--danger)">⚠️ Google API error</div>
+          <div style="padding:10px 12px;font-size:11px;color:var(--text-dim);line-height:1.5">
+            <b>${escapeHtml(String(status))}</b><br>${escapeHtml(msg)}
+          </div>
+          <div class="gp-footer">Check: Places API (New) enabled + Billing + key referrer</div>
+        `;
+        console.error('[Google Places] error:', status, msg, gErr);
+        return;
+      }
+
       const results = (data && data.places) ? data.places : [];
 
       if (!results.length) {
