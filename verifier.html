@@ -28,6 +28,55 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--txt);min-
 .stat-card.verified::before{background:var(--ok)}
 .stat-card.hood::before{background:var(--hood)}
 .stat-card.back::before{background:var(--back)}
+
+/* ═══ VERIFICATION STATS DASHBOARD (collapsible) ═══ */
+.vdash{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
+.vdash-head{display:flex;align-items:center;justify-content:space-between;cursor:pointer;flex-wrap:wrap;gap:8px}
+.vdash-head h3{font-size:15px;font-weight:700;color:var(--p);display:flex;align-items:center;gap:8px}
+.vdash-toggle{font-size:12px;color:var(--p2);font-weight:600;background:none;border:none;cursor:pointer;font-family:inherit}
+.vdash-body{margin-top:14px}
+.vdash-body.collapsed{display:none}
+.vd-presets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.vd-chip{background:#fff;border:1.5px solid var(--border);color:var(--muted);font-size:12.5px;font-weight:600;padding:7px 13px;border-radius:18px;cursor:pointer;font-family:inherit;transition:0.15s}
+.vd-chip:hover{border-color:var(--p2);color:var(--p)}
+.vd-chip.active{background:var(--p);color:#fff;border-color:var(--p)}
+#vdCustomWrap{display:none;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap}
+#vdCustomWrap input{padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;font-family:inherit;font-size:13px}
+.vd-summary{font-size:11px;color:var(--muted);margin-bottom:12px}
+.vd-dds{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.vd-dd{flex:1;min-width:220px}
+.vd-dd label{display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;margin-bottom:5px}
+.vsdd{position:relative}
+.vsdd-input{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;background:#fff;font-family:inherit;color:var(--txt);outline:none}
+.vsdd-input:focus{border-color:var(--p2)}
+.vsdd-list{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:50;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 30px rgba(15,28,94,0.14);max-height:240px;overflow-y:auto;display:none;padding:5px}
+.vsdd-list.open{display:block}
+.vsdd-opt{padding:9px 12px;font-size:13.5px;border-radius:6px;cursor:pointer;color:var(--txt)}
+.vsdd-opt:hover{background:#eef4ff}
+.vsdd-opt.sel{background:#e7f8ee;color:var(--ok);font-weight:600}
+.vsdd-empty{padding:12px;font-size:12px;color:var(--muted);text-align:center}
+.vd-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+.vd-card{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:13px 15px;position:relative;overflow:hidden}
+.vd-card::before{content:"";position:absolute;top:0;left:0;width:4px;height:100%}
+.vd-card.c-total::before{background:var(--p2)}
+.vd-card.c-verified::before{background:var(--ok)}
+.vd-card.c-pending::before{background:var(--warn)}
+.vd-card.c-vehicles::before{background:var(--p)}
+.vd-card.c-hood::before{background:var(--hood)}
+.vd-card.c-back::before{background:var(--back)}
+.vd-card .vc-lbl{font-size:11px;color:var(--muted);font-weight:600;margin-bottom:4px}
+.vd-card .vc-val{font-size:24px;font-weight:800;color:var(--txt);line-height:1;font-variant-numeric:tabular-nums}
+.vd-card .vc-sub{font-size:10px;color:var(--muted);margin-top:3px}
+.vd-tables{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:760px){.vd-tables{grid-template-columns:1fr}}
+.vd-tbl-wrap h4{font-size:13px;font-weight:700;color:var(--p);margin-bottom:8px}
+.vd-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.vd-tbl th{text-align:left;padding:7px 9px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--border)}
+.vd-tbl th.n,.vd-tbl td.n{text-align:right;font-variant-numeric:tabular-nums}
+.vd-tbl td{padding:8px 9px;border-bottom:1px solid #f0f2f8;color:var(--txt)}
+.vd-tbl tr:last-child td{border-bottom:none}
+.vd-tbl .nm{font-weight:600}
+.vd-empty{padding:18px;text-align:center;color:var(--muted);font-size:12px}
 .stat-label{font-size:11px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;font-weight:600}
 .stat-value{font-size:24px;font-weight:700;color:var(--p)}
 .filters{background:var(--card);border-radius:10px;padding:14px;margin-bottom:16px;border:1px solid var(--border);display:flex;gap:12px;flex-wrap:wrap;align-items:end}
@@ -138,6 +187,59 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--txt);min-
     </div>
   </div>
   <div class="container">
+    <div class="vdash">
+      <div class="vdash-head" onclick="vdToggle()">
+        <h3>📊 Verification Stats</h3>
+        <button class="vdash-toggle" id="vdToggleBtn">Hide ▲</button>
+      </div>
+      <div class="vdash-body" id="vdBody">
+        <div class="vd-presets" id="vdPresets">
+          <button type="button" class="vd-chip" data-preset="today" onclick="vdSetPreset('today')">Today</button>
+          <button type="button" class="vd-chip" data-preset="yesterday" onclick="vdSetPreset('yesterday')">Yesterday</button>
+          <button type="button" class="vd-chip" data-preset="week" onclick="vdSetPreset('week')">Last 7 days</button>
+          <button type="button" class="vd-chip" data-preset="15days" onclick="vdSetPreset('15days')">Last 15 days</button>
+          <button type="button" class="vd-chip" data-preset="month" onclick="vdSetPreset('month')">Last 30 days</button>
+          <button type="button" class="vd-chip" data-preset="all" onclick="vdSetPreset('all')">All time</button>
+          <button type="button" class="vd-chip" data-preset="custom" onclick="vdSetPreset('custom')">Custom</button>
+        </div>
+        <div id="vdCustomWrap">
+          <input type="date" id="vdFrom" onchange="vdOnCustom()">
+          <span style="color:var(--muted)">→</span>
+          <input type="date" id="vdTo" onchange="vdOnCustom()">
+        </div>
+        <div class="vd-summary" id="vdSummary">—</div>
+        <div class="vd-dds">
+          <div class="vd-dd">
+            <label>Campaign</label>
+            <div class="vsdd" id="vsddCampaign">
+              <input type="text" class="vsdd-input" id="vdCampaignInput" placeholder="All campaigns" autocomplete="off" onfocus="vsddOpen('campaign')" oninput="vsddFilter('campaign')">
+              <div class="vsdd-list" id="vdCampaignList"></div>
+            </div>
+          </div>
+          <div class="vd-dd">
+            <label>Team Member</label>
+            <div class="vsdd" id="vsddMember">
+              <input type="text" class="vsdd-input" id="vdMemberInput" placeholder="All members" autocomplete="off" onfocus="vsddOpen('member')" oninput="vsddFilter('member')">
+              <div class="vsdd-list" id="vdMemberList"></div>
+            </div>
+          </div>
+        </div>
+        <div class="vd-cards" id="vdCards">
+          <div class="vd-empty" style="grid-column:1/-1">Loading stats…</div>
+        </div>
+        <div class="vd-tables">
+          <div class="vd-tbl-wrap">
+            <h4>Campaign-wise count</h4>
+            <div id="vdCampaignTable"></div>
+          </div>
+          <div class="vd-tbl-wrap">
+            <h4>Team Member-wise count</h4>
+            <div id="vdMemberTable"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="stats-bar">
       <div class="stat-card hood"><div class="stat-label">🛺 Hood Photos Pending</div><div class="stat-value" id="statHoodPending">—</div></div>
       <div class="stat-card back"><div class="stat-label">📋 Back Photos Pending</div><div class="stat-value" id="statBackPending">—</div></div>
@@ -279,6 +381,154 @@ function api(path, options) {
   });
 }
 function cleanPlate(p) { return String(p || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+
+// ═══════════════════════════════════════════════════════════════
+// VERIFICATION STATS DASHBOARD
+// ═══════════════════════════════════════════════════════════════
+function vdNum(n){ return Number(n||0).toLocaleString('en-IN'); }
+function vdIstToday(){ return new Date(new Date().getTime() + 5.5*3600*1000).toISOString().slice(0,10); }
+function vdIstMinus(n){ return new Date(new Date().getTime() + 5.5*3600*1000 - n*86400000).toISOString().slice(0,10); }
+function vdRangeUTC(f,t){ return { from:new Date(f+'T00:00:00+05:30').toISOString(), to:new Date(t+'T23:59:59+05:30').toISOString() }; }
+
+var vdState = { preset:'today', from:'', to:'' };
+var VSDD = {
+  campaign:{ options:[], value:'', inputId:'vdCampaignInput', listId:'vdCampaignList', allLabel:'All campaigns' },
+  member:{   options:[], value:'', inputId:'vdMemberInput',   listId:'vdMemberList',   allLabel:'All members' }
+};
+
+function vdToggle(){
+  var b = $('vdBody'), btn = $('vdToggleBtn');
+  b.classList.toggle('collapsed');
+  btn.textContent = b.classList.contains('collapsed') ? 'Show ▼' : 'Hide ▲';
+}
+
+function vdSetPreset(preset){
+  vdState.preset = preset;
+  document.querySelectorAll('#vdPresets .vd-chip').forEach(function(c){ c.classList.toggle('active', c.dataset.preset===preset); });
+  var wrap = $('vdCustomWrap');
+  if (preset==='custom'){ wrap.style.display='flex'; vdOnCustom(); return; }
+  wrap.style.display='none';
+  var today = vdIstToday();
+  if (preset==='today'){ vdState.from=today; vdState.to=today; }
+  else if (preset==='yesterday'){ var y=vdIstMinus(1); vdState.from=y; vdState.to=y; }
+  else if (preset==='week'){ vdState.from=vdIstMinus(6); vdState.to=today; }
+  else if (preset==='15days'){ vdState.from=vdIstMinus(14); vdState.to=today; }
+  else if (preset==='month'){ vdState.from=vdIstMinus(29); vdState.to=today; }
+  else if (preset==='all'){ vdState.from='2020-01-01'; vdState.to=today; }
+  vdUpdateSummary();
+  vdLoad();
+}
+function vdOnCustom(){
+  vdState.from = $('vdFrom').value; vdState.to = $('vdTo').value;
+  vdUpdateSummary();
+  if (vdState.from && vdState.to) vdLoad();
+}
+function vdUpdateSummary(){
+  var el = $('vdSummary'); if (!el) return;
+  if (!vdState.from || !vdState.to){ el.textContent='No date selected'; return; }
+  if (vdState.preset==='all'){ el.textContent='All time'; return; }
+  el.textContent = vdState.from===vdState.to ? ('Date: '+vdState.from) : (vdState.from+'  →  '+vdState.to);
+}
+
+// searchable dropdowns
+function vsddSetOptions(name, options){ VSDD[name].options = [{value:'',label:VSDD[name].allLabel}].concat(options||[]); }
+function vsddOpen(name){ vsddRender(name,''); $(VSDD[name].listId).classList.add('open'); }
+function vsddFilter(name){ vsddRender(name, ($(VSDD[name].inputId).value||'').toLowerCase()); $(VSDD[name].listId).classList.add('open'); }
+function vsddRender(name, q){
+  var d = VSDD[name];
+  var opts = d.options.filter(function(o){ return !q || o.label.toLowerCase().indexOf(q)!==-1; });
+  var list = $(d.listId);
+  if (opts.length===0){ list.innerHTML='<div class="vsdd-empty">No matches</div>'; return; }
+  list.innerHTML = opts.map(function(o){
+    return '<div class="vsdd-opt'+(d.value===o.value?' sel':'')+'" onclick="vsddPick(\''+name+'\',\''+encodeURIComponent(o.value)+'\',\''+encodeURIComponent(o.label)+'\')">'+escHtml(o.label)+'</div>';
+  }).join('');
+}
+function vsddPick(name, encVal, encLabel){
+  var d = VSDD[name];
+  d.value = decodeURIComponent(encVal);
+  $(d.inputId).value = d.value ? decodeURIComponent(encLabel) : '';
+  $(d.listId).classList.remove('open');
+  vdLoad();
+}
+document.addEventListener('click', function(e){
+  ['campaign','member'].forEach(function(name){
+    var d = VSDD[name]; var listEl = $(d.listId), inEl = $(d.inputId);
+    if (listEl && inEl && !listEl.contains(e.target) && e.target!==inEl) listEl.classList.remove('open');
+  });
+});
+
+function vdLoadFilters(){
+  api('/rest/v1/trial_campaigns?select=key,name&order=name.asc').then(function(c){
+    vsddSetOptions('campaign', (c||[]).map(function(x){ return {value:x.key, label:x.name||x.key}; }));
+  }).catch(function(e){ console.warn('vd campaign load:', e.message); });
+  api('/rest/v1/trial_team_members?select=phone,name&active=eq.true&order=name.asc').then(function(m){
+    vsddSetOptions('member', (m||[]).map(function(x){ return {value:x.phone, label:x.name||x.phone}; }));
+  }).catch(function(e){ console.warn('vd member load:', e.message); });
+}
+
+function vdLoad(){
+  if (!vdState.from || !vdState.to) return;
+  $('vdCards').innerHTML = '<div class="vd-empty" style="grid-column:1/-1">Loading…</div>';
+  var r = vdRangeUTC(vdState.from, vdState.to);
+  var qs = '/rest/v1/trial_photos?select=id,vehicle_number,mode,campaign_key,member_name,member_phone,is_verified,rejected,captured_at'
+         + '&deleted_at=is.null&captured_at=gte.'+r.from+'&captured_at=lte.'+r.to
+         + '&order=captured_at.desc&limit=50000';
+  if (VSDD.campaign.value) qs += '&campaign_key=eq.'+encodeURIComponent(VSDD.campaign.value);
+  if (VSDD.member.value)   qs += '&member_phone=eq.'+encodeURIComponent(VSDD.member.value);
+  api(qs).then(function(photos){ vdRender(photos||[]); }).catch(function(err){
+    $('vdCards').innerHTML = '<div class="vd-empty" style="grid-column:1/-1;color:var(--err)">Load failed: '+escHtml(err.message)+'</div>';
+  });
+}
+
+function vdRender(photos){
+  var total=photos.length, verified=0, rejected=0, pending=0, hoodP=0, backP=0;
+  var uVeh={}, uHood={}, uBack={}, byCamp={}, byMem={}, campNames={};
+  photos.forEach(function(p){
+    if (p.is_verified===true) verified++; else if (p.rejected===true) rejected++; else pending++;
+    var mode=(p.mode||'').toLowerCase();
+    var isH=mode==='hood', isB=(mode==='back_panel'||mode==='back');
+    if (isH) hoodP++; if (isB) backP++;
+    var vn = p.vehicle_number ? String(p.vehicle_number).toUpperCase().replace(/[^A-Z0-9]/g,'') : '';
+    if (vn){ uVeh[vn]=true; if(isH)uHood[vn]=true; if(isB)uBack[vn]=true; }
+    var ck = p.campaign_key||'(none)';
+    if (!byCamp[ck]) byCamp[ck]={total:0,verified:0,veh:{},hood:{},back:{}};
+    byCamp[ck].total++; if(p.is_verified)byCamp[ck].verified++;
+    if(vn){ byCamp[ck].veh[vn]=true; if(isH)byCamp[ck].hood[vn]=true; if(isB)byCamp[ck].back[vn]=true; }
+    var mk = p.member_phone||p.member_name||'(unknown)';
+    if (!byMem[mk]) byMem[mk]={total:0,verified:0,veh:{},name:p.member_name||p.member_phone||'Unknown'};
+    byMem[mk].total++; if(p.is_verified)byMem[mk].verified++; if(vn)byMem[mk].veh[vn]=true;
+    if(p.member_name) byMem[mk].name=p.member_name;
+  });
+  VSDD.campaign.options.forEach(function(o){ if(o.value) campNames[o.value]=o.label; });
+
+  var uCount=Object.keys(uVeh).length, uH=Object.keys(uHood).length, uB=Object.keys(uBack).length;
+  var vpct = total ? Math.round(verified/total*100) : 0;
+  function c(cls,lbl,val,sub){ return '<div class="vd-card '+cls+'"><div class="vc-lbl">'+lbl+'</div><div class="vc-val">'+vdNum(val)+'</div>'+(sub?'<div class="vc-sub">'+sub+'</div>':'')+'</div>'; }
+  $('vdCards').innerHTML =
+    c('c-total','📸 Total Photos',total,'') +
+    c('c-verified','✅ Verified',verified,vpct+'% of total') +
+    c('c-pending','⏳ Pending',pending,'') +
+    c('c-vehicles','🛺 Unique Vehicles',uCount,'') +
+    c('c-hood','🛺 Auto Hood (unique)',uH,vdNum(hoodP)+' photos') +
+    c('c-back','📋 Back Panel (unique)',uB,vdNum(backP)+' photos');
+
+  // campaign table
+  var crows = Object.keys(byCamp).map(function(ck){ var x=byCamp[ck]; return {name:campNames[ck]||ck,total:x.total,verified:x.verified,veh:Object.keys(x.veh).length,hood:Object.keys(x.hood).length,back:Object.keys(x.back).length}; }).sort(function(a,b){return b.total-a.total;});
+  if (crows.length===0){ $('vdCampaignTable').innerHTML='<div class="vd-empty">No data</div>'; }
+  else {
+    var ch='<table class="vd-tbl"><thead><tr><th>Campaign</th><th class="n">Photos</th><th class="n">Verified</th><th class="n">Veh</th><th class="n">Hood</th><th class="n">Back</th></tr></thead><tbody>';
+    crows.forEach(function(r){ ch+='<tr><td class="nm">'+escHtml(r.name)+'</td><td class="n">'+vdNum(r.total)+'</td><td class="n">'+vdNum(r.verified)+'</td><td class="n">'+vdNum(r.veh)+'</td><td class="n">'+vdNum(r.hood)+'</td><td class="n">'+vdNum(r.back)+'</td></tr>'; });
+    ch+='</tbody></table>'; $('vdCampaignTable').innerHTML=ch;
+  }
+  // member table
+  var mrows = Object.keys(byMem).map(function(mk){ var x=byMem[mk]; return {name:x.name,total:x.total,verified:x.verified,veh:Object.keys(x.veh).length}; }).sort(function(a,b){return b.total-a.total;});
+  if (mrows.length===0){ $('vdMemberTable').innerHTML='<div class="vd-empty">No data</div>'; }
+  else {
+    var mh='<table class="vd-tbl"><thead><tr><th>Member</th><th class="n">Photos</th><th class="n">Verified</th><th class="n">Veh</th></tr></thead><tbody>';
+    mrows.forEach(function(r){ mh+='<tr><td class="nm">'+escHtml(r.name)+'</td><td class="n">'+vdNum(r.total)+'</td><td class="n">'+vdNum(r.verified)+'</td><td class="n">'+vdNum(r.veh)+'</td></tr>'; });
+    mh+='</tbody></table>'; $('vdMemberTable').innerHTML=mh;
+  }
+}
 function formatTime(iso) { if (!iso) return ''; return new Date(iso).toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit',hour12:true}); }
 function formatDate(iso) { if (!iso) return ''; return new Date(iso).toLocaleDateString('en-IN', {day:'2-digit',month:'short'}); }
 function extractCity(addr) {
@@ -343,12 +593,16 @@ function todayIST() {
 function init() {
   $('filterDate').value = todayIST();
   loadFilters(); loadQueue();
+  vdSetPreset('today'); // load verification stats dashboard
 }
 function resetFilters() {
   $('filterDate').value = todayIST();
   $('filterCampaign').value = ''; $('filterMember').value = ''; loadQueue();
 }
 function loadFilters() {
+
+  // Also feed the dashboard's searchable dropdowns
+  vdLoadFilters();
   api('/rest/v1/trial_campaigns?select=key,name,serial_tracking&active=eq.true&order=name.asc').then(function(c){
     var sel = $('filterCampaign'); sel.innerHTML = '<option value="">All Campaigns</option>';
     state.serialCampaigns = {};
