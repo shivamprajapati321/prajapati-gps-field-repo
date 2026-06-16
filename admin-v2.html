@@ -3617,7 +3617,7 @@ label {
         </div>
         <div class="stat">
           <div class="stat-icon" style="background:rgba(38,208,206,0.12); color:var(--accent-deep);"><i class="ti ti-car"></i></div>
-          <div class="stat-label">Unique vehicles</div>
+          <div class="stat-label">Field total (veh)</div>
           <div class="stat-value" id="rVehicles">—</div>
           <div class="stat-meta" id="rVehiclesMeta">documented</div>
         </div>
@@ -8109,6 +8109,22 @@ function loadReports() {
     var pending = photos.filter(function(p){ return !p.is_verified && !p.rejected; }).length;
     var uniqueVehicles = new Set();
     photos.forEach(function(p) { if (p.vehicle_number) uniqueVehicles.add(p.vehicle_number.toUpperCase()); });
+
+    // Field-claimed total (matches Field Work Report): per date+name+work+location unique veh, summed
+    var fcRows = {};
+    photos.forEach(function(p){
+      if (p.rejected || p.deleted_at) return;
+      var d = p.captured_at ? new Date(p.captured_at) : null;
+      var dateStr = d ? d.toLocaleDateString('en-CA', {timeZone:'Asia/Kolkata'}) : '—';
+      var name = (p.member_name || p.member_phone || '—');
+      var work = p.campaign_key || '—';
+      var loc = (p.city || '—');
+      var veh = ((p.verified_plate || p.vehicle_number || '') + '').trim().toUpperCase();
+      var key = dateStr + '||' + name + '||' + work + '||' + loc;
+      if (!fcRows[key]) fcRows[key] = {};
+      if (veh && veh.length >= 4) fcRows[key][veh] = 1; else fcRows[key]['__row_' + p.id] = 1;
+    });
+    var fieldClaimedTotal = Object.keys(fcRows).reduce(function(s,k){ return s + Object.keys(fcRows[k]).length; }, 0);
     
     $('rTotalPhotos').textContent = photos.length.toLocaleString('en-IN');
     $('rTotalMeta').textContent = photos.length > 0 ? 'in selected range' : 'no data';
@@ -8116,7 +8132,8 @@ function loadReports() {
     var verPct = photos.length > 0 ? Math.round((verified/photos.length)*100) : 0;
     $('rVerifiedMeta').textContent = verPct + '% of total';
     $('rPending').textContent = pending.toLocaleString('en-IN');
-    $('rVehicles').textContent = uniqueVehicles.size.toLocaleString('en-IN');
+    $('rVehicles').textContent = fieldClaimedTotal.toLocaleString('en-IN');
+    if ($('rVehiclesMeta')) $('rVehiclesMeta').textContent = uniqueVehicles.size.toLocaleString('en-IN') + ' unique (field total)';
     
     // Render all views
     renderLocationReport(photos);
@@ -8210,6 +8227,30 @@ function renderLocationReport(photos) {
 }
 
 function renderCampaignReport(photos) {
+  // Field-claimed totals (SAME logic as Field Work Report): group by date+name+work+location,
+  // count unique vehicles per group (plate-less counted per-photo), then sum per campaign.
+  var fieldClaimByCamp = {};
+  (function(){
+    var rows = {};
+    photos.forEach(function(p){
+      if (p.rejected || p.deleted_at) return;
+      var ck = p.campaign_key || 'unknown';
+      var d = p.captured_at ? new Date(p.captured_at) : null;
+      var dateStr = d ? d.toLocaleDateString('en-CA', {timeZone:'Asia/Kolkata'}) : '—';
+      var name = (p.member_name || p.member_phone || '—');
+      var loc = (p.city || '—');
+      var veh = ((p.verified_plate || p.vehicle_number || '') + '').trim().toUpperCase();
+      var key = ck + '||' + dateStr + '||' + name + '||' + loc;
+      if (!rows[key]) rows[key] = { ck: ck, vehicles: {} };
+      if (veh && veh.length >= 4) rows[key].vehicles[veh] = 1;
+      else rows[key].vehicles['__row_' + p.id] = 1;
+    });
+    Object.keys(rows).forEach(function(k){
+      var r = rows[k];
+      fieldClaimByCamp[r.ck] = (fieldClaimByCamp[r.ck] || 0) + Object.keys(r.vehicles).length;
+    });
+  })();
+
   var byCamp = {};
   photos.forEach(function(p) {
     var key = p.campaign_key || 'unknown';
@@ -8268,8 +8309,10 @@ function renderCampaignReport(photos) {
     var name = campInfo ? (campInfo.name || c.key) : c.key;
     var client = campInfo ? (campInfo.client_name || '') : '';
     var target = campInfo ? (Number(campInfo.target_vehicles) || Number(campInfo.total_quantity) || Number(campInfo.target_count) || 100) : 100;
-    // % of target based on UNIQUE VEHICLES (not photos)
-    var targetPct = Math.min(100, Math.round((c.totalVehicles/target)*100));
+    // Field-claimed total (matches Field Work Report). Fallback to unique if missing.
+    var fieldClaimed = (fieldClaimByCamp[c.key] != null) ? fieldClaimByCamp[c.key] : c.totalVehicles;
+    // Progress vs target uses field-claimed (the "asli kaam" number)
+    var targetPct = Math.min(100, Math.round((fieldClaimed/target)*100));
     var fillClass = targetPct >= 75 ? '' : (targetPct >= 40 ? 'warn' : 'danger');
 
     // ── Operations (printing / stitching / execution) for THIS campaign ──
@@ -8330,7 +8373,8 @@ function renderCampaignReport(photos) {
                 '</div>' +
                 '<div class="location-progress-block">' +
                   '<div style="font-size:10px;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:2px;">Field branding</div>' +
-                  '<div class="location-progress-num">' + c.totalVehicles + ' <small>/ ' + target + ' veh</small></div>' +
+                  '<div class="location-progress-num">' + fieldClaimed.toLocaleString('en-IN') + ' <small>/ ' + target + ' veh</small></div>' +
+                  (fieldClaimed !== c.totalVehicles ? '<div style="font-size:10px;color:var(--text-3);margin-top:1px;">' + c.totalVehicles + ' unique photographed</div>' : '') +
                   '<div class="location-progress-pct" style="color:' + (targetPct >= 75 ? 'var(--success)' : (targetPct >= 40 ? 'var(--warn)' : 'var(--danger)')) + ';">' + targetPct + '% of target</div>' +
                 '</div>' +
               '</div>' +
