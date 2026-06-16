@@ -388,17 +388,14 @@ const SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
 const WATI_FUNCTION_URL = SUPABASE_URL + '/functions/v1/wati-send';
 
 const STAGES = [
-  { key: 'printing', label: 'Printing', icon: '🖨️', roles: ['printing', 'printer'] },
-  { key: 'stitching', label: 'Stitching', icon: '🧵', roles: ['stitching', 'tailor'] },
-  { key: 'field_execution', label: 'Field Execution', icon: '📍', roles: ['field', 'field_worker'] },
-  { key: 'delivery', label: 'Delivery', icon: '🚚', roles: ['delivery', 'driver'] }
+  { key: 'printing', label: 'Printing', icon: '🖨️', roles: ['printing', 'printer'] }
 ];
 
 const state = {
   user: null,
   designs: [],
   campaigns: [],
-  operators: { printing: [], stitching: [], field_execution: [], delivery: [] },
+  operators: { printing: [] },
   assignments: [],
   currentAssign: null,
   // Production / performance
@@ -516,14 +513,14 @@ async function loadData() {
     const [designs, assignments, allOperators] = await Promise.all([
       api('/rest/v1/v_designs_pending_assignment?select=*&limit=300'),
       api('/rest/v1/trial_campaign_assignments?status=in.(pending,in_progress)&select=*'),
-      api('/rest/v1/trial_team_members?active=eq.true&role=in.(printing,printer,stitching,tailor,field,field_worker,delivery,driver)&select=id,name,phone,role&order=name.asc')
+      api('/rest/v1/trial_team_members?active=eq.true&role=in.(printing,printer)&select=id,name,phone,role&order=name.asc')
     ]);
     
     state.designs = designs || [];
     state.assignments = assignments || [];
     
     // Group operators by stage
-    state.operators = { printing: [], stitching: [], field_execution: [], delivery: [] };
+    state.operators = { printing: [] };
     (allOperators || []).forEach(op => {
       const role = (op.role || '').toLowerCase();
       STAGES.forEach(stage => {
