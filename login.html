@@ -456,7 +456,16 @@ let otpExpiresAt = null;
 function getReturnUrl() {
   try {
     var rt = new URLSearchParams(window.location.search).get('return');
-    if (rt && rt.charAt(0) === '/' && rt.indexOf('//') !== 0) return rt;
+    if (rt && rt.charAt(0) === '/' && rt.indexOf('//') !== 0) {
+      // Only honour the return URL if the logged-in user can actually access it.
+      // Otherwise a printing operator could be bounced back to assign-operators.html.
+      try {
+        if (typeof AccessGuard !== 'undefined' && AccessGuard.canAccessPage) {
+          if (!AccessGuard.canAccessPage(rt)) return null;  // not allowed → use role default
+        }
+      } catch (e) {}
+      return rt;
+    }
   } catch (e) {}
   return null;
 }
