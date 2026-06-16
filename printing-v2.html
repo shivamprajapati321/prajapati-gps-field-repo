@@ -640,10 +640,11 @@ function renderCompletedTab() {
         <div class="job-head">
           <div style="flex:1;min-width:0">
             <div class="job-title">
-              ${job.job_type_icon || '🖨️'} ${escapeHtml(job.design_name || 'Job')}
+              ${job.job_type_icon || '🖨️'} ${escapeHtml(job.campaign_name || job.design_name || 'Printing Job')}
             </div>
             <div class="job-meta">
               <span>🎟️ <strong>Job #${(job.assignment_id || '').slice(-6).toUpperCase()}</strong></span>
+              ${job.design_name && job.design_name !== job.campaign_name && !/^(design job|job|design)$/i.test(job.design_name.trim()) ? `<span>🎨 ${escapeHtml(job.design_name)}</span>` : ''}
               ${job.location_name ? `<span>📍 ${escapeHtml(job.location_name)}</span>` : (job.location_city ? `<span>📍 ${escapeHtml(job.location_city)}</span>` : '')}
               ${completedDate ? `<span>✅ Completed: ${completedDate}</span>` : ''}
             </div>
@@ -696,10 +697,11 @@ function renderJobsTab() {
         <div class="job-head">
           <div style="flex:1;min-width:0">
             <div class="job-title">
-              ${job.job_type_icon || '🖨️'} ${escapeHtml(job.design_name || 'Design Job')}
+              ${job.job_type_icon || '🖨️'} ${escapeHtml(job.campaign_name || job.design_name || 'Printing Job')}
             </div>
             <div class="job-meta">
               <span>🎟️ <strong>Job #${(job.assignment_id || '').slice(-6).toUpperCase()}</strong></span>
+              ${job.design_name && job.design_name !== job.campaign_name && !/^(design job|job|design)$/i.test(job.design_name.trim()) ? `<span>🎨 ${escapeHtml(job.design_name)}</span>` : ''}
               ${job.location_name ? `<span>📍 ${escapeHtml(job.location_name)}</span>` : (job.location_city ? `<span>📍 ${escapeHtml(job.location_city)}</span>` : '')}
             </div>
             <div class="job-tags">
@@ -868,12 +870,13 @@ function openLogModal(assignmentId) {
   
   state.currentLogJob = job;
   
-  document.getElementById('logModalTitle').textContent = '✏️ Log Work — ' + (job.design_name || 'Job #' + (job.assignment_id || '').slice(-6).toUpperCase());
+  document.getElementById('logModalTitle').textContent = '✏️ Log Work — ' + (job.campaign_name || job.design_name || 'Job #' + (job.assignment_id || '').slice(-6).toUpperCase());
   document.getElementById('logJobInfo').innerHTML = `
     <div class="callout info" style="margin-bottom:0">
       <span>📋</span>
       <div>
-        <strong>${escapeHtml(job.design_name || 'Design Job')}</strong> · Job #${(job.assignment_id || '').slice(-6).toUpperCase()}<br>
+        <strong>${escapeHtml(job.campaign_name || job.design_name || 'Printing Job')}</strong> · Job #${(job.assignment_id || '').slice(-6).toUpperCase()}<br>
+        ${job.design_name && job.design_name !== job.campaign_name && !/^(design job|job|design)$/i.test(job.design_name.trim()) ? '<small>🎨 ' + escapeHtml(job.design_name) + '</small><br>' : ''}
         <small>${escapeHtml(job.location_name || job.location_city || '')} · Total: ${(job.quantity_assigned || 0).toLocaleString('en-IN')} · Done: ${(job.quantity_done || 0).toLocaleString('en-IN')} · Outstanding: ${Math.max(0, (job.quantity_assigned || 0) - (job.quantity_done || 0)).toLocaleString('en-IN')}</small>
       </div>
     </div>
