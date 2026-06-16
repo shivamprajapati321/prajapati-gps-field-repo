@@ -260,14 +260,17 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--txt);min-
       </div>
     </div>
     
-    <div class="filters">
-      <div class="filter-group"><label>Date</label><input type="date" id="filterDate" /></div>
-      <div class="filter-group"><label>Campaign</label><select id="filterCampaign"><option value="">All</option></select></div>
-      <div class="filter-group"><label>Team Member</label><select id="filterMember"><option value="">All</option></select></div>
-      <button class="filter-btn" onclick="loadQueue()">🔍 Apply</button>
-      <button class="filter-btn reset" onclick="resetFilters()">Reset</button>
+    <!-- Queue filters are now driven by the Verification Stats dashboard above (single filter, both update) -->
+    <input type="hidden" id="filterDate" />
+    <input type="hidden" id="filterCampaign" value="" />
+    <input type="hidden" id="filterMember" value="" />
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+      <div style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;">
+        <span style="font-size:14px;">🔻</span> Queue filter: <b id="queueFilterLabel" style="color:var(--p)">Today</b>
+      </div>
+      <button class="filter-btn reset" onclick="resetFilters()" style="padding:7px 14px;font-size:13px;">↺ Reset to Today</button>
     </div>
-    
+
     <div class="status-tabs">
       <button class="tab-btn active" data-status="pending" onclick="switchTab('pending')">⏳ Pending <span class="tab-count" id="tabPending">0</span></button>
       <button class="tab-btn" data-status="verified" onclick="switchTab('verified')">✅ Verified <span class="tab-count" id="tabVerified">0</span></button>
@@ -478,6 +481,32 @@ function vdLoad(){
   api(qs).then(function(photos){ vdRender(photos||[]); }).catch(function(err){
     $('vdCards').innerHTML = '<div class="vd-empty" style="grid-column:1/-1;color:var(--err)">Load failed: '+escHtml(err.message)+'</div>';
   });
+
+  // ── SINGLE FILTER: drive the verification queue from the same dashboard filter ──
+  vdSyncQueue();
+}
+
+// Push dashboard filter → hidden queue inputs, then reload the queue
+function vdSyncQueue(){
+  // Date: queue uses a single date input. If preset is a single day → use it; otherwise use the "to" (latest) day.
+  var singleDay = (vdState.from === vdState.to);
+  if ($('filterDate')) $('filterDate').value = singleDay ? vdState.from : '';
+  if ($('filterCampaign')) $('filterCampaign').value = VSDD.campaign.value || '';
+  if ($('filterMember')) $('filterMember').value = VSDD.member.value || '';
+
+  // Update the small label
+  var lbl = $('queueFilterLabel');
+  if (lbl) {
+    var dtxt = vdState.preset === 'all' ? 'All time'
+             : (singleDay ? vdState.from : (vdState.from + ' → ' + vdState.to));
+    var parts = [dtxt];
+    if (VSDD.campaign.value) { var co = VSDD.campaign.options.find(function(o){return o.value===VSDD.campaign.value;}); parts.push(co ? co.label : 'Campaign'); }
+    if (VSDD.member.value) { var mo = VSDD.member.options.find(function(o){return o.value===VSDD.member.value;}); parts.push(mo ? mo.label : 'Member'); }
+    lbl.textContent = parts.join(' · ');
+  }
+
+  // Reload queue with the same filter (loadQueue reads the hidden inputs + supports a date range)
+  if (typeof loadQueue === 'function') loadQueue(vdState.from, vdState.to);
 }
 
 function vdRender(photos){
@@ -521,7 +550,16 @@ function vdRender(photos){
     ch+='</tbody></table>'; $('vdCampaignTable').innerHTML=ch;
   }
   // member table
-  var mrows = Object.keys(byMem).map(function(mk){ var x=byMem[mk]; return {name:x.name,total:x.total,verified:x.verified,veh:Object.keys(x.veh).length}; }).sort(function(a,b){return b.total-a.total;});
+  var mrows = Object.keys(byMem).map(function(mk){ var x=byMem[mk]; return {name:x.name,total:x.total,verified:x.verified,veh:Object.keys(x.veh).length,phone:(mk&&/^\d/.test(mk))?mk:''}; }).sort(function(a,b){return b.total-a.total;});
+  // disambiguate duplicate names by appending last-4 of phone
+  var nameFreq = {};
+  mrows.forEach(function(r){ nameFreq[r.name] = (nameFreq[r.name]||0) + 1; });
+  mrows.forEach(function(r){
+    if (nameFreq[r.name] > 1 && r.phone) {
+      var last4 = String(r.phone).replace(/\D/g,'').slice(-4);
+      r.name = r.name + ' (…' + last4 + ')';
+    }
+  });
   if (mrows.length===0){ $('vdMemberTable').innerHTML='<div class="vd-empty">No data</div>'; }
   else {
     var mh='<table class="vd-tbl"><thead><tr><th>Member</th><th class="n">Photos</th><th class="n">Verified</th><th class="n">Veh</th></tr></thead><tbody>';
@@ -591,39 +629,39 @@ function todayIST() {
 }
 
 function init() {
-  $('filterDate').value = todayIST();
-  loadFilters(); loadQueue();
-  vdSetPreset('today'); // load verification stats dashboard
+  loadFilters();
+  vdSetPreset('today'); // loads dashboard → which syncs + loads the queue (single filter)
 }
 function resetFilters() {
-  $('filterDate').value = todayIST();
-  $('filterCampaign').value = ''; $('filterMember').value = ''; loadQueue();
+  // Reset the single dashboard filter back to Today (clears campaign/member, reloads both)
+  VSDD.campaign.value = ''; VSDD.member.value = '';
+  if ($('vdCampaignInput')) $('vdCampaignInput').value = '';
+  if ($('vdMemberInput')) $('vdMemberInput').value = '';
+  vdSetPreset('today');
 }
 function loadFilters() {
-
-  // Also feed the dashboard's searchable dropdowns
+  // Feed the dashboard's searchable dropdowns (single filter for dashboard + queue)
   vdLoadFilters();
+  // Still need serial_tracking info for the verification flow
   api('/rest/v1/trial_campaigns?select=key,name,serial_tracking&active=eq.true&order=name.asc').then(function(c){
-    var sel = $('filterCampaign'); sel.innerHTML = '<option value="">All Campaigns</option>';
     state.serialCampaigns = {};
     (c || []).forEach(function(x){
-      sel.innerHTML += '<option value="' + escHtml(x.key) + '">' + escHtml(x.name) + '</option>';
       if (x.serial_tracking) state.serialCampaigns[x.key] = true;
     });
   });
-  api('/rest/v1/trial_team_members?select=phone,name&active=eq.true&role=eq.field&order=name.asc').then(function(m){
-    var sel = $('filterMember'); sel.innerHTML = '<option value="">All Members</option>';
-    (m || []).forEach(function(x){ sel.innerHTML += '<option value="' + escHtml(x.phone) + '">' + escHtml(x.name) + '</option>'; });
-  });
 }
 
-function loadQueue() {
+function loadQueue(rangeFrom, rangeTo) {
   var date = $('filterDate').value, campaign = $('filterCampaign').value, member = $('filterMember').value;
   $('vehicleList').innerHTML = '<div class="loading"><div class="spinner"></div><div style="margin-top:12px;">Loading...</div></div>';
   // Filter out deleted_at (soft-deleted records)
   // limit=5000 matches admin-v2.html reports
   var qs = '/rest/v1/trial_photos?select=*&deleted_at=is.null&order=captured_at.desc&limit=5000';
-  if (date) {
+  // Date range (from dashboard presets) takes priority; else single date input
+  if (rangeFrom && rangeTo) {
+    qs += '&captured_at=gte.' + new Date(rangeFrom + 'T00:00:00+05:30').toISOString();
+    qs += '&captured_at=lte.' + new Date(rangeTo + 'T23:59:59+05:30').toISOString();
+  } else if (date) {
     qs += '&captured_at=gte.' + new Date(date + 'T00:00:00+05:30').toISOString();
     qs += '&captured_at=lte.' + new Date(date + 'T23:59:59+05:30').toISOString();
   }
