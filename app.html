@@ -466,6 +466,40 @@
   </style>
 </head>
 <body>
+  <script src="/lib/access-guard.js"></script>
+  <script>
+    // ── ROLE GUARD: app.html is the admin-hub shell. Only admin/manager/sales
+    // roles belong here. Operational roles (printing, stitching, delivery,
+    // verifier, field, accountant) must go straight to THEIR own page — not the
+    // admin hub. This is defense-in-depth: even if login routing is bypassed,
+    // app.html self-redirects each role to the correct landing page.
+    (function(){
+      try {
+        if (typeof AccessGuard === 'undefined') return;  // guard lib missing → don't block
+        var user = AccessGuard.getUser ? AccessGuard.getUser() : null;
+        if (!user) {
+          // not logged in → send to login, remember intent
+          location.replace('/login.html?return=' + encodeURIComponent('/app.html' + (location.hash||'')));
+          return;
+        }
+        var role = String(user.role || '').toLowerCase();
+        var ADMIN_HUB_ROLES = [
+          'owner','admin','operations_manager','ops_manager','operations',
+          'data_entry','deo','data_manager','design','designer',
+          'sales','hr_sales','sales_admin'
+        ];
+        if (ADMIN_HUB_ROLES.indexOf(role) === -1) {
+          // operational role → their own page (never the admin hub)
+          var home = (AccessGuard.getDefaultHome && AccessGuard.getDefaultHome()) || '/login.html';
+          if (home && home.indexOf('/app.html') === -1) {
+            document.documentElement.style.visibility = 'hidden';
+            location.replace(home);
+            return;
+          }
+        }
+      } catch(e) {}
+    })();
+  </script>
   <script>
     // GUARD: if app.html somehow ends up loaded INSIDE another frame (nested
     // app.html → app.html), that produces a duplicate header. Detect it and
