@@ -527,7 +527,7 @@ async function loadOperatorData() {
   
   // Active jobs from view (auto-filtered to active campaigns only)
   const jobs = await api(`/rest/v1/v_operator_active_jobs?operator_id=eq.${state.user.id}&stage=eq.printing&select=*`);
-  state.jobs = jobs || [];
+  state.jobs = dedupeJobs(jobs || []);
 
   // ── DESIGN FILE FIX: the operator view may not expose the design file URL
   // (designer saves to trial_campaign_designs as design_url OR drive_url, but the
@@ -537,7 +537,7 @@ async function loadOperatorData() {
   
   // Completed jobs (last 30 days)
   const completedJobs = await api(`/rest/v1/v_operator_completed_jobs?operator_id=eq.${state.user.id}&stage=eq.printing&select=*`);
-  state.completedJobs = completedJobs || [];
+  state.completedJobs = dedupeJobs(completedJobs || []);
   
   // Reports: date-wise breakdown last 14 days
   const dateWise = await api(`/rest/v1/trial_work_logs?operator_id=eq.${state.user.id}&stage=eq.printing&log_date=gte.${nDaysAgo(14)}&select=log_date,qty_done,design_id,campaign_id&order=log_date.desc`);
@@ -1023,7 +1023,7 @@ async function loadManagerData() {
     api('/rest/v1/v_operator_today_progress?operator_role=eq.printing&select=*')
   ]);
   
-  state.jobs = allJobs || [];
+  state.jobs = dedupeJobs(allJobs || []);
   state.operators = allOperators || [];
   await enrichJobFiles(state.jobs);
 }
@@ -1267,6 +1267,35 @@ async function saveReassignment() {
 // ═══════════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════════
+
+// Remove duplicate job rows. A job is uniquely identified by its assignment_id
+// (one assignment = one printable design = one row). The view can return the
+// same assignment more than once (joins/multiple cities), which makes the SAME
+// campaign+design appear several times. We collapse to one row per assignment.
+// Fallback key (design_id + campaign_id) handles rows with no assignment_id.
+function dedupeJobs(jobs) {
+  if (!Array.isArray(jobs)) return [];
+  var seen = {};
+  var out = [];
+  jobs.forEach(function(j) {
+    var key = j.assignment_id
+      ? 'a:' + j.assignment_id
+      : 'dc:' + (j.design_id || '') + '|' + (j.campaign_id || '') + '|' + (j.quantity_assigned || '');
+    if (seen[key]) {
+      // Merge: keep the row that already has a file link / more progress
+      var prev = seen[key];
+      if (!prev.drive_url && !prev.supabase_file_url && (j.drive_url || j.supabase_file_url)) {
+        prev.drive_url = j.drive_url || prev.drive_url;
+        prev.supabase_file_url = j.supabase_file_url || prev.supabase_file_url;
+      }
+      if ((j.quantity_done || 0) > (prev.quantity_done || 0)) prev.quantity_done = j.quantity_done;
+      return;
+    }
+    seen[key] = j;
+    out.push(j);
+  });
+  return out;
+}
 
 function escapeHtml(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
