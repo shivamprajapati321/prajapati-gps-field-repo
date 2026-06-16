@@ -91,6 +91,12 @@ function slugify(s){ if (!s) return ''; return String(s).toLowerCase().replace(/
 function genSessionId(){ return 'S' + Date.now().toString(36) + Math.random().toString(36).slice(2,5).toUpperCase(); }
 function fallbackVehicleId(){ var d = new Date(); return 'unk-' + String(d.getHours()).padStart(2,'0') + String(d.getMinutes()).padStart(2,'0') + String(d.getSeconds()).padStart(2,'0'); }
 function getAngleName(slot){
+  // Before photo — clear prefix taaki ZIP/storage mein group ho aur pehle aaye
+  if (slot.pt === 'before'){
+    if (slot.mode === 'hood') return '0-before-hood';
+    if (slot.mode === 'back_panel') return '0-before-back-panel';
+    return '0-before';
+  }
   if (slot.mode === 'hood'){
     var labels = ['back','left','right','front','top'];
     return labels[slot.n - 1] || ('hood-' + slot.n);
@@ -757,8 +763,9 @@ function loadTodayPhotos(){
         byVeh[k].photos.push(p);
       });
       state.todayVehicles = Object.values(byVeh);
-      var hT = state.campaign.hood_photo_count || 0;
-      var bT = state.campaign.back_panel_photo_count || 0;
+      var ec1 = expectedCounts();
+      var hT = ec1.hood;
+      var bT = ec1.back;
       state.todayCount = state.todayVehicles.filter(function(v){
         var hd = v.photos.filter(function(p){ return p.mode==='hood'; }).length;
         var bd = v.photos.filter(function(p){ return p.mode==='back_panel'; }).length;
@@ -801,6 +808,8 @@ function renderHome(){
   var c = state.campaign;
   var hT = c.hood_photo_count || 0;
   var bT = c.back_panel_photo_count || 0;
+  var ecH = expectedCounts();   // before-aware: completion check ke liye
+  var needH = ecH.hood, needB = ecH.back;
   var serverKeys = {};
   state.todayVehicles.forEach(function(v){ serverKeys[v.key] = true; });
   var mergedVehicles = state.todayVehicles.slice();
@@ -816,13 +825,14 @@ function renderHome(){
   var completeCount = mergedVehicles.filter(function(v){
     var hd = v.photos.filter(function(p){return p.mode==='hood';}).length;
     var bd = v.photos.filter(function(p){return p.mode==='back_panel';}).length;
-    return hd >= hT && bd >= bT;
+    return hd >= needH && bd >= needB;
   }).length;
   html += '<div class="hero"><div class="lbl">Today\'s Campaign</div><h2>'+escapeHtml(c.name)+'</h2><div class="meta">'+escapeHtml(c.client_name||'-')+(c.default_city?' · '+escapeHtml(c.default_city):'')+'</div><div class="progress"><div><strong>'+completeCount+'</strong>Complete</div><div><strong>'+vehCount+'</strong>Started</div><div><strong>'+(c.target_count||'∞')+'</strong>Target</div></div></div>';
   var modeLine = '';
-  if (hT > 0 && bT > 0) modeLine = '4 photos per rickshaw (3 hood + 1 back panel)';
-  else if (hT > 0) modeLine = hT + ' hood photos per rickshaw (back, left, right)';
-  else if (bT > 0) modeLine = bT + ' back panel photo per rickshaw';
+  var bf = !!c.before_photo;
+  if (hT > 0 && bT > 0) modeLine = bf ? '6 photos (Hood: 1 before+3 after, Back: 1 before+1 final)' : '4 photos per rickshaw (3 hood + 1 back panel)';
+  else if (hT > 0) modeLine = bf ? (needH + ' hood photos (1 BEFORE + ' + hT + ' after)') : (hT + ' hood photos per rickshaw (back, left, right)');
+  else if (bT > 0) modeLine = bf ? (needB + ' back panel photos (1 BEFORE + 1 final)') : (bT + ' back panel photo per rickshaw');
   else modeLine = 'No media type configured';
   html += '<div class="card"><h3>Capture vehicles</h3><div class="sub">'+modeLine+' · OCR auto-detects plate</div><button class="btn" '+((hT+bT)===0?'disabled':'')+' onclick="startCapture()">📸 Start Capture</button></div>';
   html += '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3 style="margin:0">Aaj ke vehicles ('+vehCount+')</h3><button class="btn btn-g btn-sm" onclick="loadAssignment()" style="padding:5px 12px;font-size:11px">↻ Refresh</button></div>';
@@ -831,7 +841,7 @@ function renderHome(){
     html += mergedVehicles.map(function(v){
       var hd = v.photos.filter(function(p){ return p.mode==='hood'; }).length;
       var bd = v.photos.filter(function(p){ return p.mode==='back_panel'; }).length;
-      var complete = hd >= hT && bd >= bT;
+      var complete = hd >= needH && bd >= needB;
       var statusCls = complete ? 'complete' : 'partial';
       var statusTxt = complete ? 'complete' : 'partial';
       var time = v.firstAt ? new Date(v.firstAt).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'}) : '';
@@ -1052,13 +1062,44 @@ function applyManualGps(){
 }
 
 // ═══ CAPTURE FLOW ═══
+// Expected photo counts — before_photo ON pe har mode mein +1 (Before slot)
+// Returns {hood, back} = kitne photos chahiye complete hone ke liye
+function expectedCounts(){
+  var hT = state.campaign.hood_photo_count || 0;
+  var bT = state.campaign.back_panel_photo_count || 0;
+  if (state.campaign.before_photo){
+    if (hT > 0) hT = hT + 1;   // 3 after + 1 before = 4
+    if (bT > 0) bT = bT + 1;   // 1 final + 1 before = 2
+  }
+  return { hood: hT, back: bT };
+}
+
 function buildSlotList(){
   var slots = [];
   var hT = state.campaign.hood_photo_count || 0;
   var bT = state.campaign.back_panel_photo_count || 0;
+  var beforeOn = !!state.campaign.before_photo;
   var hoodLabels = ['Back', 'Left', 'Right', 'Front', 'Top'];
-  for (var i = 1; i <= hT; i++){ slots.push({ key: 'hood_'+i, mode: 'hood', n: i, label: 'Hood ' + (hoodLabels[i-1] || i) }); }
-  for (var j = 1; j <= bT; j++){ slots.push({ key: 'back_panel_'+j, mode: 'back_panel', n: j, label: bT === 1 ? 'Back Panel' : 'Back Panel ' + j }); }
+
+  // HOOD: agar before ON → pehle 1 Before slot, phir After slots
+  if (hT > 0){
+    if (beforeOn){
+      slots.push({ key: 'hood_before', mode: 'hood', n: 0, pt: 'before', label: 'BEFORE — Hood (khaali vehicle)' });
+    }
+    for (var i = 1; i <= hT; i++){
+      slots.push({ key: 'hood_'+i, mode: 'hood', n: i, pt: 'after', label: (beforeOn ? 'AFTER — ' : 'Hood ') + (hoodLabels[i-1] || i) });
+    }
+  }
+
+  // BACK PANEL: agar before ON → pehle 1 Before, phir Final
+  if (bT > 0){
+    if (beforeOn){
+      slots.push({ key: 'back_panel_before', mode: 'back_panel', n: 0, pt: 'before', label: 'BEFORE — Back Panel' });
+    }
+    for (var j = 1; j <= bT; j++){
+      slots.push({ key: 'back_panel_'+j, mode: 'back_panel', n: j, pt: 'after', label: beforeOn ? 'AFTER — Back Panel' : (bT === 1 ? 'Back Panel' : 'Back Panel ' + j) });
+    }
+  }
   return slots;
 }
 
@@ -1083,7 +1124,8 @@ window.continueVehicle = function(key){
   state.vehicleNumber = veh.vehicle_number;
   state.ocrAttempted = !!veh.vehicle_number;
   veh.photos.forEach(function(p){
-    var k = p.mode + '_' + p.photo_number;
+    // Before photos ka slot key 'mode_before' hai (photo_number=0); baaki 'mode_N'
+    var k = (p.photo_type === 'before') ? (p.mode + '_before') : (p.mode + '_' + p.photo_number);
     state.serverPhotoUrls[k] = p.public_url;
   });
   enterCaptureScreen();
@@ -1919,6 +1961,7 @@ function buildPhotoMetadata(key){
     vehicle_number: state.vehicleNumber || null,
     mode: slot.mode,
     photo_number: slot.n,
+    photo_type: slot.pt || 'after',
     total_expected: slot.mode === 'hood' ? (state.campaign.hood_photo_count||3) : (state.campaign.back_panel_photo_count||1),
     captured_at: new Date().toISOString(),
     latitude: state.gps.lat,

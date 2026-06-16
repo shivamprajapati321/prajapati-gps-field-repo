@@ -1758,7 +1758,16 @@ async function generatePPT() {
         batch.map(async (vehicle) => {
           // All photos for THIS vehicle in parallel
           const photoData = await Promise.all(
-            vehicle.photos.map(photo => fetchImageWithDims(photo.public_url))
+            vehicle.photos.map(async function(photo){
+              var dims = await fetchImageWithDims(photo.public_url);
+              // photo_type + url merge karo taaki slide BEFORE/AFTER detect kar sake
+              if (dims) {
+                dims.photo_type = photo.photo_type;
+                dims.url = photo.public_url;
+                dims.photo_number = photo.photo_number;
+              }
+              return dims;
+            })
           );
           return { vehicle, photoData };
         })
@@ -2072,15 +2081,23 @@ function addHoodSlide(pptx, vehicle, photoData, campaign, brand) {
     });
   });
   
-  // ─── PHOTOS (3 columns, FIT not stretch) ───
-  const labels = ['Front View', 'Left Side', 'Right Side'];
+  // ─── PHOTOS (FIT not stretch) — before-aware ───
+  // Before photo ka photo_number=0 → sort se pehle aati hai (photoData[0])
+  var hasBeforeHood = photoData.some(function(pd){
+    return pd && (pd.photo_type === 'before' || (pd.url||pd.public_url||'').toLowerCase().indexOf('0-before') !== -1);
+  });
+  // Normal: 3 photos [Front, Left, Right]. Before ON: 4 photos [BEFORE, After Front/Left/Right]
+  var labels = hasBeforeHood
+    ? ['BEFORE', 'AFTER · Front', 'AFTER · Left', 'AFTER · Right']
+    : ['Front View', 'Left Side', 'Right Side'];
+  var photoCount = hasBeforeHood ? 4 : 3;
   const photoY = 1.7;
   const photoH = 4.9;
   const labelY = photoY + photoH + 0.15;
   const totalGap = 0.3;
-  const photoBoxW = (W - 0.8 - totalGap * 2) / 3; // 3 boxes with 0.3" gaps, 0.4" margins
+  const photoBoxW = (W - 0.8 - totalGap * (photoCount - 1)) / photoCount;
   
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < photoCount; i++) {
     const boxX = 0.4 + i * (photoBoxW + totalGap);
     const photo = photoData[i];
     
@@ -2109,12 +2126,13 @@ function addHoodSlide(pptx, vehicle, photoData, campaign, brand) {
       });
     }
     
-    // Label below photo
+    // Label below photo — BEFORE label purple highlight
     if (labels[i]) {
+      var isBeforeLbl = labels[i] === 'BEFORE';
       slide.addText(labels[i], {
         x: boxX, y: labelY, w: photoBoxW, h: 0.3,
         fontSize: 11, fontFace: 'Plus Jakarta Sans',
-        color: '0B1957', bold: true,
+        color: isBeforeLbl ? '7C3AED' : '0B1957', bold: true,
         align: 'center'
       });
     }
@@ -2225,34 +2243,64 @@ function addBackPanelSlide(pptx, vehicle, photoData, campaign, brand) {
     });
   });
   
-  // Single photo - centered, fit to box
+  // Photos — before-aware: 2 photos (before+after) side-by-side, ya 1 (normal)
   const photoY = 1.7;
   const photoH = 4.9;
-  const photoBoxW = 7.5;
-  const photoBoxX = (W - photoBoxW) / 2;
-  
-  slide.addShape(pptx.ShapeType.rect, {
-    x: photoBoxX, y: photoY, w: photoBoxW, h: photoH,
-    fill: { color: 'F8FAFC' },
-    line: { color: 'F1F5F9', width: 0.5 }
+  var hasBeforeBack = photoData.some(function(pd){
+    return pd && (pd.photo_type === 'before' || (pd.url||'').toLowerCase().indexOf('0-before') !== -1);
   });
-  
-  const photo = photoData[0];
-  if (photo && photo.dataUrl) {
-    const fit = fitImage(photo.w, photo.h, photoBoxW, photoH);
-    slide.addImage({
-      data: photo.dataUrl,
-      x: photoBoxX + fit.ox,
-      y: photoY + fit.oy,
-      w: fit.w,
-      h: fit.h
-    });
+
+  if (hasBeforeBack) {
+    // 2 boxes: BEFORE (left) + AFTER (right)
+    var bpLabels = ['BEFORE', 'AFTER · Final'];
+    var bpGap = 0.3;
+    var bpBoxW = (W - 0.8 - bpGap) / 2;
+    var bpLabelY = photoY + photoH + 0.15;
+    for (var bi = 0; bi < 2; bi++) {
+      var bX = 0.4 + bi * (bpBoxW + bpGap);
+      var bPhoto = photoData[bi];
+      slide.addShape(pptx.ShapeType.rect, {
+        x: bX, y: photoY, w: bpBoxW, h: photoH,
+        fill: { color: 'F8FAFC' }, line: { color: 'F1F5F9', width: 0.5 }
+      });
+      if (bPhoto && bPhoto.dataUrl) {
+        var bFit = fitImage(bPhoto.w, bPhoto.h, bpBoxW, photoH);
+        slide.addImage({ data: bPhoto.dataUrl, x: bX + bFit.ox, y: photoY + bFit.oy, w: bFit.w, h: bFit.h });
+      } else {
+        slide.addText('Photo not available', { x: bX, y: photoY, w: bpBoxW, h: photoH, fontSize: 11, color: '9CA3AF', align: 'center', valign: 'middle' });
+      }
+      slide.addText(bpLabels[bi], {
+        x: bX, y: bpLabelY, w: bpBoxW, h: 0.3,
+        fontSize: 11, fontFace: 'Plus Jakarta Sans',
+        color: bpLabels[bi] === 'BEFORE' ? '7C3AED' : '0B1957', bold: true, align: 'center'
+      });
+    }
   } else {
-    slide.addText('Photo not available', {
+    // Normal: single photo centered
+    const photoBoxW = 7.5;
+    const photoBoxX = (W - photoBoxW) / 2;
+    slide.addShape(pptx.ShapeType.rect, {
       x: photoBoxX, y: photoY, w: photoBoxW, h: photoH,
-      fontSize: 12, color: '9CA3AF',
-      align: 'center', valign: 'middle'
+      fill: { color: 'F8FAFC' },
+      line: { color: 'F1F5F9', width: 0.5 }
     });
+    const photo = photoData[0];
+    if (photo && photo.dataUrl) {
+      const fit = fitImage(photo.w, photo.h, photoBoxW, photoH);
+      slide.addImage({
+        data: photo.dataUrl,
+        x: photoBoxX + fit.ox,
+        y: photoY + fit.oy,
+        w: fit.w,
+        h: fit.h
+      });
+    } else {
+      slide.addText('Photo not available', {
+        x: photoBoxX, y: photoY, w: photoBoxW, h: photoH,
+        fontSize: 12, color: '9CA3AF',
+        align: 'center', valign: 'middle'
+      });
+    }
   }
   
   // Footer

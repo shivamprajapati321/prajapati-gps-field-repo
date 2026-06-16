@@ -357,7 +357,7 @@ var CONFIG = {
   supabaseKey: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j',
   storageBucket: 'trial-photos'
 };
-var state = { user: null, currentMode: 'hood', currentTab: 'pending', allPhotos: [], vehicles: [], pendingAction: null, serialCampaigns: {} };
+var state = { user: null, currentMode: 'hood', currentTab: 'pending', allPhotos: [], vehicles: [], pendingAction: null, serialCampaigns: {}, beforeCampaigns: {} };
 
 function $(id) { return document.getElementById(id); }
 function toast(msg, type) {
@@ -643,10 +643,12 @@ function loadFilters() {
   // Feed the dashboard's searchable dropdowns (single filter for dashboard + queue)
   vdLoadFilters();
   // Still need serial_tracking info for the verification flow
-  api('/rest/v1/trial_campaigns?select=key,name,serial_tracking&active=eq.true&order=name.asc').then(function(c){
+  api('/rest/v1/trial_campaigns?select=key,name,serial_tracking,before_photo&active=eq.true&order=name.asc').then(function(c){
     state.serialCampaigns = {};
+    state.beforeCampaigns = {};
     (c || []).forEach(function(x){
       if (x.serial_tracking) state.serialCampaigns[x.key] = true;
+      if (x.before_photo) state.beforeCampaigns[x.key] = true;
     });
   });
 }
@@ -784,11 +786,16 @@ function renderCards(vehicles) {
   });
 }
 
-function getPhotoSide(p) {
-  var url = (p.public_url || '').toLowerCase();
-  if (url.match(/back[-_]panel/)) return 'BACK PANEL';
+function getPhotoSide(p, hasBefore) {
+  // Before photo — clear label (DB photo_type ya filename se)
+  var purl = (p.public_url || '').toLowerCase();
+  if (p.photo_type === 'before' || purl.indexOf('0-before') !== -1) {
+    return p.mode === 'back_panel' ? 'BEFORE · BACK PANEL' : 'BEFORE';
+  }
+  var url = purl;
+  if (url.match(/back[-_]panel/)) return hasBefore ? 'AFTER · BACK PANEL' : 'BACK PANEL';
   var match = url.match(/\/(back|left|right|front)-/);
-  if (match) return match[1].toUpperCase();
+  if (match) return (hasBefore ? 'AFTER · ' : '') + match[1].toUpperCase();
   return (p.mode || 'PHOTO').toUpperCase();
 }
 
@@ -805,7 +812,12 @@ function renderVehicleCard(v, idx) {
   });
   var suggested = v.verifiedPlate || uniqueOcr.sort(function(a,b){ return b.length - a.length; })[0] || '';
   
+  var hasBefore = v.photos.some(function(p){ return p.photo_type === 'before' || (p.public_url||'').toLowerCase().indexOf('0-before') !== -1; });
   var sortedPhotos = v.photos.slice().sort(function(a,b){
+    // Before photo hamesha pehle
+    var aB = (a.photo_type === 'before' || (a.public_url||'').toLowerCase().indexOf('0-before') !== -1) ? 0 : 1;
+    var bB = (b.photo_type === 'before' || (b.public_url||'').toLowerCase().indexOf('0-before') !== -1) ? 0 : 1;
+    if (aB !== bB) return aB - bB;
     var order = { 'back': 1, 'left': 2, 'right': 3, 'front': 4 };
     var aUrl = (a.public_url || '').toLowerCase();
     var bUrl = (b.public_url || '').toLowerCase();
@@ -816,15 +828,18 @@ function renderVehicleCard(v, idx) {
   
   var photosHtml = sortedPhotos.map(function(p){
     var url = p.public_url || '';
-    var side = getPhotoSide(p);
+    var side = getPhotoSide(p, hasBefore);
+    var isBeforeP = (p.photo_type === 'before' || (p.public_url||'').toLowerCase().indexOf('0-before') !== -1);
+    var lblStyle = isBeforeP ? 'background:#7c3aed;color:#fff;' : '';
     return '<div class="vc-photo" onclick="openZoom(\'' + escHtml(url) + '\')">' +
       '<img src="' + escHtml(url) + '" loading="lazy" />' +
-      '<div class="vc-photo-label">' + side + '</div>' +
+      '<div class="vc-photo-label" style="' + lblStyle + '">' + side + '</div>' +
       (p.vehicle_number ? '<div class="vc-photo-ocr">' + escHtml(p.vehicle_number) + '</div>' : '') +
     '</div>';
   }).join('');
   
-  var expectedCount = v.mode === 'hood' ? 3 : 1;
+  var beforeOn = state.beforeCampaigns && state.beforeCampaigns[v.campaign];
+  var expectedCount = v.mode === 'hood' ? (beforeOn ? 4 : 3) : (beforeOn ? 2 : 1);
   var photoCountTxt = v.photos.length + '/' + expectedCount + ' photos';
   
   var verifiedInfoHtml = '';
@@ -860,7 +875,7 @@ function renderVehicleCard(v, idx) {
   if (!v.verified && !v.rejected) {
     var ocrChips = uniqueOcr.map(function(p){ return '<span class="suggestion-chip" onclick="usePlate(' + idx + ', \'' + escHtml(p) + '\')">' + escHtml(p) + '</span>'; }).join('');
     var ocrRow = uniqueOcr.length > 0 ? '<div class="vc-ocr-row"><b>OCR Detected:</b> ' + ocrChips + '</div>' : '<div class="vc-ocr-row" style="background:#fee2e2;border-color:#fecaca;color:#991b1b;"><b>⚠️ No plate by OCR</b> — read manually</div>';
-    var photoLabel = v.mode === 'hood' ? 'Plate (will apply to all 3 hood photos)' : 'Plate (will apply to back panel)';
+    var photoLabel = v.mode === 'hood' ? ('Plate (will apply to all ' + (beforeOn ? 4 : 3) + ' hood photos)') : 'Plate (will apply to back panel)';
     var needsSerial = state.serialCampaigns && state.serialCampaigns[v.campaign];
     var existingSerial = '';
     for (var si=0; si<v.photos.length; si++){ if(v.photos[si].serial_number){ existingSerial=v.photos[si].serial_number; break; } }
