@@ -4623,6 +4623,25 @@ function bootFromSession() {
     gotoLogin();
     return false;
   }
+  // ROLE GUARD: admin-v2 is the admin hub. Operational roles (printing,
+  // stitching, delivery, verifier, field, accountant) belong on their OWN page.
+  // If such a role reaches here directly, redirect them out. Defense-in-depth.
+  var roleLc = String(m.role || '').toLowerCase();
+  var ADMIN_HUB_ROLES = [
+    'owner','admin','operations_manager','ops_manager','operations',
+    'data_entry','deo','data_manager','design','designer',
+    'sales','hr_sales','sales_admin'
+  ];
+  if (ADMIN_HUB_ROLES.indexOf(roleLc) === -1) {
+    var home = (window.AccessGuard && AccessGuard.getDefaultHome) ? AccessGuard.getDefaultHome() : null;
+    if (home && home.indexOf('/app.html') === -1 && home.indexOf('admin-v2') === -1) {
+      try {
+        if (window.top && window.top !== window.self) { window.top.location.replace(home); return false; }
+      } catch(e) {}
+      window.location.replace(home);
+      return false;
+    }
+  }
   // Normalise module_access (may be a JSON string from DB)
   if (m.module_access && typeof m.module_access === 'string') {
     try { m.module_access = JSON.parse(m.module_access); } catch(e) { m.module_access = {}; }
