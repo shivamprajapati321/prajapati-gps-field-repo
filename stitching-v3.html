@@ -842,6 +842,45 @@ function initApp() {
   loadData();
 }
 
+// Lightweight refresh — sirf entries + payments refetch (masters/campaigns
+// badalte nahi, isliye unhe skip). Heavy loadData ke bajaye yeh fast hai,
+// page "stuck" nahi hota. Save ke baad isko use karo.
+async function refreshEntries() {
+  try {
+    const [entries, payments] = await Promise.all([
+      api('/rest/v1/prajapati_stitching_log?select=*&order=log_date.desc,created_at.desc&limit=2000').catch(() => null),
+      api('/rest/v1/prajapati_stitching_payments?deleted_at=is.null&select=*&order=payment_date.desc&limit=500').catch(() => null)
+    ]);
+    if (entries) state.entries = entries;
+    if (payments) state.payments = payments;
+    computeBalances();
+    updateStats();
+    renderTab();
+  } catch (e) { /* silent — local state already updated */ }
+}
+
+// Non-blocking toast (alert blocking hai — page stuck karta hai)
+function stToast(msg, type) {
+  let t = document.getElementById('stToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'stToast';
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;padding:13px 22px;border-radius:11px;font-weight:700;font-size:14px;box-shadow:0 8px 28px rgba(0,0,0,.28);transition:opacity .25s,transform .25s;opacity:0;max-width:90vw;text-align:center;';
+    document.body.appendChild(t);
+  }
+  const colors = {
+    success: 'background:#0B7A4B;color:#fff',
+    error: 'background:#B91C1C;color:#fff',
+    info: 'background:#0B1957;color:#fff'
+  };
+  t.style.cssText = t.style.cssText.replace(/background:[^;]*;color:[^;]*/,'') ;
+  t.setAttribute('style', t.getAttribute('style') + ';' + (colors[type] || colors.info));
+  t.textContent = msg;
+  requestAnimationFrame(() => { t.style.opacity = '1'; t.style.transform = 'translateX(-50%) translateY(0)'; });
+  clearTimeout(window._stToastTimer);
+  window._stToastTimer = setTimeout(() => { t.style.opacity = '0'; }, 2600);
+}
+
 async function loadData() {
   try {
     // Parallel fetch all data
@@ -1251,11 +1290,10 @@ async function saveEditEntry() {
     
     document.getElementById('editEntryStatus').innerHTML = 
       '<div class="callout success"><span>✅</span><div>Entry updated successfully!</div></div>';
-    setTimeout(() => {
-      closeEditEntry();
-      loadData();
-    }, 700);
-    
+    closeEditEntry();
+    stToast('✅ Entry update ho gayi', 'success');
+    refreshEntries();   // light refresh — page stuck nahi hota
+
   } catch (e) {
     document.getElementById('editEntryStatus').innerHTML = 
       `<div class="callout error"><span>❌</span><div>Save failed: ${escapeHtml(e.message)}</div></div>`;
@@ -1871,11 +1909,12 @@ async function saveAllDrafts() {
       });
     }
     
-    alert(`✅ ${valid.length} entries saved!${otCashEntries.length > 0 ? `\n${otCashEntries.length} OT cash auto-paid.` : ''}`);
+    stToast('✅ ' + valid.length + ' entries saved!' + (otCashEntries.length > 0 ? ' (' + otCashEntries.length + ' OT cash auto-paid)' : ''), 'success');
     state.draftRows = [];
-    await loadData();
+    await refreshEntries();   // light refresh, no heavy reload
+    addDraftRow();           // turant ek fresh blank row — ready for next, stuck nahi
   } catch (e) {
-    alert('Save failed: ' + e.message);
+    stToast('❌ Save failed: ' + e.message, 'error');
   }
 }
 
