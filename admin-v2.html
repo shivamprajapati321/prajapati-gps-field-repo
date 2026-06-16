@@ -5477,7 +5477,7 @@ function loadCampDetail(cid) {
   var panel = $('detail-' + cid);
   if (!c || !panel) return;
   var key = c.key || c.campaign_key || c.id;
-  var target = Number(c.target_vehicles || 0) || 0;
+  var target = Number(c.target_vehicles) || Number(c.total_quantity) || 0;
 
   Promise.all([
     api('/rest/v1/trial_photos?select=vehicle_number,mode&campaign_key=eq.' + encodeURIComponent(key) + '&deleted_at=is.null&limit=20000').catch(function(){ return []; }),
@@ -5641,7 +5641,7 @@ function openCampaignDetail(campId, campKey) {
   }
   var isOwner = String((state.admin && state.admin.role) || '').toLowerCase() === 'owner';
   var isAdmin = ['owner','admin'].indexOf(String((state.admin && state.admin.role) || '').toLowerCase()) !== -1;
-  var target = Number(camp.target_vehicles || camp.target_count || 0) || 0;
+  var target = Number(camp.target_vehicles) || Number(camp.total_quantity) || Number(camp.target_count) || 0;
 
   Promise.all([
     api('/rest/v1/trial_photos?select=vehicle_number,mode,city&campaign_key=eq.' + encodeURIComponent(campKey) + '&deleted_at=is.null&limit=20000').catch(function(){ return []; }),
@@ -8267,7 +8267,7 @@ function renderCampaignReport(photos) {
     var campInfo = state.campaigns.find(function(x){ return x.key === c.key; });
     var name = campInfo ? (campInfo.name || c.key) : c.key;
     var client = campInfo ? (campInfo.client_name || '') : '';
-    var target = campInfo ? (campInfo.target_vehicles || campInfo.target_count || 100) : 100;
+    var target = campInfo ? (Number(campInfo.target_vehicles) || Number(campInfo.total_quantity) || Number(campInfo.target_count) || 100) : 100;
     // % of target based on UNIQUE VEHICLES (not photos)
     var targetPct = Math.min(100, Math.round((c.totalVehicles/target)*100));
     var fillClass = targetPct >= 75 ? '' : (targetPct >= 40 ? 'warn' : 'danger');
