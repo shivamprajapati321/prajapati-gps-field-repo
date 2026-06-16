@@ -1219,79 +1219,140 @@ var camZoomState = {
   videoTrack: null, capabilities: null,
   currentZoom: 0.0, maxZoom: 4.0, minZoom: 0.0, stepZoom: 0.1,
   initialPinchDistance: 0, initialZoom: 0.0,
-  isPinching: false, zoomHideTimer: null
+  isPinching: false, zoomHideTimer: null,
+  torchOn: false, torchSupported: false
 };
+
+// ⭐ v15.4.6: Auto-flash — ambient brightness detect karke torch on/off
+// Video frame ka average brightness sample karta hai (0-255)
+function sampleBrightness(video){
+  try {
+    var c = document.createElement('canvas');
+    var w = 64, h = 48;  // chhota sample = fast
+    c.width = w; c.height = h;
+    var ctx = c.getContext('2d');
+    ctx.drawImage(video, 0, 0, w, h);
+    var data = ctx.getImageData(0, 0, w, h).data;
+    var sum = 0, n = 0;
+    for (var i = 0; i < data.length; i += 4){
+      // luminance approx (0.3R + 0.59G + 0.11B)
+      sum += (data[i]*0.3 + data[i+1]*0.59 + data[i+2]*0.11);
+      n++;
+    }
+    return n ? (sum / n) : 255;
+  } catch(e){ console.warn('[FLASH] brightness sample failed:', e); return 255; }
+}
+
+function setTorch(on){
+  var track = camZoomState.videoTrack;
+  if (!track || !camZoomState.torchSupported) return Promise.resolve(false);
+  return track.applyConstraints({ advanced: [{ torch: !!on }] })
+    .then(function(){
+      camZoomState.torchOn = !!on;
+      console.log('[FLASH] torch', on ? 'ON' : 'OFF');
+      var btn = document.getElementById('cam-flash-btn');
+      if (btn) btn.classList.toggle('on', !!on);
+      return true;
+    })
+    .catch(function(e){ console.warn('[FLASH] torch apply failed:', e); return false; });
+}
+
+// Auto-detect: andhera ho to torch on. BRIGHTNESS_THRESHOLD se kam = dark
+function autoFlashCheck(video){
+  if (!camZoomState.torchSupported) return;
+  var brightness = sampleBrightness(video);
+  console.log('[FLASH] ambient brightness:', Math.round(brightness));
+  var DARK_THRESHOLD = 60;  // 0-255 scale; 60 se neeche = andhera
+  if (brightness < DARK_THRESHOLD && !camZoomState.torchOn){
+    setTorch(true);
+    var btn = document.getElementById('cam-flash-btn');
+    if (btn) btn.classList.add('auto');
+  }
+}
 
 // ⭐ v15.4: Find and open ULTRA-WIDE rear camera (proper 0.5x equivalent)
 //          Enhanced multi-strategy detection
+// ⭐ v15.4.6: Permission fix — agar labels already available (permission pehle mila),
+//             to extra getUserMedia pre-warm SKIP karo (double prompt avoid)
+var _cachedCameraList = null;
 function findUltraWideCamera() {
   return new Promise(function(resolve) {
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
-      .then(function(tempStream) {
-        tempStream.getTracks().forEach(function(t) { try { t.stop(); } catch(e){} });
-        return navigator.mediaDevices.enumerateDevices();
-      })
-      .then(function(devices) {
-        var cameras = devices.filter(function(d) { return d.kind === 'videoinput'; });
-        console.log('[CAM v15.4] Found', cameras.length, 'cameras:');
-        cameras.forEach(function(c, i) {
-          console.log('  [' + i + ']', c.label || '(no label)');
-        });
-        
-        // PRIORITY 1: Explicit ultra-wide labels
-        var ultraWide = cameras.find(function(c) {
-          var lbl = (c.label || '').toLowerCase();
-          var isRear = lbl.indexOf('back') >= 0 || lbl.indexOf('rear') >= 0;
-          var isUltra = lbl.indexOf('ultra') >= 0 || lbl.indexOf('ultrawide') >= 0 || 
-                        lbl.indexOf('ultra wide') >= 0 || lbl.indexOf('ultra-wide') >= 0 ||
-                        lbl.indexOf('0.5') >= 0 || lbl.indexOf('0.6') >= 0;
-          return isRear && isUltra;
-        });
-        
-        if (ultraWide) {
-          console.log('[CAM v15.4] ✅ ULTRA-WIDE FOUND:', ultraWide.label);
-          resolve({ deviceId: ultraWide.deviceId, isUltraWide: true });
-          return;
-        }
-        
-        // PRIORITY 2: Wide rear
-        var anyWide = cameras.find(function(c) {
-          var lbl = (c.label || '').toLowerCase();
-          return (lbl.indexOf('back') >= 0 || lbl.indexOf('rear') >= 0) && lbl.indexOf('wide') >= 0;
-        });
-        
-        if (anyWide) {
-          console.log('[CAM v15.4] ✅ WIDE rear found:', anyWide.label);
-          resolve({ deviceId: anyWide.deviceId, isUltraWide: true });
-          return;
-        }
-        
-        // PRIORITY 3: Camera[2] on multi-cam phones (usually ultra-wide)
-        if (cameras.length >= 3) {
-          console.log('[CAM v15.4] Trying camera[2] as potential ultra-wide:', cameras[2].label);
-          resolve({ deviceId: cameras[2].deviceId, isUltraWide: false, tryZoomMin: true });
-          return;
-        }
-        
-        // PRIORITY 4: Default rear
-        var anyRear = cameras.find(function(c) {
-          var lbl = (c.label || '').toLowerCase();
-          return lbl.indexOf('back') >= 0 || lbl.indexOf('rear') >= 0;
-        });
-        
-        if (anyRear) {
-          console.log('[CAM v15.4] ⚠️ Using main rear:', anyRear.label);
-          resolve({ deviceId: anyRear.deviceId, isUltraWide: false, tryZoomMin: true });
-          return;
-        }
-        
-        console.log('[CAM v15.4] ⚠️ No specific camera, fallback to facingMode');
-        resolve(null);
-      })
-      .catch(function(err) {
-        console.warn('[CAM v15.4] Detection error:', err);
-        resolve(null);
+    function pickFrom(devices){
+      var cameras = devices.filter(function(d) { return d.kind === 'videoinput'; });
+      _cachedCameraList = cameras;
+      console.log('[CAM v15.4.6] Found', cameras.length, 'cameras');
+      cameras.forEach(function(c, i) { console.log('  [' + i + ']', c.label || '(no label)'); });
+
+      // PRIORITY 1: Explicit ultra-wide labels
+      var ultraWide = cameras.find(function(c) {
+        var lbl = (c.label || '').toLowerCase();
+        var isRear = lbl.indexOf('back') >= 0 || lbl.indexOf('rear') >= 0;
+        var isUltra = lbl.indexOf('ultra') >= 0 || lbl.indexOf('ultrawide') >= 0 ||
+                      lbl.indexOf('ultra wide') >= 0 || lbl.indexOf('ultra-wide') >= 0 ||
+                      lbl.indexOf('0.5') >= 0 || lbl.indexOf('0.6') >= 0;
+        return isRear && isUltra;
       });
+      if (ultraWide) {
+        console.log('[CAM v15.4.6] ✅ ULTRA-WIDE FOUND:', ultraWide.label);
+        resolve({ deviceId: ultraWide.deviceId, isUltraWide: true });
+        return;
+      }
+      // PRIORITY 2: Wide rear
+      var anyWide = cameras.find(function(c) {
+        var lbl = (c.label || '').toLowerCase();
+        return (lbl.indexOf('back') >= 0 || lbl.indexOf('rear') >= 0) && lbl.indexOf('wide') >= 0;
+      });
+      if (anyWide) {
+        console.log('[CAM v15.4.6] ✅ WIDE rear found:', anyWide.label);
+        resolve({ deviceId: anyWide.deviceId, isUltraWide: true });
+        return;
+      }
+      // PRIORITY 3: Camera[2] on multi-cam phones (usually ultra-wide)
+      if (cameras.length >= 3) {
+        console.log('[CAM v15.4.6] Trying camera[2] as potential ultra-wide:', cameras[2].label);
+        resolve({ deviceId: cameras[2].deviceId, isUltraWide: false, tryZoomMin: true });
+        return;
+      }
+      // PRIORITY 4: Default rear
+      var anyRear = cameras.find(function(c) {
+        var lbl = (c.label || '').toLowerCase();
+        return lbl.indexOf('back') >= 0 || lbl.indexOf('rear') >= 0;
+      });
+      if (anyRear) {
+        console.log('[CAM v15.4.6] ⚠️ Using main rear:', anyRear.label);
+        resolve({ deviceId: anyRear.deviceId, isUltraWide: false, tryZoomMin: true });
+        return;
+      }
+      console.log('[CAM v15.4.6] ⚠️ No specific camera, fallback to facingMode');
+      resolve(null);
+    }
+
+    // Pehle bina permission maange enumerate karo
+    navigator.mediaDevices.enumerateDevices().then(function(devices){
+      var cams = devices.filter(function(d){ return d.kind === 'videoinput'; });
+      var hasLabels = cams.length > 0 && cams.some(function(c){ return c.label && c.label.length > 0; });
+      if (hasLabels){
+        // ✅ Permission pehle mila — labels available, extra getUserMedia SKIP (no double prompt)
+        console.log('[CAM v15.4.6] Labels available — skipping pre-warm (no re-prompt)');
+        pickFrom(devices);
+      } else {
+        // Pehli baar — permission ke liye ek pre-warm getUserMedia (labels paane ke liye)
+        console.log('[CAM v15.4.6] No labels — pre-warm getUserMedia for permission');
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
+          .then(function(tempStream) {
+            tempStream.getTracks().forEach(function(t) { try { t.stop(); } catch(e){} });
+            return navigator.mediaDevices.enumerateDevices();
+          })
+          .then(pickFrom)
+          .catch(function(err) {
+            console.warn('[CAM v15.4.6] Detection error:', err);
+            resolve(null);
+          });
+      }
+    }).catch(function(err){
+      console.warn('[CAM v15.4.6] enumerate error:', err);
+      resolve(null);
+    });
   });
 }
 
@@ -1368,6 +1429,23 @@ function openInAppCamera(key){
       }
       
       setupPinchToZoom(stream);
+
+      // ⭐ v15.4.6: Torch capability detect + auto-flash (andhera ho to on)
+      try {
+        var fTrack = stream.getVideoTracks()[0];
+        camZoomState.videoTrack = fTrack;
+        var fCaps = (fTrack && fTrack.getCapabilities) ? fTrack.getCapabilities() : null;
+        camZoomState.torchSupported = !!(fCaps && fCaps.torch);
+        var flashBtn = document.getElementById('cam-flash-btn');
+        if (flashBtn){ flashBtn.style.display = camZoomState.torchSupported ? 'flex' : 'none'; flashBtn.classList.remove('on','auto'); }
+        camZoomState.torchOn = false;
+        if (camZoomState.torchSupported){
+          // Thoda wait — camera auto-exposure settle hone do, phir brightness check
+          setTimeout(function(){ autoFlashCheck(v); }, 900);
+        } else {
+          console.log('[FLASH] torch not supported on this camera');
+        }
+      } catch(e){ console.warn('[FLASH] setup failed:', e); }
     };
   }).catch(function(err){
     console.error('Camera open failed:', err);
@@ -1521,6 +1599,14 @@ function updateCamStampPreview(){
   $('cam-stamp-dt').textContent = dayName + ', ' + dd + '/' + mm + '/' + yyyy + ' ' + String(hh).padStart(2,'0') + ':' + min + ' ' + ampm;
 }
 
+// ⭐ v15.4.6: Manual flash toggle (auto ke saath — worker khud control kar sake)
+window.toggleFlash = function(){
+  if (!camZoomState.torchSupported){ toast('Is camera mein flash nahi hai','warn'); return; }
+  var btn = document.getElementById('cam-flash-btn');
+  if (btn) btn.classList.remove('auto');
+  setTorch(!camZoomState.torchOn);
+};
+
 function captureFromInAppCamera(){
   var v = $('cam-feed');
   if (!v.videoWidth || !v.videoHeight){ toast('Camera not ready','warn'); return; }
@@ -1539,6 +1625,14 @@ function captureFromInAppCamera(){
 
 function closeInAppCamera(){
   $('cam-modal').classList.remove('show');
+  // ⭐ v15.4.6: Torch OFF before stopping stream (cleanup)
+  if (camStream && camZoomState.torchOn){
+    try {
+      var tt = camStream.getVideoTracks()[0];
+      if (tt) tt.applyConstraints({ advanced: [{ torch: false }] }).catch(function(){});
+    } catch(e){}
+    camZoomState.torchOn = false;
+  }
   if (camStream){
     camStream.getTracks().forEach(function(t){ try{ t.stop(); } catch(e){} });
     camStream = null;
