@@ -191,6 +191,26 @@ a{color:inherit;text-decoration:none}
   .dc-head{flex-direction:column}
   .tabs-pick{grid-template-columns:1fr}
 }
+/* ═══ Design preview thumbnails ═══ */
+.fb-preview{margin-top:10px;border-radius:8px;overflow:hidden;border:1px solid var(--rule);background:#fff;position:relative;cursor:zoom-in;display:block}
+.fb-preview img{display:block;width:100%;max-height:200px;object-fit:contain;background:repeating-conic-gradient(#f0f0f0 0% 25%, #fafafa 0% 50%) 50%/16px 16px}
+.fb-preview .fb-zoom-hint{position:absolute;bottom:6px;right:6px;background:rgba(9,26,98,.82);color:#fff;font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;letter-spacing:.06em;padding:3px 7px;border-radius:5px;text-transform:uppercase;pointer-events:none}
+.fb-preview-doc{margin-top:10px;border-radius:8px;border:1px solid var(--rule);background:#fff;padding:18px;display:flex;align-items:center;gap:12px;text-decoration:none}
+.fb-preview-doc .doc-ic{font-size:30px}
+.fb-preview-doc .doc-meta{min-width:0}
+.fb-preview-doc .doc-type{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--purple);background:var(--purple-bg);padding:2px 7px;border-radius:5px;display:inline-block}
+.fb-preview-doc .doc-open{font-size:11px;color:var(--gold-deep);font-weight:700;margin-top:4px}
+
+/* ═══ Lightbox ═══ */
+.lightbox{position:fixed;inset:0;background:rgba(7,16,58,.92);z-index:500;display:none;align-items:center;justify-content:center;padding:24px;flex-direction:column;gap:14px}
+.lightbox.open{display:flex}
+.lightbox img{max-width:94vw;max-height:82vh;object-fit:contain;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.lb-bar{display:flex;align-items:center;gap:12px;color:#fff}
+.lb-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;font-weight:600;max-width:60vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb-btn{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.25);padding:8px 14px;border-radius:8px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.lb-btn:hover{background:rgba(255,255,255,.24)}
+.lb-close{position:absolute;top:18px;right:22px;background:rgba(255,255,255,.14);color:#fff;border:none;width:40px;height:40px;border-radius:50%;font-size:22px;cursor:pointer;line-height:1}
+.lb-close:hover{background:rgba(255,255,255,.28)}
 </style>
 </head>
 <body>
@@ -344,6 +364,16 @@ a{color:inherit;text-decoration:none}
   </div>
 </div>
 
+<!-- DESIGN PREVIEW LIGHTBOX -->
+<div class="lightbox" id="designLightbox" onclick="closeLightbox(event)">
+  <button class="lb-close" onclick="closeLightbox(event)" aria-label="Close">×</button>
+  <img id="lbImg" src="" alt="Design preview">
+  <div class="lb-bar">
+    <span class="lb-title" id="lbTitle"></span>
+    <a class="lb-btn" id="lbOpen" href="#" target="_blank" onclick="event.stopPropagation()">↗ Open full</a>
+  </div>
+</div>
+
 <script src="/lib/access-guard.js"></script>
 
 <script>
@@ -493,6 +523,43 @@ function hasPrintFile(d) {
   return !!getPrintFileUrl(d);
 }
 
+// Detect file kind from url/name. Returns 'image' | 'pdf' | 'other'.
+function fileKind(url, name) {
+  var s = ((name || '') + ' ' + (url || '')).toLowerCase();
+  if (/\.(jpe?g|png|webp|gif|bmp|svg|heic|avif)(\?|$|\s)/.test(s) || /\b(jpeg|jpg|png|webp)\b/.test(s)) return 'image';
+  if (/\.pdf(\?|$|\s)/.test(s) || /\bpdf\b/.test(s)) return 'pdf';
+  return 'other';
+}
+
+// Build an inline preview block for a design file (used for draft + print).
+// kind detected from name/url. Images → clickable thumbnail (lightbox). Else doc card.
+function filePreviewHtml(url, name, label) {
+  if (!url) return '';
+  var kind = fileKind(url, name);
+  var safeName = escapeHtml(name || 'design file');
+  if (kind === 'image') {
+    var esc = url.replace(/'/g, "\\'");
+    var escN = (name || 'design').replace(/'/g, "\\'");
+    return '<div class="fb-preview" onclick="openLightbox(\'' + esc + '\',\'' + escN + '\')" title="Click to zoom">' +
+             '<img src="' + escapeHtml(url) + '" alt="' + safeName + '" loading="lazy" ' +
+               'onerror="this.parentNode.style.display=\'none\'">' +
+             '<span class="fb-zoom-hint">🔍 Click to zoom</span>' +
+           '</div>';
+  }
+  if (kind === 'pdf') {
+    return '<a class="fb-preview-doc" href="' + escapeHtml(url) + '" target="_blank">' +
+             '<span class="doc-ic">📕</span>' +
+             '<div class="doc-meta"><span class="doc-type">PDF</span>' +
+               '<div class="doc-open">Open to preview →</div></div>' +
+           '</a>';
+  }
+  return '<a class="fb-preview-doc" href="' + escapeHtml(url) + '" target="_blank">' +
+           '<span class="doc-ic">📄</span>' +
+           '<div class="doc-meta"><span class="doc-type">File</span>' +
+             '<div class="doc-open">Open file →</div></div>' +
+         '</a>';
+}
+
 // Single source of truth for which stage a design is in.
 function getStage(d) {
   const ps = String(d.print_status || '').toLowerCase().trim();
@@ -608,6 +675,7 @@ function renderContent() {
             <span class="fb-icon">🖼️</span>
             <a href="${draftUrl}" target="_blank" class="fb-link">View draft</a>
           </div>
+          ${filePreviewHtml(draftUrl, d.draft_file_name || d.drive_file_name || 'draft', 'Draft')}
         ` : `<div class="fb-empty">No draft attached</div>`}
       </div>
     `;
@@ -627,6 +695,7 @@ function renderContent() {
               <a href="${printUrl}" target="_blank" class="fb-link">View file</a>
             </div>
           </div>
+          ${filePreviewHtml(printUrl, d.design_file_name || 'print file', 'Final print file')}
         ` : `<div class="fb-hint">Original print-quality file upload karo</div>`}
       </div>
     `;
@@ -1027,6 +1096,26 @@ async function saveUpload() {
     btn.innerHTML = '💾 Save & Mark Ready';
   }
 }
+
+// ═══════════════════════════════════════════════════════════════
+// DESIGN PREVIEW LIGHTBOX
+// ═══════════════════════════════════════════════════════════════
+function openLightbox(url, name) {
+  var lb = document.getElementById('designLightbox');
+  document.getElementById('lbImg').src = url;
+  document.getElementById('lbTitle').textContent = name || 'Design preview';
+  document.getElementById('lbOpen').href = url;
+  lb.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeLightbox(e) {
+  // Close only on backdrop / close button / image, not on the action bar
+  if (e && e.target && e.target.closest && e.target.closest('.lb-bar')) return;
+  document.getElementById('designLightbox').classList.remove('open');
+  document.getElementById('lbImg').src = '';
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeLightbox(); });
 
 // ═══════════════════════════════════════════════════════════════
 // HELPERS
