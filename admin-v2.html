@@ -3374,6 +3374,7 @@ label {
 
       <!-- Action buttons (Findr removed) -->
       <div id="photoActionBar" class="photo-action-bar">
+        <button class="pbtn pbtn-selall" id="selectAllBtn" onclick="selectAllFiltered()" title="Filter ke saare photos ek click mein select (bulk move/correction ke liye)" style="background:linear-gradient(135deg,#26d0ce,#0B1957)"><i class="ti ti-checkbox"></i> Select All</button>
         <button class="pbtn pbtn-zip" id="zipDownloadBtn" onclick="downloadPhotosZip()"><i class="ti ti-package"></i> Download ZIP</button>
         <button class="pbtn pbtn-excel" onclick="downloadExcelReport()" title="Standalone Excel report — campaign/date/team/location"><i class="ti ti-file-spreadsheet"></i> Excel Report</button>
         <button class="pbtn pbtn-excel2" onclick="downloadExcelReportV2()" title="Approved format — verified vehicles with owner details"><i class="ti ti-sparkles"></i> Excel V2</button>
@@ -4622,25 +4623,6 @@ function bootFromSession() {
   if (m.active === false) {
     gotoLogin();
     return false;
-  }
-  // ROLE GUARD: admin-v2 is the admin hub. Operational roles (printing,
-  // stitching, delivery, verifier, field, accountant) belong on their OWN page.
-  // If such a role reaches here directly, redirect them out. Defense-in-depth.
-  var roleLc = String(m.role || '').toLowerCase();
-  var ADMIN_HUB_ROLES = [
-    'owner','admin','operations_manager','ops_manager','operations',
-    'data_entry','deo','data_manager','design','designer',
-    'sales','hr_sales','sales_admin'
-  ];
-  if (ADMIN_HUB_ROLES.indexOf(roleLc) === -1) {
-    var home = (window.AccessGuard && AccessGuard.getDefaultHome) ? AccessGuard.getDefaultHome() : null;
-    if (home && home.indexOf('/app.html') === -1 && home.indexOf('admin-v2') === -1) {
-      try {
-        if (window.top && window.top !== window.self) { window.top.location.replace(home); return false; }
-      } catch(e) {}
-      window.location.replace(home);
-      return false;
-    }
   }
   // Normalise module_access (may be a JSON string from DB)
   if (m.module_access && typeof m.module_access === 'string') {
@@ -8964,6 +8946,7 @@ function loadPhotos() {
     
     updatePhotoStats();
     renderPhotos();
+    refreshSelectionUI();
     setupRealtimeSubscription();
     
     // Show Load More button if there are more photos on server
@@ -9182,6 +9165,52 @@ function clearPhotoSelection() {
   p4state.moveMode = null;
   refreshSelectionUI();
 }
+// Select All (filtered): ek click mein current filter ke saare photos select.
+// Mode-lock respect karta hai — agar mixed hood+back hain to sirf majority
+// mode select karta hai (alag mode move report tod deta hai). Cross-page
+// warn karta hai agar server pe aur photos hain jo abhi load nahi hue.
+function selectAllFiltered() {
+  var pool = (p4state.filteredPhotos && p4state.filteredPhotos.length)
+    ? p4state.filteredPhotos : p4state.photos;
+  if (!pool || pool.length === 0) { showToast('Koi photo nahi — pehle filter lagao.', 'error'); return; }
+
+  // Agar pehle se kuch selected hai aur sab match karta to toggle = clear (deselect all)
+  if (p4state.selectedIds.length > 0 && p4state.selectedIds.length >= pool.length) {
+    clearPhotoSelection();
+    showToast('Selection clear ho gaya.', 'info');
+    return;
+  }
+
+  // Mode counts — kyunki selection sirf ek mode (hood ya back) ka ho sakta
+  var byMode = {};
+  pool.forEach(function(p){ var m = p.mode || 'unknown'; byMode[m] = (byMode[m]||0)+1; });
+  var modes = Object.keys(byMode);
+
+  var targetMode;
+  if (modes.length === 1) {
+    targetMode = modes[0];
+  } else {
+    // Mixed modes — sabse zyada wala mode pick karo, baaki ko warn
+    targetMode = modes.sort(function(a,b){ return byMode[b]-byMode[a]; })[0];
+  }
+
+  var picked = pool.filter(function(p){ return (p.mode || 'unknown') === targetMode; });
+  p4state.selectedIds = picked.map(function(p){ return String(p.id); });
+  p4state.moveMode = (targetMode === 'unknown') ? null : targetMode;
+  refreshSelectionUI();
+
+  // Messages — clear batao kितne select hue, kya chhoot gaya
+  var msg = picked.length + ' photos selected (' + (targetMode||'—').toUpperCase() + ' mode).';
+  if (modes.length > 1) {
+    var skipped = pool.length - picked.length;
+    msg += ' ⚠️ ' + skipped + ' alag-mode photos chhoot gaye (alag mode ek saath move nahi hota).';
+  }
+  // Cross-page warning — agar server pe total filtered se zyada hai
+  if (p4state.totalPhotos && p4state.totalPhotos > pool.length) {
+    msg += ' ℹ️ Server pe ' + p4state.totalPhotos + ' total hain — "Load More" karke saare laao phir Select All dabao.';
+  }
+  showToast(msg, modes.length > 1 || (p4state.totalPhotos > pool.length) ? 'warning' : 'success');
+}
 function refreshSelectionUI() {
   var sel = p4state.selectedIds;
   document.querySelectorAll('.photo-card[data-pid]').forEach(function(card) {
@@ -9193,6 +9222,17 @@ function refreshSelectionUI() {
   });
   var bar = $('photosBulkBar');
   if (!bar) return;
+  // Select All button label update — selected ho to "Deselect All"
+  var selBtn = $('selectAllBtn');
+  if (selBtn) {
+    var pool = (p4state.filteredPhotos && p4state.filteredPhotos.length) ? p4state.filteredPhotos : p4state.photos;
+    var poolLen = pool ? pool.length : 0;
+    if (sel.length > 0 && poolLen > 0 && sel.length >= poolLen) {
+      selBtn.innerHTML = '<i class="ti ti-square-off"></i> Deselect All';
+    } else {
+      selBtn.innerHTML = '<i class="ti ti-checkbox"></i> Select All' + (poolLen ? ' (' + poolLen + ')' : '');
+    }
+  }
   if (sel.length > 0) {
     bar.classList.add('show');
     $('bulkCount').textContent = sel.length;
