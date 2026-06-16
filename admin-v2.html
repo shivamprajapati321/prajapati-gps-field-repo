@@ -3605,13 +3605,13 @@ label {
         </div>
         <div class="stat stat-success">
           <div class="stat-icon" style="background:var(--success-bg); color:var(--success);"><i class="ti ti-shield-check"></i></div>
-          <div class="stat-label">Verified</div>
+          <div class="stat-label">Verified photos</div>
           <div class="stat-value" id="rVerified" style="color:var(--success);">—</div>
           <div class="stat-meta" id="rVerifiedMeta">—</div>
         </div>
         <div class="stat stat-warn">
           <div class="stat-icon" style="background:var(--warn-bg); color:var(--warn);"><i class="ti ti-clock"></i></div>
-          <div class="stat-label">Pending</div>
+          <div class="stat-label">Pending photos</div>
           <div class="stat-value" id="rPending" style="color:var(--warn);">—</div>
           <div class="stat-meta">awaiting review</div>
         </div>
@@ -3619,8 +3619,14 @@ label {
           <div class="stat-icon" style="background:rgba(38,208,206,0.12); color:var(--accent-deep);"><i class="ti ti-car"></i></div>
           <div class="stat-label">Unique vehicles</div>
           <div class="stat-value" id="rVehicles">—</div>
-          <div class="stat-meta">documented</div>
+          <div class="stat-meta" id="rVehiclesMeta">documented</div>
         </div>
+      </div>
+
+      <!-- Clarity note: photos vs vehicles -->
+      <div style="font-size:11px;color:var(--text-2);margin:-4px 0 14px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <i class="ti ti-info-circle" style="font-size:13px;color:var(--info);"></i>
+        <span><b>Photos</b> = total clicks (1 vehicle ke kai photos ho sakte). <b>Vehicles</b> = unique gaadiyan. Campaign-wise cards mein sab counts <b>unique vehicles</b> ke hisaab se hain.</span>
       </div>
 
       <!-- Report dimension tabs -->
@@ -8224,7 +8230,8 @@ function renderCampaignReport(photos) {
     // Track per unique vehicle
     var vn = p.vehicle_number;
     if (vn) {
-      if (!c.vehicles[vn]) c.vehicles[vn] = { verified: false, hood: false, back: false };
+      if (!c.vehicles[vn]) c.vehicles[vn] = { verified: false, hood: false, back: false, photoCount: 0 };
+      c.vehicles[vn].photoCount++;
       if (p.is_verified) c.vehicles[vn].verified = true;
       if (p.mode === 'hood') c.vehicles[vn].hood = true;
       else if (p.mode === 'back_panel') c.vehicles[vn].back = true;
@@ -8239,6 +8246,12 @@ function renderCampaignReport(photos) {
     c.pendingVehicles = vlist.filter(function(v){ return !v.verified; }).length;
     c.hoodVehicles = vlist.filter(function(v){ return v.hood; }).length;
     c.backVehicles = vlist.filter(function(v){ return v.back; }).length;
+    // Photo completeness: hood needs 3 photos, back needs 1
+    c.expectedPhotos = c.hoodVehicles * 3 + c.backVehicles * 1;
+    c.incompleteVehicles = vlist.filter(function(v){
+      var need = v.hood ? 3 : (v.back ? 1 : 0);
+      return need > 0 && v.photoCount < need;
+    }).length;
     return c;
   }).sort(function(a,b){ return b.totalVehicles - a.totalVehicles; });
 
@@ -8262,26 +8275,26 @@ function renderCampaignReport(photos) {
     // ── Operations (printing / stitching / execution) for THIS campaign ──
     var opsHtml = '';
     if (campInfo) {
-      var planned = Number(campInfo.total_quantity || 0) || 0;
+      var planned = Number(campInfo.total_quantity || 0) || 0;   // production target (print/stitch pieces)
       var prQty = sumForCampaign(p3state.printLogs || [], campInfo, ['qty_done','quantity','qty']);
       var stQty = sumForCampaign(p3state.stitchLogs || [], campInfo, ['quantity','qty']);
       var exQty = sumForCampaign(p3state.execLogs || [], campInfo, ['quantity','qty']);
       var stages = (typeof campStages === 'function') ? campStages(campInfo) : { printing:true, stitching:true, field:true, delivery:false, known:false };
 
       var ops = [];
-      // Printing
+      // Printing — vs production planned qty
       if (stages.printing || prQty > 0) {
         var prPct = planned > 0 ? Math.min(100, Math.round(prQty/planned*100)) : null;
         ops.push(opCard('s-print','ti-printer','Printing', prQty, planned, prPct, 'printed', 'units'));
       }
-      // Stitching
+      // Stitching — vs production planned qty
       if (stages.stitching || stQty > 0) {
         var stPct = planned > 0 ? Math.min(100, Math.round(stQty/planned*100)) : null;
         ops.push(opCard('s-stitch','ti-needle','Stitching', stQty, planned, stPct, 'stitched', 'pcs'));
       }
-      // Execution (field-installed quantity). Outstanding = target - done
+      // Execution — field installation qty, vs vehicle target (not production qty)
       if (stages.field || exQty > 0) {
-        var exTarget = planned > 0 ? planned : (target || 0);
+        var exTarget = target || 0;   // execution target = vehicle target (kitni gaadiyon pe lagana)
         var exPct = exTarget > 0 ? Math.min(100, Math.round(exQty/exTarget*100)) : null;
         ops.push(opCard('s-exec','ti-tools','Execution', exQty, exTarget, exPct, 'executed', 'units'));
       }
@@ -8310,20 +8323,23 @@ function renderCampaignReport(photos) {
                       '<span><i class="ti ti-map-pin" style="font-size:13px;"></i> ' + c.cities.size + ' cit' + (c.cities.size === 1 ? 'y' : 'ies') + '</span>' +
                       '<span><i class="ti ti-users" style="font-size:13px;"></i> ' + c.members.size + ' member' + (c.members.size === 1 ? '' : 's') + '</span>' +
                       '<span title="Total photos captured"><i class="ti ti-photo" style="font-size:13px;"></i> ' + c.photoCount + ' photos</span>' +
+                      '<span title="Hood = 3 photos/veh, Back = 1 photo/veh" style="color:var(--text-3);"><i class="ti ti-calculator" style="font-size:13px;"></i> ' + c.hoodVehicles + '×3 + ' + c.backVehicles + '×1 = ' + c.expectedPhotos + ' expected</span>' +
+                      (c.incompleteVehicles > 0 ? '<span title="Vehicles with fewer photos than required" style="color:var(--warn);"><i class="ti ti-alert-triangle" style="font-size:13px;"></i> ' + c.incompleteVehicles + ' incomplete</span>' : '') +
                     '</div>' +
                   '</div>' +
                 '</div>' +
                 '<div class="location-progress-block">' +
-                  '<div class="location-progress-num">' + c.totalVehicles + ' <small>/ ' + target + '</small></div>' +
+                  '<div style="font-size:10px;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:2px;">Field branding</div>' +
+                  '<div class="location-progress-num">' + c.totalVehicles + ' <small>/ ' + target + ' veh</small></div>' +
                   '<div class="location-progress-pct" style="color:' + (targetPct >= 75 ? 'var(--success)' : (targetPct >= 40 ? 'var(--warn)' : 'var(--danger)')) + ';">' + targetPct + '% of target</div>' +
                 '</div>' +
               '</div>' +
               '<div class="progress-track"><div class="progress-fill ' + fillClass + '" style="width:' + targetPct + '%;"></div></div>' +
               '<div class="mini-stats-grid">' +
-                '<div class="mini-stat-box"><div class="label">Verified</div><div class="val" style="color:var(--success);">' + c.verifiedVehicles + '</div></div>' +
-                '<div class="mini-stat-box"><div class="label">Pending</div><div class="val" style="color:var(--warn);">' + c.pendingVehicles + '</div></div>' +
-                '<div class="mini-stat-box"><div class="label">Hood</div><div class="val">' + c.hoodVehicles + '</div></div>' +
-                '<div class="mini-stat-box"><div class="label">Back</div><div class="val">' + c.backVehicles + '</div></div>' +
+                '<div class="mini-stat-box"><div class="label">Verified veh</div><div class="val" style="color:var(--success);">' + c.verifiedVehicles + '</div></div>' +
+                '<div class="mini-stat-box"><div class="label">Pending veh</div><div class="val" style="color:var(--warn);">' + c.pendingVehicles + '</div></div>' +
+                '<div class="mini-stat-box"><div class="label">Hood veh</div><div class="val">' + c.hoodVehicles + '</div></div>' +
+                '<div class="mini-stat-box"><div class="label">Back veh</div><div class="val">' + c.backVehicles + '</div></div>' +
               '</div>' +
               opsHtml +
             '</div>';
