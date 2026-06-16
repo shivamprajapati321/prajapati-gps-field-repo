@@ -1025,6 +1025,39 @@ label {
 .assign-row .status-pill.assigned { background: var(--success-bg); color: var(--success); }
 .assign-row .status-pill.unassigned { background: var(--bg); color: var(--text-3); }
 
+/* ═══ Daily Assignments upgrade ═══ */
+.assign-row { grid-template-columns: auto auto 1.5fr 2fr auto; }
+.assign-row .da-check { width: 17px; height: 17px; cursor: pointer; accent-color: var(--accent); }
+.da-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+.da-stat { background: var(--card); border: 1px solid var(--border); border-radius: var(--r-md); padding: 11px 14px; border-top: 3px solid var(--border); }
+.da-stat .l { font-size: 11px; color: var(--text-2); margin-bottom: 3px; }
+.da-stat .v { font-size: 22px; font-weight: 800; color: var(--text-1); line-height: 1; }
+.da-stat.s-assigned { border-top-color: var(--success); } .da-stat.s-assigned .v { color: var(--success); }
+.da-stat.s-unassigned { border-top-color: var(--warn); } .da-stat.s-unassigned .v { color: var(--warn); }
+.da-stat.s-camps { border-top-color: var(--info); } .da-stat.s-camps .v { color: var(--info); }
+.da-stat.s-cov { border-top-color: var(--primary); } .da-stat.s-cov .v { color: var(--primary); }
+
+.da-quick { background: var(--accent-bg, #E8FBFA); border: 1px solid var(--accent); border-radius: var(--r-md); padding: 12px 14px; margin-bottom: 14px; display:none; }
+.da-quick.show { display: block; }
+.da-quick .qh { font-size: 12px; font-weight: 700; color: var(--primary); margin-bottom: 9px; display:flex; align-items:center; gap:6px; }
+.da-quick-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.da-quick select { padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 7px; font-family: inherit; font-size: 13px; background: #fff; color: var(--text-1); min-width: 220px; }
+
+.da-filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+.da-chip { background: var(--card); border: 1.5px solid var(--border); color: var(--text-2); font-size: 12px; font-weight: 600; padding: 8px 13px; border-radius: 18px; cursor: pointer; font-family: inherit; transition: 0.15s; }
+.da-chip:hover { border-color: var(--accent); color: var(--primary); }
+.da-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.da-selectall { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--text-2); cursor:pointer; margin-left:auto; }
+.da-selectall input { width:16px; height:16px; accent-color: var(--accent); cursor:pointer; }
+
+.da-campview { background: var(--card); border: 1px solid var(--border); border-radius: var(--r-md); padding: 14px 16px; margin-top: 16px; }
+.da-campview h4 { font-size: 13px; font-weight: 700; color: var(--primary); margin-bottom: 11px; }
+.da-camp-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.da-camp-bar .cn { font-size: 13px; color: var(--text-1); width: 160px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.da-camp-bar .bar { flex: 1; height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+.da-camp-bar .bar > i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+.da-camp-bar .cc { font-size: 12px; color: var(--text-2); width: 90px; text-align: right; }
+
 /* Large modal for campaign */
 .modal.modal-lg { max-width: 720px; }
 
@@ -2640,6 +2673,11 @@ label {
         <span>Verifier portal</span>
         <i class="ti ti-external-link" style="font-size:13px; margin-left:auto; opacity:0.5;"></i>
       </div>
+      <div data-module="verifier" class="nav-item" onclick="openExternal('verification-dashboard.html')">
+        <i class="ti ti-chart-pie"></i>
+        <span>Verification Dashboard</span>
+        <i class="ti ti-external-link" style="font-size:13px; margin-left:auto; opacity:0.5;"></i>
+      </div>
       <div data-module="reports" class="nav-item" data-tab="reports" onclick="switchTab('reports')">
         <i class="ti ti-chart-bar"></i>
         <span>Reports</span>
@@ -3160,8 +3198,36 @@ label {
         <input id="assignSearchBox" type="text" placeholder="Search member by name, phone, city..." oninput="filterAssignments()" style="width:100%;padding:10px 12px 10px 38px;border:1px solid var(--border);border-radius:9px;font-family:inherit;font-size:14px;outline:none;background:var(--card)">
       </div>
 
+      <!-- Stats bar -->
+      <div class="da-stats" id="daStats"></div>
+
+      <!-- Bulk assign (shows when members selected) -->
+      <div class="da-quick" id="daBulk">
+        <div class="qh"><i class="ti ti-users"></i> <span id="daBulkCount">0</span> members selected — bulk assign</div>
+        <div class="da-quick-row">
+          <select id="daBulkCampaign"><option value="">Choose campaign…</option></select>
+          <button class="btn btn-sm btn-primary" onclick="bulkAssign()"><i class="ti ti-check"></i> Assign to selected</button>
+          <button class="btn btn-sm btn-ghost" onclick="bulkUnassign()"><i class="ti ti-x"></i> Unassign selected</button>
+          <button class="btn btn-sm btn-ghost" onclick="daClearSelection()">Clear selection</button>
+        </div>
+      </div>
+
+      <!-- Filter chips + select all -->
+      <div class="da-filters" id="daFilters">
+        <button class="da-chip active" data-f="all" onclick="setDaFilter('all')">All · <span id="daCAll">0</span></button>
+        <button class="da-chip" data-f="assigned" onclick="setDaFilter('assigned')">Assigned · <span id="daCAssigned">0</span></button>
+        <button class="da-chip" data-f="unassigned" onclick="setDaFilter('unassigned')">Unassigned · <span id="daCUnassigned">0</span></button>
+        <label class="da-selectall"><input type="checkbox" id="daSelectAll" onchange="daToggleSelectAll(this.checked)"> Select all visible</label>
+      </div>
+
       <div id="assignmentsList">
         <div class="spinner"></div>
+      </div>
+
+      <!-- Campaign-wise view -->
+      <div class="da-campview" id="daCampView" style="display:none;">
+        <h4><i class="ti ti-chart-bar"></i> Campaign-wise assignment (aaj kaun kis pe)</h4>
+        <div id="daCampBars"></div>
       </div>
 
       <div class="notes-box">
@@ -7536,6 +7602,129 @@ function saveCampaignOverrides(campaignKey) {
 }
 
 // ─── DAILY ASSIGNMENTS ───
+// ═══ Daily Assignments dashboard state + helpers ═══
+var p_daState = { members: [], campaigns: [], assignMap: {}, date: '', filter: 'all' };
+
+function daRenderStats() {
+  var total = p_daState.members.length;
+  var assigned = 0;
+  var campUsed = {};
+  p_daState.members.forEach(function(m){
+    var a = p_daState.assignMap[m.phone];
+    if (a){ assigned++; if (a.campaign_key) campUsed[a.campaign_key] = true; }
+  });
+  var unassigned = total - assigned;
+  var coverage = total ? Math.round(assigned / total * 100) : 0;
+  if ($('daStats')) {
+    $('daStats').innerHTML =
+      '<div class="da-stat s-assigned"><div class="l">Assigned</div><div class="v">' + assigned + '</div></div>' +
+      '<div class="da-stat s-unassigned"><div class="l">Not assigned</div><div class="v">' + unassigned + '</div></div>' +
+      '<div class="da-stat s-camps"><div class="l">Campaigns used</div><div class="v">' + Object.keys(campUsed).length + '</div></div>' +
+      '<div class="da-stat s-cov"><div class="l">Coverage</div><div class="v">' + coverage + '%</div></div>';
+  }
+  if ($('daCAll')) $('daCAll').textContent = total;
+  if ($('daCAssigned')) $('daCAssigned').textContent = assigned;
+  if ($('daCUnassigned')) $('daCUnassigned').textContent = unassigned;
+}
+
+function daRenderCampView() {
+  var counts = {};
+  p_daState.members.forEach(function(m){
+    var a = p_daState.assignMap[m.phone];
+    if (a && a.campaign_key) counts[a.campaign_key] = (counts[a.campaign_key] || 0) + 1;
+  });
+  var nameOf = {};
+  p_daState.campaigns.forEach(function(c){ nameOf[c.key] = c.name || c.key; });
+  var rows = Object.keys(counts).map(function(k){ return { name: nameOf[k] || k, count: counts[k] }; }).sort(function(a,b){ return b.count - a.count; });
+  var box = $('daCampView');
+  if (!box) return;
+  if (rows.length === 0){ box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  var max = rows[0].count || 1;
+  $('daCampBars').innerHTML = rows.map(function(r){
+    var w = Math.round(r.count / max * 100);
+    return '<div class="da-camp-bar"><span class="cn" title="' + escapeHtml(r.name) + '">' + escapeHtml(r.name) + '</span>' +
+           '<div class="bar"><i style="width:' + w + '%"></i></div>' +
+           '<span class="cc">' + r.count + (r.count === 1 ? ' member' : ' members') + '</span></div>';
+  }).join('');
+}
+
+function setDaFilter(f) {
+  p_daState.filter = f;
+  document.querySelectorAll('#daFilters .da-chip').forEach(function(c){ c.classList.toggle('active', c.dataset.f === f); });
+  filterAssignments();
+}
+
+function daOnCheck() {
+  var checks = document.querySelectorAll('#assignmentsList .da-check:checked');
+  var n = checks.length;
+  var bulk = $('daBulk');
+  if (bulk) bulk.classList.toggle('show', n > 0);
+  if ($('daBulkCount')) $('daBulkCount').textContent = n;
+}
+
+function daToggleSelectAll(checked) {
+  document.querySelectorAll('#assignmentsList .assign-row').forEach(function(row){
+    if (row.style.display === 'none') return; // only visible rows
+    var cb = row.querySelector('.da-check');
+    if (cb) cb.checked = checked;
+  });
+  daOnCheck();
+}
+
+function daClearSelection() {
+  document.querySelectorAll('#assignmentsList .da-check').forEach(function(cb){ cb.checked = false; });
+  if ($('daSelectAll')) $('daSelectAll').checked = false;
+  daOnCheck();
+}
+
+function daSelectedPhones() {
+  var phones = [];
+  document.querySelectorAll('#assignmentsList .assign-row').forEach(function(row){
+    var cb = row.querySelector('.da-check');
+    if (cb && cb.checked) phones.push(row.getAttribute('data-phone'));
+  });
+  return phones;
+}
+
+function bulkAssign() {
+  var campaignKey = $('daBulkCampaign').value;
+  if (!campaignKey) { showToast('Pehle campaign choose karo', 'error'); return; }
+  var phones = daSelectedPhones();
+  if (phones.length === 0) { showToast('Koi member selected nahi', 'error'); return; }
+  var date = p_daState.date;
+  var rows = phones.map(function(p){ return { member_phone: p, campaign_key: campaignKey, assignment_date: date, created_by: state.admin.phone }; });
+  showToast('Assigning ' + phones.length + ' members…', 'info');
+  fetch(CONFIG.supabaseUrl + '/rest/v1/trial_daily_assignments?on_conflict=member_phone,assignment_date', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: CONFIG.supabaseKey, Authorization: 'Bearer ' + CONFIG.supabaseKey, Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify(rows)
+  }).then(function(r){
+    if (!r.ok) return r.text().then(function(t){ throw new Error(t); });
+    showToast('✓ ' + phones.length + ' members assigned', 'success');
+    daClearSelection();
+    loadAssignments();
+  }).catch(function(e){ showToast('Bulk assign failed: ' + (e.message||''), 'error'); });
+}
+
+function bulkUnassign() {
+  var phones = daSelectedPhones();
+  if (phones.length === 0) { showToast('Koi member selected nahi', 'error'); return; }
+  if (!confirm(phones.length + ' members ko unassign karein?')) return;
+  var date = p_daState.date;
+  var inList = '(' + phones.map(function(p){ return '"' + p + '"'; }).join(',') + ')';
+  showToast('Unassigning…', 'info');
+  fetch(CONFIG.supabaseUrl + '/rest/v1/trial_daily_assignments?member_phone=in.' + encodeURIComponent(inList) + '&assignment_date=eq.' + date, {
+    method: 'DELETE',
+    headers: { apikey: CONFIG.supabaseKey, Authorization: 'Bearer ' + CONFIG.supabaseKey }
+  }).then(function(r){
+    if (!r.ok) return r.text().then(function(t){ throw new Error(t); });
+    showToast('✓ ' + phones.length + ' members unassigned', 'success');
+    daClearSelection();
+    loadAssignments();
+  }).catch(function(e){ showToast('Unassign failed: ' + (e.message||''), 'error'); });
+}
+
 function loadAssignments() {
   if (!$('assignDate').value) $('assignDate').value = todayStr();
   var date = $('assignDate').value;
@@ -7560,7 +7749,22 @@ function loadAssignments() {
     
     var assignMap = {};
     assignments.forEach(function(a){ assignMap[a.member_phone] = a; });
-    
+
+    // Store for bulk/stats/campview + populate bulk campaign dropdown
+    p_daState.members = members;
+    p_daState.campaigns = campaigns;
+    p_daState.assignMap = assignMap;
+    p_daState.date = date;
+    var bulkSel = $('daBulkCampaign');
+    if (bulkSel) {
+      var bopts = '<option value="">Choose campaign…</option>';
+      campaigns.forEach(function(c){
+        var mediaInfo = getMediaTypeLabel(c.hood_photo_count || 0, c.back_panel_photo_count || 0);
+        bopts += '<option value="' + escapeHtml(c.key) + '">' + escapeHtml((c.name || c.key) + ' · ' + mediaInfo) + '</option>';
+      });
+      bulkSel.innerHTML = bopts;
+    }
+
     var html = '';
     members.forEach(function(m) {
       var current = assignMap[m.phone];
@@ -7577,7 +7781,9 @@ function loadAssignments() {
         ? '<span class="status-pill assigned">✓ Assigned</span>' 
         : '<span class="status-pill unassigned">— Not assigned</span>';
       
-      html += '<div class="assign-row" data-search="' + escapeHtml(((m.name||'') + ' ' + (m.phone||'') + ' ' + (m.city||'')).toLowerCase()) + '">' +
+      var isAssigned = current ? '1' : '0';
+      html += '<div class="assign-row" data-phone="' + escapeHtml(m.phone) + '" data-assigned="' + isAssigned + '" data-search="' + escapeHtml(((m.name||'') + ' ' + (m.phone||'') + ' ' + (m.city||'')).toLowerCase()) + '">' +
+                '<input type="checkbox" class="da-check" onchange="daOnCheck()">' +
                 '<div class="assign-avatar">' + escapeHtml(initials) + '</div>' +
                 '<div class="member-info">' +
                   '<div class="name">' + escapeHtml(m.name) + '</div>' +
@@ -7589,6 +7795,8 @@ function loadAssignments() {
     });
     $('assignmentsList').innerHTML = html;
     $('assignSubtitle').textContent = members.length + ' field members · ' + assignments.length + ' assigned on ' + date;
+    daRenderStats();
+    daRenderCampView();
     if (typeof filterAssignments === 'function') filterAssignments(); // keep search active after reload
   }).catch(function(err) {
     console.error(err);
@@ -7596,15 +7804,19 @@ function loadAssignments() {
   });
 }
 
-// Filter assignment rows by member name / phone / city (NEW)
+// Filter assignment rows by member name / phone / city + filter chip (assigned/unassigned)
 function filterAssignments() {
   var box = $('assignSearchBox');
   var q = box ? box.value.toLowerCase().trim() : '';
+  var chipFilter = (typeof p_daState !== 'undefined' && p_daState.filter) ? p_daState.filter : 'all';
   var rows = document.querySelectorAll('#assignmentsList .assign-row');
   var shown = 0;
   rows.forEach(function(r){
     var hay = r.getAttribute('data-search') || '';
-    var match = !q || hay.indexOf(q) !== -1;
+    var isAssigned = r.getAttribute('data-assigned') === '1';
+    var matchSearch = !q || hay.indexOf(q) !== -1;
+    var matchChip = chipFilter === 'all' || (chipFilter === 'assigned' && isAssigned) || (chipFilter === 'unassigned' && !isAssigned);
+    var match = matchSearch && matchChip;
     r.style.display = match ? '' : 'none';
     if (match) shown++;
   });
