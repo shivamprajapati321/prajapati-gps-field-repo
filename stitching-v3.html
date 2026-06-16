@@ -1152,6 +1152,8 @@ function openEditEntry(entryId) {
   
   updateEditTotalPreview();
   document.getElementById('editEntryStatus').innerHTML = '';
+  var esb = document.getElementById('editSaveBtn');
+  if (esb) { esb.disabled = false; esb.innerHTML = '💾 Save Changes'; }
   document.getElementById('editEntryModal').style.display = 'flex';
 }
 
@@ -1290,6 +1292,8 @@ async function saveEditEntry() {
     
     document.getElementById('editEntryStatus').innerHTML = 
       '<div class="callout success"><span>✅</span><div>Entry updated successfully!</div></div>';
+    btn.disabled = false;
+    btn.innerHTML = '💾 Save Changes';
     closeEditEntry();
     stToast('✅ Entry update ho gayi', 'success');
     refreshEntries();   // light refresh — page stuck nahi hota
@@ -2636,10 +2640,11 @@ async function savePayment() {
     });
     
     document.getElementById('payStatus').innerHTML = '<div class="callout success"><span>✅</span><div>Payment recorded!</div></div>';
-    setTimeout(() => {
-      closePaymentModal();
-      loadData();
-    }, 700);
+    btn.disabled = false;
+    btn.innerHTML = '💾 Record Payment';
+    closePaymentModal();
+    stToast('✅ Payment record ho gaya', 'success');
+    refreshEntries();
   } catch (e) {
     document.getElementById('payStatus').innerHTML = `<div class="callout error"><span>❌</span><div>${escapeHtml(e.message)}</div></div>`;
     btn.disabled = false;
