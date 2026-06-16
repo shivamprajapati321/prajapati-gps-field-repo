@@ -2071,6 +2071,31 @@ label {
 .quick-range button:hover { border-color: var(--border-strong); color: var(--text-1); }
 .quick-range button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 
+/* Reports: searchable campaign dropdown */
+.rc-list { position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:60; background:var(--card); border:1px solid var(--border); border-radius:10px; box-shadow:0 12px 30px rgba(11,25,87,0.12); max-height:240px; overflow-y:auto; display:none; padding:5px; }
+.rc-list.open { display:block; }
+.rc-opt { padding:9px 12px; font-size:13px; border-radius:6px; cursor:pointer; color:var(--text-1); }
+.rc-opt:hover { background:var(--bg); }
+.rc-opt.sel { background:var(--success-bg); color:var(--success); font-weight:600; }
+.rc-empty { padding:12px; font-size:12px; color:var(--text-3); text-align:center; }
+
+/* Reports: operations breakdown inside campaign card */
+.rc-ops { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin-top:12px; }
+.rc-op { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:11px 13px; }
+.rc-op-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:7px; }
+.rc-op-title { font-size:12px; font-weight:700; color:var(--text-1); display:flex; align-items:center; gap:6px; }
+.rc-op-title i { font-size:14px; }
+.rc-op-pct { font-size:11px; font-weight:700; }
+.rc-op-nums { font-size:11px; color:var(--text-2); margin-bottom:7px; }
+.rc-op-nums b { color:var(--text-1); font-size:13px; }
+.rc-op-bar { height:7px; background:rgba(11,25,87,0.08); border-radius:4px; overflow:hidden; }
+.rc-op-bar > i { display:block; height:100%; border-radius:4px; }
+.rc-op.s-print .rc-op-title i { color:#185FA5; }
+.rc-op.s-stitch .rc-op-title i { color:#7F77DD; }
+.rc-op.s-exec .rc-op-title i { color:#D85A30; }
+.rc-op.s-field .rc-op-title i { color:#1D9E75; }
+.rc-flow { font-size:10.5px; color:var(--text-3); margin-top:10px; font-weight:600; display:flex; align-items:center; gap:5px; }
+
 .report-view { display: none; }
 .report-view.active { display: block; }
 
@@ -3544,25 +3569,31 @@ label {
       <!-- Date filter -->
       <div class="report-filter-bar">
         <div>
-          <label>From</label>
-          <input type="date" id="reportDateFrom" onchange="loadReports()">
-        </div>
-        <div>
-          <label>To</label>
-          <input type="date" id="reportDateTo" onchange="loadReports()">
-        </div>
-        <div>
           <label>Campaign</label>
-          <select id="reportCampaign" onchange="loadReports()" style="min-width:140px;">
-            <option value="">All campaigns</option>
-          </select>
+          <div class="rc-dd" style="position:relative;min-width:200px;">
+            <input type="text" id="rcInput" class="rc-input" placeholder="All campaigns" autocomplete="off" onfocus="rcOpen()" oninput="rcFilter()" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;background:var(--card);color:var(--text-1);outline:none;">
+            <div class="rc-list" id="rcList"></div>
+          </div>
         </div>
         <div class="quick-range">
           <button onclick="setReportRange('today', event)">Today</button>
+          <button onclick="setReportRange('yesterday', event)">Yesterday</button>
           <button onclick="setReportRange('week', event)" class="active">Last 7 days</button>
           <button onclick="setReportRange('month', event)">30 days</button>
           <button onclick="setReportRange('all', event)">All time</button>
+          <button onclick="setReportRange('custom', event)">Custom</button>
         </div>
+        <div id="reportCustomWrap" style="display:none;gap:8px;align-items:end;">
+          <div>
+            <label>From</label>
+            <input type="date" id="reportDateFrom" onchange="reportCustomChanged()">
+          </div>
+          <div>
+            <label>To</label>
+            <input type="date" id="reportDateTo" onchange="reportCustomChanged()">
+          </div>
+        </div>
+        <select id="reportCampaign" style="display:none;"><option value="">All campaigns</option></select>
       </div>
 
       <!-- Stats overview -->
@@ -7889,6 +7920,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 var p3state = {
   reportData: null,
+  printLogs: [], stitchLogs: [], execLogs: [],
+  reportCampaignKey: '',
   activeReportTab: 'location',
   deferredPwaPrompt: null
 };
@@ -7898,12 +7931,19 @@ function setReportRange(range, evt) {
   var now = new Date();
   var ist = new Date(now.getTime() + 5.5*60*60*1000);
   var todayIso = ist.toISOString().split('T')[0];
-  var weekAgo = new Date(ist.getTime() - 7*24*60*60*1000).toISOString().split('T')[0];
-  var monthAgo = new Date(ist.getTime() - 30*24*60*60*1000).toISOString().split('T')[0];
-  
+  var yesterdayIso = new Date(ist.getTime() - 1*24*60*60*1000).toISOString().split('T')[0];
+  var weekAgo = new Date(ist.getTime() - 6*24*60*60*1000).toISOString().split('T')[0];
+  var monthAgo = new Date(ist.getTime() - 29*24*60*60*1000).toISOString().split('T')[0];
+
+  var customWrap = $('reportCustomWrap');
+  if (customWrap) customWrap.style.display = (range === 'custom') ? 'flex' : 'none';
+
   if (range === 'today') {
     $('reportDateFrom').value = todayIso;
     $('reportDateTo').value = todayIso;
+  } else if (range === 'yesterday') {
+    $('reportDateFrom').value = yesterdayIso;
+    $('reportDateTo').value = yesterdayIso;
   } else if (range === 'week') {
     $('reportDateFrom').value = weekAgo;
     $('reportDateTo').value = todayIso;
@@ -7913,6 +7953,13 @@ function setReportRange(range, evt) {
   } else if (range === 'all') {
     $('reportDateFrom').value = '';
     $('reportDateTo').value = '';
+  } else if (range === 'custom') {
+    // keep existing dates; user will pick. Don't reload until both chosen.
+    document.querySelectorAll('.quick-range button').forEach(function(b){ b.classList.remove('active'); });
+    var cbtn = null;
+    document.querySelectorAll('.quick-range button').forEach(function(b){ if ((b.getAttribute('onclick')||'').indexOf("'custom'")!==-1) cbtn=b; });
+    if (cbtn) cbtn.classList.add('active');
+    return;
   }
   
   document.querySelectorAll('.quick-range button').forEach(function(b){ b.classList.remove('active'); });
@@ -7931,40 +7978,118 @@ function setReportRange(range, evt) {
   loadReports();
 }
 
+// Custom range: reload only when both dates are set
+function reportCustomChanged() {
+  var f = $('reportDateFrom').value, t = $('reportDateTo').value;
+  if (f && t) loadReports();
+}
+
+// ═══ Searchable campaign dropdown for reports ═══
+function rcInitDropdown() {
+  if (!state.campaigns || state.campaigns.length === 0) return;
+  if (p3state._rcLoaded) return;
+  p3state._rcLoaded = true;
+  p3state.rcOptions = [{ value: '', label: 'All campaigns' }].concat(
+    state.campaigns.map(function(c){ return { value: c.key, label: c.name || c.key }; })
+  );
+}
+function rcOpen() {
+  rcRenderList('');
+  var l = $('rcList'); if (l) l.classList.add('open');
+}
+function rcFilter() {
+  var q = ($('rcInput').value || '').toLowerCase();
+  rcRenderList(q);
+  var l = $('rcList'); if (l) l.classList.add('open');
+}
+function rcRenderList(q) {
+  var opts = (p3state.rcOptions || []).filter(function(o){ return !q || o.label.toLowerCase().indexOf(q) !== -1; });
+  var l = $('rcList'); if (!l) return;
+  if (opts.length === 0) { l.innerHTML = '<div class="rc-empty">No match</div>'; return; }
+  l.innerHTML = opts.map(function(o){
+    return '<div class="rc-opt' + (p3state.reportCampaignKey === o.value ? ' sel' : '') + '" onclick="rcPick(\'' + encodeURIComponent(o.value) + '\',\'' + encodeURIComponent(o.label) + '\')">' + escapeHtml(o.label) + '</div>';
+  }).join('');
+}
+function rcPick(encVal, encLabel) {
+  p3state.reportCampaignKey = decodeURIComponent(encVal);
+  $('rcInput').value = p3state.reportCampaignKey ? decodeURIComponent(encLabel) : '';
+  var l = $('rcList'); if (l) l.classList.remove('open');
+  loadReports();
+}
+document.addEventListener('click', function(e){
+  var l = $('rcList'), i = $('rcInput');
+  if (l && i && !l.contains(e.target) && e.target !== i) l.classList.remove('open');
+});
+
 function loadReports() {
-  // Initialize defaults if empty
-  if (!$('reportDateFrom').value && !$('reportDateTo').value) {
+  // Initialize defaults only on FIRST load (not for explicit "All time")
+  if (!$('reportDateFrom').value && !$('reportDateTo').value && !p3state._inited) {
+    p3state._inited = true;
     setReportRange('week');
     return;
   }
+  p3state._inited = true;
   
-  // Populate campaign filter
-  var campSel = $('reportCampaign');
-  if (campSel.options.length <= 1 && state.campaigns.length > 0) {
-    campSel.innerHTML = '<option value="">All campaigns</option>';
-    state.campaigns.forEach(function(c) {
-      campSel.innerHTML += '<option value="' + escapeHtml(c.key) + '">' + escapeHtml(c.name || c.key) + '</option>';
-    });
-  }
+  // Populate campaign filter (searchable dropdown init handled separately)
+  rcInitDropdown();
   
   var dateFrom = $('reportDateFrom').value;
   var dateTo = $('reportDateTo').value;
-  var campaignKey = $('reportCampaign').value;
+  var campaignKey = (typeof p3state !== 'undefined' && p3state.reportCampaignKey) ? p3state.reportCampaignKey : $('reportCampaign').value;
   
   // Show loading
   $('rLocationView').innerHTML = '<div class="spinner"></div>';
   $('rCampaignView').innerHTML = '<div class="spinner"></div>';
   $('rTeamView').innerHTML = '<div class="spinner"></div>';
   
-  // Build query
-  var qs = '/rest/v1/trial_photos?select=*&order=captured_at.desc&deleted_at=is.null&limit=5000';
-  if (dateFrom) qs += '&captured_at=gte.' + new Date(dateFrom + 'T00:00:00+05:30').toISOString();
-  if (dateTo) qs += '&captured_at=lte.' + new Date(dateTo + 'T23:59:59+05:30').toISOString();
+  // Date bounds (IST)
+  var gte = dateFrom ? new Date(dateFrom + 'T00:00:00+05:30').toISOString() : null;
+  var lte = dateTo ? new Date(dateTo + 'T23:59:59+05:30').toISOString() : null;
+  var fromDateOnly = dateFrom || null;  // operations logs use date (log_date)
+  var toDateOnly = dateTo || null;
+
+  // Photos query
+  var qs = '/rest/v1/trial_photos?select=*&order=captured_at.desc&deleted_at=is.null&limit=20000';
+  if (gte) qs += '&captured_at=gte.' + gte;
+  if (lte) qs += '&captured_at=lte.' + lte;
   if (campaignKey) qs += '&campaign_key=eq.' + encodeURIComponent(campaignKey);
-  
-  api(qs).then(function(photos) {
-    photos = photos || [];
+
+  // Operations queries (date-filtered on their own date columns)
+  var printQ = '/rest/v1/trial_work_logs?select=*&stage=eq.printing&limit=20000';
+  if (fromDateOnly) printQ += '&log_date=gte.' + fromDateOnly;
+  if (toDateOnly) printQ += '&log_date=lte.' + toDateOnly;
+
+  var stitchQ = '/rest/v1/prajapati_stitching_log?select=*&limit=20000';
+  if (fromDateOnly) stitchQ += '&log_date=gte.' + fromDateOnly;
+  if (toDateOnly) stitchQ += '&log_date=lte.' + toDateOnly;
+
+  var execQ = '/rest/v1/execution_daily_log?select=*&limit=20000';
+  if (fromDateOnly) execQ += '&log_date=gte.' + fromDateOnly;
+  if (toDateOnly) execQ += '&log_date=lte.' + toDateOnly;
+
+  Promise.all([
+    api(qs),
+    api(printQ).catch(function(){ return []; }),
+    api(stitchQ).catch(function(){ return []; }),
+    api(execQ).catch(function(){ return []; })
+  ]).then(function(res) {
+    var photos = res[0] || [];
+    var printLogs = res[1] || [];
+    var stitchLogs = res[2] || [];
+    var execLogs = res[3] || [];
+    // campaign filter for operations (client-side, since they use campaign_id/campaign_key)
+    if (campaignKey) {
+      var cmp = state.campaigns.find(function(x){ return x.key === campaignKey; });
+      var cid = cmp ? String(cmp.id || '') : '';
+      function opMatch(r){ return String(r.campaign_key||'')===campaignKey || (cid && String(r.campaign_id||'')===cid); }
+      printLogs = printLogs.filter(opMatch);
+      stitchLogs = stitchLogs.filter(opMatch);
+      execLogs = execLogs.filter(opMatch);
+    }
     p3state.reportData = photos;
+    p3state.printLogs = printLogs;
+    p3state.stitchLogs = stitchLogs;
+    p3state.execLogs = execLogs;
     
     // Update subtitle
     var subText = photos.length + ' photos';
@@ -7987,7 +8112,7 @@ function loadReports() {
     $('rPending').textContent = pending.toLocaleString('en-IN');
     $('rVehicles').textContent = uniqueVehicles.size.toLocaleString('en-IN');
     
-    // Render all 3 views
+    // Render all views
     renderLocationReport(photos);
     renderCampaignReport(photos);
     renderTeamReport(photos);
@@ -8134,6 +8259,46 @@ function renderCampaignReport(photos) {
     var targetPct = Math.min(100, Math.round((c.totalVehicles/target)*100));
     var fillClass = targetPct >= 75 ? '' : (targetPct >= 40 ? 'warn' : 'danger');
 
+    // ── Operations (printing / stitching / execution) for THIS campaign ──
+    var opsHtml = '';
+    if (campInfo) {
+      var planned = Number(campInfo.total_quantity || 0) || 0;
+      var prQty = sumForCampaign(p3state.printLogs || [], campInfo, ['qty_done','quantity','qty']);
+      var stQty = sumForCampaign(p3state.stitchLogs || [], campInfo, ['quantity','qty']);
+      var exQty = sumForCampaign(p3state.execLogs || [], campInfo, ['quantity','qty']);
+      var stages = (typeof campStages === 'function') ? campStages(campInfo) : { printing:true, stitching:true, field:true, delivery:false, known:false };
+
+      var ops = [];
+      // Printing
+      if (stages.printing || prQty > 0) {
+        var prPct = planned > 0 ? Math.min(100, Math.round(prQty/planned*100)) : null;
+        ops.push(opCard('s-print','ti-printer','Printing', prQty, planned, prPct, 'printed', 'units'));
+      }
+      // Stitching
+      if (stages.stitching || stQty > 0) {
+        var stPct = planned > 0 ? Math.min(100, Math.round(stQty/planned*100)) : null;
+        ops.push(opCard('s-stitch','ti-needle','Stitching', stQty, planned, stPct, 'stitched', 'pcs'));
+      }
+      // Execution (field-installed quantity). Outstanding = target - done
+      if (stages.field || exQty > 0) {
+        var exTarget = planned > 0 ? planned : (target || 0);
+        var exPct = exTarget > 0 ? Math.min(100, Math.round(exQty/exTarget*100)) : null;
+        ops.push(opCard('s-exec','ti-tools','Execution', exQty, exTarget, exPct, 'executed', 'units'));
+      }
+      if (ops.length) {
+        opsHtml = '<div class="rc-ops">' + ops.join('') + '</div>';
+        // flow line
+        var flow = [];
+        if (stages.printing) flow.push('Print');
+        if (stages.stitching) flow.push('Stitch');
+        if (stages.field) flow.push('Field');
+        if (stages.delivery) flow.push('Deliver');
+        if (flow.length && stages.known) {
+          opsHtml += '<div class="rc-flow"><i class="ti ti-route"></i> Flow: ' + flow.join(' → ') + '</div>';
+        }
+      }
+    }
+
     html += '<div class="location-card">' +
               '<div class="location-card-header">' +
                 '<div class="location-name-block">' +
@@ -8160,9 +8325,32 @@ function renderCampaignReport(photos) {
                 '<div class="mini-stat-box"><div class="label">Hood</div><div class="val">' + c.hoodVehicles + '</div></div>' +
                 '<div class="mini-stat-box"><div class="label">Back</div><div class="val">' + c.backVehicles + '</div></div>' +
               '</div>' +
+              opsHtml +
             '</div>';
   });
   $('rCampaignView').innerHTML = html;
+}
+
+// Operations stat card builder (done/target + progress bar OR plain count)
+function opCard(cls, icon, title, done, target, pct, verb, unit) {
+  var barColor = pct === null ? '#26d0ce' : (pct >= 80 ? '#1D9E75' : pct >= 50 ? '#B89B4E' : '#E24B4A');
+  var pctColor = pct === null ? 'var(--text-3)' : barColor;
+  var numLine, barLine, pctLine;
+  if (target > 0 && pct !== null) {
+    var pending = Math.max(0, target - done);
+    numLine = '<b>' + done.toLocaleString('en-IN') + '</b> / ' + target.toLocaleString('en-IN') + ' ' + unit + ' · ' + pending.toLocaleString('en-IN') + ' pending';
+    barLine = '<div class="rc-op-bar"><i style="width:' + pct + '%;background:' + barColor + ';"></i></div>';
+    pctLine = '<span class="rc-op-pct" style="color:' + pctColor + ';">' + pct + '%</span>';
+  } else {
+    numLine = '<b>' + done.toLocaleString('en-IN') + '</b> ' + unit + ' ' + verb;
+    barLine = '<div class="rc-op-bar"><i style="width:' + (done > 0 ? 100 : 0) + '%;background:#26d0ce;"></i></div>';
+    pctLine = '<span class="rc-op-pct" style="color:var(--text-3);">' + (done > 0 ? 'done' : '—') + '</span>';
+  }
+  return '<div class="rc-op ' + cls + '">' +
+           '<div class="rc-op-head"><span class="rc-op-title"><i class="ti ' + icon + '"></i> ' + title + '</span>' + pctLine + '</div>' +
+           '<div class="rc-op-nums">' + numLine + '</div>' +
+           barLine +
+         '</div>';
 }
 
 function renderTeamReport(photos) {
@@ -8234,6 +8422,45 @@ function renderTeamReport(photos) {
   });
   
   html += '</tbody></table></div>';
+
+  // ── Operations team contribution (printing / stitching / execution) ──
+  var opsTeam = {};
+  function addOp(name, key, field, qty){
+    var k = (name||key||'unknown');
+    if (!opsTeam[k]) opsTeam[k] = { name:k, print:0, stitch:0, exec:0 };
+    opsTeam[k][field] += Number(qty)||0;
+  }
+  (p3state.printLogs||[]).forEach(function(r){
+    var nm = r.operator_name || r.member_name || r.recorded_by || r.operator_id || 'Operator';
+    addOp(nm, nm, 'print', r.qty_done || r.quantity || 0);
+  });
+  (p3state.stitchLogs||[]).forEach(function(r){
+    addOp(r.master_name || r.recorded_by || 'Master', null, 'stitch', r.quantity || 0);
+  });
+  (p3state.execLogs||[]).forEach(function(r){
+    addOp(r.member_name || r.member_phone || 'Executor', null, 'exec', r.quantity || 0);
+  });
+  var opsList = Object.values(opsTeam).filter(function(o){ return o.print||o.stitch||o.exec; })
+                .sort(function(a,b){ return (b.print+b.stitch+b.exec)-(a.print+a.stitch+a.exec); });
+  if (opsList.length) {
+    html += '<div class="sec-header" style="margin-top:22px;"><div class="sec-title"><i class="ti ti-tools"></i> Operations team — production output</div>' +
+            '<span style="font-size:11px;color:var(--text-2);">printing · stitching · execution (selected range)</span></div>';
+    html += '<div class="team-report-table"><table><thead><tr>' +
+            '<th>Worker</th><th class="num-cell">Printing</th><th class="num-cell">Stitching</th><th class="num-cell">Execution</th><th class="num-cell">Total output</th>' +
+            '</tr></thead><tbody>';
+    opsList.forEach(function(o){
+      var tot = o.print + o.stitch + o.exec;
+      html += '<tr>' +
+        '<td><div class="name-cell"><div class="member-avatar role-printing">' + escapeHtml((o.name||'?').substring(0,2).toUpperCase()) + '</div><div class="info"><div>' + escapeHtml(o.name) + '</div></div></div></td>' +
+        '<td class="num-cell" style="color:#185FA5;">' + (o.print?o.print.toLocaleString('en-IN'):'—') + '</td>' +
+        '<td class="num-cell" style="color:#7F77DD;">' + (o.stitch?o.stitch.toLocaleString('en-IN'):'—') + '</td>' +
+        '<td class="num-cell" style="color:#D85A30;">' + (o.exec?o.exec.toLocaleString('en-IN'):'—') + '</td>' +
+        '<td class="num-cell" style="color:var(--primary);font-weight:800;">' + tot.toLocaleString('en-IN') + '</td>' +
+        '</tr>';
+    });
+    html += '</tbody></table></div>';
+  }
+
   $('rTeamView').innerHTML = html;
 }
 
