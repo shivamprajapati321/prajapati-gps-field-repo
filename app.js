@@ -6,7 +6,7 @@
 //        + Strong PWA install + Aggressive auto-update
 // ═════════════════════════════════════════════════════════════════
 
-var APP_VERSION = 'v15.5.1';
+var APP_VERSION = 'v15.5.2';
 var BUILD_DATE = '2026-05-17';
 
 var CONFIG = {
@@ -1107,11 +1107,13 @@ window.startCapture = function(){
   if (!state.campaign) return toast('No campaign assigned','error');
   if (fsApiSupported()){
     idb.getConfig('photo_dir_handle').then(function(existing){
-      if (existing){ resetSession(false); enterCaptureScreen(); }
+      if (existing){
+        ensurePhotoFolder().then(function(){ resetSession(false); enterCaptureScreen(); });
+      }
       else {
         if (confirm('First-time setup:\n\nPhone gallery mein photos save karne ke liye ek folder pick karo. (Recommend: Pictures folder)\n\nYeh ek hi baar hoga, baad mein silent save hoga.\n\nProceed?')){
           pickPhotoFolder().then(function(){ resetSession(false); enterCaptureScreen(); });
-        } else { resetSession(false); enterCaptureScreen(); }
+        } else { _photoFolderState = 'denied'; resetSession(false); enterCaptureScreen(); }
       }
     });
   } else { resetSession(false); enterCaptureScreen(); }
@@ -2083,15 +2085,53 @@ function queuePhoto(key){
 }
 
 function fsApiSupported(){ return typeof window.showDirectoryPicker === 'function'; }
+// ⭐ v15.4.7: Photo folder permission — EK BAAR maango (location jaisा), phir koi popup nahi
+//   _photoFolderState: 'unknown' | 'granted' | 'denied' (session-wide cache)
+//   Ek baar granted → handle cache, dobara query/request NAHI (no repeat popup)
+//   Ek baar denied/skip → session bhar gallery-save silent skip (server upload to ho hi raha)
+var _photoFolderState = 'unknown';
+var _photoFolderHandle = null;
+
 function ensurePhotoFolder(){
   if (!fsApiSupported()) return Promise.resolve(null);
+
+  // Already granted is session — cached handle do, koi permission check nahi (NO POPUP)
+  if (_photoFolderState === 'granted' && _photoFolderHandle){
+    return Promise.resolve(_photoFolderHandle);
+  }
+  // Already denied/skipped is session — silent skip (server upload still happening)
+  if (_photoFolderState === 'denied'){
+    return Promise.resolve(null);
+  }
+
+  // Pehli baar is session — handle nikaalो, ek baar permission check
   return idb.getConfig('photo_dir_handle').then(function(handle){
-    if (!handle) return null;
+    if (!handle){ _photoFolderState = 'denied'; return null; }
     return handle.queryPermission({ mode:'readwrite' }).then(function(perm){
-      if (perm === 'granted') return handle;
-      return handle.requestPermission({ mode:'readwrite' }).then(function(p2){ return p2 === 'granted' ? handle : null; });
+      if (perm === 'granted'){
+        _photoFolderState = 'granted';
+        _photoFolderHandle = handle;
+        return handle;
+      }
+      // 'prompt' state — ek baar request karo (session mein sirf yahi ek baar)
+      return handle.requestPermission({ mode:'readwrite' }).then(function(p2){
+        if (p2 === 'granted'){
+          _photoFolderState = 'granted';
+          _photoFolderHandle = handle;
+          return handle;
+        }
+        // User ne deny kiya — session bhar skip (ab koi popup nahi)
+        _photoFolderState = 'denied';
+        return null;
+      }).catch(function(){
+        _photoFolderState = 'denied';
+        return null;
+      });
+    }).catch(function(){
+      _photoFolderState = 'denied';
+      return null;
     });
-  }).catch(function(){ return null; });
+  }).catch(function(){ _photoFolderState = 'denied'; return null; });
 }
 function pickPhotoFolder(){
   if (!fsApiSupported()){
@@ -2101,10 +2141,13 @@ function pickPhotoFolder(){
   return window.showDirectoryPicker({ mode: 'readwrite', id: 'prajapati-gps-photos', startIn: 'pictures' })
     .then(function(handle){
       return idb.setConfig('photo_dir_handle', handle).then(function(){
+        _photoFolderState = 'granted';
+        _photoFolderHandle = handle;
         toast('✓ Photo folder set! Ab silent save hoga','success');
         return handle;
       });
     }).catch(function(){
+      _photoFolderState = 'denied';
       toast('Folder pick cancel — Downloads use hoga','warn');
       return null;
     });
@@ -2117,12 +2160,23 @@ function savePhotoToGallery(blob, filename){
           return w.write(blob).then(function(){ return w.close(); });
         });
       }).catch(function(err){
-        console.warn('FS save failed, falling back:', err);
-        triggerDownload(blob, filename);
+        console.warn('FS save failed:', err);
+        // Mobile pe download fallback skip (har photo pe download notification avoid)
+        // Server upload to ho hi raha hai — gallery sirf extra backup
+        if (!isMobileLike()) triggerDownload(blob, filename);
       });
     }
-    triggerDownload(blob, filename);
+    // Folder nahi mila — desktop pe download, mobile pe silent skip (no repeat popup)
+    if (!isMobileLike()) triggerDownload(blob, filename);
   });
+}
+
+// Mobile/Android detect — wahान File System API popups irritating hain
+function isMobileLike(){
+  try {
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+           (navigator.maxTouchPoints && navigator.maxTouchPoints > 1 && window.matchMedia('(display-mode: standalone)').matches);
+  } catch(e){ return false; }
 }
 function triggerDownload(blob, filename){
   try {
