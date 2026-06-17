@@ -6,7 +6,7 @@
 //        + Strong PWA install + Aggressive auto-update
 // ═════════════════════════════════════════════════════════════════
 
-var APP_VERSION = 'v15.5.2';
+var APP_VERSION = 'v15.5.3';
 var BUILD_DATE = '2026-05-17';
 
 var CONFIG = {
@@ -2160,14 +2160,13 @@ function savePhotoToGallery(blob, filename){
           return w.write(blob).then(function(){ return w.close(); });
         });
       }).catch(function(err){
-        console.warn('FS save failed:', err);
-        // Mobile pe download fallback skip (har photo pe download notification avoid)
-        // Server upload to ho hi raha hai — gallery sirf extra backup
-        if (!isMobileLike()) triggerDownload(blob, filename);
+        console.warn('FS save failed, download fallback:', err);
+        triggerDownload(blob, filename);
       });
     }
-    // Folder nahi mila — desktop pe download, mobile pe silent skip (no repeat popup)
-    if (!isMobileLike()) triggerDownload(blob, filename);
+    // Folder handle nahi mila (FS API unsupported ya user ne folder set nahi kiya)
+    // → download fallback se gallery/Downloads mein save karo (mobile + desktop dono)
+    triggerDownload(blob, filename);
   });
 }
 
