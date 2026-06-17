@@ -4501,12 +4501,28 @@ function loadJobTypes() {
     return map;
   }).catch(function(){ window.__jobTypes = {}; return {}; });
 }
-// Get required stages for a campaign. If job type unknown, assume all stages
-// (safe default — nothing hidden) so older campaigns keep working.
+// Get required stages for a campaign. If job type unknown, infer from campaign data
+// (photo counts) instead of blindly showing all stages.
 function campStages(camp) {
   var jt = window.__jobTypes && camp && camp.job_type_id ? window.__jobTypes[String(camp.job_type_id)] : null;
-  if (!jt) return { printing:true, stitching:true, field:true, delivery:true, name:null, known:false };
-  return { printing:jt.printing, stitching:jt.stitching, field:jt.field, delivery:jt.delivery, name:jt.name, known:true };
+  if (jt) return { printing:jt.printing, stitching:jt.stitching, field:jt.field, delivery:jt.delivery, name:jt.name, known:true };
+
+  // ⭐ job_type_id nahi hai → campaign data se INFER karo (galat "saare stages" avoid)
+  if (camp){
+    var hood = Number(camp.hood_photo_count || 0);
+    var back = Number(camp.back_panel_photo_count || 0);
+    var hasPhotos = (hood > 0 || back > 0);
+    // Agar photo counts hain → field campaign (Auto Hood/Back type)
+    // Agar photo counts ZERO hain → delivery campaign (no field photos)
+    if (hasPhotos){
+      return { printing:true, stitching:true, field:true, delivery:false, name:null, known:false, inferred:true };
+    } else {
+      // No photos → likely print + deliver (delivery/production type)
+      return { printing:true, stitching:true, field:false, delivery:true, name:null, known:false, inferred:true };
+    }
+  }
+  // Bilkul kuch nahi pata → safe default (sab dikhao)
+  return { printing:true, stitching:true, field:true, delivery:true, name:null, known:false };
 }
 
 // Human label for current range.
