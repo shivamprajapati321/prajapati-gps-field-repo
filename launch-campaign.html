@@ -499,12 +499,23 @@ async function loadCampaignForEdit(campId) {
           locations: []
         };
       }
-      byDesign[key].locations.push({
-        name: r.location_name, address: r.location_address,
-        lat: r.location_lat, lng: r.location_lng, place_id: r.location_place_id,
-        city: r.location_city, state: r.location_state || 'Maharashtra',
-        pincode: r.location_pincode, type: r.location_type, quantity: r.quantity || 0
+      // ⭐ Dedupe: same location (naam+address) dobara add na ho (quantity double bug fix)
+      var locKey = (r.location_name || '') + '|' + (r.location_address || '') + '|' + (r.location_lat || '') + '|' + (r.location_lng || '');
+      var existing = byDesign[key].locations.find(function(L){
+        return ((L.name||'') + '|' + (L.address||'') + '|' + (L.lat||'') + '|' + (L.lng||'')) === locKey;
       });
+      if (existing) {
+        // Same location pehle se hai — quantity ADD mat karo, jo zyada hai woh rakho
+        // (duplicate rows the to double na ho; max lो taaki data loss na ho)
+        existing.quantity = Math.max(existing.quantity || 0, r.quantity || 0);
+      } else {
+        byDesign[key].locations.push({
+          name: r.location_name, address: r.location_address,
+          lat: r.location_lat, lng: r.location_lng, place_id: r.location_place_id,
+          city: r.location_city, state: r.location_state || 'Maharashtra',
+          pincode: r.location_pincode, type: r.location_type, quantity: r.quantity || 0
+        });
+      }
     });
     designs = Object.values(byDesign);
     if (designs.length === 0) addDesign();
@@ -1189,7 +1200,9 @@ function calcPricing() {
 
 function updateActionBar() {
   const totalQty = designs.reduce((s, d) => s + (d.locations || []).reduce((t, l) => t + (l.quantity || 0), 0), 0);
-  const validDesigns = designs.filter(d => d.design_name && d.design_url && (d.locations || []).some(l => l.name && l.quantity > 0));
+  // Edit mode mein design_url optional (purane campaigns ka file load na ho to bhi edit ho sake)
+  const isEdit = !!editingCampaign;
+  const validDesigns = designs.filter(d => d.design_name && (isEdit || d.design_url) && (d.locations || []).some(l => l.name && l.quantity > 0));
   const cities = new Set();
   designs.forEach(d => (d.locations || []).forEach(l => l.city && cities.add(l.city)));
   const locCount = designs.reduce((s, d) => s + (d.locations || []).filter(l => l.name && l.quantity > 0).length, 0);
@@ -1201,7 +1214,9 @@ function updateActionBar() {
   if (selectedJobType) parts.push(`Type: <strong>${escapeHtml(selectedJobType.name)}</strong>`);
   
   document.getElementById('actionLeft').innerHTML = parts.length ? parts.join(' · ') : 'Fill form to enable submit';
-  document.getElementById('submitBtn').disabled = !(validDesigns.length > 0 && selectedSales && selectedClient && selectedJobType);
+  // Edit mode mein job_type optional (admin-v2 se bane campaigns mein job_type nahi hota)
+  const jobTypeOk = isEdit || selectedJobType;
+  document.getElementById('submitBtn').disabled = !(validDesigns.length > 0 && selectedSales && selectedClient && jobTypeOk);
 }
 
 function escapeHtml(s) {
@@ -1219,11 +1234,15 @@ async function saveDraft() { await submitCampaign('draft'); }
 
 async function submitCampaign(targetStatus = 'pending_execution_plan') {
   const campaignName = document.getElementById('campaignName').value.trim();
-  const validDesigns = designs.filter(d => d.design_name && d.design_url && (d.locations || []).some(l => l.name && l.quantity > 0));
+  const isEdit = !!editingCampaign;
+  // Edit mode mein design_url optional (purane campaign ka file na ho to bhi save ho)
+  const validDesigns = designs.filter(d => d.design_name && (isEdit || d.design_url) && (d.locations || []).some(l => l.name && l.quantity > 0));
   
   if (targetStatus !== 'draft') {
-    if (!selectedSales || !selectedClient || !selectedJobType || !campaignName) {
-      document.getElementById('submitStatus').innerHTML = '<div class="callout error"><span class="callout-icon">⚠️</span><div>Please complete: Sales person, Client, Job Type, Campaign name</div></div>';
+    // Edit mode mein job_type optional (admin-v2 se bane campaigns ka job_type nahi hota)
+    const jobTypeMissing = !isEdit && !selectedJobType;
+    if (!selectedSales || !selectedClient || jobTypeMissing || !campaignName) {
+      document.getElementById('submitStatus').innerHTML = '<div class="callout error"><span class="callout-icon">⚠️</span><div>Please complete: Sales person, Client, ' + (isEdit ? '' : 'Job Type, ') + 'Campaign name</div></div>';
       window.scrollTo({top: 0, behavior: 'smooth'});
       return;
     }
