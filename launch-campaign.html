@@ -514,6 +514,16 @@ async function loadCampaignForEdit(campId) {
     if (document.getElementById('discount')) document.getElementById('discount').value = camp.discount || '';
     if (document.getElementById('gstPct')) document.getElementById('gstPct').value = camp.gst_pct || '';
 
+    // ⭐ Full edit: saare toggles bhi load karo (warna edit pe OFF dikhते the)
+    function setToggle(id, on){
+      var el = document.getElementById(id);
+      if (el){ if (on) el.classList.add('on'); else el.classList.remove('on'); }
+    }
+    setToggle('selfSaleToggle', !!camp.is_self_sale);
+    setToggle('urgentToggle', !!camp.is_urgent);
+    setToggle('notifyToggle', camp.notify_whatsapp !== false);  // default ON agar undefined
+    setToggle('clientPreviewToggle', !!camp.send_client_preview);
+
     renderDesigns();
     updateActionBar();
     if (typeof calcPricing === 'function') { try { calcPricing(); } catch(e){} }
@@ -750,22 +760,58 @@ function selectClient(c) {
 
 async function addNewClient() {
   const name = prompt('Client name?');
-  if (!name) return;
+  if (!name || !name.trim()) return;
   const phone = prompt('Client phone? (optional)') || '';
   const city = prompt('Client city? (optional)') || '';
-  
+
+  // Insert payload — created_by add karte hain (RLS ke liye zaroori ho sakta)
+  var payload = { name: name.trim(), phone: phone.trim(), city: city.trim() };
+  try { if (user && user.id) payload.created_by = user.id; } catch(e){}
+
   try {
-    const { data, error } = await db.from('trial_clients').insert({ name, phone, city }).select().single();
+    const { data, error } = await db.from('trial_clients').insert(payload).select().single();
     if (error) throw error;
+    // ✅ Successfully DB mein save hua
     allClients.unshift(data);
     selectClient(data);
+    renderClientOptions(allClients);
+    toast && toast('✓ Client "' + data.name + '" add ho gaya', 'success');
   } catch(e) {
-    const tmpClient = { id: 'tmp_' + Date.now(), name, phone, city };
-    selectClient(tmpClient);
+    console.error('Client insert failed:', e);
+    // created_by ke bina dobara try karo (agar woh column na ho to)
+    try {
+      const { data: d2, error: e2 } = await db.from('trial_clients')
+        .insert({ name: name.trim(), phone: phone.trim(), city: city.trim() }).select().single();
+      if (e2) throw e2;
+      allClients.unshift(d2);
+      selectClient(d2);
+      renderClientOptions(allClients);
+      toast && toast('✓ Client "' + d2.name + '" add ho gaya', 'success');
+      return;
+    } catch(e3) {
+      console.error('Retry bhi fail:', e3);
+      // DB save fail — user ko CLEARLY batao (silently temp mat banao)
+      var msg = (e3 && e3.message) ? e3.message : 'Unknown error';
+      alert('⚠️ Client DB mein save nahi hua:\n\n' + msg + '\n\nClient temporarily use ho raha hai is campaign ke liye, par database mein nahi gaya. Admin ko batayein agar baar-baar ho.');
+      // Fallback temp (taaki campaign ban sake), par user ko pata hai
+      const tmpClient = { id: 'tmp_' + Date.now(), name: name.trim(), phone: phone.trim(), city: city.trim(), _temp: true };
+      selectClient(tmpClient);
+    }
   }
 }
 
 function toggleSwitch(el) { el.classList.toggle('on'); }
+
+// Simple toast — submitStatus banner use karke (theme-consistent feedback)
+function toast(msg, type){
+  var el = document.getElementById('submitStatus');
+  if (!el) return;
+  var cls = type === 'success' ? 'info' : (type === 'error' ? 'error' : 'info');
+  var icon = type === 'success' ? '✅' : (type === 'error' ? '⚠️' : 'ℹ️');
+  el.innerHTML = '<div class="callout ' + cls + '"><span class="callout-icon">' + icon + '</span><div>' + escapeHtml(String(msg)) + '</div></div>';
+  el.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  if (type === 'success'){ setTimeout(function(){ if (el.innerHTML.indexOf(escapeHtml(String(msg))) !== -1) el.innerHTML = ''; }, 4000); }
+}
 
 function addDesign() {
   designs.push({
