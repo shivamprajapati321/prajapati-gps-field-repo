@@ -5658,9 +5658,10 @@ function openCampaignDetail(campId, campKey) {
     api('/rest/v1/trial_campaign_designs?select=*&campaign_id=eq.' + encodeURIComponent(campId)).catch(function(){ return []; }),
     api('/rest/v1/prajapati_stitching_log?select=*&limit=20000').catch(function(){ return []; }),
     api('/rest/v1/trial_work_logs?select=*&limit=20000').catch(function(){ return []; }),
-    api('/rest/v1/trial_team_members?select=id,name,phone&limit=2000').catch(function(){ return []; })
+    api('/rest/v1/trial_team_members?select=id,name,phone&limit=2000').catch(function(){ return []; }),
+    api('/rest/v1/prajapati_dispatches?select=*&limit=20000').catch(function(){ return []; })
   ]).then(function(res){
-    var photos = res[0]||[], designs = res[1]||[], stitch = res[2]||[], print = res[3]||[], members = res[4]||[];
+    var photos = res[0]||[], designs = res[1]||[], stitch = res[2]||[], print = res[3]||[], members = res[4]||[], dispatches = res[5]||[];
     var idName = {};
     members.forEach(function(m){ if (m.id) idName[String(m.id)] = m.name || m.phone; });
 
@@ -5676,6 +5677,16 @@ function openCampaignDetail(campId, campKey) {
 
     var prQty = sumForCampaign(print, camp, ['qty_done','quantity','qty','count']);
     var stQty = sumForCampaign(stitch, camp, ['quantity','qty']);
+    // Delivery count — dispatches jo is campaign ke hain aur delivered status
+    var dvDone = 0, dvTotal = 0;
+    (dispatches||[]).forEach(function(d){
+      var dKey = String(d.campaign_key || d.campaign_id || d.campaign || '');
+      if (dKey === String(campKey) || dKey === String(campId) || dKey === String(camp.id||'')){
+        var q = Number(d.quantity || d.qty || 1) || 1;
+        dvTotal += q;
+        if (String(d.status||'').toLowerCase() === 'delivered') dvDone += q;
+      }
+    });
     var stages = campStages(camp);
     var totalPlanned = Number(camp.total_quantity || 0) || 0;
 
@@ -5688,13 +5699,22 @@ function openCampaignDetail(campId, campKey) {
     }
     if (stages.printing) {
       var prPct = totalPlanned>0 ? Math.min(100, Math.round((prQty/totalPlanned)*100)) : null;
-      html += '<div class="cdm-prog"><div class="ic">🖨️</div><div class="lbl">Printing</div><div class="val">' + prQty.toLocaleString('en-IN') + (totalPlanned>0?' <span style="font-size:13px;color:var(--text-3);">/' + totalPlanned + '</span>':'') + '</div>' + (prPct!==null?'<div class="sub" style="font-weight:700;">' + prPct + '% done</div>':'<div class="sub">units done</div>') + '</div>';
+      var prColor = prPct===null?'#26d0ce':(prPct>=100?'#1D9E75':prPct>=50?'#B89B4E':'#E24B4A');
+      html += '<div class="cdm-prog"><div class="ic">🖨️</div><div class="lbl">Printing</div><div class="val">' + prQty.toLocaleString('en-IN') + (totalPlanned>0?' <span style="font-size:13px;color:var(--text-3);">/' + totalPlanned + '</span>':'') + '</div>' +
+              (prPct!==null?'<div class="cdm-field-bar"><div class="cdm-field-fill" style="width:' + prPct + '%;background:' + prColor + ';"></div></div><div class="sub" style="color:' + prColor + ';font-weight:700;">' + prPct + '% done</div>':'<div class="sub">units done</div>') + '</div>';
     }
     if (stages.stitching) {
-      html += '<div class="cdm-prog"><div class="ic">🪡</div><div class="lbl">Stitching</div><div class="val">' + stQty.toLocaleString('en-IN') + '</div><div class="sub">pcs done</div></div>';
+      var stPct = totalPlanned>0 ? Math.min(100, Math.round((stQty/totalPlanned)*100)) : null;
+      var stColor = stPct===null?'#26d0ce':(stPct>=100?'#1D9E75':stPct>=50?'#B89B4E':'#E24B4A');
+      html += '<div class="cdm-prog"><div class="ic">🪡</div><div class="lbl">Stitching</div><div class="val">' + stQty.toLocaleString('en-IN') + (totalPlanned>0?' <span style="font-size:13px;color:var(--text-3);">/' + totalPlanned + '</span>':'') + '</div>' +
+              (stPct!==null?'<div class="cdm-field-bar"><div class="cdm-field-fill" style="width:' + stPct + '%;background:' + stColor + ';"></div></div><div class="sub" style="color:' + stColor + ';font-weight:700;">' + stPct + '% done</div>':'<div class="sub">pcs done</div>') + '</div>';
     }
     if (stages.delivery) {
-      html += '<div class="cdm-prog"><div class="ic">🚚</div><div class="lbl">Delivery</div><div class="val" style="font-size:14px;">required</div><div class="sub">in flow</div></div>';
+      var dvBase = dvTotal>0 ? dvTotal : totalPlanned;
+      var dvPct = dvBase>0 ? Math.min(100, Math.round((dvDone/dvBase)*100)) : null;
+      var dvColor = dvPct===null?'#26d0ce':(dvPct>=100?'#1D9E75':dvPct>=50?'#B89B4E':'#E24B4A');
+      html += '<div class="cdm-prog"><div class="ic">🚚</div><div class="lbl">Delivery</div><div class="val">' + dvDone.toLocaleString('en-IN') + (dvBase>0?' <span style="font-size:13px;color:var(--text-3);">/' + dvBase + '</span>':'') + '</div>' +
+              (dvPct!==null?'<div class="cdm-field-bar"><div class="cdm-field-fill" style="width:' + dvPct + '%;background:' + dvColor + ';"></div></div><div class="sub" style="color:' + dvColor + ';font-weight:700;">' + dvPct + '% done</div>':'<div class="sub">in flow</div>') + '</div>';
     }
     html += '</div>';
 
@@ -5712,15 +5732,18 @@ function openCampaignDetail(campId, campKey) {
     if (!camp.completed && isAdmin) {
       var doneStages = [], pendingStages = [];
       if (stages.printing) (totalPlanned>0 && prQty>=totalPlanned ? doneStages : pendingStages).push('Printing');
-      if (stages.stitching) (stQty>0 ? doneStages : pendingStages).push('Stitching');
+      if (stages.stitching) (totalPlanned>0 && stQty>=totalPlanned ? doneStages : pendingStages).push('Stitching');
       if (stages.field) ((target>0 && fieldDone>=target) ? doneStages : pendingStages).push('Field');
-      // delivery has no measurable here → treated as manual confirm
+      if (stages.delivery) {
+        var dvB = dvTotal>0 ? dvTotal : totalPlanned;
+        (dvB>0 && dvDone>=dvB ? doneStages : pendingStages).push('Delivery');
+      }
       var measurable = pendingStages.length + doneStages.length;
-      if (measurable > 0 && pendingStages.length === 0 && !stages.delivery) {
+      if (measurable > 0 && pendingStages.length === 0) {
         html += '<div class="cdm-autocomplete done"><div><strong>✓ Saare required stages complete!</strong><br><span>' + doneStages.join(' · ') + ' — campaign complete mark karein?</span></div>' +
                 '<button class="btn btn-sm" style="background:var(--success,#1D9E75);color:#fff;border:none;" onclick="markCampaignComplete(\'' + campId + '\', true); closeCampaignDetail();">Mark Complete</button></div>';
       } else if (measurable > 0) {
-        html += '<div class="cdm-autocomplete pending"><i class="ti ti-clock"></i> Pending: ' + (pendingStages.join(', ') || (stages.delivery?'Delivery confirm':'—')) + '</div>';
+        html += '<div class="cdm-autocomplete pending"><i class="ti ti-clock"></i> Pending: ' + (pendingStages.join(', ') || '—') + '</div>';
       }
     }
 
