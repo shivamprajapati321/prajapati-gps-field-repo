@@ -472,12 +472,12 @@ function initApp() {
 //   drive_url   → drive_url        (operator "Open Drive")
 async function enrichJobFiles(jobs) {
   if (!jobs || !jobs.length) return;
-  // Which jobs are missing BOTH file links?
-  const need = jobs.filter(j => !j.drive_url && !j.supabase_file_url && j.design_id);
+  // Which jobs are missing file links OR design_files (multi-file)?
+  const need = jobs.filter(j => (!j.drive_url && !j.supabase_file_url && j.design_id) || (j.design_id && !j.design_files));
   if (!need.length) return;
   const ids = [...new Set(need.map(j => j.design_id))];
   try {
-    const rows = await api(`/rest/v1/trial_campaign_designs?id=in.(${ids.join(',')})&select=id,design_url,drive_url,design_file_name`);
+    const rows = await api(`/rest/v1/trial_campaign_designs?id=in.(${ids.join(',')})&select=id,design_url,drive_url,design_file_name,design_files`);
     const byId = {};
     (rows || []).forEach(r => { byId[String(r.id)] = r; });
     jobs.forEach(j => {
@@ -486,8 +486,32 @@ async function enrichJobFiles(jobs) {
       if (!j.drive_url && d.drive_url) j.drive_url = d.drive_url;
       if (!j.supabase_file_url && d.design_url) j.supabase_file_url = d.design_url;
       if (!j.design_file_name && d.design_file_name) j.design_file_name = d.design_file_name;
+      // Multi-file array (har file: url, name, size, qty)
+      if (!j.design_files && d.design_files) j.design_files = d.design_files;
     });
   } catch (e) { /* non-fatal — file just won't show */ }
+}
+
+// Render file links for a job — multi-file (design_files) ya single (backward-compat)
+function renderJobFiles(job, openLabel) {
+  var files = job.design_files;
+  // design_files array hai aur usme files hain → saari dikhao
+  if (files && files.length) {
+    return '<div style="display:flex;flex-wrap:wrap;gap:6px;">' +
+      files.map(function(f, i){
+        var nm = f.name || ('File ' + (i+1));
+        var qty = f.qty ? ' · ' + f.qty : '';
+        return '<a href="' + f.url + '" target="_blank" class="file-link-btn">📄 ' + escapeHtml(nm.length > 18 ? nm.slice(0,16)+'…' : nm) + qty + '</a>';
+      }).join('') +
+    '</div>';
+  }
+  // Single file fallback (purane designs)
+  if (job.drive_url || job.supabase_file_url) {
+    return '<a href="' + (job.drive_url || job.supabase_file_url) + '" target="_blank" class="file-link-btn ' + (job.drive_url ? 'drive' : '') + '">' +
+      (job.drive_url ? '📂 ' + (openLabel ? 'Open Drive' : 'Drive') : '📄 ' + (openLabel ? 'Open File' : 'File')) +
+    '</a>';
+  }
+  return '';
 }
 
 async function loadData() {
@@ -655,11 +679,7 @@ function renderCompletedTab() {
             </div>
           </div>
           <div class="job-actions">
-            ${(job.drive_url || job.supabase_file_url) ? `
-              <a href="${job.drive_url || job.supabase_file_url}" target="_blank" class="file-link-btn ${job.drive_url ? 'drive' : ''}">
-                ${job.drive_url ? '📂 Drive' : '📄 File'}
-              </a>
-            ` : ''}
+            ${renderJobFiles(job, false)}
           </div>
         </div>
         
@@ -718,11 +738,7 @@ function renderJobsTab() {
             </div>
           </div>
           <div class="job-actions">
-            ${(job.drive_url || job.supabase_file_url) ? `
-              <a href="${job.drive_url || job.supabase_file_url}" target="_blank" class="file-link-btn ${job.drive_url ? 'drive' : ''}">
-                ${job.drive_url ? '📂 Open Drive' : '📄 Open File'}
-              </a>
-            ` : ''}
+            ${renderJobFiles(job, true)}
             ${!isComplete ? `
               <button class="btn btn-success sm" onclick="openLogModal('${job.assignment_id}')">
                 ✏️ Log Today's Work
@@ -1122,11 +1138,7 @@ function renderManagerView() {
                   </div>
                 </div>
                 <div class="job-actions">
-                  ${(job.drive_url || job.supabase_file_url) ? `
-                    <a href="${job.drive_url || job.supabase_file_url}" target="_blank" class="file-link-btn ${job.drive_url ? 'drive' : ''}">
-                      ${job.drive_url ? '📂 Drive' : '📄 File'}
-                    </a>
-                  ` : ''}
+                  ${renderJobFiles(job, false)}
                   <button class="btn btn-info sm" onclick="openReassignModal('${job.assignment_id}')">
                     🔄 Reassign
                   </button>
