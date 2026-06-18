@@ -659,30 +659,30 @@ function renderContent() {
 
   let list = (tab === 'all') ? designs : designs.filter(d => getStage(d) === tab);
 
-  if (!list.length) {
-    document.getElementById('contentArea').innerHTML = '<div class="empty">No designs in this category.</div>';
-    return;
-  }
-
-  // ── Bulk upload bar — campaign-wise buttons (jin campaigns ke 2+ designs hain) ──
+  // ── Bulk upload bar — campaign-wise buttons (ALL designs se, tab ke bina) ──
   var campGroups = {};
-  list.forEach(function(d){
+  state.designs.forEach(function(d){
     var cid = String((d.campaign && d.campaign.id) || d.campaign_id || '');
     if (!cid) return;
     if (!campGroups[cid]) campGroups[cid] = { name: (d.campaign && (d.campaign.campaign_name || d.campaign.name)) || 'Campaign', count: 0 };
     campGroups[cid].count++;
   });
   var bulkBarHtml = '';
-  var multiCamps = Object.keys(campGroups).filter(function(cid){ return campGroups[cid].count >= 2; });
+  var multiCamps = Object.keys(campGroups);
   if (multiCamps.length) {
     bulkBarHtml = '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:14px;">' +
-      '<div style="font-size:12px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;"><i style="font-style:normal;">📚</i> Bulk Upload (multiple designs ek saath)</div>' +
+      '<div style="font-size:12px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;"><i style="font-style:normal;">📚</i> Bulk Upload (saare designs ek saath)</div>' +
       '<div style="display:flex;flex-wrap:wrap;gap:8px;">' +
       multiCamps.map(function(cid){
         var g = campGroups[cid];
         return '<button class="btn btn-purple sm" onclick="openBulkModal(\'' + cid + '\')" style="font-size:12px;">📚 ' + escapeHtml(g.name) + ' (' + g.count + ')</button>';
       }).join('') +
       '</div></div>';
+  }
+
+  if (!list.length) {
+    document.getElementById('contentArea').innerHTML = bulkBarHtml + '<div class="empty">Is category mein koi design nahi (upar bulk se upload kar sakte ho).</div>';
+    return;
   }
 
   document.getElementById('contentArea').innerHTML = bulkBarHtml + list.map(d => {
