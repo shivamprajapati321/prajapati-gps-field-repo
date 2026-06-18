@@ -3227,36 +3227,34 @@ label {
         </div>
       </div>
 
-      <!-- ⭐ RICH FILTER BAR -->
-      <!-- Row 1: Search + Date + Sort -->
-      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
-        <div style="position:relative;flex:1;min-width:220px">
+      <!-- ⭐ RICH FILTER BAR (compact horizontal) -->
+      <!-- Row 1: Search + Date + Sort + Status all in one line -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+        <div style="position:relative;flex:1;min-width:180px">
           <i class="ti ti-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-3);font-size:16px"></i>
-          <input id="campaignSearchBox" type="text" placeholder="Search campaign, client, key..." oninput="filterCampaignList()" style="width:100%;padding:10px 12px 10px 38px;border:1px solid var(--border);border-radius:9px;font-family:inherit;font-size:14px;outline:none;background:var(--card)">
+          <input id="campaignSearchBox" type="text" placeholder="Search campaign, client, key..." oninput="filterCampaignList()" style="width:100%;padding:9px 12px 9px 38px;border:1px solid var(--border);border-radius:9px;font-family:inherit;font-size:14px;outline:none;background:var(--card)">
         </div>
-        <select id="campaignDateFilter" onchange="setCampaignDate(this.value)" style="padding:10px 12px;border:1px solid var(--border);border-radius:9px;font-family:inherit;font-size:13px;background:var(--card);cursor:pointer;color:var(--text-1)">
+        <select id="campaignDateFilter" onchange="setCampaignDate(this.value)" style="padding:9px 10px;border:1px solid var(--border);border-radius:9px;font-family:inherit;font-size:13px;background:var(--card);cursor:pointer;color:var(--text-1)">
           <option value="all">📅 All dates</option>
           <option value="today">📅 Today</option>
           <option value="week">📅 This Week</option>
           <option value="month">📅 This Month</option>
           <option value="lastmonth">📅 Last Month</option>
         </select>
-        <select id="campaignSort" onchange="setCampaignSort(this.value)" style="padding:10px 12px;border:1px solid var(--border);border-radius:9px;font-family:inherit;font-size:13px;background:var(--card);cursor:pointer;color:var(--text-1)">
+        <select id="campaignSort" onchange="setCampaignSort(this.value)" style="padding:9px 10px;border:1px solid var(--border);border-radius:9px;font-family:inherit;font-size:13px;background:var(--card);cursor:pointer;color:var(--text-1)">
           <option value="newest">⇅ Newest</option>
           <option value="oldest">⇅ Oldest</option>
           <option value="progress">⇅ Progress</option>
-          <option value="target">⇅ Target (big)</option>
+          <option value="target">⇅ Target</option>
         </select>
+        <div style="display:flex;gap:5px">
+          <button class="cf-tab active" data-cf="active" onclick="setCampaignFilter('active')" style="padding:9px 14px;border-radius:8px;border:1px solid var(--border);background:var(--primary);color:#fff;font-family:inherit;font-weight:600;font-size:13px;cursor:pointer">Active</button>
+          <button class="cf-tab" data-cf="completed" onclick="setCampaignFilter('completed')" style="padding:9px 14px;border-radius:8px;border:1px solid var(--border);background:var(--card);font-family:inherit;font-weight:600;font-size:13px;cursor:pointer">Completed</button>
+          <button class="cf-tab" data-cf="all" onclick="setCampaignFilter('all')" style="padding:9px 14px;border-radius:8px;border:1px solid var(--border);background:var(--card);font-family:inherit;font-weight:600;font-size:13px;cursor:pointer">All</button>
+        </div>
       </div>
 
-      <!-- Row 2: Status tabs -->
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
-        <button class="cf-tab active" data-cf="active" onclick="setCampaignFilter('active')" style="padding:9px 16px;border-radius:8px;border:1px solid var(--border);background:var(--primary);color:#fff;font-family:inherit;font-weight:600;font-size:13px;cursor:pointer">Active</button>
-        <button class="cf-tab" data-cf="completed" onclick="setCampaignFilter('completed')" style="padding:9px 16px;border-radius:8px;border:1px solid var(--border);background:var(--card);font-family:inherit;font-weight:600;font-size:13px;cursor:pointer">Completed</button>
-        <button class="cf-tab" data-cf="all" onclick="setCampaignFilter('all')" style="padding:9px 16px;border-radius:8px;border:1px solid var(--border);background:var(--card);font-family:inherit;font-weight:600;font-size:13px;cursor:pointer">All</button>
-      </div>
-
-      <!-- Row 3: Job-type chips -->
+      <!-- Row 2: Job-type chips (horizontal scroll on mobile) -->
       <div id="campaignTypeChips" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px"></div>
 
       <div id="campaignsList">
@@ -6606,6 +6604,7 @@ $('memberModal').addEventListener('click', function(e) {
 
 // LocationIQ token (inherited from v1 admin)
 var LOCATIONIQ_TOKEN = 'pk.fde6fab706b3370a82c78ba286a896be';
+var GOOGLE_PLACES_KEY = 'AIzaSyDAWJsoxdpqznMDAE5YqbJ17t6g3Bqc15c';
 
 // Phase 2 state
 var p2state = {
@@ -7126,29 +7125,112 @@ function searchCityForCampaign() {
     var dd = $('cityDropdown');
     dd.innerHTML = '<div style="padding:10px; color:var(--text-3); font-size:12px;">🔍 Searching...</div>';
     dd.classList.add('active');
-    
-    var url = 'https://api.locationiq.com/v1/autocomplete?key=' + LOCATIONIQ_TOKEN + 
-              '&q=' + encodeURIComponent(q) + '&limit=6&countrycodes=in&dedupe=1&normalizeaddress=1&tag=place:city,place:town';
-    
-    fetch(url).then(function(r){ return r.json(); }).then(function(results) {
-      if (!Array.isArray(results) || results.length === 0) {
-        dd.innerHTML = '<div style="padding:10px; color:var(--text-3); font-size:12px;">No cities found</div>';
-        return;
+
+    // ⭐ Google Places Autocomplete (New) — areas/suburbs/localities sab aate hain
+    fetch('https://places.googleapis.com/v1/places:autocomplete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': GOOGLE_PLACES_KEY
+      },
+      body: JSON.stringify({
+        input: q,
+        includedRegionCodes: ['in'],
+        languageCode: 'en'
+      })
+    }).then(function(r){ return r.json(); }).then(function(res) {
+      var preds = (res && res.suggestions) ? res.suggestions : [];
+      if (!preds.length) {
+        return searchCityNominatimFallback(q, dd);
       }
-      p2state.campaignSearchResults = results;
-      dd.innerHTML = results.map(function(r, i) {
-        var addr = r.address || {};
-        var city = addr.name || addr.city || addr.town || (r.display_name || '').split(',')[0];
-        var stateName = addr.state || '';
-        return '<div class="loc-result" onclick="selectCityFromSearch(' + i + ')">' +
-                 '<div class="loc-primary"><i class="ti ti-map-pin"></i> ' + escapeHtml(city) + '</div>' +
-                 '<div class="loc-secondary">' + escapeHtml(stateName + (stateName ? ' · ' : '') + (r.display_name || '').substring(0, 70)) + '</div>' +
+      p2state.googlePredictions = preds.map(function(s){
+        var p = s.placePrediction || {};
+        return {
+          placeId: p.placeId,
+          mainText: (p.structuredFormat && p.structuredFormat.mainText && p.structuredFormat.mainText.text) || (p.text && p.text.text) || '',
+          secondaryText: (p.structuredFormat && p.structuredFormat.secondaryText && p.structuredFormat.secondaryText.text) || ''
+        };
+      }).filter(function(p){ return p.placeId; });
+
+      dd.innerHTML = p2state.googlePredictions.map(function(p, i) {
+        return '<div class="loc-result" onclick="selectGooglePlace(' + i + ')">' +
+                 '<div class="loc-primary"><i class="ti ti-map-pin"></i> ' + escapeHtml(p.mainText) + '</div>' +
+                 '<div class="loc-secondary">' + escapeHtml(p.secondaryText) + '</div>' +
                '</div>';
       }).join('');
     }).catch(function() {
-      dd.innerHTML = '<div style="padding:10px; color:var(--danger); font-size:12px;">Search failed</div>';
+      searchCityNominatimFallback(q, dd);
     });
   }, 350);
+}
+
+// Google place select → Place Details se lat/lon
+function selectGooglePlace(idx) {
+  var p = p2state.googlePredictions && p2state.googlePredictions[idx];
+  if (!p) return;
+  var dd = $('cityDropdown');
+  dd.innerHTML = '<div style="padding:10px; color:var(--text-3); font-size:12px;">📍 Location load ho raha...</div>';
+
+  fetch('https://places.googleapis.com/v1/places/' + encodeURIComponent(p.placeId), {
+    headers: {
+      'X-Goog-Api-Key': GOOGLE_PLACES_KEY,
+      'X-Goog-FieldMask': 'location,displayName,formattedAddress,addressComponents'
+    }
+  }).then(function(r){ return r.json(); }).then(function(place) {
+    var loc = place.location || {};
+    var city = p.mainText || (place.displayName && place.displayName.text) || '';
+    var stateName = '';
+    (place.addressComponents || []).forEach(function(c){
+      if (c.types && c.types.indexOf('administrative_area_level_1') >= 0) stateName = c.longText || c.shortText || '';
+    });
+    if (p2state.campaignCities.some(function(c){ return c.city === city; })) {
+      showToast('City already added', 'error');
+      closeCityDropdown();
+      return;
+    }
+    var qty = parseInt($('newCityQty').value) || 100;
+    p2state.campaignCities.push({
+      city: city,
+      state: stateName,
+      latitude: loc.latitude,
+      longitude: loc.longitude,
+      target_quantity: qty,
+      _new: true
+    });
+    $('newCitySearch').value = '';
+    closeCityDropdown();
+    renderCampaignCities();
+  }).catch(function() {
+    showToast('Location details load nahi hui, dobara try karo', 'error');
+    closeCityDropdown();
+  });
+}
+
+// Fallback search via free Nominatim (areas/localities ke liye)
+function searchCityNominatimFallback(q, dd) {
+  fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(q + ' India') + '&limit=8&addressdetails=1', {
+    headers: { 'Accept': 'application/json' }
+  }).then(function(r){ return r.json(); }).then(function(results) {
+    if (!Array.isArray(results) || results.length === 0) {
+      dd.innerHTML = '<div style="padding:10px; color:var(--text-3); font-size:12px;">No location found — pura naam try karo</div>';
+      return;
+    }
+    // Normalize to LocationIQ-like shape
+    p2state.campaignSearchResults = results.map(function(r){
+      return { lat: r.lat, lon: r.lon, display_name: r.display_name, address: r.address || {} };
+    });
+    dd.innerHTML = p2state.campaignSearchResults.map(function(r, i) {
+      var addr = r.address || {};
+      var city = addr.name || addr.city || addr.town || addr.suburb || addr.neighbourhood || addr.village || (r.display_name || '').split(',')[0];
+      var stateName = addr.state || '';
+      return '<div class="loc-result" onclick="selectCityFromSearch(' + i + ')">' +
+               '<div class="loc-primary"><i class="ti ti-map-pin"></i> ' + escapeHtml(city) + '</div>' +
+               '<div class="loc-secondary">' + escapeHtml(stateName + (stateName ? ' · ' : '') + (r.display_name || '').substring(0, 70)) + '</div>' +
+             '</div>';
+    }).join('');
+  }).catch(function() {
+    dd.innerHTML = '<div style="padding:10px; color:var(--danger); font-size:12px;">Search failed — internet check karo</div>';
+  });
 }
 
 function selectCityFromSearch(idx) {
@@ -7752,29 +7834,104 @@ function searchAnchorForOverride() {
     var dd = $('anchorDropdown');
     dd.innerHTML = '<div style="padding:10px; color:var(--text-3); font-size:12px;">🔍 Searching...</div>';
     dd.classList.add('active');
-    
-    var url = 'https://api.locationiq.com/v1/autocomplete?key=' + LOCATIONIQ_TOKEN + 
-              '&q=' + encodeURIComponent(q) + '&limit=8&countrycodes=in&dedupe=1&normalizeaddress=1';
-    
-    fetch(url).then(function(r){ return r.json(); }).then(function(results) {
-      if (!Array.isArray(results) || results.length === 0) {
-        dd.innerHTML = '<div style="padding:10px; color:var(--text-3); font-size:12px;">No results</div>';
-        return;
+
+    // ⭐ Google Places Autocomplete (New) — accurate anchor search
+    fetch('https://places.googleapis.com/v1/places:autocomplete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': GOOGLE_PLACES_KEY
+      },
+      body: JSON.stringify({
+        input: q,
+        includedRegionCodes: ['in'],
+        languageCode: 'en'
+      })
+    }).then(function(r){ return r.json(); }).then(function(res) {
+      var preds = (res && res.suggestions) ? res.suggestions : [];
+      if (!preds.length) {
+        return searchAnchorNominatimFallback(q, dd);
       }
-      p2state.anchorSearchResults = results;
-      dd.innerHTML = results.map(function(r, i) {
-        var dn = r.display_name || '';
-        var primary = (r.address && (r.address.name || r.address.road || r.address.suburb)) || dn.split(',')[0];
-        var secondary = dn.replace(primary + ', ', '').substring(0, 80);
-        return '<div class="loc-result" onclick="selectAnchorFromSearch(' + i + ')">' +
-                 '<div class="loc-primary"><i class="ti ti-map-pin"></i> ' + escapeHtml(primary) + '</div>' +
-                 '<div class="loc-secondary">' + escapeHtml(secondary) + '</div>' +
+      p2state.anchorPredictions = preds.map(function(s){
+        var p = s.placePrediction || {};
+        return {
+          placeId: p.placeId,
+          mainText: (p.structuredFormat && p.structuredFormat.mainText && p.structuredFormat.mainText.text) || (p.text && p.text.text) || '',
+          secondaryText: (p.structuredFormat && p.structuredFormat.secondaryText && p.structuredFormat.secondaryText.text) || ''
+        };
+      }).filter(function(p){ return p.placeId; });
+
+      dd.innerHTML = p2state.anchorPredictions.map(function(p, i) {
+        return '<div class="loc-result" onclick="selectGoogleAnchor(' + i + ')">' +
+                 '<div class="loc-primary"><i class="ti ti-map-pin"></i> ' + escapeHtml(p.mainText) + '</div>' +
+                 '<div class="loc-secondary">' + escapeHtml(p.secondaryText) + '</div>' +
                '</div>';
       }).join('');
     }).catch(function() {
-      dd.innerHTML = '<div style="padding:10px; color:var(--danger); font-size:12px;">Search failed</div>';
+      searchAnchorNominatimFallback(q, dd);
     });
   }, 350);
+}
+
+// Google anchor select → Place Details se lat/lng/address/pincode
+function selectGoogleAnchor(idx) {
+  var p = p2state.anchorPredictions && p2state.anchorPredictions[idx];
+  if (!p) return;
+  var dd = $('anchorDropdown');
+  dd.innerHTML = '<div style="padding:10px; color:var(--text-3); font-size:12px;">📍 Location load ho raha...</div>';
+
+  fetch('https://places.googleapis.com/v1/places/' + encodeURIComponent(p.placeId), {
+    headers: {
+      'X-Goog-Api-Key': GOOGLE_PLACES_KEY,
+      'X-Goog-FieldMask': 'location,formattedAddress,addressComponents'
+    }
+  }).then(function(r){ return r.json(); }).then(function(place) {
+    var loc = place.location || {};
+    var pincode = '';
+    (place.addressComponents || []).forEach(function(c){
+      if (c.types && c.types.indexOf('postal_code') >= 0) pincode = c.longText || c.shortText || '';
+    });
+    p2state.selectedAnchor = {
+      lat: loc.latitude,
+      lng: loc.longitude,
+      address: place.formattedAddress || (p.mainText + (p.secondaryText ? ', ' + p.secondaryText : '')),
+      pincode: pincode
+    };
+    $('ovAnchorAddress').textContent = p2state.selectedAnchor.address;
+    $('ovAnchorLat').textContent = p2state.selectedAnchor.lat.toFixed(6);
+    $('ovAnchorLng').textContent = p2state.selectedAnchor.lng.toFixed(6);
+    $('ovAnchorPincode').textContent = p2state.selectedAnchor.pincode || '—';
+    $('ovAnchorBox').style.display = 'block';
+    $('ovAnchorSearch').value = '';
+    closeAnchorDropdown();
+  }).catch(function() {
+    showToast('Location details load nahi hui, dobara try karo', 'error');
+    closeAnchorDropdown();
+  });
+}
+
+// Anchor Nominatim fallback
+function searchAnchorNominatimFallback(q, dd) {
+  fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(q + ' India') + '&limit=8&addressdetails=1', {
+    headers: { 'Accept': 'application/json' }
+  }).then(function(r){ return r.json(); }).then(function(results) {
+    if (!Array.isArray(results) || results.length === 0) {
+      dd.innerHTML = '<div style="padding:10px; color:var(--text-3); font-size:12px;">No results — pura naam try karo</div>';
+      return;
+    }
+    p2state.anchorSearchResults = results;
+    dd.innerHTML = results.map(function(r, i) {
+      var dn = r.display_name || '';
+      var primary = (r.address && (r.address.name || r.address.road || r.address.suburb)) || dn.split(',')[0];
+      var secondary = dn.replace(primary + ', ', '').substring(0, 80);
+      return '<div class="loc-result" onclick="selectAnchorFromSearch(' + i + ')">' +
+               '<div class="loc-primary"><i class="ti ti-map-pin"></i> ' + escapeHtml(primary) + '</div>' +
+               '<div class="loc-secondary">' + escapeHtml(secondary) + '</div>' +
+             '</div>';
+    }).join('');
+  }).catch(function() {
+    dd.innerHTML = '<div style="padding:10px; color:var(--danger); font-size:12px;">Search failed</div>';
+  });
 }
 
 function selectAnchorFromSearch(idx) {
