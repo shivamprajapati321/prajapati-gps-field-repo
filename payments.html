@@ -815,19 +815,24 @@ function renderExpenseTable(){
   // header
   $('expTable').querySelector('thead')?.remove();
   var thead=document.createElement('thead');
-  thead.innerHTML='<tr><th>Date</th><th>Type</th><th>For / Category</th><th>Detail</th><th>Amount</th><th>Status</th><th>Receipt</th></tr>';
+  thead.innerHTML='<tr><th>Date</th><th>Type</th><th>For / Category</th><th>Detail</th><th>Party</th><th>Amount</th><th>Status</th><th>Receipt</th></tr>';
   $('expTable').insertBefore(thead, tbody);
   tbody.innerHTML = state.expenses.map(function(e){
     var d = e.expense_date ? new Date(e.expense_date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}) : '—';
     var typeTag = e.expense_type==='campaign' ? '<span class="tag tag-camp">Campaign</span>' : '<span class="tag tag-int">Internal</span>';
     var forCol = e.expense_type==='campaign' ? (esc(getWork(e.campaign_name))+(e.team_member_name?'<br><small style="color:var(--text-dim)">'+esc(e.team_member_name)+'</small>':'')) : esc(e.internal_category||'—');
+    // Party = jisko pay karna hai (Campaign → team member, Internal → vendor)
+    var party = e.expense_type==='campaign' ? (e.team_member_name||'') : (e.internal_party||'');
+    var partyCol = party
+      ? '<span style="font-weight:600;color:var(--ink-700,#1E293B)">' + esc(party) + '</span>'
+      : '<span style="color:var(--text-dim,#999)">—</span>';
     var detail = e.expense_type==='campaign'
       ? [e.location, headsSummary(e)].filter(Boolean).join(' · ')
-      : [e.internal_party, e.internal_details].filter(Boolean).join(' · ');
+      : (e.internal_details || '—');
     var statusTag = e.payment_status==='paid' ? '<span class="tag tag-paid">Paid</span>' : '<span class="tag tag-unpaid">Unpaid</span>';
     var rc = e.receipt_url ? '<a href="'+esc(e.receipt_url)+'" target="_blank" style="color:var(--info)">📎</a>' : '—';
     var payBtn = e.payment_status!=='paid' ? '<button class="btn btn-sm btn-secondary" style="margin-left:6px" onclick="markPaid(\''+e.id+'\')">Pay</button>' : '';
-    return '<tr><td>'+d+'</td><td>'+typeTag+'</td><td>'+forCol+'</td><td style="color:var(--ink-700)">'+esc(detail||'—')+'</td><td style="font-weight:700;font-family:JetBrains Mono,monospace">'+fmt(e.total_amount)+'</td><td>'+statusTag+payBtn+'</td><td>'+rc+'</td></tr>';
+    return '<tr><td>'+d+'</td><td>'+typeTag+'</td><td>'+forCol+'</td><td style="color:var(--ink-700)">'+esc(detail||'—')+'</td><td>'+partyCol+'</td><td style="font-weight:700;font-family:JetBrains Mono,monospace">'+fmt(e.total_amount)+'</td><td>'+statusTag+payBtn+'</td><td>'+rc+'</td></tr>';
   }).join('');
 }
 function getWork(name){ var s=String(name||'').trim(); var i=s.search(/[·\-–—|]/); if(i>0)s=s.slice(0,i).trim(); return s||name||'—'; }
@@ -840,11 +845,11 @@ async function markPaid(id){
 
 function exportExpensesExcel(){
   if(typeof XLSX==='undefined'){ toast('Excel lib loading…'); return; }
-  var aoa=[['Date','Type','For/Category','Member','Location','Food','Hotel','Transport','Other','Detail','Total','Status','Paid Via']];
+  var aoa=[['Date','Type','For/Category','Party','Location','Food','Hotel','Transport','Other','Detail','Total','Status','Paid Via']];
   var total=0;
   state.expenses.forEach(function(e){
     total+=+e.total_amount||0;
-    aoa.push([e.expense_date,e.expense_type,e.expense_type==='campaign'?getWork(e.campaign_name):e.internal_category,e.team_member_name||'',e.location||'',e.food_amount||0,e.hotel_amount||0,e.transport_amount||0,e.other_amount||0,e.internal_details||e.other_description||'',e.total_amount||0,e.payment_status,e.paid_via||'']);
+    aoa.push([e.expense_date,e.expense_type,e.expense_type==='campaign'?getWork(e.campaign_name):e.internal_category,e.expense_type==='campaign'?(e.team_member_name||''):(e.internal_party||''),e.location||'',e.food_amount||0,e.hotel_amount||0,e.transport_amount||0,e.other_amount||0,e.internal_details||e.other_description||'',e.total_amount||0,e.payment_status,e.paid_via||'']);
   });
   aoa.push(['','','','','','','','','','TOTAL',total,'','']);
   var ws=XLSX.utils.aoa_to_sheet(aoa); var wb=XLSX.utils.book_new();
@@ -870,9 +875,10 @@ function buildReportNode(){
   var rows=state.expenses.map(function(e,i){
     var bg=i%2?'#FAFBFC':'#fff';
     var forCol=e.expense_type==='campaign'?getWork(e.campaign_name):(e.internal_category||'—');
-    var detail=e.expense_type==='campaign'?[e.location,e.team_member_name].filter(Boolean).join(' · '):[e.internal_party,e.internal_details].filter(Boolean).join(' · ');
+    var party=e.expense_type==='campaign'?(e.team_member_name||'—'):(e.internal_party||'—');
+    var detail=e.expense_type==='campaign'?[e.location,headsSummary(e)].filter(Boolean).join(' · '):(e.internal_details||'—');
     var d=e.expense_date?new Date(e.expense_date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}):'—';
-    return '<tr style="background:'+bg+'"><td style="padding:8px 11px;border:1px solid #EEE">'+esc(d)+'</td><td style="padding:8px 11px;border:1px solid #EEE">'+esc(e.expense_type)+'</td><td style="padding:8px 11px;border:1px solid #EEE">'+esc(forCol)+'</td><td style="padding:8px 11px;border:1px solid #EEE;color:#475569">'+esc(detail||'—')+'</td><td style="padding:8px 11px;border:1px solid #EEE;text-align:right;font-weight:700;font-family:monospace">'+fmt(e.total_amount)+'</td><td style="padding:8px 11px;border:1px solid #EEE;text-align:center;font-weight:600;color:'+(e.payment_status==='paid'?'#047857':'#C2410C')+'">'+esc(e.payment_status)+'</td></tr>';
+    return '<tr style="background:'+bg+'"><td style="padding:8px 11px;border:1px solid #EEE">'+esc(d)+'</td><td style="padding:8px 11px;border:1px solid #EEE">'+esc(e.expense_type)+'</td><td style="padding:8px 11px;border:1px solid #EEE">'+esc(forCol)+'</td><td style="padding:8px 11px;border:1px solid #EEE;color:#475569">'+esc(detail||'—')+'</td><td style="padding:8px 11px;border:1px solid #EEE;font-weight:600">'+esc(party)+'</td><td style="padding:8px 11px;border:1px solid #EEE;text-align:right;font-weight:700;font-family:monospace">'+fmt(e.total_amount)+'</td><td style="padding:8px 11px;border:1px solid #EEE;text-align:center;font-weight:600;color:'+(e.payment_status==='paid'?'#047857':'#C2410C')+'">'+esc(e.payment_status)+'</td></tr>';
   }).join('');
   var node=document.createElement('div');
   node.style.cssText='position:fixed;left:-99999px;top:0;width:880px;background:#fff;font-family:Arial,sans-serif';
@@ -881,8 +887,8 @@ function buildReportNode(){
       [['Total',fmt(total),'#0B1957'],['Unpaid',fmt(unpaid),'#C2410C'],['Campaign',fmt(camp),'#1E40AF'],['Internal',fmt(intl),'#7C3AED']].map(function(c){return '<div style="flex:1;border:1px solid #E5E0D2;border-top:3px solid '+c[2]+';border-radius:10px;padding:11px;text-align:center"><div style="font-size:20px;font-weight:800;font-family:monospace;color:'+c[2]+'">'+c[1]+'</div><div style="font-size:10px;color:#64748B;text-transform:uppercase;margin-top:3px;font-weight:600">'+c[0]+'</div></div>';}).join('')+
     '</div>'+
     '<div style="padding:0 22px 22px"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr>'+
-      ['DATE','TYPE','FOR/CATEGORY','DETAIL','AMOUNT','STATUS'].map(function(h){return '<th style="background:#FFF200;color:#000;font-size:10.5px;font-weight:700;padding:9px 11px;text-align:left;border:1px solid #E5C800">'+h+'</th>';}).join('')+
-      '</tr></thead><tbody>'+rows+'</tbody><tfoot><tr><td colspan="4" style="padding:10px 11px;background:#FFF7CC;border:1px solid #E5C800;text-align:right;font-weight:700">TOTAL</td><td style="padding:10px 11px;background:#FFF7CC;border:1px solid #E5C800;text-align:right;font-weight:800;font-family:monospace;color:#0B1957">'+fmt(total)+'</td><td style="background:#FFF7CC;border:1px solid #E5C800"></td></tr></tfoot></table>'+
+      ['DATE','TYPE','FOR/CATEGORY','DETAIL','PARTY','AMOUNT','STATUS'].map(function(h){return '<th style="background:#FFF200;color:#000;font-size:10.5px;font-weight:700;padding:9px 11px;text-align:left;border:1px solid #E5C800">'+h+'</th>';}).join('')+
+      '</tr></thead><tbody>'+rows+'</tbody><tfoot><tr><td colspan="5" style="padding:10px 11px;background:#FFF7CC;border:1px solid #E5C800;text-align:right;font-weight:700">TOTAL</td><td style="padding:10px 11px;background:#FFF7CC;border:1px solid #E5C800;text-align:right;font-weight:800;font-family:monospace;color:#0B1957">'+fmt(total)+'</td><td style="background:#FFF7CC;border:1px solid #E5C800"></td></tr></tfoot></table>'+
       '<div style="margin-top:12px;font-size:10px;color:#94A3B8;text-align:right">Generated '+new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})+' · prajapatiadvertising.com</div></div>';
   return node;
 }
