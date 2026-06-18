@@ -1210,6 +1210,17 @@ async function saveUpload() {
       headers: { 'Prefer': 'return=minimal' },
       body: JSON.stringify(payload)
     });
+
+    // ⭐ Quantity badli to assignments bhi sync karo (warna printer ko purana number dikhega)
+    if (payload.quantity !== undefined && payload.quantity !== (design.quantity || 0)) {
+      try {
+        await api('/rest/v1/trial_campaign_assignments?design_id=eq.' + encodeURIComponent(design.id) + '&status=neq.completed', {
+          method: 'PATCH',
+          headers: { 'Prefer': 'return=minimal' },
+          body: JSON.stringify({ quantity_assigned: payload.quantity, updated_at: new Date().toISOString() })
+        });
+      } catch(e){ console.warn('Assignment qty sync failed (non-fatal):', e); }
+    }
     
     document.getElementById('uploadStatus').innerHTML = '<div class="callout success"><span>✅</span><div>Saved! Design marked as ready.</div></div>';
     // reset button immediately on success so it never stays stuck on "Saving…"
@@ -1346,6 +1357,17 @@ async function saveBulkUpload() {
         headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
         body: JSON.stringify(payload)
       });
+
+      // Quantity badli to assignment bhi sync
+      if (payload.quantity !== undefined) {
+        try {
+          await api('/rest/v1/trial_campaign_assignments?design_id=eq.' + encodeURIComponent(designId) + '&status=neq.completed', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+            body: JSON.stringify({ quantity_assigned: payload.quantity, updated_at: new Date().toISOString() })
+          });
+        } catch(e){ console.warn('Bulk assignment sync failed (non-fatal):', e); }
+      }
     } catch (e) {
       console.error('Bulk row failed:', e);
       failed++;
