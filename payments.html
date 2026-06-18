@@ -3,876 +3,1115 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>Payments v1.0 — Prajapati</title>
-
+<title>Expenses · Prajapati Advertising</title>
+<meta name="theme-color" content="#0B1957">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
-
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght,ital@9..144,300..900,0..1&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
-  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
-  :root{
-    --ink-900:#050818;--ink-800:#0B1130;--ink-700:#131A3F;
-    --canvas:#FAFBFF;--paper:#FFFFFF;--line:#E8EAF4;--line-soft:#F0F2F8;
-    --text:#0F172A;--text-mid:#475569;--text-dim:#94A3B8;
-    --teal:#00D4D2;--teal-dark:#00A8A6;
-    --gold:#F5B83D;--gold-warm:#FFC857;--gold-deep:#B8860B;
-    --rose:#FF5470;--mint:#34D399;--violet:#8B5CF6;--blue:#3B82F6;--orange:#F97316;
-    --shadow-md:0 4px 12px rgba(15,23,42,0.06);--shadow-lg:0 12px 32px rgba(15,23,42,0.08);
-  }
-  body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--canvas);color:var(--text);min-height:100vh}
-  button{font-family:inherit;cursor:pointer;border:none;background:none}
-  input,select,textarea{font-family:inherit;outline:none;border:none}
-  
-  .login-bg{min-height:100vh;background:linear-gradient(135deg,var(--ink-900),var(--ink-800),var(--gold-deep));display:flex;align-items:center;justify-content:center;padding:20px}
-  .login-card{background:white;border-radius:20px;padding:36px 32px;width:100%;max-width:420px;box-shadow:0 30px 80px rgba(0,0,0,0.4)}
-  .login-logo{width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;margin-bottom:22px;box-shadow:0 8px 30px rgba(245,184,61,0.4)}
-  .login-card h1{font-family:'Fraunces',serif;font-size:26px;font-weight:600;color:var(--ink-900);margin-bottom:4px}
-  .login-card .sub{color:var(--text-mid);font-size:13px;margin-bottom:26px}
-  .field-group{margin-bottom:16px}
-  .field-group label{display:block;font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:7px}
-  .login-input{width:100%;padding:12px 14px;font-size:14px;border:1.5px solid var(--line);border-radius:10px;background:white;transition:all 0.15s}
-  .login-input:focus{border-color:var(--gold);box-shadow:0 0 0 4px rgba(245,184,61,0.1)}
-  .login-input.mono{font-family:'JetBrains Mono',monospace;text-align:center;letter-spacing:0.05em;font-weight:600}
-  .err-banner{background:#fef2f2;color:#991b1b;padding:10px 12px;border-radius:8px;font-size:12px;font-weight:600;margin-top:12px;display:none}
-  .err-banner.show{display:block}
-  .login-btn{width:100%;padding:13px 18px;background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:white;border-radius:10px;font-size:14px;font-weight:700;box-shadow:0 4px 14px rgba(245,184,61,0.3)}
-  .login-btn:hover{transform:translateY(-1px)}
-  .login-btn:disabled{opacity:0.6}
-  .app{display:none}.app.active{display:block}
-  
-  .sidebar{width:240px;background:linear-gradient(180deg,var(--ink-900) 0%,var(--ink-800) 60%,var(--ink-700) 100%);height:100vh;position:fixed;left:0;top:0;padding:24px 14px 20px;z-index:50;overflow-y:auto}
-  .brand{display:flex;align-items:center;gap:12px;padding:0 8px 24px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:20px}
-  .brand-logo{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;box-shadow:0 4px 14px rgba(245,184,61,0.5)}
-  .brand-text{color:white}
-  .brand-text .name{font-weight:800;font-size:14px}
-  .brand-text .sub{color:#fde68a;font-size:9.5px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin-top:3px}
-  .nav-section{margin-bottom:18px}
-  .nav-section-title{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.3);padding:0 12px;margin-bottom:8px}
-  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;color:rgba(255,255,255,0.65);font-size:12.5px;font-weight:600;border-radius:9px;margin-bottom:2px;text-decoration:none;transition:all 0.2s;position:relative}
-  .nav-item:hover{background:rgba(255,255,255,0.05);color:white;transform:translateX(2px)}
-  .nav-item.active{background:linear-gradient(90deg,rgba(245,184,61,0.2),rgba(245,184,61,0.04));color:#fde68a}
-  .nav-item.active::before{content:'';position:absolute;left:-14px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--gold);box-shadow:0 0 12px rgba(245,184,61,0.6)}
-  .nav-icon{width:16px;height:16px;flex-shrink:0;opacity:0.9}
-  
-  .main{margin-left:240px;min-height:100vh}
-  .topbar{background:rgba(255,255,255,0.75);backdrop-filter:blur(20px);border-bottom:1px solid var(--line);padding:14px 28px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:40}
-  .breadcrumb{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-mid);font-weight:600}
-  .breadcrumb .current{color:var(--ink-900);font-weight:700}
-  .breadcrumb .sep{color:#cbd5e1}
-  .top-actions{display:flex;gap:10px;align-items:center;margin-left:auto}
-  .user-chip{display:flex;align-items:center;gap:9px;padding:4px 10px 4px 4px;border-radius:999px;background:white;border:1px solid var(--line)}
-  .user-chip .avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
-  .user-chip .name{font-size:12px;font-weight:700;color:var(--ink-900)}
-  .ab-btn{padding:7px 12px;border-radius:8px;font-size:12px;font-weight:700;border:1px solid var(--line);background:white;color:var(--text-mid);transition:all 0.15s}
-  .ab-btn:hover{background:var(--line-soft)}
-  .ab-btn.primary{background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:white;border:none;box-shadow:0 2px 8px rgba(245,184,61,0.3)}
-  .ab-btn.primary:hover{box-shadow:0 4px 14px rgba(245,184,61,0.5);transform:translateY(-1px)}
-  
-  .content{padding:24px 28px 80px;max-width:1400px}
-  .hero{background:linear-gradient(135deg,var(--ink-900) 0%,#854d0e 50%,var(--gold) 130%);border-radius:20px;padding:28px 32px;color:white;position:relative;overflow:hidden;margin-bottom:22px}
-  .hero::before{content:'';position:absolute;top:-50%;right:-10%;width:500px;height:500px;background:radial-gradient(circle,rgba(245,184,61,0.25),transparent 60%)}
-  .hero-content{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap}
-  .hero-eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);color:white;padding:5px 12px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:0.06em;margin-bottom:12px}
-  .hero-eyebrow .pulse{width:6px;height:6px;background:#fde68a;border-radius:50%;animation:pulse 2s infinite}
-  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(1.6)}}
-  .hero h1{font-family:'Fraunces',serif;font-size:32px;font-weight:600;letter-spacing:-0.035em;line-height:1.05;margin-bottom:8px}
-  .hero h1 .accent{color:#fde68a;font-style:italic;font-weight:500}
-  .hero-sub{color:rgba(255,255,255,0.75);font-size:14px;font-weight:500;max-width:520px;line-height:1.5}
-  .hero-stat{text-align:right}
-  .hero-stat .l{color:rgba(255,255,255,0.6);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em}
-  .hero-stat .v{font-family:'JetBrains Mono',monospace;color:white;font-size:30px;font-weight:800;margin-top:4px;letter-spacing:-0.03em}
-  
-  .summary-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
-  .summary-card{background:white;border:1px solid var(--line);border-radius:12px;padding:16px 18px;transition:all 0.2s}
-  .summary-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
-  .summary-card .label{font-size:10.5px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px}
-  .summary-card .value{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:800;color:var(--ink-900);letter-spacing:-0.02em;line-height:1.1}
-  .summary-card .value.gold{color:var(--gold-deep)}
-  .summary-card .value.mint{color:#047857}
-  .summary-card .value.blue{color:var(--blue)}
-  .summary-card .value.violet{color:var(--violet)}
-  .summary-card .delta{font-size:11px;font-weight:600;margin-top:4px;color:var(--text-mid)}
-  
-  .filter-bar{background:white;border:1px solid var(--line);border-radius:12px;padding:12px 16px;display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap}
-  .filter-bar label{font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase}
-  .filter-bar select,.filter-bar input{padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-weight:600;background:white}
-  
-  .table-card{background:white;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow-md)}
-  .table-header{padding:16px 22px;border-bottom:1px solid var(--line-soft);display:flex;justify-content:space-between;align-items:center;background:linear-gradient(180deg,white,var(--canvas))}
-  .table-header h2{font-size:15px;font-weight:800;color:var(--ink-900)}
-  .table-header .count{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-mid);font-weight:700}
-  .table-scroll{overflow-x:auto;max-height:700px;overflow-y:auto}
-  table{width:100%;border-collapse:collapse}
-  thead th{background:var(--canvas);font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.04em;padding:11px 14px;text-align:left;border-bottom:2px solid var(--line);white-space:nowrap;position:sticky;top:0;z-index:10}
-  thead th.num{text-align:right}
-  tbody td{padding:13px 14px;font-size:13px;border-bottom:1px solid var(--line-soft);color:var(--text)}
-  tbody tr:hover{background:var(--canvas)}
-  td.num{font-family:'JetBrains Mono',monospace;text-align:right;font-weight:600}
-  td.num.bold{font-weight:800;color:var(--ink-900)}
-  td.num.gold{color:var(--gold-deep);font-weight:800;font-size:14px}
-  
-  .member-cell{display:flex;align-items:center;gap:10px}
-  .member-cell .avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--violet),#a78bfa);color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0}
-  .member-cell .info .name{font-weight:700;color:var(--ink-900)}
-  .member-cell .info .phone{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-mid)}
-  
-  .mode-pill{display:inline-block;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;text-transform:capitalize}
-  .mode-pill.cash{background:rgba(52,211,153,0.12);color:#047857}
-  .mode-pill.upi{background:rgba(139,92,246,0.12);color:#6d28d9}
-  .mode-pill.bank_transfer{background:rgba(59,130,246,0.12);color:#1d4ed8}
-  .mode-pill.cheque{background:rgba(245,184,61,0.15);color:var(--gold-deep)}
-  .mode-pill.other{background:var(--line-soft);color:var(--text-mid)}
-  
-  /* MODAL */
-  .modal{position:fixed;inset:0;background:rgba(5,8,24,0.6);backdrop-filter:blur(8px);display:none;align-items:flex-start;justify-content:center;z-index:200;padding:60px 20px;overflow-y:auto}
-  .modal.active{display:flex}
-  .modal-content{background:white;border-radius:18px;width:100%;max-width:560px;padding:28px;box-shadow:0 24px 80px rgba(0,0,0,0.3);animation:modalIn 0.3s cubic-bezier(0.16,1,0.3,1)}
-  @keyframes modalIn{from{opacity:0;transform:translateY(20px) scale(0.95)}to{opacity:1;transform:translateY(0) scale(1)}}
-  .modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
-  .modal-head h2{font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--ink-900);letter-spacing:-0.015em}
-  .modal-close{width:30px;height:30px;border-radius:8px;background:var(--line-soft);color:var(--text-mid);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;cursor:pointer}
-  .modal-close:hover{background:var(--line)}
-  
-  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
-  .form-grid.full{grid-template-columns:1fr}
-  .form-field label{display:block;font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px}
-  .form-field label .req{color:var(--rose);font-size:13px}
-  .form-input{width:100%;padding:10px 12px;font-size:13.5px;border:1.5px solid var(--line);border-radius:9px;background:white;font-weight:500;transition:all 0.15s}
-  .form-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(245,184,61,0.1)}
-  .form-input.mono{font-family:'JetBrains Mono',monospace}
-  textarea.form-input{resize:vertical;min-height:70px}
-  .select-wrap{position:relative}
-  .select-wrap::after{content:'▾';position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--text-dim);pointer-events:none}
-  .select-wrap select.form-input{appearance:none;padding-right:32px;cursor:pointer}
-  
-  .member-search-results{margin-top:6px;background:var(--canvas);border:1px solid var(--line);border-radius:8px;max-height:200px;overflow-y:auto;display:none}
-  .member-search-results.show{display:block}
-  .member-result{padding:8px 12px;cursor:pointer;font-size:12.5px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line-soft)}
-  .member-result:hover{background:white}
-  .member-result:last-child{border-bottom:none}
-  .member-result .avatar{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--violet),#a78bfa);color:white;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800}
-  .member-result .info{flex:1}
-  .member-result .name{font-weight:700;color:var(--ink-900)}
-  .member-result .phone{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--text-mid)}
-  .member-result .pending{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:800;color:var(--rose)}
-  
-  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
-  
-  .empty-state{text-align:center;padding:80px 20px;color:var(--text-mid)}
-  .empty-state .icon{font-size:56px;margin-bottom:16px;opacity:0.5}
-  .empty-state .title{font-size:20px;font-weight:700;color:var(--ink-900);margin-bottom:6px;font-family:'Fraunces',serif}
-  .empty-state .desc{font-size:13px;max-width:400px;margin:0 auto;line-height:1.5}
-  .loading{text-align:center;padding:60px 20px;color:var(--text-mid)}
-  .spinner{display:inline-block;width:32px;height:32px;border:3px solid rgba(245,184,61,0.2);border-top-color:var(--gold);border-radius:50%;animation:spin 0.7s linear infinite}
-  .spinner.sm{width:14px;height:14px;border-width:2px}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  
-  .toast{position:fixed;bottom:24px;right:24px;background:var(--ink-900);color:white;padding:14px 20px;border-radius:12px;font-size:13px;font-weight:700;box-shadow:0 24px 60px rgba(0,0,0,0.2);z-index:9999;opacity:0;transform:translateY(20px);transition:all 0.3s;display:flex;gap:10px}
-  .toast.show{opacity:1;transform:translateY(0)}
-  .toast.success{background:linear-gradient(135deg,var(--mint),#10b981)}
-  .toast.error{background:linear-gradient(135deg,var(--rose),#e11d48)}
-  
-  .delete-btn{padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700;background:var(--canvas);color:var(--text-mid);border:1px solid var(--line);transition:all 0.12s}
-  .delete-btn:hover{background:#fef2f2;color:var(--rose);border-color:#fecaca}
-  
-  @media (max-width:1024px){.summary-cards{grid-template-columns:repeat(2,1fr)}.form-grid{grid-template-columns:1fr}}
-  @media (max-width:768px){
-    .sidebar{width:60px;padding:14px 6px}
-    .sidebar .brand-text,.sidebar .nav-section-title,.sidebar .nav-item span{display:none}
-    .main{margin-left:60px}
-    .content{padding:14px}
-    .topbar{padding:10px 14px}
-    .summary-cards{grid-template-columns:1fr}
-    .hero h1{font-size:22px}
-    .modal{padding:20px}
-  }
-</style>
-<!-- ═══ RLS LIBRARIES (Phase 3) ═══ -->
-<script src="/lib/wati-client.js"></script>
-<script src="/lib/access-guard.js"></script>
-<script src="/lib/sales-rls.js"></script>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+:root{
+  --navy:#0B1957;--navy-deep:#050B2E;--navy-mid:#1A237E;
+  --gold:#B89B4E;--gold-bright:#D4B45F;--gold-deep:#8B7430;--gold-soft:#F4E4B0;
+  --teal:#26d0ce;
+  --cream:#FAF8F3;--paper:#F7F4EC;--rule:#E5E0D2;
+  --ink-950:#0F172A;--ink-700:#475569;--text-dim:#94A3B8;
+  --success:#047857;--success-bg:#D1FAE5;
+  --warn:#C2410C;--warn-bg:#FED7AA;
+  --danger:#BE123C;--danger-bg:#FECACA;
+  --info:#1E40AF;--info-bg:#DBEAFE;
+}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--cream);color:var(--ink-950);font-size:14px;line-height:1.5;min-height:100vh}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+a{color:inherit;text-decoration:none}
 
+.topbar{background:var(--navy);color:#fff;padding:12px 24px;border-bottom:3px solid var(--gold);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.tb-brand{display:flex;align-items:center;gap:12px}
+.tb-logo{width:34px;height:34px;background:var(--gold);color:var(--navy);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:700;font-size:19px}
+.tb-name{font-size:14px;font-weight:700}
+.tb-tag{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--gold-bright);letter-spacing:0.16em;text-transform:uppercase;margin-top:2px}
+.tb-user{display:flex;align-items:center;gap:9px;padding:4px 12px 4px 4px;background:rgba(255,255,255,0.08);border:1px solid rgba(212,180,95,0.3);border-radius:999px}
+.tb-ava{width:28px;height:28px;border-radius:50%;background:var(--gold);color:var(--navy);display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-style:italic;font-weight:700;font-size:13px}
+.tb-info .name{font-size:12px;font-weight:700;line-height:1.1}
+.tb-info .role{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--gold-bright);letter-spacing:0.12em;text-transform:uppercase}
+
+.main{padding:22px;max-width:1150px;margin:0 auto;padding-bottom:60px}
+.page-head{margin-bottom:18px}
+.page-title{font-family:'Fraunces',serif;font-size:26px;font-weight:600;color:var(--navy);letter-spacing:-0.02em}
+.page-title em{font-style:italic;color:var(--gold-deep)}
+.page-sub{font-size:12.5px;color:var(--text-dim);margin-top:2px}
+
+/* Tabs */
+.tabs{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;border-bottom:1px solid var(--rule);padding-bottom:0}
+.tab{padding:10px 18px;font-size:13.5px;font-weight:600;color:var(--ink-700);border-bottom:2px solid transparent;cursor:pointer;transition:all .15s}
+.tab.active{color:var(--navy);border-bottom-color:var(--gold)}
+.tab:hover{color:var(--navy)}
+
+.panel{display:none}
+.panel.active{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+.section{background:#fff;border:1px solid var(--rule);border-radius:12px;margin-bottom:16px;overflow:hidden}
+.section-head{padding:13px 18px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,var(--paper),#fff)}
+.section-title{font-family:'Fraunces',serif;font-size:15px;font-weight:600;color:var(--navy)}
+.section-body{padding:18px}
+
+.row{display:flex;gap:14px;margin-bottom:14px;flex-wrap:wrap}
+.row.three .field{flex:1;min-width:160px}
+.field{flex:1;min-width:180px}
+.label{font-size:11.5px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+.hint{font-weight:500;color:var(--text-dim);text-transform:none;letter-spacing:0}
+.req{color:var(--danger)}
+.input{width:100%;padding:10px 12px;border:1px solid var(--rule);border-radius:8px;font-family:inherit;font-size:14px;background:#fff;outline:none;color:var(--ink-950)}
+.input:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(38,208,206,.12)}
+select.input{cursor:pointer}
+/* Searchable dropdown */
+.sd{position:relative}
+.sd-drop{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:60;background:#fff;border:1px solid var(--teal);border-radius:9px;box-shadow:0 10px 36px rgba(11,25,87,.18);max-height:280px;overflow:auto;display:none}
+.sd-drop.open{display:block}
+.sd-opt{padding:10px 13px;cursor:pointer;border-bottom:1px solid #F3F3F3;font-size:13.5px}
+.sd-opt:hover{background:#F7F8FC}
+.sd-opt .sub{font-size:11px;color:var(--text-dim);font-family:'JetBrains Mono',monospace}
+.sd-label{padding:7px 13px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#8E97B2;background:#FAFBFE;border-bottom:1px solid #EEE}
+.sd-manual{padding:11px 13px;border-top:2px dashed var(--rule);cursor:pointer;color:var(--gold-deep);font-weight:600;font-size:12.5px;background:#FBF6E4}
+.sd-input.chosen{border-color:var(--success);background:#F2FBF6}
+
+.btn{padding:10px 18px;border-radius:8px;font-family:inherit;font-weight:600;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:all .15s}
+.btn-gold{background:var(--gold);color:#3a2f12}
+.btn-gold:hover{background:var(--gold-bright)}
+.btn-navy{background:var(--navy);color:#fff}
+.btn-navy:hover{background:var(--navy-mid)}
+.btn-teal{background:var(--teal);color:#04282a}
+.btn-secondary{background:#fff;border:1px solid var(--rule);color:var(--ink-700)}
+.btn-secondary:hover{border-color:var(--gold-deep);color:var(--navy)}
+.btn-sm{padding:6px 12px;font-size:12.5px}
+.btn-danger{background:var(--danger-bg);color:var(--danger)}
+
+/* Expense type toggle */
+.etype-wrap{display:flex;gap:10px;margin-bottom:6px}
+.etype{flex:1;border:2px solid var(--rule);border-radius:10px;padding:14px;text-align:center;cursor:pointer;transition:all .15s}
+.etype.active{border-color:var(--gold);background:var(--gold-soft)}
+.etype .ico{font-size:22px}
+.etype .nm{font-weight:700;color:var(--navy);margin-top:4px}
+.etype .ds{font-size:11px;color:var(--text-dim);margin-top:2px}
+
+/* Amount grid */
+.amt-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:680px){.amt-grid{grid-template-columns:repeat(2,1fr)}}
+
+.total-box{background:linear-gradient(135deg,var(--gold-soft),#fff);border:2px solid var(--gold);border-radius:12px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;margin-top:14px}
+.total-box .pl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--gold-deep)}
+.total-box .pv{font-size:26px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--navy)}
+
+/* Pay status toggle */
+.pay-toggle{display:flex;gap:8px}
+.pay-opt{flex:1;border:2px solid var(--rule);border-radius:8px;padding:9px;text-align:center;cursor:pointer;font-weight:600;font-size:13px}
+.pay-opt.active[data-v="unpaid"]{border-color:var(--warn);background:var(--warn-bg);color:var(--warn)}
+.pay-opt.active[data-v="paid"]{border-color:var(--success);background:var(--success-bg);color:var(--success)}
+
+/* List/table */
+.exp-table{width:100%;border-collapse:collapse;font-size:13px}
+.exp-table th{background:var(--paper);color:var(--navy);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:10px 12px;text-align:left;border-bottom:1px solid var(--rule)}
+.exp-table td{padding:10px 12px;border-bottom:1px solid #F1F1F1}
+.exp-table tr:hover td{background:#FBFAF6}
+.tag{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.tag-paid{background:var(--success-bg);color:var(--success)}
+.tag-unpaid{background:var(--warn-bg);color:var(--warn)}
+.tag-camp{background:var(--info-bg);color:var(--info)}
+.tag-int{background:#EDE9FE;color:#7C3AED}
+
+/* Team payment card */
+.pay-card{border:1px solid var(--rule);border-radius:11px;padding:14px 16px;margin-bottom:10px;background:#fff;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.pay-card .pc-name{font-weight:700;color:var(--navy);font-size:14px}
+.pay-card .pc-phone{font-size:12px;color:var(--text-dim);font-family:'JetBrains Mono',monospace}
+.pay-card .pc-detail{font-size:12.5px;color:var(--ink-700);margin-top:6px;line-height:1.6}
+.pay-card .pc-detail b{color:var(--navy)}
+.pay-card .pc-qr{width:56px;height:56px;border-radius:8px;border:1px solid var(--rule);object-fit:cover;cursor:pointer}
+.has-pay{border-left:3px solid var(--success)}
+.no-pay{border-left:3px solid var(--warn)}
+
+/* Summary cards */
+.sum-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+@media(max-width:680px){.sum-cards{grid-template-columns:repeat(2,1fr)}}
+.sum-card{background:#fff;border:1px solid var(--rule);border-radius:11px;padding:14px;border-top:3px solid var(--gold)}
+.sum-card .sv{font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--navy)}
+.sum-card .sl{font-size:10.5px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.4px;margin-top:4px;font-weight:600}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(11,25,87,.5);display:none;align-items:center;justify-content:center;z-index:1000;padding:18px}
+.modal-bg.show{display:flex}
+.modal-box{background:#fff;border-radius:14px;max-width:500px;width:100%;padding:22px;max-height:92vh;overflow:auto}
+.modal-box h3{font-family:'Fraunces',serif;font-size:18px;color:var(--navy);margin-bottom:16px}
+
+.empty{padding:40px;text-align:center;color:var(--text-dim);font-size:13px}
+.cat-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border:1px solid var(--rule);border-radius:999px;font-size:12.5px;margin:0 6px 6px 0;background:#fff}
+.cat-chip button{color:var(--danger);font-size:14px;line-height:1}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:12px 22px;border-radius:10px;font-size:13.5px;font-weight:600;z-index:2000;opacity:0;transition:opacity .2s;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+.toast.show{opacity:1}
+.spinner{width:34px;height:34px;border:3px solid var(--rule);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;margin:40px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
 </head>
 <body>
 
-<div class="login-bg" id="loginScreen">
-  <div class="login-card">
-    <div class="login-logo">💰</div>
-    <h1>Payments</h1>
-    <p class="sub">Admin / Owner / Accounts access</p>
-    <div class="field-group">
-      <label>Phone Number</label>
-      <input type="tel" id="loginPhone" class="login-input mono" placeholder="10-digit phone" maxlength="10">
-    </div>
-    <button class="login-btn" onclick="doLogin()" id="loginBtn">View Payments →</button>
-    <div class="err-banner" id="loginErr"></div>
+<div class="topbar">
+  <div class="tb-brand">
+    <div class="tb-logo">P</div>
+    <div><div class="tb-name">Expense Manager</div><div class="tb-tag">Prajapati Advertising</div></div>
+  </div>
+  <div class="tb-user">
+    <div class="tb-ava" id="tbAva">?</div>
+    <div class="tb-info"><div class="name" id="tbName">User</div><div class="role" id="tbRole">role</div></div>
   </div>
 </div>
 
-<div class="app" id="mainApp">
-  <aside class="sidebar">
-    <div class="brand">
-      <div class="brand-logo">💰</div>
-      <div class="brand-text">
-        <div class="name">Reports</div>
-        <div class="sub">v1.0 · Payments</div>
-      </div>
-    </div>
-    <div class="nav-section">
-      <div class="nav-section-title">Reports</div>
-      <a class="nav-item" href="report-daily.html">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        <span>Daily Report</span>
-      </a>
-      <a class="nav-item" href="report-team.html">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-        <span>Team Wise</span>
-      </a>
-      <a class="nav-item" href="report-campaign.html">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4l3 14M19 4l-3 14M3 8h18M3 16h18"/></svg>
-        <span>Campaign Wise</span>
-      </a>
-    </div>
-    <div class="nav-section">
-      <div class="nav-section-title">Finance</div>
-      <div class="nav-item active">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-        <span>Payments</span>
-      </div>
-      <a class="nav-item" href="outstanding.html">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        <span>Outstanding</span>
-      </a>
-    </div>
-    <div class="nav-section">
-      <div class="nav-section-title">Back</div>
-      <a class="nav-item" href="dashboard.html">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-        <span>Dashboard</span>
-      </a>
-    </div>
-  </aside>
-  
-  <main class="main">
-    <header class="topbar">
-      <div class="breadcrumb"><span>Finance</span><span class="sep">/</span><span class="current">Payments</span></div>
-      <div class="top-actions">
-        <button class="ab-btn" onclick="exportCSV()">📥 Export CSV</button>
-        <button class="ab-btn primary" onclick="openNewPayment()">+ Record Payment</button>
-        <div class="user-chip">
-          <div class="avatar" id="userAvatar">?</div>
-          <span class="name" id="userName">—</span>
-        </div>
-      </div>
-    </header>
-    
-    <div class="content">
-      <section class="hero">
-        <div class="hero-content">
-          <div>
-            <div class="hero-eyebrow"><span class="pulse"></span>PAYMENT HISTORY</div>
-            <h1>Track every <span class="accent">rupee</span> paid out</h1>
-            <p class="hero-sub">Complete payment ledger to team members. Record new payments, filter by date or method.</p>
+<div class="main">
+  <div class="page-head">
+    <div class="page-title">Expense <em>Manager</em> <span style="font-size:11px;font-weight:600;color:#26d0ce;vertical-align:middle">v1</span></div>
+    <div class="page-sub" id="todayDate">…</div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="entry" onclick="switchTab('entry')">➕ New Expense</div>
+    <div class="tab" data-tab="list" onclick="switchTab('list')">📋 Expense List</div>
+    <div class="tab" data-tab="payments" onclick="switchTab('payments')">💳 Team Payments</div>
+    <div class="tab" data-tab="categories" onclick="switchTab('categories')">🏷️ Categories</div>
+  </div>
+
+  <!-- ════════ TAB: NEW EXPENSE ════════ -->
+  <div class="panel active" id="panel-entry">
+    <div class="section">
+      <div class="section-head"><div class="section-title">Expense Type</div></div>
+      <div class="section-body">
+        <div class="etype-wrap">
+          <div class="etype active" data-et="campaign" onclick="pickType('campaign')">
+            <div class="ico">🚖</div><div class="nm">Campaign Expense</div><div class="ds">Field — food, hotel, transport</div>
           </div>
-          <div class="hero-stat">
-            <div class="l">Total Paid</div>
-            <div class="v" id="heroTotal">—</div>
+          <div class="etype" data-et="internal" onclick="pickType('internal')">
+            <div class="ico">🏢</div><div class="nm">Internal Expense</div><div class="ds">Office, salary, production…</div>
           </div>
         </div>
-      </section>
-      
-      <div class="summary-cards">
-        <div class="summary-card">
-          <div class="label">Total Payments</div>
-          <div class="value blue" id="sumCount">—</div>
-          <div class="delta" id="sumCountSub">transactions</div>
+      </div>
+    </div>
+
+    <!-- CAMPAIGN fields -->
+    <div class="section" id="campaignFields">
+      <div class="section-head"><div class="section-title">Campaign Details</div></div>
+      <div class="section-body">
+        <div class="row">
+          <div class="field">
+            <div class="label">Campaign <span class="req">*</span></div>
+            <div class="sd" id="sd-campaign">
+              <input class="input sd-input" id="sd-campaign-input" placeholder="Search campaign…" autocomplete="off" oninput="sdFilter('campaign')" onfocus="sdFilter('campaign')">
+              <div class="sd-drop" id="sd-campaign-drop"></div>
+            </div>
+          </div>
+          <div class="field">
+            <div class="label">Team Member <span class="hint">Kiske liye</span></div>
+            <div class="sd" id="sd-member">
+              <input class="input sd-input" id="sd-member-input" placeholder="Search member…" autocomplete="off" oninput="sdFilter('member')" onfocus="sdFilter('member')">
+              <div class="sd-drop" id="sd-member-drop"></div>
+            </div>
+          </div>
         </div>
-        <div class="summary-card">
-          <div class="label">Total Amount</div>
-          <div class="value gold" id="sumAmount">—</div>
-          <div class="delta" id="sumAmountSub">paid out</div>
+        <div class="row">
+          <div class="field">
+            <div class="label">Location <span class="hint">Type karo — search/manual</span></div>
+            <div class="sd" id="sd-loc">
+              <input class="input sd-input" id="expLocation" placeholder="City / area type karo…" autocomplete="off" oninput="searchLoc(this.value)" onfocus="searchLoc(this.value)">
+              <div class="sd-drop" id="loc-drop"></div>
+            </div>
+          </div>
+          <div class="field">
+            <div class="label">Date <span class="req">*</span></div>
+            <input class="input" type="date" id="expDate">
+          </div>
         </div>
-        <div class="summary-card">
-          <div class="label">Members Paid</div>
-          <div class="value violet" id="sumMembers">—</div>
-          <div class="delta" id="sumMembersSub">unique members</div>
+        <div class="label" style="margin-top:6px">Expense Heads (₹)</div>
+        <div class="amt-grid">
+          <div class="field"><div class="label" style="font-size:10px">🍽️ Food</div><input class="input" type="number" id="amtFood" value="0" oninput="calcTotal()"></div>
+          <div class="field"><div class="label" style="font-size:10px">🏨 Hotel</div><input class="input" type="number" id="amtHotel" value="0" oninput="calcTotal()"></div>
+          <div class="field"><div class="label" style="font-size:10px">🚗 Transport</div><input class="input" type="number" id="amtTransport" value="0" oninput="calcTotal()"></div>
+          <div class="field"><div class="label" style="font-size:10px">➕ Other</div><input class="input" type="number" id="amtOther" value="0" oninput="calcTotal()"></div>
         </div>
-        <div class="summary-card">
-          <div class="label">This Month</div>
-          <div class="value mint" id="sumMonth">—</div>
-          <div class="delta" id="sumMonthSub">—</div>
+        <div class="field" style="margin-top:12px">
+          <div class="label">Other Description <span class="hint">Agar 'Other' bhara</span></div>
+          <input class="input" id="otherDesc" placeholder="e.g. parking, recharge…">
         </div>
       </div>
-      
-      <div class="filter-bar">
-        <label>Filter:</label>
-        <select id="filterMode" onchange="renderTable()">
-          <option value="all">All Methods</option>
-          <option value="cash">Cash</option>
-          <option value="upi">UPI</option>
-          <option value="bank_transfer">Bank Transfer</option>
-          <option value="cheque">Cheque</option>
-          <option value="other">Other</option>
+    </div>
+
+    <!-- INTERNAL fields -->
+    <div class="section" id="internalFields" style="display:none">
+      <div class="section-head"><div class="section-title">Internal Details</div></div>
+      <div class="section-body">
+        <div class="row">
+          <div class="field">
+            <div class="label">Category <span class="req">*</span></div>
+            <select class="input" id="intCategory"><option value="">Select…</option></select>
+          </div>
+          <div class="field">
+            <div class="label">Party / Vendor <span class="hint">Optional</span></div>
+            <input class="input" id="intParty" placeholder="Supplier name">
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <div class="label">Amount (₹) <span class="req">*</span></div>
+            <input class="input" type="number" id="intAmount" value="0" oninput="calcTotal()">
+          </div>
+          <div class="field">
+            <div class="label">Date <span class="req">*</span></div>
+            <input class="input" type="date" id="intDate">
+          </div>
+        </div>
+        <div class="field">
+          <div class="label">Details</div>
+          <input class="input" id="intDetails" placeholder="What was this expense for?">
+        </div>
+      </div>
+    </div>
+
+    <!-- TOTAL + PAYMENT -->
+    <div class="section">
+      <div class="section-head"><div class="section-title">Total & Payment</div></div>
+      <div class="section-body">
+        <div class="total-box">
+          <div class="pl">Total Amount</div>
+          <div class="pv" id="totalAmt">₹0</div>
+        </div>
+        <div class="row" style="margin-top:14px">
+          <div class="field">
+            <div class="label">Payment Status</div>
+            <div class="pay-toggle">
+              <div class="pay-opt active" data-v="unpaid" onclick="pickPay('unpaid')">⏳ Unpaid</div>
+              <div class="pay-opt" data-v="paid" onclick="pickPay('paid')">✓ Paid</div>
+            </div>
+          </div>
+          <div class="field" id="paidViaField" style="display:none">
+            <div class="label">Paid Via</div>
+            <select class="input" id="paidVia"><option value="upi">UPI</option><option value="bank">Bank</option><option value="cash">Cash</option></select>
+          </div>
+        </div>
+        <div class="field" id="receiptField" style="display:none">
+          <div class="label">Receipt <span class="hint">Upload bill/screenshot</span></div>
+          <input class="input" type="file" id="expReceipt" accept="image/*,application/pdf">
+        </div>
+        <div class="field" style="margin-top:4px">
+          <div class="label">Notes</div>
+          <input class="input" id="expNotes" placeholder="Optional remark">
+        </div>
+        <div id="entryStatus" style="margin-top:10px"></div>
+        <button class="btn btn-gold" style="margin-top:12px" id="saveExpBtn" onclick="saveExpense()">💾 Save Expense</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ TAB: EXPENSE LIST ════════ -->
+  <div class="panel" id="panel-list">
+    <div class="sum-cards" id="sumCards"></div>
+    <div class="row">
+      <div class="field"><div class="label">Date Range</div>
+        <select class="input" id="fltPreset" onchange="onPresetChange()">
+          <option value="today">Today</option>
+          <option value="yesterday">Yesterday</option>
+          <option value="week">Last 7 days</option>
+          <option value="thisweek">This week</option>
+          <option value="month" selected>This month</option>
+          <option value="last30">Last 30 days</option>
+          <option value="alltime">All time</option>
+          <option value="custom">Custom</option>
         </select>
-        <input type="date" id="filterFrom" onchange="renderTable()" placeholder="From">
-        <span style="color:var(--text-mid);font-size:12px;">to</span>
-        <input type="date" id="filterTo" onchange="renderTable()" placeholder="To">
-        <input type="text" id="filterMember" placeholder="🔍 Search member name/phone..." style="flex:1;min-width:200px;" oninput="renderTable()">
-        <button class="ab-btn" onclick="clearFilters()">Clear</button>
       </div>
-      
-      <div class="table-card">
-        <div class="table-header">
-          <h2>All Payments</h2>
-          <span class="count" id="rowCount">—</span>
+      <div class="field" id="customFrom" style="display:none"><div class="label">From</div><input class="input" type="date" id="fltFrom" onchange="loadExpenses()"></div>
+      <div class="field" id="customTo" style="display:none"><div class="label">To</div><input class="input" type="date" id="fltTo" onchange="loadExpenses()"></div>
+      <div class="field"><div class="label">Type</div><select class="input" id="fltType" onchange="loadExpenses()"><option value="">All</option><option value="campaign">Campaign</option><option value="internal">Internal</option></select></div>
+      <div class="field"><div class="label">Status</div><select class="input" id="fltStatus" onchange="loadExpenses()"><option value="">All</option><option value="paid">Paid</option><option value="unpaid">Unpaid</option></select></div>
+    </div>
+    <div class="row">
+      <div class="field"><div class="label">Category</div><select class="input" id="fltCategory" onchange="loadExpenses()"><option value="">All categories</option></select></div>
+      <div class="field"><div class="label">Team Member</div><select class="input" id="fltMember" onchange="loadExpenses()"><option value="">All members</option></select></div>
+      <div class="field"><div class="label">Campaign</div><select class="input" id="fltCampaign" onchange="loadExpenses()"><option value="">All campaigns</option></select></div>
+    </div>
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">Expenses</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-teal btn-sm" onclick="exportExpensesExcel()">📊 Excel</button>
+          <button class="btn btn-sm" style="background:#E11D48;color:#fff" onclick="exportExpensesPDF()">📄 PDF</button>
+          <button class="btn btn-sm" style="background:#7C3AED;color:#fff" onclick="exportExpensesJPEG()">🖼️ JPEG</button>
         </div>
-        <div id="tableBody">
-          <div class="loading"><div class="spinner"></div><div style="margin-top:14px;font-weight:600;">Loading...</div></div>
+      </div>
+      <div style="overflow:auto" id="expReportArea"><table class="exp-table" id="expTable"><tbody><tr><td><div class="spinner"></div></td></tr></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- ════════ TAB: TEAM PAYMENTS ════════ -->
+  <div class="panel" id="panel-payments">
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">Team Payment Details</div>
+        <button class="btn btn-gold btn-sm" onclick="openPayModal(null)">➕ Add Payment Info</button>
+      </div>
+      <div class="section-body">
+        <div style="position:relative;margin-bottom:14px">
+          <input class="input" id="paySearch" placeholder="🔍 Search member…" oninput="renderPayCards()">
         </div>
+        <div id="payList"><div class="spinner"></div></div>
       </div>
     </div>
-  </main>
+  </div>
+
+  <!-- ════════ TAB: CATEGORIES ════════ -->
+  <div class="panel" id="panel-categories">
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">Expense Categories</div>
+        <button class="btn btn-gold btn-sm" onclick="openCatModal()">➕ Add Category</button>
+      </div>
+      <div class="section-body">
+        <div class="label">Campaign Heads</div>
+        <div id="catCampaign" style="margin-bottom:18px"></div>
+        <div class="label">Internal Categories</div>
+        <div id="catInternal"></div>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- NEW PAYMENT MODAL -->
-<div class="modal" id="paymentModal">
-  <div class="modal-content">
-    <div class="modal-head">
-      <h2>💰 Record New Payment</h2>
-      <button class="modal-close" onclick="closeModal()">✕</button>
-    </div>
-    
-    <div class="form-grid full">
-      <div class="form-field">
-        <label>Member <span class="req">*</span></label>
-        <input type="text" id="newMember" class="form-input" placeholder="Type member name or phone..." oninput="searchMembers(this.value)" autocomplete="off">
-        <div class="member-search-results" id="memberResults"></div>
-        <div id="selectedMember" style="margin-top:6px;display:none;padding:8px 10px;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.3);border-radius:8px;font-size:12px;font-weight:600;color:#047857;"></div>
+<!-- PAYMENT INFO MODAL -->
+<div class="modal-bg" id="payModal">
+  <div class="modal-box">
+    <h3 id="payModalTitle">Add Payment Info</h3>
+    <input type="hidden" id="payEditId">
+    <div class="row">
+      <div class="field"><div class="label">Member <span class="req">*</span></div>
+        <select class="input" id="payMember"><option value="">Select member…</option></select>
       </div>
     </div>
-    
-    <div class="form-grid">
-      <div class="form-field">
-        <label>Amount (₹) <span class="req">*</span></label>
-        <input type="number" id="newAmount" class="form-input mono" placeholder="0" min="1" step="0.01">
-        <div id="suggestedAmt" style="margin-top:4px;font-size:11px;color:var(--text-mid);"></div>
-      </div>
-      <div class="form-field">
-        <label>Payment Date <span class="req">*</span></label>
-        <input type="date" id="newDate" class="form-input">
+    <div class="field"><div class="label">Account Holder Name</div><input class="input" id="payHolder" placeholder="As per bank"></div>
+    <div class="row">
+      <div class="field"><div class="label">UPI ID</div><input class="input" id="payUpi" placeholder="name@okhdfc"></div>
+      <div class="field"><div class="label">Preferred</div><select class="input" id="payPref"><option value="upi">UPI</option><option value="bank">Bank</option></select></div>
+    </div>
+    <div class="row">
+      <div class="field"><div class="label">Bank Account No.</div><input class="input" id="payAcc" placeholder="Account number"></div>
+      <div class="field"><div class="label">IFSC</div><input class="input" id="payIfsc" placeholder="HDFC0001234"></div>
+    </div>
+    <div class="field"><div class="label">Bank Name</div><input class="input" id="payBank" placeholder="HDFC Bank"></div>
+    <div class="field"><div class="label">QR Scanner <span class="hint">Upload image</span></div><input class="input" type="file" id="payQr" accept="image/*"></div>
+    <div id="payQrPreview" style="margin-top:8px"></div>
+    <div id="payStatus" style="margin-top:8px"></div>
+    <div style="display:flex;justify-content:space-between;gap:9px;margin-top:14px">
+      <button class="btn btn-danger btn-sm" id="payDeleteBtn" onclick="deletePayInfo()" style="display:none">🗑️ Delete</button>
+      <div style="display:flex;gap:9px;margin-left:auto">
+        <button class="btn btn-secondary" onclick="closePayModal()">Cancel</button>
+        <button class="btn btn-gold" id="paySaveBtn" onclick="savePayInfo()">💾 Save</button>
       </div>
     </div>
-    
-    <div class="form-grid">
-      <div class="form-field">
-        <label>Payment Mode <span class="req">*</span></label>
-        <div class="select-wrap">
-          <select id="newMode" class="form-input">
-            <option value="upi">UPI</option>
-            <option value="cash">Cash</option>
-            <option value="bank_transfer">Bank Transfer</option>
-            <option value="cheque">Cheque</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-field">
-        <label>Reference (txn ID/cheque no.)</label>
-        <input type="text" id="newRef" class="form-input mono" placeholder="Optional">
-      </div>
-    </div>
-    
-    <div class="form-grid full">
-      <div class="form-field">
-        <label>For Period (e.g., March 2026, Week 12)</label>
-        <input type="text" id="newPeriod" class="form-input" placeholder="Optional">
-      </div>
-      <div class="form-field">
-        <label>Notes</label>
-        <textarea id="newNotes" class="form-input" placeholder="Any additional notes..."></textarea>
-      </div>
-      <div class="form-field" style="grid-column:1/-1;">
-        <label>📎 Receipt Upload (HIGHLY RECOMMENDED for history)</label>
-        <input type="file" id="newReceipt" class="form-input" accept="image/*,application/pdf" style="padding:8px 12px;">
-        <div style="font-size:10.5px;color:#475569;margin-top:4px;">📸 Payment screenshot / UPI confirmation / receipt photo · JPG/PNG/PDF · Max 5 MB</div>
-        <div id="newReceiptPreview" style="display:none;margin-top:8px;padding:8px 12px;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.3);border-radius:8px;font-size:12px;font-weight:600;color:#047857;"></div>
-      </div>
-    </div>
-    
-    <div class="modal-actions">
-      <button class="ab-btn" onclick="closeModal()">Cancel</button>
-      <button class="ab-btn primary" onclick="savePayment()" id="savePayBtn">💾 Save Payment</button>
+  </div>
+</div>
+
+<!-- CATEGORY MODAL -->
+<div class="modal-bg" id="catModal">
+  <div class="modal-box" style="max-width:400px">
+    <h3>Add Category</h3>
+    <div class="field"><div class="label">Name <span class="req">*</span></div><input class="input" id="catName" placeholder="e.g. Diesel"></div>
+    <div class="field"><div class="label">Type</div><select class="input" id="catKind"><option value="internal">Internal</option><option value="campaign">Campaign Head</option></select></div>
+    <div id="catStatus" style="margin-top:8px"></div>
+    <div style="display:flex;justify-content:flex-end;gap:9px;margin-top:14px">
+      <button class="btn btn-secondary" onclick="closeCatModal()">Cancel</button>
+      <button class="btn btn-gold" onclick="saveCategory()">💾 Save</button>
     </div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
+<script src="/lib/access-guard.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
-"use strict";
-const CONFIG = { url: 'https://fpbktcgtspqsqpaytslv.supabase.co', key: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j' };
-const state = { admin: null, payments: [], members: [], earnings: {}, selectedMember: null };
-
-function esc(s) { if (s == null) return ''; return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function inr(n) { if (!n || isNaN(n)) return '₹0'; return '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 }); }
-function inrShort(n) { if (!n || isNaN(n)) return '₹0'; const num = Number(n); if (num >= 100000) return '₹' + (num/100000).toFixed(2) + 'L'; if (num >= 1000) return '₹' + (num/1000).toFixed(1) + 'k'; return '₹' + num.toLocaleString('en-IN', { maximumFractionDigits: 0 }); }
-function getInitials(name) { if (!name) return '?'; return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase(); }
-function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
-function todayStr() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
-
-function showToast(msg, type) {
+// ── Iframe-safe + login bridge ──
+(function(){
   try {
-    const t = document.getElementById('toast');
-    if (!t) return alert(msg);
-    const icon = type === 'success' ? '✓' : type === 'error' ? '⚠' : '💡';
-    t.innerHTML = `<span>${icon}</span><span>${esc(msg)}</span>`;
-    t.className = 'toast show ' + (type || '');
-    setTimeout(() => t.classList.remove('show'), 3000);
-  } catch (e) { alert(msg); }
-}
-
-async function api(path, options) {
-  options = options || {};
-  options.headers = options.headers || {};
-  options.headers.apikey = CONFIG.key;
-  options.headers.Authorization = 'Bearer ' + CONFIG.key;
-  const res = await fetch(CONFIG.url + path, options);
-  const txt = await res.text();
-  if (!res.ok) throw new Error('API ' + res.status + ': ' + txt);
-  if (!txt || txt.trim() === '') return null;
-  try { return JSON.parse(txt); } catch { return txt; }
-}
-
-async function doLogin() {
-  const phone = document.getElementById('loginPhone').value.trim();
-  const errEl = document.getElementById('loginErr');
-  const btn = document.getElementById('loginBtn');
-  errEl.classList.remove('show');
-  if (phone.length !== 10) { errEl.textContent = '10 digit phone daalo'; errEl.classList.add('show'); return; }
-  btn.disabled = true; btn.innerHTML = 'Checking...';
-  try {
-    const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
-    if (!members || members.length === 0) { errEl.textContent = 'Number registered nahi'; errEl.classList.add('show'); btn.disabled = false; btn.innerHTML = 'View Payments →'; return; }
-    const m = members[0];
-    if (!['admin','owner','accounts','accountant'].includes((m.role||'').toLowerCase())) {
-      errEl.textContent = 'Sirf Admin/Owner/Accounts ke liye';
-      errEl.classList.add('show'); btn.disabled = false; btn.innerHTML = 'View Payments →'; return;
+    if (window.AccessGuard && AccessGuard.getSession) {
+      var s = AccessGuard.getSession();
+      if (s && s.member && s.member.phone) localStorage.setItem('prajapati_admin_phone', s.member.phone);
     }
-    state.admin = m;
-    localStorage.setItem('prajapati_admin_phone', phone);
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('mainApp').classList.add('active');
-    initApp();
-  } catch (err) { errEl.textContent = 'Error: ' + err.message; errEl.classList.add('show'); btn.disabled = false; btn.innerHTML = 'View Payments →'; }
+  } catch(e){}
+})();
+
+var SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
+var SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
+
+if (window.AccessGuard && AccessGuard.protect) {
+  AccessGuard.protect({ module:'expenses', redirectTo:'/login.html', allowedRoles:['owner','admin','sales','hr_sales','sales_admin','operations_manager','ops_manager','data_manager','accountant','finance'] });
+}
+var user = ((window.AccessGuard && AccessGuard.getUser) ? AccessGuard.getUser() : null) || { name:'User', role:'user', phone:'' };
+var db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+var state = { type:'campaign', pay:'unpaid', members:[], campaigns:[], categories:[], expenses:[], payInfo:[],
+              sd:{ campaign:{items:[],value:'',label:''}, member:{items:[],value:'',label:''} }, savedLocs:[] };
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+function fmt(n){ return '₹' + Math.round(n||0).toLocaleString('en-IN'); }
+function toast(msg){ var t=$('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(function(){t.classList.remove('show');},2600); }
+function todayIST(){ return new Date(new Date().getTime()+5.5*3600*1000).toISOString().slice(0,10); }
+
+async function api(path, opts){
+  opts = opts || {};
+  var headers = { apikey:SUPABASE_KEY, Authorization:'Bearer '+SUPABASE_KEY, 'Content-Type':'application/json' };
+  if (opts.prefer) headers['Prefer']=opts.prefer;
+  var res = await fetch(SUPABASE_URL+'/rest/v1'+path, { method:opts.method||'GET', headers:headers, body:opts.body?JSON.stringify(opts.body):undefined });
+  if (!res.ok){ var t=await res.text(); throw new Error(t||('HTTP '+res.status)); }
+  var txt = await res.text();
+  return txt ? JSON.parse(txt) : null;
 }
 
-async function autoLogin() {
-  const phone = localStorage.getItem('prajapati_admin_phone');
-  if (!phone) return;
-  try {
-    const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
-    if (!members || members.length === 0) return;
-    const m = members[0];
-    if (!['admin','owner','accounts','accountant'].includes((m.role||'').toLowerCase())) return;
-    state.admin = m;
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('mainApp').classList.add('active');
-    initApp();
-  } catch (e) {}
+function switchTab(tab){
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.toggle('active', t.getAttribute('data-tab')===tab); });
+  document.querySelectorAll('.panel').forEach(function(p){ p.classList.toggle('active', p.id==='panel-'+tab); });
+  if (tab==='list') loadExpenses();
+  if (tab==='payments') renderPayCards();
+  if (tab==='categories') renderCategories();
 }
 
-function initApp() {
-  setText('userAvatar', getInitials(state.admin.name));
-  setText('userName', state.admin.name.split(' ')[0]);
-  loadData();
+function pickType(t){
+  state.type=t;
+  document.querySelectorAll('.etype').forEach(function(e){ e.classList.toggle('active', e.getAttribute('data-et')===t); });
+  $('campaignFields').style.display = t==='campaign'?'':'none';
+  $('internalFields').style.display = t==='internal'?'':'none';
+  calcTotal();
 }
-
-async function loadData() {
-  document.getElementById('tableBody').innerHTML = '<div class="loading"><div class="spinner"></div><div style="margin-top:14px;font-weight:600;">Loading...</div></div>';
-  
-  try {
-    const [payments, members, earnings] = await Promise.all([
-      api('/rest/v1/execution_payments?select=*&order=payment_date.desc,created_at.desc'),
-      api('/rest/v1/trial_team_members?active=eq.true&select=phone,name,role'),
-      api('/rest/v1/execution_daily_log?select=member_phone,total_amount')
-    ]);
-    
-    state.payments = payments || [];
-    state.members = members || [];
-    
-    // Compute earnings per member for "outstanding" suggestion
-    state.earnings = {};
-    (earnings || []).forEach(e => {
-      state.earnings[e.member_phone] = (state.earnings[e.member_phone] || 0) + (parseFloat(e.total_amount) || 0);
-    });
-    
-    renderTable();
-    updateSummary();
-  } catch (err) {
-    console.error('Load error:', err);
-    document.getElementById('tableBody').innerHTML = `
-      <div class="empty-state">
-        <div class="icon">⚠️</div>
-        <div class="title">Cannot load payments</div>
-        <div class="desc">${esc(err.message)}</div>
-      </div>`;
+function pickPay(v){
+  state.pay=v;
+  document.querySelectorAll('.pay-opt').forEach(function(e){ e.classList.toggle('active', e.getAttribute('data-v')===v); });
+  $('receiptField').style.display = v==='paid'?'':'none';
+  $('paidViaField').style.display = v==='paid'?'':'none';
+}
+// ── Searchable dropdown (reusable: campaign, member) ──
+function buildSearchDropdown(key, items, placeholder){
+  state.sd[key] = state.sd[key] || {};
+  state.sd[key].items = items || [];
+  var inp = $('sd-'+key+'-input');
+  if (inp && placeholder) inp.placeholder = placeholder;
+}
+function sdFilter(key){
+  var inp = $('sd-'+key+'-input');
+  var drop = $('sd-'+key+'-drop');
+  var q = (inp.value||'').toLowerCase().trim();
+  var items = (state.sd[key]&&state.sd[key].items)||[];
+  var matches = q ? items.filter(function(it){ return it.label.toLowerCase().indexOf(q)!==-1; }) : items.slice(0,50);
+  if (!matches.length){
+    drop.innerHTML = '<div class="sd-label">Koi match nahi</div>';
+  } else {
+    drop.innerHTML = matches.slice(0,50).map(function(it){
+      return '<div class="sd-opt" onclick="sdPick(\''+key+'\',\''+esc(it.value).replace(/'/g,"\\'")+'\',\''+esc(it.label).replace(/'/g,"\\'")+'\')">'+esc(it.label)+'</div>';
+    }).join('');
   }
+  drop.classList.add('open');
+}
+function sdPick(key, value, label){
+  state.sd[key].value = value;
+  state.sd[key].label = label;
+  var inp = $('sd-'+key+'-input');
+  inp.value = label; inp.classList.add('chosen');
+  $('sd-'+key+'-drop').classList.remove('open');
+}
+function sdReset(key){
+  if(state.sd[key]){ state.sd[key].value=''; state.sd[key].label=''; }
+  var inp=$('sd-'+key+'-input'); if(inp){ inp.value=''; inp.classList.remove('chosen'); }
 }
 
-function getFilteredPayments() {
-  let rows = [...state.payments];
-  const mode = document.getElementById('filterMode').value;
-  const from = document.getElementById('filterFrom').value;
-  const to = document.getElementById('filterTo').value;
-  const member = document.getElementById('filterMember').value.trim().toLowerCase();
-  
-  if (mode !== 'all') rows = rows.filter(r => r.payment_mode === mode);
-  if (from) rows = rows.filter(r => r.payment_date >= from);
-  if (to) rows = rows.filter(r => r.payment_date <= to);
-  if (member) rows = rows.filter(r => (r.member_name || '').toLowerCase().includes(member) || (r.member_phone || '').includes(member));
-  
-  return rows;
+// ── Location search (Photon + Nominatim + saved + manual) ──
+function fetchTimeout(url,opts,ms){
+  return new Promise(function(res,rej){ var c=new AbortController(); var t=setTimeout(function(){c.abort();rej(new Error('timeout'));},ms||3500); fetch(url,Object.assign({},opts,{signal:c.signal})).then(function(r){clearTimeout(t);res(r);}).catch(function(e){clearTimeout(t);rej(e);}); });
 }
-
-function clearFilters() {
-  document.getElementById('filterMode').value = 'all';
-  document.getElementById('filterFrom').value = '';
-  document.getElementById('filterTo').value = '';
-  document.getElementById('filterMember').value = '';
-  renderTable();
+var locTimer=null;
+function searchLoc(q){
+  var drop=$('loc-drop');
+  if(!q||q.length<2){ drop.classList.remove('open'); return; }
+  clearTimeout(locTimer);
+  locTimer=setTimeout(function(){ runLocSearch(q); }, 240);
 }
-
-function renderTable() {
-  const rows = getFilteredPayments();
-  setText('rowCount', rows.length + ' payment' + (rows.length !== 1 ? 's' : ''));
-  
-  if (rows.length === 0) {
-    document.getElementById('tableBody').innerHTML = `
-      <div class="empty-state">
-        <div class="icon">📭</div>
-        <div class="title">No payments found</div>
-        <div class="desc">Try adjusting filters or record a new payment.</div>
-      </div>`;
-    return;
-  }
-  
-  let html = '<div class="table-scroll"><table><thead><tr>';
-  html += '<th>Date</th><th>Member</th><th class="num">Amount</th><th>Mode</th><th>Reference</th><th>Period</th><th>Notes</th><th>Receipt</th><th></th></tr></thead><tbody>';
-  
-  rows.forEach(p => {
-    const receiptBtn = p.receipt_storage_path 
-      ? '<button class="delete-btn" style="background:rgba(52,211,153,0.1);color:#047857;border-color:rgba(52,211,153,0.3);" onclick="viewReceipt(\'' + esc(p.receipt_storage_path) + '\')">📎 View</button>'
-      : '<span style="color:#CBD5E1;font-size:11px;">—</span>';
-    html += `
-      <tr>
-        <td><strong>${p.payment_date}</strong></td>
-        <td>
-          <div class="member-cell">
-            <div class="avatar">${getInitials(p.member_name)}</div>
-            <div class="info">
-              <div class="name">${esc(p.member_name)}</div>
-              <div class="phone">${esc(p.member_phone)}</div>
-            </div>
-          </div>
-        </td>
-        <td class="num gold">${inr(p.amount)}</td>
-        <td><span class="mode-pill ${esc(p.payment_mode)}">${esc(p.payment_mode)}</span></td>
-        <td><span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;">${esc(p.reference_number || '—')}</span></td>
-        <td>${esc(p.for_period || '—')}</td>
-        <td style="max-width:200px;font-size:12px;color:var(--text-mid);">${esc(p.notes || '—')}</td>
-        <td>${receiptBtn}</td>
-        <td><button class="delete-btn" onclick="deletePayment('${p.id}', '${esc(p.member_name)}', ${p.amount})">🗑 Delete</button></td>
-      </tr>`;
-  });
-  
-  html += '</tbody></table></div>';
-  document.getElementById('tableBody').innerHTML = html;
-}
-
-function updateSummary() {
-  const total = state.payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
-  const uniqueMembers = new Set(state.payments.map(p => p.member_phone)).size;
-  
-  // This month
-  const now = new Date();
-  const monthStart = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-01';
-  const monthPayments = state.payments.filter(p => p.payment_date >= monthStart);
-  const monthTotal = monthPayments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
-  
-  setText('heroTotal', inrShort(total));
-  setText('sumCount', state.payments.length);
-  setText('sumCountSub', state.payments.length + ' total');
-  setText('sumAmount', inrShort(total));
-  setText('sumAmountSub', 'all time');
-  setText('sumMembers', uniqueMembers);
-  setText('sumMembersSub', 'paid out');
-  setText('sumMonth', inrShort(monthTotal));
-  setText('sumMonthSub', monthPayments.length + ' transactions');
-}
-
-// ─── NEW PAYMENT MODAL ───
-function openNewPayment() {
-  state.selectedMember = null;
-  document.getElementById('newMember').value = '';
-  document.getElementById('newAmount').value = '';
-  document.getElementById('newDate').value = todayStr();
-  document.getElementById('newMode').value = 'upi';
-  document.getElementById('newRef').value = '';
-  document.getElementById('newPeriod').value = '';
-  document.getElementById('newNotes').value = '';
-  document.getElementById('newReceipt').value = '';
-  document.getElementById('newReceiptPreview').style.display = 'none';
-  document.getElementById('selectedMember').style.display = 'none';
-  document.getElementById('suggestedAmt').textContent = '';
-  document.getElementById('memberResults').classList.remove('show');
-  document.getElementById('paymentModal').classList.add('active');
-  setTimeout(() => document.getElementById('newMember').focus(), 100);
-}
-
-function closeModal() {
-  document.getElementById('paymentModal').classList.remove('active');
-  // Button + guard hamesha reset (kisi bhi case mein stuck na rahe)
-  var sb = document.getElementById('savePayBtn');
-  if (sb) { sb.disabled = false; sb.innerHTML = '💾 Save Payment'; }
-  window.__savingPayment = false;
-}
-
-function searchMembers(q) {
-  const results = document.getElementById('memberResults');
-  state.selectedMember = null;
-  document.getElementById('selectedMember').style.display = 'none';
-  document.getElementById('suggestedAmt').textContent = '';
-  
-  if (!q || q.trim().length < 1) {
-    results.classList.remove('show');
-    return;
-  }
-  
-  q = q.toLowerCase().trim();
-  
-  // Search in known members + recent payment members
-  const allMembers = [...state.members];
-  state.payments.forEach(p => {
-    if (!allMembers.find(m => m.phone === p.member_phone)) {
-      allMembers.push({ phone: p.member_phone, name: p.member_name, role: 'unknown' });
-    }
-  });
-  
-  const filtered = allMembers.filter(m => 
-    (m.name || '').toLowerCase().includes(q) || (m.phone || '').includes(q)
-  ).slice(0, 8);
-  
-  if (filtered.length === 0) {
-    results.innerHTML = '<div style="padding:12px;text-align:center;font-size:12px;color:var(--text-mid);">No matching members</div>';
-    results.classList.add('show');
-    return;
-  }
-  
-  results.innerHTML = filtered.map(m => {
-    const earned = state.earnings[m.phone] || 0;
-    const paid = state.payments.filter(p => p.member_phone === m.phone).reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
-    const pending = earned - paid;
-    return `
-      <div class="member-result" onclick="selectMember('${esc(m.phone)}', '${esc(m.name)}', ${pending})">
-        <div class="avatar">${getInitials(m.name)}</div>
-        <div class="info">
-          <div class="name">${esc(m.name)}</div>
-          <div class="phone">${esc(m.phone)}</div>
-        </div>
-        ${pending > 0 ? `<div class="pending">${inr(pending)} pending</div>` : ''}
-      </div>
-    `;
-  }).join('');
-  results.classList.add('show');
-}
-
-function selectMember(phone, name, pending) {
-  state.selectedMember = { phone, name };
-  document.getElementById('newMember').value = name;
-  document.getElementById('memberResults').classList.remove('show');
-  document.getElementById('selectedMember').textContent = `✓ Selected: ${name} (${phone})`;
-  document.getElementById('selectedMember').style.display = 'block';
-  
-  if (pending > 0) {
-    document.getElementById('suggestedAmt').innerHTML = `💡 Outstanding: ${inr(pending)} · <a href="#" onclick="document.getElementById('newAmount').value=${pending};document.getElementById('suggestedAmt').innerHTML='✓ Used suggested amount';return false;" style="color:var(--gold-deep);font-weight:700;">Use this</a>`;
-  }
-}
-
-async function savePayment() {
-  if (window.__savingPayment) return;   // double-submit guard
-  if (!state.selectedMember) { showToast('Member select karo', 'error'); return; }
-  
-  const amt = parseFloat(document.getElementById('newAmount').value);
-  if (!amt || amt <= 0) { showToast('Valid amount daalo', 'error'); return; }
-  
-  const date = document.getElementById('newDate').value;
-  if (!date) { showToast('Date daalo', 'error'); return; }
-  
-  const mode = document.getElementById('newMode').value;
-  const ref = document.getElementById('newRef').value.trim();
-  const period = document.getElementById('newPeriod').value.trim();
-  const notes = document.getElementById('newNotes').value.trim();
-  
-  const btn = document.getElementById('savePayBtn');
-  window.__savingPayment = true;
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner sm" style="border-color:rgba(255,255,255,0.3);border-top-color:white;"></span> Saving...';
-  
-  // Step 1: Upload receipt if provided
-  let receiptPath = null;
-  let receiptName = null;
-  const receiptFile = document.getElementById('newReceipt').files[0];
-  
-  if (receiptFile) {
-    if (receiptFile.size > 5 * 1024 * 1024) {
-      showToast('Receipt 5MB se chhoti honi chahiye', 'error');
-      btn.disabled = false; btn.innerHTML = '💾 Save Payment'; window.__savingPayment = false;
-      return;
-    }
-    
-    try {
-      btn.innerHTML = '<span class="spinner sm" style="border-color:rgba(255,255,255,0.3);border-top-color:white;"></span> Uploading receipt...';
-      const ext = receiptFile.name.split('.').pop();
-      const fileName = 'exec_' + state.selectedMember.phone + '_' + Date.now() + '.' + ext;
-      const filePath = 'execution/' + fileName;
-      
-      const uploadRes = await fetch(CONFIG.url + '/storage/v1/object/payment-receipts/' + filePath, {
-        method: 'POST',
-        headers: {
-          'apikey': CONFIG.key,
-          'Authorization': 'Bearer ' + CONFIG.key,
-          'x-upsert': 'true'
-        },
-        body: receiptFile
+async function runLocSearch(q){
+  var drop=$('loc-drop'); drop.classList.add('open');
+  drop.innerHTML='<div class="sd-label">Searching "'+esc(q)+'"…</div>';
+  var results=[];
+  // saved first
+  try{
+    var sUrl=SUPABASE_URL+'/rest/v1/prajapati_saved_locations?or=(name.ilike.*'+encodeURIComponent(q)+'*,city.ilike.*'+encodeURIComponent(q)+'*)&order=use_count.desc&limit=4';
+    var sRes=await fetchTimeout(sUrl,{headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY}},2500);
+    if(sRes.ok){ var sd=await sRes.json(); results=(sd||[]).map(function(s){ return { label:[s.name,s.city].filter(Boolean).join(', '), saved:true }; }); }
+  }catch(e){}
+  // Google Places (primary — business + areas, India priority)
+  try{
+    var gRes=await fetchTimeout('https://places.googleapis.com/v1/places:searchText',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Goog-Api-Key':'AIzaSyDAWJsoxdpqznMDAE5YqbJ17t6g3Bqc15c','X-Goog-FieldMask':'places.displayName,places.formattedAddress,places.addressComponents'},
+      body:JSON.stringify({textQuery:q,regionCode:'IN',languageCode:'en',maxResultCount:6})
+    },3500);
+    if(gRes.ok){
+      var gd=await gRes.json(); var gplaces=(gd&&gd.places)||[];
+      gplaces.forEach(function(pl){
+        var city='',st='',adm2='';
+        (pl.addressComponents||[]).forEach(function(c){ var t=c.types||[],v=c.longText||c.shortText||'';
+          if(t.indexOf('locality')!==-1)city=v;
+          if(t.indexOf('administrative_area_level_2')!==-1)adm2=v;
+          if(t.indexOf('administrative_area_level_1')!==-1)st=v; });
+        if(!city)city=adm2;
+        var nm0=(pl.displayName&&pl.displayName.text)||(pl.formattedAddress||'').split(',')[0];
+        var nm=[nm0,city&&city!==nm0?city:'',st].filter(Boolean).join(', ');
+        if(nm)results.push({label:nm});
       });
-      
-      if (!uploadRes.ok) {
-        const errTxt = await uploadRes.text();
-        throw new Error('Upload failed: ' + errTxt);
-      }
-      
-      receiptPath = filePath;
-      receiptName = receiptFile.name;
-    } catch (uploadErr) {
-      console.error('Receipt upload error:', uploadErr);
-      const proceed = confirm('Receipt upload failed: ' + uploadErr.message + '\n\nPayment save kare without receipt?');
-      if (!proceed) {
-        btn.disabled = false; btn.innerHTML = '💾 Save Payment'; window.__savingPayment = false;
-        return;
-      }
     }
-  }
-  
-  // Step 2: Save payment
-  btn.innerHTML = '<span class="spinner sm" style="border-color:rgba(255,255,255,0.3);border-top-color:white;"></span> Saving payment...';
-  
-  try {
-    await api('/rest/v1/execution_payments', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-      body: JSON.stringify({
-        payment_date: date,
-        member_phone: state.selectedMember.phone,
-        member_name: state.selectedMember.name,
-        amount: amt,
-        payment_mode: mode,
-        reference_number: ref || null,
-        for_period: period || null,
-        notes: notes || null,
-        receipt_storage_path: receiptPath,
-        receipt_file_name: receiptName,
-        recorded_by: state.admin.phone,
-        created_by: state.admin.phone
-      })
-    });
-    
-    showToast('✅ Paid ' + inr(amt) + ' to ' + state.selectedMember.name + (receiptPath ? ' (with receipt)' : ''), 'success');
-    // Button reset PEHLE (warna modal dobara khulne pe "Saving..." stuck dikhta)
-    btn.disabled = false;
-    btn.innerHTML = '💾 Save Payment';
-    closeModal();
-    await loadData();
-  } catch (err) {
-    showToast('Save failed: ' + err.message, 'error');
-    btn.disabled = false;
-    btn.innerHTML = '💾 Save Payment';
-    window.__savingPayment = false;
-  }
-}
-
-async function deletePayment(id, name, amount) {
-  if (!confirm(`Delete payment of ${inr(amount)} to ${name}?\n\nThis action cannot be undone.`)) return;
-  
-  try {
-    await api('/rest/v1/execution_payments?id=eq.' + id, { method: 'DELETE' });
-    showToast('🗑 Payment deleted', 'success');
-    await loadData();
-  } catch (err) {
-    showToast('Delete failed: ' + err.message, 'error');
-  }
-}
-
-function exportCSV() {
-  const rows = getFilteredPayments();
-  if (rows.length === 0) { showToast('Nothing to export', 'error'); return; }
-  const csv = [['Date','Member','Phone','Amount','Mode','Reference','Period','Notes'].join(',')];
-  rows.forEach(p => {
-    csv.push([p.payment_date, `"${p.member_name||''}"`, p.member_phone, p.amount, p.payment_mode, `"${p.reference_number||''}"`, `"${p.for_period||''}"`, `"${(p.notes||'').replace(/"/g,'""')}"`].join(','));
-  });
-  const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `payments_${todayStr()}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-  showToast('✓ CSV downloaded', 'success');
-}
-
-console.log('%c💰 Payments v1.0', 'background:#F5B83D;color:#050818;padding:6px 12px;border-radius:6px;font-weight:bold;font-size:13px;');
-
-function viewReceipt(path) {
-  const url = CONFIG.url + '/storage/v1/object/public/payment-receipts/' + path;
-  window.open(url, '_blank');
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  autoLogin();
-  document.getElementById('loginPhone').addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
-  document.getElementById('loginPhone').addEventListener('input', e => { e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10); });
-  
-  // Receipt preview
-  const receiptInput = document.getElementById('newReceipt');
-  if (receiptInput) {
-    receiptInput.addEventListener('change', e => {
-      const file = e.target.files[0];
-      const preview = document.getElementById('newReceiptPreview');
-      if (file) {
-        const sizeMB = (file.size / 1024 / 1024).toFixed(2);
-        preview.innerHTML = '✓ ' + file.name + ' (' + sizeMB + ' MB)';
-        preview.style.display = 'block';
-      } else {
-        preview.style.display = 'none';
-      }
-    });
-  }
-  
-  // Close modal on background click
-  document.getElementById('paymentModal').addEventListener('click', e => {
-    if (e.target.id === 'paymentModal') closeModal();
-  });
-  // Close on Escape
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && document.getElementById('paymentModal').classList.contains('active')) closeModal();
-  });
-  
-  // Hide search dropdown on outside click
-  document.addEventListener('click', e => {
-    if (!e.target.closest('#newMember') && !e.target.closest('#memberResults')) {
-      document.getElementById('memberResults').classList.remove('show');
+  }catch(e){}
+  // Photon
+  if(results.filter(function(r){return !r.saved;}).length===0){
+  try{
+    var pUrl='https://photon.komoot.io/api/?q='+encodeURIComponent(q)+'&limit=6&lang=en&lat=19.7&lon=75.7';
+    var pRes=await fetchTimeout(pUrl,{headers:{'Accept-Language':'en'}},3000);
+    if(pRes.ok){
+      var pd=await pRes.json(); var feats=(pd&&pd.features)||[];
+      var inIndia=feats.filter(function(f){return f.properties&&(f.properties.countrycode==='IN'||f.properties.country==='India');});
+      (inIndia.length?inIndia:feats).forEach(function(f){ var p=f.properties||{}; var nm=[p.name,p.city,p.state].filter(Boolean).join(', '); if(nm) results.push({label:nm}); });
     }
+  }catch(e){}
+  }
+  // Nominatim fallback
+  if(results.length===0){
+    try{
+      var nUrl='https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(q)+'&format=json&addressdetails=1&limit=5&countrycodes=in';
+      var nRes=await fetchTimeout(nUrl,{headers:{'Accept-Language':'en'}},3500);
+      if(nRes.ok){ var nd=await nRes.json(); (nd||[]).forEach(function(r){ var a=r.address||{}; var nm=[a.suburb||a.neighbourhood||a.village||a.town||a.city,a.state].filter(Boolean).join(', '); if(nm)results.push({label:nm}); }); }
+    }catch(e){}
+  }
+  var html='';
+  if(results.length){
+    html += results.map(function(r){ return '<div class="sd-opt" onclick="pickLoc(\''+esc(r.label).replace(/'/g,"\\'")+'\','+(r.saved?'true':'false')+')">'+(r.saved?'⭐ ':'📍 ')+esc(r.label)+'</div>'; }).join('');
+  } else {
+    html += '<div class="sd-label">Map pe nahi mila</div>';
+  }
+  html += '<div class="sd-manual" onclick="useManualLoc(\''+esc(q).replace(/'/g,"\\'")+'\')">✍️ "'+esc(q)+'" manually use karo</div>';
+  drop.innerHTML=html;
+}
+function pickLoc(label, fromSaved){
+  $('expLocation').value=label;
+  $('loc-drop').classList.remove('open');
+  if(!fromSaved) saveLocation(label); // save new picks for future
+}
+function useManualLoc(q){
+  $('expLocation').value=q;
+  $('loc-drop').classList.remove('open');
+  saveLocation(q);
+}
+async function saveLocation(label){
+  try{
+    var parts=label.split(',').map(function(s){return s.trim();});
+    await api('/prajapati_saved_locations',{method:'POST',body:{name:parts[0]||label,city:parts[1]||parts[0]||label,state:'Maharashtra',source:'expense',created_by:user.phone||null}});
+  }catch(e){ /* duplicate/ok */ }
+}
+
+function calcTotal(){
+  var total=0;
+  if (state.type==='campaign'){
+    total = (+$('amtFood').value||0)+(+$('amtHotel').value||0)+(+$('amtTransport').value||0)+(+$('amtOther').value||0);
+  } else {
+    total = (+$('intAmount').value||0);
+  }
+  $('totalAmt').textContent = fmt(total);
+  return total;
+}
+
+async function init(){
+  $('tbAva').textContent = (user.name||'?').charAt(0).toUpperCase();
+  $('tbName').textContent = user.name||'User';
+  $('tbRole').textContent = (user.role||'user').replace(/_/g,' ');
+  $('todayDate').textContent = new Date().toLocaleDateString('en-IN',{weekday:'long',day:'2-digit',month:'long',year:'numeric',timeZone:'Asia/Kolkata'});
+  $('expDate').value = todayIST();
+  $('intDate').value = todayIST();
+  $('fltFrom').value = todayIST().slice(0,8)+'01';
+  $('fltTo').value = todayIST();
+  await Promise.all([loadMembers(), loadCampaigns(), loadCategories(), loadPayInfo()]);
+  populateReportFilters();
+  // Type/Status static hain — inhe yahin searchable banao
+  makeSearchable('fltType');
+  makeSearchable('fltStatus');
+  onPresetChange();
+}
+
+// Date preset → from/to
+function getPresetRange(){
+  var t=todayIST();
+  var ist=new Date(new Date().getTime()+5.5*3600*1000);
+  var preset=$('fltPreset').value;
+  var from=t, to=t;
+  if(preset==='today'){ from=t; to=t; }
+  else if(preset==='yesterday'){ var y=new Date(ist.getTime()-86400000).toISOString().slice(0,10); from=y; to=y; }
+  else if(preset==='week'){ from=new Date(ist.getTime()-7*86400000).toISOString().slice(0,10); to=t; }
+  else if(preset==='thisweek'){ var dow=ist.getUTCDay(); var back=(dow===0?6:dow-1); from=new Date(ist.getTime()-back*86400000).toISOString().slice(0,10); to=t; }
+  else if(preset==='month'){ from=t.slice(0,8)+'01'; to=t; }
+  else if(preset==='last30'){ from=new Date(ist.getTime()-30*86400000).toISOString().slice(0,10); to=t; }
+  else if(preset==='alltime'){ from='2020-01-01'; to=t; }
+  else { from=$('fltFrom').value; to=$('fltTo').value; }
+  return {from:from,to:to};
+}
+function onPresetChange(){
+  var custom = $('fltPreset').value==='custom';
+  $('customFrom').style.display = custom?'':'none';
+  $('customTo').style.display = custom?'':'none';
+  if(!custom) loadExpenses();
+}
+function populateReportFilters(){
+  var allCats = state.categories.map(function(c){return c.name;});
+  var uniqCats=[]; allCats.forEach(function(n){ if(uniqCats.indexOf(n)===-1)uniqCats.push(n); });
+  $('fltCategory').innerHTML='<option value="">All categories</option>'+uniqCats.map(function(n){return '<option value="'+esc(n)+'">'+esc(n)+'</option>';}).join('');
+  $('fltMember').innerHTML='<option value="">All members</option>'+state.members.map(function(m){return '<option value="'+esc(m.phone)+'">'+esc(m.name||m.phone)+'</option>';}).join('');
+  $('fltCampaign').innerHTML='<option value="">All campaigns</option>'+state.campaigns.map(function(c){return '<option value="'+esc(c.key)+'">'+esc(c.name)+'</option>';}).join('');
+  // Filters populate hone ke baad searchable banao
+  initSearchableFilters();
+}
+
+async function loadMembers(){
+  try{
+    var d = await api('/trial_team_members?select=name,phone,role&order=name');
+    state.members = d||[];
+    // payment-info modal still uses native select
+    var opts = '<option value="">Select member…</option>' + state.members.map(function(m){ return '<option value="'+esc(m.phone)+'">'+esc(m.name||m.phone)+'</option>'; }).join('');
+    $('payMember').innerHTML = opts;
+    // expense entry uses searchable dropdown
+    buildSearchDropdown('member', state.members.map(function(m){ return { value:m.phone, label:(m.name||m.phone) }; }), 'Member select karo…');
+  }catch(e){ console.warn('members',e); }
+}
+async function loadCampaigns(){
+  try{
+    var d = await api('/trial_campaigns?select=*&limit=1000');
+    state.campaigns = (d||[]).map(function(c){ return { key:c.campaign_key||c.key||c.id, name:c.campaign_name||c.name||c.campaign_key||c.key||'Untitled' }; });
+    // sort by name client-side (avoids server order on missing column)
+    state.campaigns.sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); });
+    buildSearchDropdown('campaign', state.campaigns.map(function(c){ return { value:c.key, label:c.name }; }), 'Campaign select karo…');
+  }catch(e){ console.warn('campaigns',e); }
+}
+async function loadCategories(){
+  try{
+    var d = await api('/prajapati_expense_categories?select=*&active=eq.true&order=sort_order');
+    state.categories = d||[];
+    var internal = state.categories.filter(function(c){ return c.kind==='internal'; });
+    $('intCategory').innerHTML = '<option value="">Select…</option>' + internal.map(function(c){ return '<option value="'+esc(c.name)+'">'+esc(c.name)+'</option>'; }).join('');
+  }catch(e){ console.warn('cats',e); }
+}
+async function loadPayInfo(){
+  try{ state.payInfo = await api('/prajapati_team_payment_info?select=*&order=member_name') || []; }
+  catch(e){ console.warn('payinfo',e); state.payInfo=[]; }
+}
+
+// ── Save expense ──
+async function saveExpense(){
+  var btn=$('saveExpBtn'); var st=$('entryStatus');
+  st.innerHTML='';
+  var total = calcTotal();
+  var payload = {
+    expense_type: state.type,
+    payment_status: state.pay,
+    total_amount: total,
+    notes: $('expNotes').value.trim()||null,
+    created_by: user.phone||null,
+    created_by_name: user.name||null
+  };
+  if (state.type==='campaign'){
+    var ck=state.sd.campaign.value;
+    if(!ck){ st.innerHTML='<span style="color:var(--danger);font-size:12.5px">Campaign select karo</span>'; return; }
+    var cname=state.sd.campaign.label||ck;
+    var mph=state.sd.member.value;
+    var mname=state.sd.member.label||'';
+    payload.campaign_key=ck; payload.campaign_name=cname;
+    payload.team_member_phone=mph||null; payload.team_member_name=mname||null;
+    payload.location=$('expLocation').value.trim()||null;
+    payload.expense_date=$('expDate').value||todayIST();
+    payload.food_amount=+$('amtFood').value||0;
+    payload.hotel_amount=+$('amtHotel').value||0;
+    payload.transport_amount=+$('amtTransport').value||0;
+    payload.other_amount=+$('amtOther').value||0;
+    payload.other_description=$('otherDesc').value.trim()||null;
+  } else {
+    var cat=$('intCategory').value;
+    if(!cat){ st.innerHTML='<span style="color:var(--danger);font-size:12.5px">Category select karo</span>'; return; }
+    if(total<=0){ st.innerHTML='<span style="color:var(--danger);font-size:12.5px">Amount daalo</span>'; return; }
+    payload.internal_category=cat;
+    payload.internal_party=$('intParty').value.trim()||null;
+    payload.internal_details=$('intDetails').value.trim()||null;
+    payload.expense_date=$('intDate').value||todayIST();
+  }
+  if (state.pay==='paid'){ payload.paid_via=$('paidVia').value; payload.paid_date=todayIST(); }
+
+  btn.disabled=true; btn.textContent='Saving…';
+  try{
+    var rows = await api('/prajapati_expenses', { method:'POST', body:payload, prefer:'return=representation' });
+    var newId = rows && rows[0] && rows[0].id;
+    // receipt upload (best effort)
+    var rcFile = $('expReceipt').files[0];
+    if (state.pay==='paid' && rcFile && newId){
+      try{
+        var safe=rcFile.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+        var path='expense-receipts/'+newId+'_'+Date.now()+'_'+safe;
+        var up=await fetch(SUPABASE_URL+'/storage/v1/object/payment-receipts/'+encodeURI(path),{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY,'Content-Type':rcFile.type,'x-upsert':'true'},body:rcFile});
+        if(up.ok){ var rcUrl=SUPABASE_URL+'/storage/v1/object/public/payment-receipts/'+encodeURI(path); await api('/prajapati_expenses?id=eq.'+newId,{method:'PATCH',body:{receipt_url:rcUrl}}); }
+      }catch(rcErr){ console.warn('receipt',rcErr); }
+    }
+    toast('✓ Expense saved');
+    resetEntry();
+    // Refresh list + summary so new entry shows immediately (no manual reload)
+    if (typeof loadExpenses === 'function') { try { loadExpenses(); } catch(e){} }
+  }catch(e){
+    st.innerHTML='<span style="color:var(--danger);font-size:12.5px">'+esc(e.message||'Save failed')+'</span>';
+  }finally{ btn.disabled=false; btn.textContent='💾 Save Expense'; }
+}
+function resetEntry(){
+  ['amtFood','amtHotel','amtTransport','amtOther','otherDesc','expLocation','expNotes','intAmount','intParty','intDetails'].forEach(function(id){ if($(id))$(id).value = (id.indexOf('amt')===0||id==='intAmount')?'0':''; });
+  sdReset('campaign'); sdReset('member'); $('intCategory').value='';
+  pickPay('unpaid'); calcTotal();
+}
+
+// ── Expense list ──
+async function loadExpenses(){
+  var tbody=$('expTable').querySelector('tbody');
+  tbody.innerHTML='<tr><td colspan="7"><div class="spinner"></div></td></tr>';
+  var qs='/prajapati_expenses?select=*&order=expense_date.desc&limit=5000';
+  var range=getPresetRange();
+  var from=range.from, to=range.to;
+  var typ=$('fltType').value, sts=$('fltStatus').value;
+  var cat=$('fltCategory').value, mem=$('fltMember').value, camp=$('fltCampaign').value;
+  if(from) qs+='&expense_date=gte.'+from;
+  if(to) qs+='&expense_date=lte.'+to;
+  if(typ) qs+='&expense_type=eq.'+typ;
+  if(sts) qs+='&payment_status=eq.'+sts;
+  if(mem) qs+='&team_member_phone=eq.'+encodeURIComponent(mem);
+  if(camp) qs+='&campaign_key=eq.'+encodeURIComponent(camp);
+  if(cat) qs+='&internal_category=eq.'+encodeURIComponent(cat);
+  try{
+    state.expenses = await api(qs) || [];
+    renderExpenseTable();
+    renderSummary();
+  }catch(e){ tbody.innerHTML='<tr><td style="color:var(--danger);padding:18px">'+esc(e.message)+'</td></tr>'; }
+}
+function renderSummary(){
+  var total=0, paid=0, unpaid=0, camp=0, intl=0;
+  state.expenses.forEach(function(e){
+    var amt=+e.total_amount||0; total+=amt;
+    if(e.payment_status==='paid')paid+=amt; else unpaid+=amt;
+    if(e.expense_type==='campaign')camp+=amt; else intl+=amt;
   });
+  $('sumCards').innerHTML =
+    card(fmt(total),'Total','#0B1957')+card(fmt(unpaid),'Unpaid','#C2410C')+card(fmt(camp),'Campaign','#1E40AF')+card(fmt(intl),'Internal','#7C3AED');
+}
+function card(v,l,c){ return '<div class="sum-card" style="border-top-color:'+c+'"><div class="sv" style="color:'+c+'">'+v+'</div><div class="sl">'+l+'</div></div>'; }
+function renderExpenseTable(){
+  var tbody=$('expTable').querySelector('tbody');
+  if(!state.expenses.length){ tbody.innerHTML='<tr><td colspan="7"><div class="empty">Koi expense nahi is filter mein</div></td></tr>'; return; }
+  // header
+  $('expTable').querySelector('thead')?.remove();
+  var thead=document.createElement('thead');
+  thead.innerHTML='<tr><th>Date</th><th>Type</th><th>For / Category</th><th>Detail</th><th>Amount</th><th>Status</th><th>Receipt</th></tr>';
+  $('expTable').insertBefore(thead, tbody);
+  tbody.innerHTML = state.expenses.map(function(e){
+    var d = e.expense_date ? new Date(e.expense_date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}) : '—';
+    var typeTag = e.expense_type==='campaign' ? '<span class="tag tag-camp">Campaign</span>' : '<span class="tag tag-int">Internal</span>';
+    var forCol = e.expense_type==='campaign' ? (esc(getWork(e.campaign_name))+(e.team_member_name?'<br><small style="color:var(--text-dim)">'+esc(e.team_member_name)+'</small>':'')) : esc(e.internal_category||'—');
+    var detail = e.expense_type==='campaign'
+      ? [e.location, headsSummary(e)].filter(Boolean).join(' · ')
+      : [e.internal_party, e.internal_details].filter(Boolean).join(' · ');
+    var statusTag = e.payment_status==='paid' ? '<span class="tag tag-paid">Paid</span>' : '<span class="tag tag-unpaid">Unpaid</span>';
+    var rc = e.receipt_url ? '<a href="'+esc(e.receipt_url)+'" target="_blank" style="color:var(--info)">📎</a>' : '—';
+    var payBtn = e.payment_status!=='paid' ? '<button class="btn btn-sm btn-secondary" style="margin-left:6px" onclick="markPaid(\''+e.id+'\')">Pay</button>' : '';
+    return '<tr><td>'+d+'</td><td>'+typeTag+'</td><td>'+forCol+'</td><td style="color:var(--ink-700)">'+esc(detail||'—')+'</td><td style="font-weight:700;font-family:JetBrains Mono,monospace">'+fmt(e.total_amount)+'</td><td>'+statusTag+payBtn+'</td><td>'+rc+'</td></tr>';
+  }).join('');
+}
+function getWork(name){ var s=String(name||'').trim(); var i=s.search(/[·\-–—|]/); if(i>0)s=s.slice(0,i).trim(); return s||name||'—'; }
+function headsSummary(e){ var p=[]; if(+e.food_amount)p.push('F'+e.food_amount); if(+e.hotel_amount)p.push('H'+e.hotel_amount); if(+e.transport_amount)p.push('T'+e.transport_amount); if(+e.other_amount)p.push('O'+e.other_amount); return p.join('+'); }
+async function markPaid(id){
+  if(!confirm('Paid mark karna hai?')) return;
+  try{ await api('/prajapati_expenses?id=eq.'+id,{method:'PATCH',body:{payment_status:'paid',paid_date:todayIST()}}); toast('✓ Marked paid'); loadExpenses(); }
+  catch(e){ toast('Failed'); }
+}
+
+function exportExpensesExcel(){
+  if(typeof XLSX==='undefined'){ toast('Excel lib loading…'); return; }
+  var aoa=[['Date','Type','For/Category','Member','Location','Food','Hotel','Transport','Other','Detail','Total','Status','Paid Via']];
+  var total=0;
+  state.expenses.forEach(function(e){
+    total+=+e.total_amount||0;
+    aoa.push([e.expense_date,e.expense_type,e.expense_type==='campaign'?getWork(e.campaign_name):e.internal_category,e.team_member_name||'',e.location||'',e.food_amount||0,e.hotel_amount||0,e.transport_amount||0,e.other_amount||0,e.internal_details||e.other_description||'',e.total_amount||0,e.payment_status,e.paid_via||'']);
+  });
+  aoa.push(['','','','','','','','','','TOTAL',total,'','']);
+  var ws=XLSX.utils.aoa_to_sheet(aoa); var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Expenses');
+  XLSX.writeFile(wb,'Expenses_'+(getPresetRange().from||'all')+'_to_'+(getPresetRange().to||'all')+'.xlsx');
+  toast('✓ Excel downloaded');
+}
+
+// PDF + JPEG export — capture the report area
+function ensureLib(src, check){
+  return new Promise(function(res,rej){
+    try{ if(check()){res();return;} }catch(e){}
+    var s=document.createElement('script'); s.src=src;
+    s.onload=function(){res();}; s.onerror=function(){rej(new Error('load failed: '+src));};
+    document.head.appendChild(s);
+    setTimeout(function(){ try{ if(check())res(); else rej(new Error('timeout')); }catch(e){rej(e);} },8000);
+  });
+}
+function buildReportNode(){
+  var range=getPresetRange();
+  var total=0,paid=0,unpaid=0,camp=0,intl=0;
+  state.expenses.forEach(function(e){ var a=+e.total_amount||0; total+=a; if(e.payment_status==='paid')paid+=a;else unpaid+=a; if(e.expense_type==='campaign')camp+=a;else intl+=a; });
+  var rows=state.expenses.map(function(e,i){
+    var bg=i%2?'#FAFBFC':'#fff';
+    var forCol=e.expense_type==='campaign'?getWork(e.campaign_name):(e.internal_category||'—');
+    var detail=e.expense_type==='campaign'?[e.location,e.team_member_name].filter(Boolean).join(' · '):[e.internal_party,e.internal_details].filter(Boolean).join(' · ');
+    var d=e.expense_date?new Date(e.expense_date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}):'—';
+    return '<tr style="background:'+bg+'"><td style="padding:8px 11px;border:1px solid #EEE">'+esc(d)+'</td><td style="padding:8px 11px;border:1px solid #EEE">'+esc(e.expense_type)+'</td><td style="padding:8px 11px;border:1px solid #EEE">'+esc(forCol)+'</td><td style="padding:8px 11px;border:1px solid #EEE;color:#475569">'+esc(detail||'—')+'</td><td style="padding:8px 11px;border:1px solid #EEE;text-align:right;font-weight:700;font-family:monospace">'+fmt(e.total_amount)+'</td><td style="padding:8px 11px;border:1px solid #EEE;text-align:center;font-weight:600;color:'+(e.payment_status==='paid'?'#047857':'#C2410C')+'">'+esc(e.payment_status)+'</td></tr>';
+  }).join('');
+  var node=document.createElement('div');
+  node.style.cssText='position:fixed;left:-99999px;top:0;width:880px;background:#fff;font-family:Arial,sans-serif';
+  node.innerHTML='<div style="background:#0B1957;color:#fff;padding:16px 22px"><div style="font-size:19px;font-weight:700">Prajapati Advertising — Expense Report</div><div style="font-size:12px;opacity:.85;margin-top:2px">'+esc(range.from)+' → '+esc(range.to)+' · '+state.expenses.length+' entries</div></div>'+
+    '<div style="display:flex;gap:10px;padding:14px 22px;background:#F7F9FC">'+
+      [['Total',fmt(total),'#0B1957'],['Unpaid',fmt(unpaid),'#C2410C'],['Campaign',fmt(camp),'#1E40AF'],['Internal',fmt(intl),'#7C3AED']].map(function(c){return '<div style="flex:1;border:1px solid #E5E0D2;border-top:3px solid '+c[2]+';border-radius:10px;padding:11px;text-align:center"><div style="font-size:20px;font-weight:800;font-family:monospace;color:'+c[2]+'">'+c[1]+'</div><div style="font-size:10px;color:#64748B;text-transform:uppercase;margin-top:3px;font-weight:600">'+c[0]+'</div></div>';}).join('')+
+    '</div>'+
+    '<div style="padding:0 22px 22px"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr>'+
+      ['DATE','TYPE','FOR/CATEGORY','DETAIL','AMOUNT','STATUS'].map(function(h){return '<th style="background:#FFF200;color:#000;font-size:10.5px;font-weight:700;padding:9px 11px;text-align:left;border:1px solid #E5C800">'+h+'</th>';}).join('')+
+      '</tr></thead><tbody>'+rows+'</tbody><tfoot><tr><td colspan="4" style="padding:10px 11px;background:#FFF7CC;border:1px solid #E5C800;text-align:right;font-weight:700">TOTAL</td><td style="padding:10px 11px;background:#FFF7CC;border:1px solid #E5C800;text-align:right;font-weight:800;font-family:monospace;color:#0B1957">'+fmt(total)+'</td><td style="background:#FFF7CC;border:1px solid #E5C800"></td></tr></tfoot></table>'+
+      '<div style="margin-top:12px;font-size:10px;color:#94A3B8;text-align:right">Generated '+new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})+' · prajapatiadvertising.com</div></div>';
+  return node;
+}
+async function captureReport(){
+  await ensureLib('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',function(){return typeof html2canvas!=='undefined';});
+  var node=buildReportNode(); document.body.appendChild(node);
+  try{ return await html2canvas(node,{scale:2,backgroundColor:'#fff',logging:false}); }
+  finally{ node.remove(); }
+}
+function reportFname(ext){ var r=getPresetRange(); return 'Expense_Report_'+(r.from||'all')+'_to_'+(r.to||'all')+'.'+ext; }
+async function exportExpensesJPEG(){
+  if(!state.expenses.length){ toast('Koi expense nahi'); return; }
+  toast('Building JPEG…');
+  try{ var c=await captureReport(); var a=document.createElement('a'); a.href=c.toDataURL('image/jpeg',0.92); a.download=reportFname('jpg'); a.click(); toast('✓ JPEG saved'); }
+  catch(e){ alert('JPEG failed: '+e.message); }
+}
+async function exportExpensesPDF(){
+  if(!state.expenses.length){ toast('Koi expense nahi'); return; }
+  toast('Building PDF…');
+  try{
+    var c=await captureReport();
+    await ensureLib('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',function(){return !!((window.jspdf&&window.jspdf.jsPDF)||window.jsPDF);});
+    var J=(window.jspdf&&window.jspdf.jsPDF)?window.jspdf.jsPDF:window.jsPDF;
+    var pdf=new J('p','mm','a4'); var pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight(), mg=8;
+    var iw=pw-mg*2, ih=c.height*iw/c.width; var img=c.toDataURL('image/jpeg',0.92);
+    if(ih<=ph-mg*2){ pdf.addImage(img,'JPEG',mg,mg,iw,ih); }
+    else{ var pph=ph-mg*2, pxmm=c.width/iw, slice=pph*pxmm, done=0, first=true;
+      while(done<c.height){ var sh=Math.min(slice,c.height-done); var pc=document.createElement('canvas'); pc.width=c.width; pc.height=sh; var ct=pc.getContext('2d'); ct.fillStyle='#fff'; ct.fillRect(0,0,pc.width,sh); ct.drawImage(c,0,done,c.width,sh,0,0,c.width,sh); if(!first)pdf.addPage(); pdf.addImage(pc.toDataURL('image/jpeg',0.92),'JPEG',mg,mg,iw,sh*iw/c.width); done+=sh; first=false; } }
+    pdf.save(reportFname('pdf')); toast('✓ PDF saved');
+  }catch(e){ alert('PDF failed: '+e.message); }
+}
+
+// ── Team payment cards ──
+function renderPayCards(){
+  var q=($('paySearch').value||'').toLowerCase().trim();
+  var wrap=$('payList');
+  // Show ALL members, with/without payment info
+  var html = state.members.filter(function(m){
+    if(!q) return true;
+    return ((m.name||'')+' '+(m.phone||'')).toLowerCase().indexOf(q)!==-1;
+  }).map(function(m){
+    var info = state.payInfo.find(function(p){ return p.member_phone===m.phone; });
+    if(info){
+      var details=[];
+      if(info.upi_id) details.push('<b>UPI:</b> '+esc(info.upi_id));
+      if(info.bank_account_no) details.push('<b>A/c:</b> '+esc(info.bank_account_no)+(info.ifsc_code?' ('+esc(info.ifsc_code)+')':''));
+      if(info.bank_name) details.push('<b>Bank:</b> '+esc(info.bank_name));
+      var qr = info.qr_scanner_url ? '<img src="'+esc(info.qr_scanner_url)+'" class="pc-qr" onclick="window.open(this.src)">' : '';
+      return '<div class="pay-card has-pay"><div><div class="pc-name">'+esc(m.name||m.phone)+' <span class="tag tag-paid" style="font-size:9px">✓ Setup</span></div><div class="pc-phone">'+esc(m.phone)+'</div><div class="pc-detail">'+(details.join('<br>')||'—')+'</div></div><div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">'+qr+'<button class="btn btn-sm btn-secondary" onclick="openPayModal(\''+esc(m.phone)+'\')">✏️ Edit</button></div></div>';
+    } else {
+      return '<div class="pay-card no-pay"><div><div class="pc-name">'+esc(m.name||m.phone)+'</div><div class="pc-phone">'+esc(m.phone)+'</div><div class="pc-detail" style="color:var(--warn)">⚠️ Payment info nahi — add karo</div></div><button class="btn btn-sm btn-gold" onclick="openPayModal(\''+esc(m.phone)+'\')">➕ Add</button></div>';
+    }
+  }).join('');
+  wrap.innerHTML = html || '<div class="empty">Koi member nahi</div>';
+}
+function openPayModal(phone){
+  $('payEditId').value=''; $('payStatus').innerHTML=''; $('payQrPreview').innerHTML='';
+  $('payDeleteBtn').style.display='none';
+  ['payHolder','payUpi','payAcc','payIfsc','payBank'].forEach(function(id){ $(id).value=''; });
+  $('payPref').value='upi';
+  if(phone){
+    $('payMember').value=phone;
+    var info=state.payInfo.find(function(p){ return p.member_phone===phone; });
+    if(info){
+      $('payModalTitle').textContent='Edit Payment Info';
+      $('payEditId').value=info.id;
+      $('payHolder').value=info.account_holder_name||'';
+      $('payUpi').value=info.upi_id||''; $('payAcc').value=info.bank_account_no||'';
+      $('payIfsc').value=info.ifsc_code||''; $('payBank').value=info.bank_name||'';
+      $('payPref').value=info.preferred_method||'upi';
+      $('payDeleteBtn').style.display='';
+      if(info.qr_scanner_url) $('payQrPreview').innerHTML='<img src="'+esc(info.qr_scanner_url)+'" style="width:70px;border-radius:8px;border:1px solid var(--rule)">';
+    } else { $('payModalTitle').textContent='Add Payment Info'; }
+  } else { $('payModalTitle').textContent='Add Payment Info'; $('payMember').value=''; }
+  $('payModal').classList.add('show');
+}
+function closePayModal(){ $('payModal').classList.remove('show'); }
+async function savePayInfo(){
+  var phone=$('payMember').value;
+  if(!phone){ $('payStatus').innerHTML='<span style="color:var(--danger);font-size:12px">Member select karo</span>'; return; }
+  var mname=(state.members.find(function(m){return m.phone===phone})||{}).name||'';
+  var btn=$('paySaveBtn'); btn.disabled=true; btn.textContent='Saving…';
+  var payload={ member_phone:phone, member_name:mname, account_holder_name:$('payHolder').value.trim()||null, upi_id:$('payUpi').value.trim()||null, bank_account_no:$('payAcc').value.trim()||null, ifsc_code:$('payIfsc').value.trim()||null, bank_name:$('payBank').value.trim()||null, preferred_method:$('payPref').value, updated_at:new Date().toISOString() };
+  try{
+    var editId=$('payEditId').value;
+    var saved;
+    if(editId){ saved=await api('/prajapati_team_payment_info?id=eq.'+editId,{method:'PATCH',body:payload,prefer:'return=representation'}); }
+    else {
+      // upsert on member_phone
+      saved=await api('/prajapati_team_payment_info',{method:'POST',body:payload,prefer:'resolution=merge-duplicates,return=representation'});
+    }
+    var rowId = (saved&&saved[0]&&saved[0].id) || editId;
+    // QR upload
+    var qrFile=$('payQr').files[0];
+    if(qrFile && rowId){
+      try{
+        var safe=qrFile.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+        var path='qr-scanners/'+phone+'_'+Date.now()+'_'+safe;
+        var up=await fetch(SUPABASE_URL+'/storage/v1/object/payment-receipts/'+encodeURI(path),{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY,'Content-Type':qrFile.type,'x-upsert':'true'},body:qrFile});
+        if(up.ok){ var qrUrl=SUPABASE_URL+'/storage/v1/object/public/payment-receipts/'+encodeURI(path); await api('/prajapati_team_payment_info?id=eq.'+rowId,{method:'PATCH',body:{qr_scanner_url:qrUrl}}); }
+      }catch(qe){ console.warn('qr',qe); }
+    }
+    await loadPayInfo(); renderPayCards(); closePayModal(); toast('✓ Payment info saved');
+  }catch(e){ $('payStatus').innerHTML='<span style="color:var(--danger);font-size:12px">'+esc(e.message||'Failed')+'</span>'; }
+  finally{ btn.disabled=false; btn.textContent='💾 Save'; }
+}
+async function deletePayInfo(){
+  var id=$('payEditId').value; if(!id) return;
+  if(!confirm('Payment info delete karna hai?')) return;
+  try{ await api('/prajapati_team_payment_info?id=eq.'+id,{method:'DELETE'}); await loadPayInfo(); renderPayCards(); closePayModal(); toast('✓ Deleted'); }
+  catch(e){ toast('Delete failed'); }
+}
+
+// ── Categories ──
+function renderCategories(){
+  var camp=state.categories.filter(function(c){return c.kind==='campaign';});
+  var intl=state.categories.filter(function(c){return c.kind==='internal';});
+  $('catCampaign').innerHTML = camp.map(catChip).join('') || '<span style="color:var(--text-dim);font-size:12px">None</span>';
+  $('catInternal').innerHTML = intl.map(catChip).join('') || '<span style="color:var(--text-dim);font-size:12px">None</span>';
+}
+function catChip(c){ return '<span class="cat-chip">'+esc(c.name)+' <button onclick="deleteCategory(\''+c.id+'\',\''+esc(c.name)+'\')">×</button></span>'; }
+function openCatModal(){ $('catName').value=''; $('catKind').value='internal'; $('catStatus').innerHTML=''; $('catModal').classList.add('show'); }
+function closeCatModal(){ $('catModal').classList.remove('show'); }
+async function saveCategory(){
+  var name=$('catName').value.trim();
+  if(!name){ $('catStatus').innerHTML='<span style="color:var(--danger);font-size:12px">Name daalo</span>'; return; }
+  try{
+    await api('/prajapati_expense_categories',{method:'POST',body:{name:name,kind:$('catKind').value,sort_order:200}});
+    await loadCategories(); renderCategories(); closeCatModal(); toast('✓ Category added');
+  }catch(e){ $('catStatus').innerHTML='<span style="color:var(--danger);font-size:12px">'+esc(/duplicate|unique/i.test(e.message)?'Already exists':e.message)+'</span>'; }
+}
+async function deleteCategory(id,name){
+  if(!confirm('"'+name+'" delete karna hai?')) return;
+  try{ await api('/prajapati_expense_categories?id=eq.'+id,{method:'DELETE'}); await loadCategories(); renderCategories(); toast('✓ Deleted'); }
+  catch(e){ toast('Delete failed'); }
+}
+
+// close modals on backdrop
+['payModal','catModal'].forEach(function(id){ var m=$(id); if(m) m.addEventListener('click',function(e){ if(e.target===m) m.classList.remove('show'); }); });
+// close search dropdowns on outside click
+document.addEventListener('click',function(e){
+  if(!e.target.closest('#sd-campaign')){ var d=$('sd-campaign-drop'); if(d)d.classList.remove('open'); }
+  if(!e.target.closest('#sd-member')){ var d=$('sd-member-drop'); if(d)d.classList.remove('open'); }
+  if(!e.target.closest('#sd-loc')){ var d=$('loc-drop'); if(d)d.classList.remove('open'); }
 });
+
+// ═══════════════════════════════════════════════════════════════
+// SEARCHABLE SELECT — kisi bhi <select> ko search-enabled banao
+// ═══════════════════════════════════════════════════════════════
+function makeSearchable(selectId) {
+  var sel = document.getElementById(selectId);
+  if (!sel || sel.dataset.searchable === '1') return;
+  sel.dataset.searchable = '1';
+
+  var wrap = document.createElement('div');
+  wrap.className = 'ss-wrap';
+  wrap.style.cssText = 'position:relative;width:100%';
+  sel.parentNode.insertBefore(wrap, sel);
+
+  var disp = document.createElement('div');
+  disp.className = 'input ss-display';
+  disp.style.cssText = 'cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:6px';
+  disp.innerHTML = '<span class="ss-text"></span><span style="color:#999;font-size:11px">▾</span>';
+  wrap.appendChild(disp);
+
+  sel.style.display = 'none';
+  wrap.appendChild(sel);
+
+  var panel = document.createElement('div');
+  panel.className = 'ss-panel';
+  panel.style.cssText = 'position:absolute;top:100%;left:0;right:0;z-index:50;background:#fff;border:1px solid #ddd;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.12);margin-top:4px;display:none;flex-direction:column;max-height:280px;overflow:hidden';
+  panel.innerHTML =
+    '<div style="padding:8px;border-bottom:1px solid #eee">' +
+      '<input class="ss-search" type="text" placeholder="🔍 Search..." style="width:100%;padding:7px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none;font-family:inherit;box-sizing:border-box">' +
+    '</div>' +
+    '<div class="ss-options" style="overflow-y:auto;max-height:230px"></div>';
+  wrap.appendChild(panel);
+
+  var searchInput = panel.querySelector('.ss-search');
+  var optionsBox = panel.querySelector('.ss-options');
+  var textEl = disp.querySelector('.ss-text');
+
+  function syncDisplay() {
+    var opt = sel.options[sel.selectedIndex];
+    textEl.textContent = opt ? opt.textContent : '';
+  }
+  function renderOptions(filter) {
+    filter = (filter || '').toLowerCase();
+    var html = '';
+    for (var i = 0; i < sel.options.length; i++) {
+      var o = sel.options[i];
+      if (filter && o.textContent.toLowerCase().indexOf(filter) === -1) continue;
+      var on = (i === sel.selectedIndex);
+      html += '<div class="ss-opt" data-idx="' + i + '" style="padding:9px 12px;cursor:pointer;font-size:13px;' +
+        (on ? 'background:#eef;font-weight:600;color:#0B1957' : '') + '">' + esc(o.textContent) + '</div>';
+    }
+    optionsBox.innerHTML = html || '<div style="padding:12px;text-align:center;color:#999;font-size:12px">No match</div>';
+  }
+  function openPanel() {
+    panel.style.display = 'flex';
+    searchInput.value = '';
+    renderOptions('');
+    setTimeout(function(){ searchInput.focus(); }, 30);
+  }
+  function closePanel() { panel.style.display = 'none'; }
+
+  disp.addEventListener('click', function(e){
+    e.stopPropagation();
+    if (panel.style.display === 'flex') closePanel(); else openPanel();
+  });
+  searchInput.addEventListener('input', function(){ renderOptions(searchInput.value); });
+  optionsBox.addEventListener('click', function(e){
+    var opt = e.target.closest('.ss-opt');
+    if (!opt) return;
+    sel.selectedIndex = parseInt(opt.getAttribute('data-idx'));
+    syncDisplay();
+    closePanel();
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  document.addEventListener('click', function(e){ if (!wrap.contains(e.target)) closePanel(); });
+  var obs = new MutationObserver(function(){ syncDisplay(); });
+  obs.observe(sel, { childList: true });
+  syncDisplay();
+}
+function initSearchableFilters() {
+  ['fltType','fltStatus','fltCategory','fltMember','fltCampaign'].forEach(makeSearchable);
+}
+
+init();
 </script>
 </body>
 </html>
