@@ -632,6 +632,10 @@ function openNewPayment() {
 
 function closeModal() {
   document.getElementById('paymentModal').classList.remove('active');
+  // Button + guard hamesha reset (kisi bhi case mein stuck na rahe)
+  var sb = document.getElementById('savePayBtn');
+  if (sb) { sb.disabled = false; sb.innerHTML = '💾 Save Payment'; }
+  window.__savingPayment = false;
 }
 
 function searchMembers(q) {
@@ -696,6 +700,7 @@ function selectMember(phone, name, pending) {
 }
 
 async function savePayment() {
+  if (window.__savingPayment) return;   // double-submit guard
   if (!state.selectedMember) { showToast('Member select karo', 'error'); return; }
   
   const amt = parseFloat(document.getElementById('newAmount').value);
@@ -710,6 +715,7 @@ async function savePayment() {
   const notes = document.getElementById('newNotes').value.trim();
   
   const btn = document.getElementById('savePayBtn');
+  window.__savingPayment = true;
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner sm" style="border-color:rgba(255,255,255,0.3);border-top-color:white;"></span> Saving...';
   
@@ -721,7 +727,7 @@ async function savePayment() {
   if (receiptFile) {
     if (receiptFile.size > 5 * 1024 * 1024) {
       showToast('Receipt 5MB se chhoti honi chahiye', 'error');
-      btn.disabled = false; btn.innerHTML = '💾 Save Payment';
+      btn.disabled = false; btn.innerHTML = '💾 Save Payment'; window.__savingPayment = false;
       return;
     }
     
@@ -752,7 +758,7 @@ async function savePayment() {
       console.error('Receipt upload error:', uploadErr);
       const proceed = confirm('Receipt upload failed: ' + uploadErr.message + '\n\nPayment save kare without receipt?');
       if (!proceed) {
-        btn.disabled = false; btn.innerHTML = '💾 Save Payment';
+        btn.disabled = false; btn.innerHTML = '💾 Save Payment'; window.__savingPayment = false;
         return;
       }
     }
@@ -782,12 +788,16 @@ async function savePayment() {
     });
     
     showToast('✅ Paid ' + inr(amt) + ' to ' + state.selectedMember.name + (receiptPath ? ' (with receipt)' : ''), 'success');
+    // Button reset PEHLE (warna modal dobara khulne pe "Saving..." stuck dikhta)
+    btn.disabled = false;
+    btn.innerHTML = '💾 Save Payment';
     closeModal();
     await loadData();
   } catch (err) {
     showToast('Save failed: ' + err.message, 'error');
     btn.disabled = false;
     btn.innerHTML = '💾 Save Payment';
+    window.__savingPayment = false;
   }
 }
 
