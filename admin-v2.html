@@ -1323,6 +1323,19 @@ label {
 .md-action.success .md-action-lbl { color: #085041; }
 
 .md-kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 18px; }
+.md-pulse-card { background: var(--card); border: 1px solid var(--border); border-top: 3px solid; border-radius: 12px; padding: 13px 15px; cursor: pointer; transition: transform .15s ease, box-shadow .15s ease; }
+.md-pulse-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(11,25,87,0.10); }
+.md-pulse-lbl { font-size: 11px; color: var(--text-2); font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; display: flex; align-items: center; gap: 4px; }
+.md-pulse-val { font-size: 26px; font-weight: 800; line-height: 1.1; font-family: 'JetBrains Mono', monospace; letter-spacing: -1px; margin-top: 4px; }
+.md-pulse-meta { font-size: 11px; color: var(--text-3); margin-top: 3px; font-weight: 500; }
+.md-jt-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 13px 15px; cursor: pointer; transition: transform .15s ease, box-shadow .15s ease; }
+.md-jt-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(11,25,87,0.10); }
+.md-jt-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; }
+.md-jt-name { font-size: 13px; font-weight: 700; color: #0B1957; }
+.md-jt-val { font-size: 22px; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+.md-jt-bar { height: 5px; background: var(--bg-2, #eef1f7); border-radius: 3px; margin-top: 8px; overflow: hidden; }
+.md-jt-fill { height: 100%; border-radius: 3px; transition: width .4s ease; }
+.md-jt-meta { font-size: 11px; color: var(--text-3); margin-top: 5px; }
 .md-kpi { position: relative; background: var(--card); border: 1px solid var(--border); border-top: 3px solid; border-radius: 14px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(11,25,87,0.04), 0 4px 12px rgba(11,25,87,0.03); transition: transform .18s ease, box-shadow .18s ease; }
 .md-kpi:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(11,25,87,0.10); }
 .md-kpi-lbl { font-size: 11px; color: var(--text-2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -3026,6 +3039,40 @@ label {
         <div class="md-action danger" onclick="switchTab('members')">
           <div class="md-action-num" id="acIdle">—</div>
           <div class="md-action-lbl">members idle today</div>
+        </div>
+      </div>
+
+      <!-- ⭐ Campaign Pulse — status + job-type breakdown -->
+      <div style="margin-bottom:18px;">
+        <div style="font-size:13px;color:var(--text-2);font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:6px;text-transform:uppercase;letter-spacing:0.5px;">
+          <i class="ti ti-activity-heartbeat" style="color:#26d0ce;"></i> Campaign Pulse
+        </div>
+        <!-- Status row -->
+        <div class="md-pulse-status" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px;">
+          <div class="md-pulse-card" style="border-top-color:#6D4FD0;" onclick="openExternal('launch-campaign.html')">
+            <div class="md-pulse-lbl"><i class="ti ti-rocket"></i> New</div>
+            <div class="md-pulse-val" id="pulseNew" style="color:#6D4FD0;">—</div>
+            <div class="md-pulse-meta">range mein launched</div>
+          </div>
+          <div class="md-pulse-card" style="border-top-color:#1D9E75;" onclick="openExternal('campaign-status.html')">
+            <div class="md-pulse-lbl"><i class="ti ti-player-play"></i> Ongoing</div>
+            <div class="md-pulse-val" id="pulseOngoing" style="color:#1D9E75;">—</div>
+            <div class="md-pulse-meta">active abhi</div>
+          </div>
+          <div class="md-pulse-card" style="border-top-color:#185FA5;" onclick="openExternal('campaign-status.html')">
+            <div class="md-pulse-lbl"><i class="ti ti-circle-check"></i> Completed</div>
+            <div class="md-pulse-val" id="pulseCompleted" style="color:#185FA5;">—</div>
+            <div class="md-pulse-meta">done</div>
+          </div>
+          <div class="md-pulse-card" style="border-top-color:#E0792E;" onclick="openExternal('outstanding.html')">
+            <div class="md-pulse-lbl"><i class="ti ti-cash"></i> Outstanding</div>
+            <div class="md-pulse-val" id="pulseOutstanding" style="color:#B45309;font-size:24px;">—</div>
+            <div class="md-pulse-meta">pending payment</div>
+          </div>
+        </div>
+        <!-- Job-type row -->
+        <div class="md-pulse-jobtype" id="pulseJobTypes" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;">
+          <div style="grid-column:1/-1;text-align:center;padding:14px;color:var(--text-3);font-size:13px;"><div class="spinner" style="margin:0 auto;"></div></div>
         </div>
       </div>
 
@@ -5227,6 +5274,7 @@ function runDashboardWidgets() {
     qoBtn.style.display = qMoney ? '' : 'none';
   }
   loadDashStats();
+  loadCampaignPulse();
   loadGpsSplit();
   loadTopPerformers();
   loadActivity();
@@ -5868,6 +5916,135 @@ function adminDeletePrint(entryId, campId, campKey) {
 
 
 
+
+// ⭐ Campaign Pulse — status counts + job-type breakdown (real data)
+function loadCampaignPulse() {
+  var R = window.dashDate;
+  var b = dashUtcBounds(R.from, R.to);
+
+  Promise.all([
+    api('/rest/v1/trial_campaigns?select=*&limit=3000').catch(function(){ return []; }),
+    loadJobTypes()
+  ]).then(function(res){
+    var camps = (res[0] || []).filter(function(c){ return dashInScope(c.key || c.id); });
+
+    // ── Status counts ──
+    var newCount = 0, ongoing = 0, completed = 0;
+    camps.forEach(function(c){
+      var created = c.created_at || c.launched_at || '';
+      var isNew = created && created >= b.start && created <= b.end;
+      var status = String(c.status || (c.active ? 'active' : '') || '').toLowerCase();
+      var isCompleted = status === 'completed' || c.completed === true || c.is_complete === true;
+      var isActive = (c.active === true || status === 'active') && !isCompleted;
+      if (isNew) newCount++;
+      if (isCompleted) completed++;
+      else if (isActive) ongoing++;
+    });
+    setStat('pulseNew', newCount);
+    setStat('pulseOngoing', ongoing);
+    setStat('pulseCompleted', completed);
+
+    // ── Job-type breakdown (active campaigns only) ──
+    var activeCamps = camps.filter(function(c){
+      var status = String(c.status || '').toLowerCase();
+      var isCompleted = status === 'completed' || c.completed === true;
+      return (c.active === true || status === 'active') && !isCompleted;
+    });
+    renderPulseJobTypes(activeCamps);
+  }).catch(function(){
+    setStat('pulseNew', 0); setStat('pulseOngoing', 0); setStat('pulseCompleted', 0);
+  });
+
+  // ── Outstanding total (₹) ──
+  api('/rest/v1/v_vendor_outstanding?select=outstanding').then(function(rows){
+    var total = (rows || []).reduce(function(s, r){ return s + (Number(r.outstanding) || 0); }, 0);
+    var el = document.getElementById('pulseOutstanding');
+    if (el) el.textContent = fmtShortINR(total);
+  }).catch(function(){
+    // Fallback: campaigns ke outstanding se
+    api('/rest/v1/trial_campaigns?select=outstanding,total_value,received&limit=3000').then(function(rows){
+      var total = (rows||[]).reduce(function(s,r){
+        var o = Number(r.outstanding);
+        if (!o && r.total_value) o = (Number(r.total_value)||0) - (Number(r.received)||0);
+        return s + (o > 0 ? o : 0);
+      }, 0);
+      var el = document.getElementById('pulseOutstanding');
+      if (el) el.textContent = fmtShortINR(total);
+    }).catch(function(){ var el = document.getElementById('pulseOutstanding'); if (el) el.textContent = '—'; });
+  });
+}
+
+// Short INR format: 420000 → ₹4.2L, 1500000 → ₹15L, 12000000 → ₹1.2Cr
+function fmtShortINR(n){
+  n = Number(n) || 0;
+  if (n >= 10000000) return '₹' + (n/10000000).toFixed(1).replace(/\.0$/,'') + 'Cr';
+  if (n >= 100000) return '₹' + (n/100000).toFixed(1).replace(/\.0$/,'') + 'L';
+  if (n >= 1000) return '₹' + (n/1000).toFixed(1).replace(/\.0$/,'') + 'K';
+  return '₹' + Math.round(n);
+}
+
+// Job-type cards — group active campaigns by their stage signature
+function renderPulseJobTypes(camps){
+  var el = document.getElementById('pulseJobTypes');
+  if (!el) return;
+
+  // Buckets: har bucket ek "type" hai (stage signature se)
+  var buckets = {
+    hood_field:    { name: 'Auto Hood + Field',    icon: '🛺', color: '#1D9E75', n: 0, meta: 'with execution' },
+    hood_delivery: { name: 'Auto Hood + Delivery', icon: '🚚', color: '#B89B4E', n: 0, meta: 'only delivery' },
+    auto_back:     { name: 'Auto Back',            icon: '🛺', color: '#D2691E', n: 0, meta: 'back panel' },
+    vinyl:         { name: 'Vinyl Printing',       icon: '🖨️', color: '#6D4FD0', n: 0, meta: 'print + deliver' },
+    flex:          { name: 'Flex Printing',        icon: '🏴', color: '#378ADD', n: 0, meta: 'banner / flex' },
+    other:         { name: 'Other',                icon: '📋', color: '#888', n: 0, meta: 'misc' }
+  };
+
+  camps.forEach(function(c){
+    var st = campStages(c);
+    var name = String((st.name || c.job_type_name || '') ).toLowerCase();
+    var hood = Number(c.hood_photo_count || 0) > 0;
+    var back = Number(c.back_panel_photo_count || 0) > 0;
+
+    // Job type name se direct match (agar hai)
+    if (name.indexOf('vinyl') >= 0) { buckets.vinyl.n++; return; }
+    if (name.indexOf('flex') >= 0 || name.indexOf('banner') >= 0) { buckets.flex.n++; return; }
+    if (name.indexOf('back') >= 0) { buckets.auto_back.n++; return; }
+
+    // Stage signature se classify
+    if (st.field) {
+      // Field campaign — hood ya back
+      if (back && !hood) buckets.auto_back.n++;
+      else buckets.hood_field.n++;
+    } else if (st.delivery && (hood || back || st.stitching)) {
+      // Delivery campaign (auto production)
+      buckets.hood_delivery.n++;
+    } else if (st.printing && st.delivery && !st.stitching) {
+      // Only print + deliver → vinyl/flex type (default vinyl)
+      buckets.vinyl.n++;
+    } else {
+      buckets.other.n++;
+    }
+  });
+
+  // Max for bar scaling
+  var maxN = 1;
+  Object.keys(buckets).forEach(function(k){ if (buckets[k].n > maxN) maxN = buckets[k].n; });
+
+  // Render — only buckets with count > 0 (ya hamesha main 5 dikhao)
+  var order = ['hood_field','hood_delivery','auto_back','vinyl','flex','other'];
+  var html = '';
+  order.forEach(function(k){
+    var bk = buckets[k];
+    if (k === 'other' && bk.n === 0) return;   // 'other' sirf jab ho
+    var pct = Math.round((bk.n / maxN) * 100);
+    html += '<div class="md-jt-card" onclick="openExternal(\'campaign-status.html\')">' +
+      '<div class="md-jt-head"><span class="md-jt-name">' + bk.name + '</span><span style="font-size:20px;">' + bk.icon + '</span></div>' +
+      '<div class="md-jt-val" style="color:' + bk.color + ';">' + bk.n + '</div>' +
+      '<div class="md-jt-bar"><div class="md-jt-fill" style="width:' + pct + '%;background:' + bk.color + ';"></div></div>' +
+      '<div class="md-jt-meta">' + bk.meta + '</div>' +
+    '</div>';
+  });
+  el.innerHTML = html || '<div style="grid-column:1/-1;text-align:center;padding:14px;color:var(--text-3);font-size:13px;">No active campaigns</div>';
+}
 
 function loadDashStats() {
   var R = window.dashDate;
