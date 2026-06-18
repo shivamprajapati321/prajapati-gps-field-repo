@@ -11117,20 +11117,144 @@ function ensureScript(src, globalCheck) {
   });
 }
 
+// ⭐ DIRECT CANVAS DRAW — html2canvas ke bina (10x faster)
+// Table, KPI cards, header — sab khud canvas pe draw karte hain.
 async function captureStaffReportCanvas() {
-  // Make sure html2canvas is available (load on demand if needed)
-  if (typeof html2canvas === 'undefined') {
-    await ensureScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', function(){ return typeof html2canvas !== 'undefined'; });
+  var data = window._staffReportData;
+  if (!data) throw new Error('Report data missing');
+  var range = (typeof getPhotosDateRange === 'function') ? getPhotosDateRange() : {from:'',to:''};
+  var rangeLabel = (range.from === range.to || !range.to) ? (range.from || 'All dates') : (range.from + ' → ' + range.to);
+
+  var DPR = 2;            // crisp resolution (retina)
+  var W = 920;           // logical width
+  var pad = 24;
+  // Column layout (logical px) — DATE, NAME, WORK, LOCATION, QTY, MEDIA
+  var cols = [
+    { key:'date',     title:'DATE',     w:95,  align:'left' },
+    { key:'name',     title:'NAME',     w:150, align:'left' },
+    { key:'work',     title:'WORK',     w:200, align:'left' },
+    { key:'location', title:'LOCATION', w:170, align:'left' },
+    { key:'qty',      title:'QTY',      w:70,  align:'center' },
+    { key:'media',    title:'MEDIA',    w:115, align:'center' }
+  ];
+  var tableW = W - pad*2;
+  // Scale column widths to fit tableW
+  var colSum = cols.reduce(function(s,c){ return s + c.w; }, 0);
+  cols.forEach(function(c){ c.w = Math.floor(c.w / colSum * tableW); });
+
+  // Heights
+  var headerH = 64;
+  var cardsH = 92;
+  var tableHeadH = 38;
+  var rowH = 34;
+  var footH = 40;
+  var bottomPad = 40;
+  var tableTop = headerH + cardsH + 14;
+  var totalH = tableTop + tableHeadH + (data.rows.length * rowH) + footH + bottomPad;
+
+  // Canvas
+  var canvas = document.createElement('canvas');
+  canvas.width = W * DPR;
+  canvas.height = totalH * DPR;
+  var ctx = canvas.getContext('2d');
+  ctx.scale(DPR, DPR);
+  ctx.textBaseline = 'middle';
+
+  function rect(x,y,w,h,color){ ctx.fillStyle = color; ctx.fillRect(x,y,w,h); }
+  function text(str, x, y, color, font, align){
+    ctx.fillStyle = color; ctx.font = font; ctx.textAlign = align||'left';
+    ctx.fillText(str==null?'':String(str), x, y);
   }
-  if (typeof html2canvas === 'undefined') throw new Error('Image library (html2canvas) load nahi hui. Internet check karo ya page refresh karo.');
-  var node = buildStaffReportPrintNode();
-  document.body.appendChild(node);
-  try {
-    var canvas = await html2canvas(node, { scale: 2, backgroundColor: '#ffffff', logging: false });
-    return canvas;
-  } finally {
-    node.remove();
+  function clip(str, maxW, font){
+    ctx.font = font;
+    if (ctx.measureText(str).width <= maxW) return str;
+    var s = str;
+    while (s.length > 1 && ctx.measureText(s + '…').width > maxW) s = s.slice(0, -1);
+    return s + '…';
   }
+
+  // White bg
+  rect(0, 0, W, totalH, '#ffffff');
+
+  // ── Header (navy) ──
+  rect(0, 0, W, headerH, '#0B1957');
+  text('Prajapati Advertising — Field Work Report', pad, 26, '#ffffff', '700 20px Arial', 'left');
+  text(rangeLabel + ' · ' + data.rows.length + ' entries', pad, 47, 'rgba(255,255,255,0.85)', '12px Arial', 'left');
+
+  // ── KPI cards ──
+  var cardDefs = [
+    ['TOTAL QTY', data.total, '#0B1957'],
+    ['FIELD STAFF', data.members, '#26d0ce'],
+    ['CAMPAIGNS', data.works, '#B89B4E'],
+    ['CITIES', data.cities, '#7C3AED'],
+    ['AUTO HOOD', data.hood, '#047857'],
+    ['AUTO BACK', data.back, '#C2410C']
+  ];
+  var cardsY = headerH + 12;
+  rect(0, headerH, W, cardsH, '#F7F9FC');
+  var gap = 10;
+  var cardW = (tableW - gap*(cardDefs.length-1)) / cardDefs.length;
+  cardDefs.forEach(function(c, i){
+    var cx = pad + i*(cardW+gap);
+    var cy = cardsY;
+    var ch = cardsH - 24;
+    rect(cx, cy, cardW, ch, '#ffffff');
+    rect(cx, cy, cardW, 3, c[2]);  // top accent
+    ctx.strokeStyle = '#E5E0D2'; ctx.lineWidth = 1; ctx.strokeRect(cx+0.5, cy+0.5, cardW-1, ch-1);
+    text(String(c[1]), cx + cardW/2, cy + ch/2 - 6, c[2], '800 24px monospace', 'center');
+    text(c[0], cx + cardW/2, cy + ch/2 + 18, '#64748B', '600 10px Arial', 'center');
+  });
+
+  // ── Table header (yellow) ──
+  var ty = tableTop;
+  var cx2 = pad;
+  cols.forEach(function(c){
+    rect(cx2, ty, c.w, tableHeadH, '#FFF200');
+    ctx.strokeStyle = '#E5C800'; ctx.lineWidth = 1; ctx.strokeRect(cx2+0.5, ty+0.5, c.w-1, tableHeadH-1);
+    var tx = c.align==='center' ? cx2 + c.w/2 : cx2 + 12;
+    text(c.title, tx, ty + tableHeadH/2, '#000000', '700 11px Arial', c.align==='center'?'center':'left');
+    cx2 += c.w;
+  });
+
+  // ── Rows ──
+  var ry = ty + tableHeadH;
+  data.rows.forEach(function(r, i){
+    var bg = (i % 2 === 1) ? '#FAFBFC' : '#ffffff';
+    var rcx = pad;
+    cols.forEach(function(c){
+      rect(rcx, ry, c.w, rowH, bg);
+      ctx.strokeStyle = '#EEEEEE'; ctx.lineWidth = 1; ctx.strokeRect(rcx+0.5, ry+0.5, c.w-1, rowH-1);
+      var val = r[c.key];
+      var color = '#1E293B', font = '13px Arial';
+      if (c.key === 'name') font = '600 13px Arial';
+      if (c.key === 'qty') { color = '#0B1957'; font = '700 13px monospace'; }
+      if (c.key === 'media') { color = (val === 'AUTO BACK') ? '#C2410C' : '#047857'; font = '600 11px Arial'; }
+      var tx = c.align==='center' ? rcx + c.w/2 : rcx + 12;
+      var maxW = c.w - (c.align==='center'?8:18);
+      text(clip(String(val==null?'':val), maxW, font), tx, ry + rowH/2, color, font, c.align==='center'?'center':'left');
+      rcx += c.w;
+    });
+    ry += rowH;
+  });
+
+  // ── Total footer ──
+  var totalColW = cols[0].w + cols[1].w + cols[2].w + cols[3].w;
+  rect(pad, ry, totalColW, footH, '#FFF7CC');
+  ctx.strokeStyle = '#E5C800'; ctx.lineWidth = 1; ctx.strokeRect(pad+0.5, ry+0.5, totalColW-1, footH-1);
+  text('TOTAL', pad + totalColW - 12, ry + footH/2, '#0B1957', '700 13px Arial', 'right');
+  var qx = pad + totalColW;
+  rect(qx, ry, cols[4].w, footH, '#FFF7CC');
+  ctx.strokeRect(qx+0.5, ry+0.5, cols[4].w-1, footH-1);
+  text(String(data.total), qx + cols[4].w/2, ry + footH/2, '#0B1957', '800 13px monospace', 'center');
+  var mx = qx + cols[4].w;
+  rect(mx, ry, cols[5].w, footH, '#FFF7CC');
+  ctx.strokeRect(mx+0.5, ry+0.5, cols[5].w-1, footH-1);
+
+  // ── Generated footer ──
+  text('Generated ' + new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'}) + ' · prajapatiadvertising.com',
+       W - pad, ry + footH + 18, '#94A3B8', '10px Arial', 'right');
+
+  return canvas;
 }
 
 function staffReportFilename(ext) {
