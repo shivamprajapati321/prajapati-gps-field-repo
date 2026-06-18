@@ -364,6 +364,26 @@ a{color:inherit;text-decoration:none}
   </div>
 </div>
 
+<!-- BULK UPLOAD MODAL -->
+<div class="modal-bg" id="bulkModal" style="display:none">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal-head">
+      <div class="modal-title">📚 Bulk Upload Designs</div>
+      <button class="modal-close" onclick="closeBulkModal()" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="bulkCampInfo" style="margin-bottom:14px"></div>
+      <div id="bulkDesignList"></div>
+      <div id="bulkStatus" style="margin-top:12px"></div>
+    </div>
+    <div class="modal-foot">
+      <div id="bulkCount" style="font-size:12px;color:var(--text-2);margin-right:auto;align-self:center;">0 files selected</div>
+      <button class="btn btn-secondary" onclick="closeBulkModal()">Cancel</button>
+      <button class="btn btn-success" id="bulkSaveBtn" onclick="saveBulkUpload()">⬆️ Upload All</button>
+    </div>
+  </div>
+</div>
+
 <!-- DESIGN PREVIEW LIGHTBOX -->
 <div class="lightbox" id="designLightbox" onclick="closeLightbox(event)">
   <button class="lb-close" onclick="closeLightbox(event)" aria-label="Close">×</button>
@@ -386,6 +406,7 @@ const state = {
   campaigns: [],
   activeTab: 'pending',
   currentDesign: null,
+  bulkDesigns: null,
   uploadMethod: 'drive'
 };
 
@@ -643,7 +664,28 @@ function renderContent() {
     return;
   }
 
-  document.getElementById('contentArea').innerHTML = list.map(d => {
+  // ── Bulk upload bar — campaign-wise buttons (jin campaigns ke 2+ designs hain) ──
+  var campGroups = {};
+  list.forEach(function(d){
+    var cid = String((d.campaign && d.campaign.id) || d.campaign_id || '');
+    if (!cid) return;
+    if (!campGroups[cid]) campGroups[cid] = { name: (d.campaign && (d.campaign.campaign_name || d.campaign.name)) || 'Campaign', count: 0 };
+    campGroups[cid].count++;
+  });
+  var bulkBarHtml = '';
+  var multiCamps = Object.keys(campGroups).filter(function(cid){ return campGroups[cid].count >= 2; });
+  if (multiCamps.length) {
+    bulkBarHtml = '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:14px;">' +
+      '<div style="font-size:12px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;"><i style="font-style:normal;">📚</i> Bulk Upload (multiple designs ek saath)</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:8px;">' +
+      multiCamps.map(function(cid){
+        var g = campGroups[cid];
+        return '<button class="btn btn-purple sm" onclick="openBulkModal(\'' + cid + '\')" style="font-size:12px;">📚 ' + escapeHtml(g.name) + ' (' + g.count + ')</button>';
+      }).join('') +
+      '</div></div>';
+  }
+
+  document.getElementById('contentArea').innerHTML = bulkBarHtml + list.map(d => {
     const c = d.campaign || {};
     const isUrgent = c.is_urgent;
     const stage = getStage(d);
@@ -1095,6 +1137,140 @@ async function saveUpload() {
     btn.disabled = false;
     btn.innerHTML = '💾 Save & Mark Ready';
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BULK UPLOAD — ek campaign ke saare designs ek saath
+// ═══════════════════════════════════════════════════════════════
+function openBulkModal(campaignId) {
+  // Is campaign ke saare designs (jo cancelled/completed nahi)
+  var campDesigns = state.designs.filter(function(d){
+    return String((d.campaign && d.campaign.id) || d.campaign_id || '') === String(campaignId);
+  });
+  if (!campDesigns.length) { alert('Is campaign mein koi design nahi'); return; }
+
+  state.bulkDesigns = campDesigns;
+  var c = campDesigns[0].campaign || {};
+  document.getElementById('bulkCampInfo').innerHTML =
+    '<div class="callout info" style="margin-bottom:0"><span>📋</span><div>' +
+    '<strong>' + escapeHtml(c.campaign_name || c.name || 'Campaign') + '</strong>' +
+    (c.client_name ? ' · ' + escapeHtml(c.client_name) : '') + '<br>' +
+    '<small>' + campDesigns.length + ' designs · file + quantity edit karein, phir Upload All</small></div></div>';
+
+  var rows = campDesigns.map(function(d, i){
+    var existing = getPrintFileUrl(d);
+    var qty = d.quantity || 0;
+    return '<div class="bulk-row" style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:10px;">' +
+      '<div style="width:34px;height:34px;border-radius:8px;background:var(--bg-2,#eef1f7);display:flex;align-items:center;justify-content:center;flex-shrink:0;">🎨</div>' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div style="font-size:13px;font-weight:700;color:#0B1957;">' + escapeHtml(d.design_name || ('Design ' + (i+1))) + '</div>' +
+        '<div style="font-size:11px;color:var(--text-3);">' + escapeHtml(d.location_name || '') +
+          (existing ? ' · <span style="color:#1D9E75;">✓ file hai</span>' : '') + '</div>' +
+      '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:3px;align-items:center;">' +
+        '<label style="font-size:9px;color:var(--text-3);text-transform:uppercase;">Qty</label>' +
+        '<input type="number" min="0" class="bulk-qty" data-design="' + d.id + '" value="' + qty + '" style="width:70px;padding:5px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center;">' +
+      '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:3px;">' +
+        '<label style="font-size:9px;color:var(--text-3);text-transform:uppercase;">File</label>' +
+        '<input type="file" class="bulk-file" data-design="' + d.id + '" onchange="updateBulkCount()" style="width:140px;font-size:11px;">' +
+      '</div>' +
+    '</div>';
+  }).join('');
+  document.getElementById('bulkDesignList').innerHTML = rows;
+  document.getElementById('bulkStatus').innerHTML = '';
+  var sb = document.getElementById('bulkSaveBtn');
+  if (sb) { sb.disabled = false; sb.innerHTML = '⬆️ Upload All'; }
+  updateBulkCount();
+  document.getElementById('bulkModal').style.display = 'flex';
+}
+
+function closeBulkModal() {
+  document.getElementById('bulkModal').style.display = 'none';
+  state.bulkDesigns = null;
+}
+
+function updateBulkCount() {
+  var files = document.querySelectorAll('#bulkDesignList .bulk-file');
+  var sel = 0;
+  files.forEach(function(f){ if (f.files && f.files.length) sel++; });
+  var el = document.getElementById('bulkCount');
+  if (el) el.textContent = sel + ' file' + (sel!==1?'s':'') + ' selected';
+  var sb = document.getElementById('bulkSaveBtn');
+  if (sb) sb.innerHTML = '⬆️ Upload All' + (sel>0 ? ' (' + sel + ')' : '');
+}
+
+async function saveBulkUpload() {
+  var btn = document.getElementById('bulkSaveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Uploading…';
+
+  var fileInputs = Array.prototype.slice.call(document.querySelectorAll('#bulkDesignList .bulk-file'));
+  var qtyInputs = Array.prototype.slice.call(document.querySelectorAll('#bulkDesignList .bulk-qty'));
+  var qtyMap = {};
+  qtyInputs.forEach(function(q){ qtyMap[q.getAttribute('data-design')] = parseInt(q.value) || 0; });
+
+  var MAX_DIRECT = 200 * 1024 * 1024;
+  var done = 0, failed = 0, qtyOnly = 0;
+  var total = fileInputs.length;
+
+  for (var i = 0; i < fileInputs.length; i++) {
+    var inp = fileInputs[i];
+    var designId = inp.getAttribute('data-design');
+    var file = inp.files && inp.files[0];
+    var newQty = qtyMap[designId];
+    var design = state.bulkDesigns.find(function(d){ return String(d.id) === String(designId); });
+
+    document.getElementById('bulkStatus').innerHTML =
+      '<div class="callout info"><span>⏳</span><div>Processing ' + (i+1) + ' / ' + total +
+      (design ? ' — ' + escapeHtml(design.design_name||'') : '') + '…</div></div>';
+
+    try {
+      var payload = { updated_at: new Date().toISOString() };
+      // Quantity change → campaign mein bhi update
+      if (newQty >= 0 && design && newQty !== (design.quantity||0)) {
+        payload.quantity = newQty;
+      }
+
+      if (file) {
+        if (file.size > MAX_DIRECT) { failed++; continue; }
+        var safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        var path = state.user.id + '/' + Date.now() + '_' + i + '_' + safeName;
+        var up = await uploadWithProgress(path, file, function(){});
+        if (!up.ok) { failed++; continue; }
+        payload.design_url = SUPABASE_URL + '/storage/v1/object/public/campaign-designs/' + path;
+        payload.design_file_name = file.name;
+        payload.design_file_size = file.size;
+        payload.design_status = 'ready';
+        payload.designer_id = state.user.id;
+        payload.designed_at = new Date().toISOString();
+        payload.print_uploaded_at = new Date().toISOString();
+        done++;
+      } else if (payload.quantity !== undefined) {
+        qtyOnly++;  // sirf quantity change, file nahi
+      } else {
+        continue;  // kuch nahi badla
+      }
+
+      // DB update
+      await api('/rest/v1/trial_campaign_designs?id=eq.' + encodeURIComponent(designId), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify(payload)
+      });
+    } catch (e) {
+      console.error('Bulk row failed:', e);
+      failed++;
+    }
+  }
+
+  var msg = '✅ ' + done + ' uploaded';
+  if (qtyOnly > 0) msg += ' · ' + qtyOnly + ' qty updated';
+  if (failed > 0) msg += ' · ⚠️ ' + failed + ' failed';
+  document.getElementById('bulkStatus').innerHTML =
+    '<div class="callout ' + (failed>0?'warn':'success') + '"><span>' + (failed>0?'⚠️':'✅') + '</span><div>' + msg + '</div></div>';
+
+  setTimeout(function(){ closeBulkModal(); loadData(); }, 1400);
 }
 
 // ═══════════════════════════════════════════════════════════════
