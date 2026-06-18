@@ -3227,18 +3227,37 @@ label {
         </div>
       </div>
 
-      <!-- Search + status filter (NEW) -->
-      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:16px">
+      <!-- ⭐ RICH FILTER BAR -->
+      <!-- Row 1: Search + Date + Sort -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
         <div style="position:relative;flex:1;min-width:220px">
           <i class="ti ti-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-3);font-size:16px"></i>
           <input id="campaignSearchBox" type="text" placeholder="Search campaign, client, key..." oninput="filterCampaignList()" style="width:100%;padding:10px 12px 10px 38px;border:1px solid var(--border);border-radius:9px;font-family:inherit;font-size:14px;outline:none;background:var(--card)">
         </div>
-        <div style="display:flex;gap:6px">
-          <button class="cf-tab active" data-cf="active" onclick="setCampaignFilter('active')" style="padding:9px 16px;border-radius:8px;border:1px solid var(--border);background:var(--card);font-family:inherit;font-weight:600;font-size:13px;cursor:pointer">Active</button>
-          <button class="cf-tab" data-cf="completed" onclick="setCampaignFilter('completed')" style="padding:9px 16px;border-radius:8px;border:1px solid var(--border);background:var(--card);font-family:inherit;font-weight:600;font-size:13px;cursor:pointer">Completed</button>
-          <button class="cf-tab" data-cf="all" onclick="setCampaignFilter('all')" style="padding:9px 16px;border-radius:8px;border:1px solid var(--border);background:var(--card);font-family:inherit;font-weight:600;font-size:13px;cursor:pointer">All</button>
-        </div>
+        <select id="campaignDateFilter" onchange="setCampaignDate(this.value)" style="padding:10px 12px;border:1px solid var(--border);border-radius:9px;font-family:inherit;font-size:13px;background:var(--card);cursor:pointer;color:var(--text-1)">
+          <option value="all">📅 All dates</option>
+          <option value="today">📅 Today</option>
+          <option value="week">📅 This Week</option>
+          <option value="month">📅 This Month</option>
+          <option value="lastmonth">📅 Last Month</option>
+        </select>
+        <select id="campaignSort" onchange="setCampaignSort(this.value)" style="padding:10px 12px;border:1px solid var(--border);border-radius:9px;font-family:inherit;font-size:13px;background:var(--card);cursor:pointer;color:var(--text-1)">
+          <option value="newest">⇅ Newest</option>
+          <option value="oldest">⇅ Oldest</option>
+          <option value="progress">⇅ Progress</option>
+          <option value="target">⇅ Target (big)</option>
+        </select>
       </div>
+
+      <!-- Row 2: Status tabs -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+        <button class="cf-tab active" data-cf="active" onclick="setCampaignFilter('active')" style="padding:9px 16px;border-radius:8px;border:1px solid var(--border);background:var(--primary);color:#fff;font-family:inherit;font-weight:600;font-size:13px;cursor:pointer">Active</button>
+        <button class="cf-tab" data-cf="completed" onclick="setCampaignFilter('completed')" style="padding:9px 16px;border-radius:8px;border:1px solid var(--border);background:var(--card);font-family:inherit;font-weight:600;font-size:13px;cursor:pointer">Completed</button>
+        <button class="cf-tab" data-cf="all" onclick="setCampaignFilter('all')" style="padding:9px 16px;border-radius:8px;border:1px solid var(--border);background:var(--card);font-family:inherit;font-weight:600;font-size:13px;cursor:pointer">All</button>
+      </div>
+
+      <!-- Row 3: Job-type chips -->
+      <div id="campaignTypeChips" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px"></div>
 
       <div id="campaignsList">
         <div class="spinner"></div>
@@ -6657,20 +6676,48 @@ function renderCampaigns() {
   // Apply search + status filter (NEW)
   var q = (state._campaignSearch || '').toLowerCase().trim();
   var filt = state._campaignFilter || 'active';
+  var dateFilt = state._campaignDate || 'all';
+  var typeFilt = state._campaignType || 'all';
+  var sortBy = state._campaignSort || 'newest';
+  var dateBounds = getCampaignDateBounds(dateFilt);
+
   var visible = state.campaigns.filter(function(c){
-    // status filter — "active" = not completed (active field may be null/undefined
-    // for older campaigns, so we don't require active===true, only NOT completed).
+    // status filter — "active" = not completed
     var isCompleted = c.completed === true;
     if (filt === 'active' && isCompleted) return false;
     if (filt === 'completed' && !isCompleted) return false;
-    // 'all' shows everything
     // search filter
     if (q) {
       var hay = ((c.name||'') + ' ' + (c.campaign_name||'') + ' ' + (c.client_name||'') + ' ' + (c.key||'') + ' ' + (c.campaign_key||'')).toLowerCase();
       if (hay.indexOf(q) === -1) return false;
     }
+    // date filter (created_at)
+    if (dateBounds) {
+      var cr = c.created_at || c.launched_at || '';
+      if (!cr || cr < dateBounds.from || cr > dateBounds.to) return false;
+    }
+    // job-type chip filter
+    if (typeFilt !== 'all') {
+      if (classifyCampaignType(c) !== typeFilt) return false;
+    }
     return true;
   });
+
+  // Sort
+  visible.sort(function(a, b){
+    if (sortBy === 'oldest') return (a.created_at||'').localeCompare(b.created_at||'');
+    if (sortBy === 'newest') return (b.created_at||'').localeCompare(a.created_at||'');
+    if (sortBy === 'target') return (Number(b.target_vehicles||b.total_quantity||0)) - (Number(a.target_vehicles||a.total_quantity||0));
+    if (sortBy === 'progress') {
+      var pa = campProgressPct(a), pb = campProgressPct(b);
+      return pb - pa;
+    }
+    return 0;
+  });
+
+  // Update subtitle + type chips
+  updateCampaignsSubtitle(visible.length);
+  renderTypeChips();
   
   if (visible.length === 0) {
     list.innerHTML = '<div class="empty-state"><i class="ti ti-search-off"></i>' + (q ? 'Koi match nahi "' + escapeHtml(q) + '"' : 'Is filter mein koi campaign nahi') + '</div>';
@@ -6778,6 +6825,124 @@ function setCampaignFilter(f) {
     b.style.borderColor = on ? 'var(--primary)' : 'var(--border)';
   });
   renderCampaigns();
+}
+
+// ⭐ Date filter
+function setCampaignDate(v) {
+  state._campaignDate = v;
+  renderCampaigns();
+}
+function getCampaignDateBounds(filter) {
+  if (!filter || filter === 'all') return null;
+  // IST-aware: today in Asia/Kolkata
+  var now = new Date();
+  var istStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); // YYYY-MM-DD
+  var parts = istStr.split('-');
+  var y = +parts[0], m = +parts[1], d = +parts[2];
+  function iso(yy, mm, dd, end){
+    var mo = String(mm).padStart(2,'0'), da = String(dd).padStart(2,'0');
+    return yy + '-' + mo + '-' + da + (end ? 'T23:59:59+05:30' : 'T00:00:00+05:30');
+  }
+  function toUtc(s){ return new Date(s).toISOString(); }
+  if (filter === 'today') {
+    return { from: toUtc(iso(y,m,d,false)), to: toUtc(iso(y,m,d,true)) };
+  }
+  if (filter === 'week') {
+    var dow = new Date(iso(y,m,d,false)).getDay(); // 0=Sun
+    var start = new Date(iso(y,m,d,false)); start.setDate(start.getDate() - dow);
+    return { from: start.toISOString(), to: toUtc(iso(y,m,d,true)) };
+  }
+  if (filter === 'month') {
+    return { from: toUtc(iso(y,m,1,false)), to: toUtc(iso(y,m,d,true)) };
+  }
+  if (filter === 'lastmonth') {
+    var lm = m - 1, ly = y; if (lm < 1) { lm = 12; ly = y - 1; }
+    var lastDay = new Date(ly, lm, 0).getDate();
+    return { from: toUtc(iso(ly,lm,1,false)), to: toUtc(iso(ly,lm,lastDay,true)) };
+  }
+  return null;
+}
+
+// ⭐ Sort
+function setCampaignSort(v) {
+  state._campaignSort = v;
+  renderCampaigns();
+}
+function campProgressPct(c) {
+  var target = Number(c.target_vehicles || c.total_quantity || c.target_count || 0);
+  var done = Number(c.done_count || c.completed_count || 0);
+  if (!target) return 0;
+  return Math.min(100, Math.round((done / target) * 100));
+}
+
+// ⭐ Job-type classify (chip filter) — Field=Fitting=Installation merged
+function classifyCampaignType(c) {
+  var st = (typeof campStages === 'function') ? campStages(c) : {};
+  var name = String((st.name || c.job_type_name || '')).toLowerCase();
+  var hood = Number(c.hood_photo_count || 0) > 0;
+  var back = Number(c.back_panel_photo_count || 0) > 0;
+  if (name.indexOf('vinyl') >= 0) return 'vinyl';
+  if (name.indexOf('flex') >= 0 || name.indexOf('banner') >= 0) return 'flex';
+  if (name.indexOf('back') >= 0) return 'auto_back';
+  if (st.field) { return (back && !hood) ? 'auto_back' : 'hood_field'; }
+  if (st.delivery && (hood || back || st.stitching)) return 'hood_delivery';
+  if (st.printing && st.delivery && !st.stitching) return 'vinyl';
+  return 'other';
+}
+
+// ⭐ Render job-type chips with counts
+function renderTypeChips() {
+  var el = document.getElementById('campaignTypeChips');
+  if (!el) return;
+  var filt = state._campaignFilter || 'active';
+  // Count by type (within current status filter)
+  var pool = state.campaigns.filter(function(c){
+    var isCompleted = c.completed === true;
+    if (filt === 'active' && isCompleted) return false;
+    if (filt === 'completed' && !isCompleted) return false;
+    return true;
+  });
+  var counts = { all: pool.length, hood_field:0, hood_delivery:0, auto_back:0, vinyl:0, flex:0, other:0 };
+  pool.forEach(function(c){ var t = classifyCampaignType(c); counts[t] = (counts[t]||0) + 1; });
+
+  var chips = [
+    ['all', 'All Types', ''],
+    ['hood_field', 'Auto Hood + Field', '🛺'],
+    ['hood_delivery', 'Auto + Delivery', '🚚'],
+    ['auto_back', 'Auto Back', '🛺'],
+    ['vinyl', 'Vinyl', '🖨️'],
+    ['flex', 'Flex', '🏴']
+  ];
+  var active = state._campaignType || 'all';
+  el.innerHTML = chips.map(function(ch){
+    var key = ch[0], label = ch[1], icon = ch[2];
+    var cnt = counts[key] || 0;
+    if (key !== 'all' && cnt === 0) return '';   // khaali type chhupao
+    var on = active === key;
+    var badgeBg = on ? 'rgba(255,255,255,0.25)' : 'var(--bg)';
+    return '<button onclick="setCampaignType(\'' + key + '\')" style="display:flex;align-items:center;gap:6px;' +
+      'background:' + (on ? 'var(--primary)' : 'var(--card)') + ';color:' + (on ? '#fff' : 'var(--text-1)') + ';' +
+      'border:1px solid ' + (on ? 'var(--primary)' : 'var(--border)') + ';padding:7px 13px;border-radius:999px;' +
+      'font-family:inherit;font-size:13px;font-weight:500;cursor:pointer">' +
+      (icon ? icon + ' ' : '') + label +
+      ' <span style="background:' + badgeBg + ';padding:1px 7px;border-radius:999px;font-size:11px;font-weight:600">' + cnt + '</span>' +
+    '</button>';
+  }).join('');
+}
+
+function setCampaignType(t) {
+  state._campaignType = t;
+  renderCampaigns();
+}
+
+function updateCampaignsSubtitle(filteredCount) {
+  var el = document.getElementById('campaignsSubtitle');
+  if (!el) return;
+  var total = state.campaigns.length;
+  var activeCount = state.campaigns.filter(function(c){ return c.completed !== true; }).length;
+  var anyFilter = (state._campaignSearch || (state._campaignDate && state._campaignDate !== 'all') || (state._campaignType && state._campaignType !== 'all'));
+  el.innerHTML = total + ' total · ' + activeCount + ' active' +
+    (anyFilter ? ' · <span style="color:#1A9B98">' + filteredCount + ' filtered</span>' : '');
 }
 function markCampaignComplete(id, complete) {
   if (!confirm(complete ? 'Campaign complete mark karna hai? List se hat jayega (Completed tab mein milega).' : 'Campaign dobara active karna hai? Daily entry phir se ho sakegi.')) return;
