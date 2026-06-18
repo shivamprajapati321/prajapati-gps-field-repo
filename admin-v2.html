@@ -6767,7 +6767,8 @@ function renderCampaigns() {
                 activeTag + completedTag + orderTag + mediaTag + brandingTag + salesTag + manualTag +
               '</div>' +
               '<div class="campaign-card-stats">' +
-                '<div class="mini-stat"><div class="label">Target</div><div class="value">' + (c.target_count || 100) + '</div></div>' +
+                '<div class="mini-stat"><div class="label">Order (veh)</div><div class="value" data-campaign-target="' + escapeHtml(c.key) + '">' + (c.target_count || 100) + '</div></div>' +
+                '<div class="mini-stat"><div class="label">Target Photos</div><div class="value" data-campaign-photos="' + escapeHtml(c.key) + '">—</div></div>' +
                 '<div class="mini-stat"><div class="label">Done</div><div class="value" data-campaign-done="' + escapeHtml(c.key) + '">—</div></div>' +
                 '<div class="mini-stat"><div class="label">Progress</div><div class="value" data-campaign-progress="' + escapeHtml(c.key) + '">—</div></div>' +
                 '<div class="mini-stat"><div class="label">Cities</div><div class="value" data-campaign-cities="' + escapeHtml(c.key) + '">—</div></div>' +
@@ -6790,21 +6791,45 @@ function renderCampaigns() {
   visible.forEach(function(c) {
     Promise.all([
       api('/rest/v1/trial_campaign_cities?campaign_key=eq.' + encodeURIComponent(c.key) + '&select=id'),
-      api('/rest/v1/trial_photos?campaign_key=eq.' + encodeURIComponent(c.key) + '&select=vehicle_number')
+      api('/rest/v1/trial_photos?campaign_key=eq.' + encodeURIComponent(c.key) + '&select=vehicle_number'),
+      api('/rest/v1/trial_campaign_designs?campaign_id=eq.' + encodeURIComponent(c.id) + '&select=quantity')
     ]).then(function(results) {
       var citiesCount = (results[0] || []).length;
       var photos = results[1] || [];
-      // unique vehicles = done count (per your quantity rule)
-      var seen = {}; var done = 0;
-      photos.forEach(function(p){ var v = (p.vehicle_number||'').toUpperCase().trim(); if (v && !seen[v]) { seen[v] = 1; done++; } });
-      var target = c.target_count || 100;
-      var pct = target > 0 ? Math.min(100, Math.round(done / target * 100)) : 0;
+      var designs = results[2] || [];
+      // Order (vehicles) = designs ki total quantity (SAHI)
+      var orderQty = designs.reduce(function(s, d){ return s + (Number(d.quantity) || 0); }, 0);
+      var setTarget = Number(c.target_count || 0);
+      // Photos per vehicle = hood + back (Hood=3, Back=1, Both=4)
+      var photosPerVeh = (Number(c.hood_photo_count || 0) + Number(c.back_panel_photo_count || 0)) || 1;
+      // Effective order (agar designs nahi to set target)
+      var effOrder = orderQty > 0 ? orderQty : setTarget;
+      // Target Photos = order × photos per vehicle
+      var targetPhotos = effOrder * photosPerVeh;
+      // Done = total photos clicked (NOT unique vehicles — kyunki target photos hai)
+      var donePhotos = photos.length;
+      // Progress against target PHOTOS
+      var pct = targetPhotos > 0 ? Math.min(100, Math.round(donePhotos / targetPhotos * 100)) : 0;
+
       var citiesEl = document.querySelector('[data-campaign-cities="' + c.key + '"]');
       var doneEl = document.querySelector('[data-campaign-done="' + c.key + '"]');
       var progEl = document.querySelector('[data-campaign-progress="' + c.key + '"]');
+      var targetEl = document.querySelector('[data-campaign-target="' + c.key + '"]');
+      var photosEl = document.querySelector('[data-campaign-photos="' + c.key + '"]');
+
       if (citiesEl) citiesEl.textContent = citiesCount;
-      if (doneEl) doneEl.textContent = done;
+      if (doneEl) doneEl.textContent = donePhotos;
       if (progEl) { progEl.textContent = pct + '%'; progEl.style.color = pct >= 100 ? 'var(--success)' : (pct >= 50 ? 'var(--primary)' : 'var(--warn)'); }
+      if (photosEl) photosEl.textContent = targetPhotos.toLocaleString('en-IN');
+      // Order (vehicles): actual dikhao; set target alag ho to note
+      if (targetEl && orderQty > 0) {
+        if (setTarget && setTarget !== orderQty) {
+          targetEl.innerHTML = orderQty + '<span style="font-size:10px;color:var(--text-3);font-weight:500"> (set ' + setTarget + ')</span>';
+          targetEl.title = 'Actual order: ' + orderQty + ' vehicles · Set: ' + setTarget;
+        } else {
+          targetEl.textContent = orderQty;
+        }
+      }
     }).catch(function() {});
   });
 }
