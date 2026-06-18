@@ -1015,6 +1015,30 @@ async function saveLog() {
         body: JSON.stringify(payload)
       });
     }
+
+    // ⭐ Pipeline stage auto-advance: printer entry pe design status update
+    //   qty>0 entry → Printing | poori qty done → Completed
+    if (dId) {
+      try {
+        // Is design ke saare printing logs ka total done nikalo
+        const allLogs = await api('/rest/v1/trial_work_logs?design_id=eq.' + dId + '&stage=eq.printing&select=qty_done');
+        const totalDone = (allLogs || []).reduce(function(s, l){ return s + (Number(l.qty_done) || 0); }, 0);
+        const assignedQty = Number(job.quantity_assigned) || 0;
+        var newStatus;
+        if (assignedQty > 0 && totalDone >= assignedQty) {
+          newStatus = 'completed';   // poori qty ho gayi
+        } else if (totalDone > 0) {
+          newStatus = 'printing';    // kuch done — kaam chal raha
+        }
+        if (newStatus) {
+          await api('/rest/v1/trial_campaign_designs?id=eq.' + dId, {
+            method: 'PATCH',
+            headers: { 'Prefer': 'return=minimal' },
+            body: JSON.stringify({ print_status: newStatus, updated_at: new Date().toISOString() })
+          });
+        }
+      } catch(e){ console.warn('print_status stage update failed (non-fatal):', e); }
+    }
     
     document.getElementById('logStatus').innerHTML = '<div class="callout success"><span>✅</span><div>Saved!${proofPhotoUrl ? " Proof photo uploaded." : ""}</div></div>';
     setTimeout(() => {
