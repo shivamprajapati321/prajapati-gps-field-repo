@@ -1233,6 +1233,17 @@ function formatFileSize(b) {
 async function saveDraft() { await submitCampaign('draft'); }
 
 async function submitCampaign(targetStatus = 'pending_execution_plan') {
+  // ⭐ Double-submit guard — agar already submitting hai to ignore (duplicate prevent)
+  if (window.__submitting) return;
+  window.__submitting = true;
+  try {
+    await _submitCampaignInner(targetStatus);
+  } finally {
+    window.__submitting = false;
+  }
+}
+
+async function _submitCampaignInner(targetStatus = 'pending_execution_plan') {
   const campaignName = document.getElementById('campaignName').value.trim();
   const isEdit = !!editingCampaign;
   // Edit mode mein design_url optional (purane campaign ka file na ho to bhi save ho)
