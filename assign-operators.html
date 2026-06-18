@@ -855,6 +855,17 @@ async function saveAssignment() {
     if (notify && assignmentId) {
       await sendWhatsAppNotification(operatorId, ctx, quantity, dueDate, assignmentId);
     }
+
+    // ⭐ Printing assign hua → design ko "Sent to Print" mark karo (pipeline stage auto-advance)
+    if (String(ctx.stage).toLowerCase() === 'printing' && ctx.design && ctx.design.design_id) {
+      try {
+        await api('/rest/v1/trial_campaign_designs?id=eq.' + encodeURIComponent(ctx.design.design_id), {
+          method: 'PATCH',
+          headers: { 'Prefer': 'return=minimal' },
+          body: JSON.stringify({ print_status: 'sent', updated_at: new Date().toISOString() })
+        });
+      } catch(e){ console.warn('print_status sent update failed (non-fatal):', e); }
+    }
     
     document.getElementById('assignStatus').innerHTML = `<div class="callout success"><span>✅</span><div>Assigned!${notify ? ' WhatsApp notification queued.' : ''}</div></div>`;
     setTimeout(() => {
