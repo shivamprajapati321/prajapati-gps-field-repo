@@ -309,8 +309,11 @@ a{color:inherit;text-decoration:none}
       
       <div id="supabaseSection" style="display:none">
         <div class="field">
-          <div class="label">Upload File <span class="req">*</span> <span class="hint">Original quality · max 200 MB · badi files Drive se</span></div>
-          <input type="file" id="fileInput" class="input" accept="image/*,application/pdf,.ai,.psd,.cdr">
+          <div class="label">Upload Files <span class="req">*</span> <span class="hint">Har file ki apni quantity · max 200 MB each</span></div>
+          <div id="multiFileRows"></div>
+          <button type="button" class="btn btn-secondary sm" onclick="addFileRow()" style="margin-top:8px;font-size:12px;">➕ Add More File</button>
+          <div id="multiFileTotal" style="margin-top:10px;font-size:13px;font-weight:700;color:#0B1957;text-align:right;"></div>
+          <input type="file" id="fileInput" style="display:none">
         </div>
       </div>
       
@@ -898,8 +901,81 @@ function openUploadModal(designId) {
   
   // Default to drive method
   pickMethod(design.drive_url ? 'drive' : (design.design_url ? 'supabase' : 'drive'));
-  
+
+  // Multi-file rows init — agar pehle se design_files hain to woh dikhao, warna 1 blank row
+  initFileRows(design);
+
   document.getElementById('uploadModal').style.display = 'flex';
+}
+
+// ── Multi-file rows ──
+var _fileRowSeq = 0;
+function initFileRows(design){
+  var wrap = document.getElementById('multiFileRows');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  _fileRowSeq = 0;
+  var existing = (design && design.design_files) ? design.design_files : null;
+  if (existing && existing.length){
+    existing.forEach(function(ef){ addFileRow(ef); });
+  } else {
+    // 1 blank row, quantity = design ki current qty
+    addFileRow({ qty: (design && design.quantity) || 0 });
+  }
+  updateFileTotal();
+}
+
+function addFileRow(preset){
+  var wrap = document.getElementById('multiFileRows');
+  if (!wrap) return;
+  preset = preset || {};
+  var id = 'frow_' + (_fileRowSeq++);
+  var existingNote = preset.url ? '<span style="font-size:11px;color:#1D9E75;">✓ ' + escapeHtml(preset.name || 'file') + '</span>' : '';
+  var row = document.createElement('div');
+  row.className = 'mf-row';
+  row.id = id;
+  row.setAttribute('data-url', preset.url || '');
+  row.setAttribute('data-name', preset.name || '');
+  row.setAttribute('data-size', preset.size || '');
+  row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;';
+  row.innerHTML =
+    '<div style="flex:1;min-width:0;">' +
+      '<input type="file" class="mf-file" accept="image/*,application/pdf,.ai,.psd,.cdr" onchange="onFileRowChange(this)" style="font-size:11px;width:100%;">' +
+      (existingNote ? '<div style="margin-top:3px;">' + existingNote + '</div>' : '') +
+    '</div>' +
+    '<input type="number" min="0" class="mf-qty" value="' + (preset.qty || 0) + '" oninput="updateFileTotal()" placeholder="Qty" style="width:75px;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center;">' +
+    '<button type="button" class="mf-del" onclick="removeFileRow(\'' + id + '\')" style="background:none;border:none;color:#E24B4A;cursor:pointer;font-size:16px;padding:4px;" aria-label="Remove">✕</button>';
+  wrap.appendChild(row);
+  updateFileTotal();
+}
+
+function removeFileRow(id){
+  var row = document.getElementById(id);
+  if (row) row.remove();
+  // Kam se kam 1 row rahe
+  var wrap = document.getElementById('multiFileRows');
+  if (wrap && !wrap.querySelector('.mf-row')) addFileRow({});
+  updateFileTotal();
+}
+
+function onFileRowChange(input){
+  // File select hote hi us row ka stored url clear (naya file replace karega)
+  var row = input.closest('.mf-row');
+  if (row){ row.setAttribute('data-url',''); row.setAttribute('data-name',''); }
+  updateFileTotal();
+}
+
+function updateFileTotal(){
+  var rows = document.querySelectorAll('#multiFileRows .mf-row');
+  var total = 0, fileCount = 0;
+  rows.forEach(function(r){
+    var qty = parseInt(r.querySelector('.mf-qty').value) || 0;
+    total += qty;
+    var fi = r.querySelector('.mf-file');
+    if ((fi && fi.files && fi.files.length) || r.getAttribute('data-url')) fileCount++;
+  });
+  var el = document.getElementById('multiFileTotal');
+  if (el) el.textContent = fileCount + ' file' + (fileCount!==1?'s':'') + ' · Total ' + total.toLocaleString('en-IN') + ' units';
 }
 
 function closeUploadModal() {
@@ -1053,52 +1129,64 @@ async function saveUpload() {
       const idMatch = driveUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || driveUrl.match(/id=([a-zA-Z0-9_-]+)/);
       if (idMatch) payload.drive_file_id = idMatch[1];
     } else {
-      var file = document.getElementById('fileInput').files[0];
-      if (!file) throw new Error('Please select a file');
-      // Printing files must keep ORIGINAL quality — never compress.
-      // Allow up to 200 MB direct upload (bucket limit must match in Supabase).
+      // ── MULTI-FILE upload ──
+      var rows = Array.prototype.slice.call(document.querySelectorAll('#multiFileRows .mf-row'));
+      if (!rows.length) throw new Error('Kam se kam 1 file add karein');
+
       var MAX_DIRECT = 200 * 1024 * 1024;
-      if (file.size > MAX_DIRECT) throw new Error('File ' + (file.size/1048576).toFixed(0) + ' MB hai (max 200 MB direct). Google Drive method use karein.');
+      var designFiles = [];
+      var totalQty = 0;
 
-      var sizeMb = (file.size/1048576).toFixed(1);
-      document.getElementById('uploadStatus').innerHTML =
-        '<div class="callout info" style="flex-direction:column;align-items:stretch;gap:8px">' +
-          '<div style="display:flex;align-items:center;gap:8px"><span>⏳</span>' +
-          '<div>Uploading <strong>' + escapeHtml(file.name) + '</strong> (' + sizeMb + ' MB) — original quality…</div></div>' +
-          '<div style="background:rgba(11,25,87,.12);border-radius:999px;height:14px;overflow:hidden">' +
-            '<div id="upBar" style="height:100%;width:0%;background:linear-gradient(90deg,#26d0ce,#0B1957);transition:width .15s ease"></div>' +
-          '</div>' +
-          '<div id="upPctText" style="font-family:monospace;font-size:12px;text-align:right">0%</div>' +
-        '</div>';
+      for (var ri = 0; ri < rows.length; ri++){
+        var row = rows[ri];
+        var fi = row.querySelector('.mf-file');
+        var qty = parseInt(row.querySelector('.mf-qty').value) || 0;
+        var newFile = fi && fi.files && fi.files[0];
+        var existingUrl = row.getAttribute('data-url');
 
-      var safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      var path = `${state.user.id}/${Date.now()}_${safeName}`;
-
-      var uploadRes = await uploadWithProgress(path, file, function(pct, loaded, total) {
-        var bar = document.getElementById('upBar');
-        var txt = document.getElementById('upPctText');
-        if (bar) bar.style.width = pct + '%';
-        if (txt) txt.textContent = pct + '%  (' + (loaded/1048576).toFixed(1) + ' / ' + (total/1048576).toFixed(1) + ' MB)';
-      });
-
-      if (!uploadRes.ok) {
-        var errTxt = uploadRes.text || '';
-        if (uploadRes.status === 413 || errTxt.indexOf('exceeded the maximum') > -1) {
-          throw new Error('Storage limit chhoti hai (' + sizeMb + ' MB file). Bucket ka "File size limit" Supabase dashboard mein badhayein, ya Google Drive method use karein.');
+        if (newFile){
+          if (newFile.size > MAX_DIRECT) throw new Error('File "' + newFile.name + '" ' + (newFile.size/1048576).toFixed(0) + ' MB (max 200). Drive method use karein.');
+          var sizeMb = (newFile.size/1048576).toFixed(1);
+          document.getElementById('uploadStatus').innerHTML =
+            '<div class="callout info" style="flex-direction:column;align-items:stretch;gap:8px">' +
+              '<div style="display:flex;align-items:center;gap:8px"><span>⏳</span>' +
+              '<div>File ' + (ri+1) + '/' + rows.length + ': <strong>' + escapeHtml(newFile.name) + '</strong> (' + sizeMb + ' MB)…</div></div>' +
+              '<div style="background:rgba(11,25,87,.12);border-radius:999px;height:14px;overflow:hidden">' +
+                '<div id="upBar" style="height:100%;width:0%;background:linear-gradient(90deg,#26d0ce,#0B1957);transition:width .15s ease"></div>' +
+              '</div>' +
+              '<div id="upPctText" style="font-family:monospace;font-size:12px;text-align:right">0%</div>' +
+            '</div>';
+          var safeName = newFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+          var path = state.user.id + '/' + Date.now() + '_' + ri + '_' + safeName;
+          var uploadRes = await uploadWithProgress(path, newFile, function(pct, loaded, total){
+            var bar = document.getElementById('upBar'); var txt = document.getElementById('upPctText');
+            if (bar) bar.style.width = pct + '%';
+            if (txt) txt.textContent = pct + '%  (' + (loaded/1048576).toFixed(1) + ' / ' + (total/1048576).toFixed(1) + ' MB)';
+          });
+          if (!uploadRes.ok){
+            var errTxt = uploadRes.text || '';
+            if (uploadRes.status === 413 || errTxt.indexOf('exceeded the maximum') > -1) throw new Error('Storage limit chhoti (' + sizeMb + ' MB). Bucket limit badhayein ya Drive use karein.');
+            throw new Error('Upload failed: ' + errTxt);
+          }
+          var fileUrl = SUPABASE_URL + '/storage/v1/object/public/campaign-designs/' + path;
+          designFiles.push({ url: fileUrl, name: newFile.name, size: newFile.size, qty: qty });
+        } else if (existingUrl){
+          // Pehle se uploaded file — rakho
+          designFiles.push({ url: existingUrl, name: row.getAttribute('data-name') || 'file', size: parseInt(row.getAttribute('data-size'))||0, qty: qty });
         }
-        throw new Error('Upload failed: ' + errTxt);
+        // (file na ho aur existing bhi na ho → skip)
+        totalQty += qty;
       }
 
-      // show 100% done before continuing
-      var doneBar = document.getElementById('upBar');
-      var doneTxt = document.getElementById('upPctText');
-      if (doneBar) doneBar.style.width = '100%';
-      if (doneTxt) doneTxt.textContent = '100% — uploaded ✅';
-      
-      payload.design_url = SUPABASE_URL + '/storage/v1/object/public/campaign-designs/' + path;
-      payload.design_file_name = file.name;
-      payload.design_file_size = file.size;
-      payload.design_file_type = file.type;
+      if (!designFiles.length) throw new Error('Kam se kam 1 file select karein');
+
+      // design_files array + primary file (1st) backward-compat ke liye
+      payload.design_files = designFiles;
+      payload.design_url = designFiles[0].url;
+      payload.design_file_name = designFiles[0].name;
+      payload.design_file_size = designFiles[0].size;
+      // Total quantity = sabhi files ka sum
+      if (totalQty > 0) payload.quantity = totalQty;
     }
     
     // Preview image (optional)
