@@ -9619,6 +9619,8 @@ function updatePhotoStats() {
   var rejectedV = uniqVehicles(function(p){ return p.rejected; });
 
   // Photos card = total PHOTO count (server total). Rest = unique vehicle counts.
+  // NOTE: ye LOADED subset (max 500) ke counts hain — turant dikhane ke liye.
+  // fetchGlobalPhotoStats() neeche poore DB ka asli count laa ke inhe overwrite karega.
   $('pTotal').textContent = serverTotal;
   $('pVehicles').textContent = allVehicles.size;
   if ($('pHood')) $('pHood').textContent = hoodV;
@@ -9632,10 +9634,106 @@ function updatePhotoStats() {
   
   // Subtitle: clear distinction between loaded vs total
   if (loaded < serverTotal) {
-    $('photosSubtitle').textContent = 'Showing ' + loaded + ' of ' + serverTotal + ' photos · ' + vehicles.size + ' vehicles loaded · live ON';
+    $('photosSubtitle').textContent = 'Showing ' + loaded + ' of ' + serverTotal + ' photos · counting all vehicles…';
   } else {
     $('photosSubtitle').textContent = serverTotal + ' photos · ' + vehicles.size + ' vehicles · live updates ON';
   }
+
+  // ⭐ Poore DB ka asli count (loaded 500 nahi) — server-side
+  fetchGlobalPhotoStats();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Global photo stats — counts run on FULL filtered dataset (server-side),
+// not just the loaded 500. Fixes wrong "total vehicles / verified / hood"
+// numbers that earlier reflected only the loaded page.
+// ═══════════════════════════════════════════════════════════════════════
+function buildPhotoFilterQS() {
+  // Mirror loadPhotos() filters exactly (date/campaign/member/city/mode/status)
+  var range = (typeof getPhotosDateRange === 'function') ? getPhotosDateRange() : { from:'', to:'' };
+  var campaign    = $('photosCampaign') ? $('photosCampaign').value : '';
+  var memberPhone = $('photosMember')   ? $('photosMember').value   : '';
+  var city        = $('photosCity')     ? $('photosCity').value     : '';
+  var mode        = $('photosMode')     ? $('photosMode').value     : '';
+  var status      = $('photosStatus')   ? $('photosStatus').value   : '';
+  var f = '&deleted_at=is.null';
+  if (range.from) f += '&captured_at=gte.' + new Date(range.from + 'T00:00:00+05:30').toISOString();
+  if (range.to)   f += '&captured_at=lte.' + new Date(range.to   + 'T23:59:59+05:30').toISOString();
+  if (campaign)    f += '&campaign_key=eq.' + encodeURIComponent(campaign);
+  if (memberPhone) f += '&member_phone=eq.' + encodeURIComponent(memberPhone);
+  if (city)        f += '&city=eq.' + encodeURIComponent(city);
+  if (mode)        f += '&mode=eq.' + encodeURIComponent(mode);
+  if (status === 'verified')      f += '&is_verified=eq.true';
+  else if (status === 'pending')  f += '&is_verified=is.null&rejected=not.eq.true';
+  else if (status === 'rejected') f += '&rejected=eq.true';
+  return f;
+}
+
+// HEAD-style exact count (no rows downloaded) via Content-Range header
+function countExact(extraQs) {
+  var url = CONFIG.supabaseUrl + '/rest/v1/trial_photos?select=id' + extraQs + '&limit=1';
+  return fetch(url, {
+    headers: { apikey: CONFIG.supabaseKey, Authorization: 'Bearer ' + CONFIG.supabaseKey, Prefer: 'count=exact' }
+  }).then(function(r){
+    var cr = r.headers.get('Content-Range') || r.headers.get('content-range') || '';
+    return parseInt(cr.split('/').pop()) || 0;
+  }).catch(function(){ return null; });
+}
+
+var _globalStatsToken = 0;
+function fetchGlobalPhotoStats() {
+  var myToken = ++_globalStatsToken; // guard against overlapping reloads
+  var baseF = buildPhotoFilterQS();
+
+  // Photo-level exact counts (cheap, no data transfer)
+  countExact(baseF).then(function(total){
+    if (myToken !== _globalStatsToken || total == null) return;
+    if ($('pTotal')) $('pTotal').textContent = total;
+    if ($('navPhotosCount')) $('navPhotosCount').textContent = total;
+  });
+  countExact(baseF + '&is_verified=eq.true').then(function(v){
+    if (myToken !== _globalStatsToken || v == null) return;
+    if ($('pVerified')) $('pVerified').textContent = v;
+  });
+  countExact(baseF + '&is_verified=is.null&rejected=not.eq.true').then(function(p){
+    if (myToken !== _globalStatsToken || p == null) return;
+    if ($('pPending')) $('pPending').textContent = p;
+  });
+  countExact(baseF + '&rejected=eq.true').then(function(rj){
+    if (myToken !== _globalStatsToken || rj == null) return;
+    if ($('pRejected')) $('pRejected').textContent = rj;
+  });
+
+  // Unique-vehicle counts: PostgREST can't COUNT(DISTINCT), so pull only the
+  // tiny columns we need across the WHOLE filtered set and dedupe client-side.
+  // ~20k rows × 3 short fields ≈ light + fast.
+  var liteUrl = CONFIG.supabaseUrl + '/rest/v1/trial_photos?select=vehicle_number,verified_plate,mode' + baseF + '&limit=100000';
+  fetch(liteUrl, {
+    headers: { apikey: CONFIG.supabaseKey, Authorization: 'Bearer ' + CONFIG.supabaseKey }
+  }).then(function(r){ return r.ok ? r.json() : []; }).then(function(rows){
+    if (myToken !== _globalStatsToken) return;
+    rows = rows || [];
+    var all = new Set(), hood = new Set(), back = new Set();
+    rows.forEach(function(p){
+      var vn = (p.verified_plate || p.vehicle_number || '').toUpperCase().trim();
+      if (!vn) return;
+      all.add(vn);
+      var m = (p.mode || '').toLowerCase();
+      if (m === 'hood') hood.add(vn);
+      else if (m === 'back_panel') back.add(vn);
+    });
+    if ($('pVehicles')) $('pVehicles').textContent = all.size;
+    if ($('pHood')) $('pHood').textContent = hood.size;
+    if ($('pBack')) $('pBack').textContent = back.size;
+    // Update subtitle with the real vehicle total
+    var loaded = p4state.photos.length;
+    var serverTotal = p4state.totalPhotos || loaded;
+    if (loaded < serverTotal) {
+      $('photosSubtitle').textContent = 'Showing ' + loaded + ' of ' + serverTotal + ' photos · ' + all.size + ' total vehicles · live ON';
+    } else {
+      $('photosSubtitle').textContent = serverTotal + ' photos · ' + all.size + ' vehicles · live updates ON';
+    }
+  }).catch(function(e){ console.warn('[GlobalStats] vehicle count failed:', e); });
 }
 
 function filterPhotosLocal() {
@@ -14627,6 +14725,7 @@ function inferMediaType(hood, back) {
 
   // ─── Bulk Surepass Fetch ──────────────────────────────────────────────
   window.bulkFetchSurepass = async function() {
+    var SUREPASS_COST_EST = 3; // ₹ per fresh Surepass lookup (estimate, for savings display)
     var btn = document.querySelector('button[onclick="bulkFetchSurepass()"]');
     var originalText = btn ? btn.innerHTML : '🔍 Get Vehicle Owners';
     if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Loading...'; }
@@ -14673,13 +14772,51 @@ function inferMediaType(hood, back) {
         if (btn) { btn.disabled = false; btn.innerHTML = originalText; }
         return;
       }
-      
+
+      // ⭐ COST-SAVING: pehle local cache (prajapati_vehicle_lookup) me dekho ki
+      // kaun se plates pehle se owner_name + contact_number ke saath saved hain.
+      // Jo already saved hain unhe SKIP karo — Surepass call hi mat karo (₹ bachega).
+      // Sirf MISSING plates par hi Surepass hit hoga.
+      if (btn) btn.innerHTML = '⏳ Checking saved cache…';
+      var alreadyCached = {};
+      try {
+        // chunk the IN() list to avoid URL length limits
+        for (var ci = 0; ci < plates.length; ci += 150) {
+          var chunk = plates.slice(ci, ci + 150);
+          var inList = chunk.map(function(p){ return '"' + p + '"'; }).join(',');
+          var cq = '/rest/v1/prajapati_vehicle_lookup?select=vehicle_number,owner_name,contact_number'
+                 + '&vehicle_number=in.(' + inList + ')';
+          var crows = await window.api(cq);
+          (crows || []).forEach(function(c){
+            // count as cached only if it actually has owner data
+            if (c.owner_name || c.contact_number) alreadyCached[(c.vehicle_number||'').toUpperCase().trim()] = true;
+          });
+        }
+      } catch (e) {
+        console.warn('[Bulk Surepass] cache pre-check failed, will fetch all:', e);
+      }
+
+      var toFetch = plates.filter(function(p){ return !alreadyCached[p]; });
+      var skipped = plates.length - toFetch.length;
+
+      if (toFetch.length === 0) {
+        if (btn) { btn.disabled = false; btn.innerHTML = originalText; }
+        alert('✅ Sabhi ' + plates.length + ' vehicles pehle se saved hain (Verified Database cache).\n\nKoi Surepass call nahi hui — ₹' + (plates.length * SUREPASS_COST_EST) + ' bach gaye.\n\nData refresh kar raha hoon…');
+        if (typeof loadPhotos === 'function') loadPhotos(true);
+        return;
+      }
+
+      if (skipped > 0) {
+        var proceed = confirm('💰 Cost-saving:\n\n' + skipped + ' vehicles pehle se saved hain → SKIP (free).\n' + toFetch.length + ' missing → Surepass se fetch hongi (~₹' + (toFetch.length * SUREPASS_COST_EST) + ').\n\nProceed?');
+        if (!proceed) { if (btn) { btn.disabled = false; btn.innerHTML = originalText; } return; }
+      }
+
       var success = 0, failed = 0, cached = 0;
       var failedPlates = [];
-      
-      for (var i = 0; i < plates.length; i++) {
-        var plate = plates[i];
-        if (btn) btn.innerHTML = '⏳ ' + (i + 1) + '/' + plates.length + ' · ' + plate;
+
+      for (var i = 0; i < toFetch.length; i++) {
+        var plate = toFetch[i];
+        if (btn) btn.innerHTML = '⏳ ' + (i + 1) + '/' + toFetch.length + ' · ' + plate;
         
         try {
           var resp = await fetch(window.CONFIG.supabaseUrl + '/functions/v1/surepass-lookup', {
@@ -14707,16 +14844,19 @@ function inferMediaType(hood, back) {
         }
         
         // Throttle to avoid hammering Surepass
-        if (i < plates.length - 1) await new Promise(function(r) { setTimeout(r, 300); });
+        if (i < toFetch.length - 1) await new Promise(function(r) { setTimeout(r, 300); });
       }
       
       if (btn) { btn.disabled = false; btn.innerHTML = originalText; }
       
       var summary = '✅ Vehicle Owners Fetch Complete!\n\n' +
         '📊 Results:\n' +
-        '  Total: ' + plates.length + '\n' +
+        '  Total vehicles: ' + plates.length + '\n' +
+        '  Already saved (skipped, free): ' + skipped + '\n' +
+        '  Fetched now: ' + toFetch.length + '\n' +
         '  Success: ' + success + ' (Cached: ' + cached + ', Fresh: ' + (success - cached) + ')\n' +
-        '  Failed: ' + failed + '\n\n';
+        '  Failed: ' + failed + '\n' +
+        '  ₹ Saved approx: ₹' + (skipped * SUREPASS_COST_EST) + '\n\n';
       
       if (failed > 0 && failedPlates.length > 0) {
         summary += '⚠️ Failed plates:\n' + failedPlates.slice(0, 10).join('\n');
