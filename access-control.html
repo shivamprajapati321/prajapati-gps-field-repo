@@ -229,7 +229,7 @@ var MODULES=[
 var ROLE_DEFAULTS={
   'sales':['crm','leads','quotations','pi','invoices','clients','sales-hub','report-campaign','archive-viewer','ppt'],
   'data_manager':['dashboard','photos','manual-upload','verifier','ppt','master-cache','reports','report-daily','report-team','report-campaign','campaign-status','reassignment-history','archive-viewer'],
-  'operations_manager':['dashboard','campaigns','assignments','photos','launch-campaign','campaign-status','assign-operators','designer-uploads','execution-plan','execution-entry','ops-dashboard','printing','stitching','delivery','field','verifier','ppt','reports','report-daily','report-team','report-campaign','reassignment-history','archive-viewer'],
+  'operations_manager':['dashboard','campaigns','assignments','photos','manual-upload','launch-campaign','campaign-status','assign-operators','designer-uploads','design-tasks','execution-plan','execution-entry','ops-dashboard','printing','stitching','delivery','field','verifier','ppt','reports','report-daily','report-team','report-campaign','reassignment-history','archive-viewer'],
   'operations':['dashboard','campaign-status','execution-entry','launch-campaign'],
   'verifier':['verifier','photos','reports'],
   'accountant':['expenses','payments','outstanding','report-campaign'],
@@ -435,9 +435,24 @@ function saveAccess(){
   var m=state.selected; if(!m) return;
   var newRole=$('mhRole').value;
   var btn=$('saveBtn'); btn.disabled=true; btn.innerHTML='<i class="ti ti-loader"></i> Saving…';
-  api('/rest/v1/trial_team_members?id=eq.'+m.id,{method:'PATCH',headers:{Prefer:'return=minimal'},body:{role:newRole,module_access:state.draft}})
+  // ⭐ SYNC FIX: FULL explicit map likho (har module ka true/false), partial draft nahi.
+  // Yeh admin-v2 ke taSave() jaisa hi pattern hai → dono pages + login 100% same.
+  // Warna jo module draft me nahi hai uske liye role-default decide karta tha → conflict.
+  var roleLc=String(newRole||'').toLowerCase();
+  var isAdminRole=(roleLc==='owner'||roleLc==='admin');
+  var fullAccess={};
+  if(!isAdminRole){
+    MODULES.forEach(function(mod){
+      if(mod.ownerOnly) return;            // owner-only modules map me nahi
+      fullAccess[mod.id]=isOn(mod.id)?true:false;
+    });
+  } else {
+    fullAccess=Object.assign({},state.draft); // owner/admin: sab access, map ki zaroorat nahi
+  }
+  api('/rest/v1/trial_team_members?id=eq.'+m.id,{method:'PATCH',headers:{Prefer:'return=minimal'},body:{role:newRole,module_access:fullAccess}})
     .then(function(){
-      m.role=newRole; m.module_access=Object.assign({},state.draft);
+      m.role=newRole; m.module_access=Object.assign({},fullAccess);
+      state.draft=Object.assign({},fullAccess);
       btn.disabled=false; btn.innerHTML='<i class="ti ti-device-floppy"></i> Save access';
       toast('✓ '+(m.name||'Member')+' ka access save ho gaya','success');
     })
