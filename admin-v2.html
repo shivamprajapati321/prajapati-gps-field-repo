@@ -9648,8 +9648,9 @@ function updatePhotoStats() {
 // not just the loaded 500. Fixes wrong "total vehicles / verified / hood"
 // numbers that earlier reflected only the loaded page.
 // ═══════════════════════════════════════════════════════════════════════
-function buildPhotoFilterQS() {
+function buildStatsFilterQS() {
   // Mirror loadPhotos() filters exactly (date/campaign/member/city/mode/status)
+  // NOTE: distinct name from buildPhotoFilterQS(extra) which already exists for ZIP/Excel.
   var range = (typeof getPhotosDateRange === 'function') ? getPhotosDateRange() : { from:'', to:'' };
   var campaign    = $('photosCampaign') ? $('photosCampaign').value : '';
   var memberPhone = $('photosMember')   ? $('photosMember').value   : '';
@@ -9683,7 +9684,7 @@ function countExact(extraQs) {
 var _globalStatsToken = 0;
 function fetchGlobalPhotoStats() {
   var myToken = ++_globalStatsToken; // guard against overlapping reloads
-  var baseF = buildPhotoFilterQS();
+  var baseF = buildStatsFilterQS();
 
   // Photo-level exact counts (cheap, no data transfer)
   countExact(baseF).then(function(total){
@@ -12699,7 +12700,7 @@ function openBulkUpload() {
       
       '<div style="margin-bottom:16px;">' +
         '<div style="font-weight:700;font-size:13px;margin-bottom:6px;">📥 Download Template:</div>' +
-        '<button onclick="downloadBulkTemplate()" style="background:#0073e6;color:#fff;border:none;padding:8px 14px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">⬇️ Sample Excel Template</button>' +
+        '<button onclick="downloadVehicleLookupTemplate()" style="background:#0073e6;color:#fff;border:none;padding:8px 14px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">⬇️ Sample Excel Template</button>' +
       '</div>' +
       
       '<div style="margin-bottom:16px;">' +
@@ -12957,14 +12958,14 @@ async function processBulkUpload() {
 
 // ──── downloadBulkTemplate (ported from V1) ────
 
-function downloadBulkTemplate() {
-  // Create sample Excel template
+function downloadVehicleLookupTemplate() {
+  // Create sample Excel template (columns match prajapati_vehicle_lookup table)
   var wb = XLSX.utils.book_new();
   var data = [
-    ['plate', 'owner_name', 'mobile', 'maker', 'model', 'rto', 'registration_date'],
-    ['MH4T0554', 'RAMESH KUMAR SINGH', '9876543210', 'Bajaj Auto', 'RE Compact', 'Pune RTO', '2020-05-15'],
-    ['BR23TB0311', 'SURESH PATEL', '9123456789', 'TVS', 'King Deluxe', 'Patna RTO', '2019-08-22'],
-    ['JM144926', 'MOHAN VERMA', '9988776655', 'Piaggio', 'Ape City', 'Jammu RTO', '2021-03-10']
+    ['vehicle_number', 'owner_name', 'contact_number', 'vehicle_maker', 'model', 'state', 'registration_date'],
+    ['MH4T0554', 'RAMESH KUMAR SINGH', '9876543210', 'Bajaj Auto', 'RE Compact', 'Maharashtra', '2020-05-15'],
+    ['BR23TB0311', 'SURESH PATEL', '9123456789', 'TVS', 'King Deluxe', 'Bihar', '2019-08-22'],
+    ['JM144926', 'MOHAN VERMA', '9988776655', 'Piaggio', 'Ape City', 'Jammu', '2021-03-10']
   ];
   
   var ws = XLSX.utils.aoa_to_sheet(data);
@@ -12980,16 +12981,16 @@ function downloadBulkTemplate() {
     [''],
     ['1. Fill the "Vehicles" sheet with your vehicle data'],
     ['2. REQUIRED columns:'],
-    ['   - plate (vehicle number, will be cleaned/uppercased)'],
+    ['   - vehicle_number (will be cleaned/uppercased)'],
     [''],
     ['3. RECOMMENDED columns (to save Findr API costs):'],
     ['   - owner_name'],
-    ['   - mobile'],
+    ['   - contact_number'],
     [''],
     ['4. OPTIONAL columns:'],
-    ['   - maker (Bajaj Auto, TVS, Piaggio, etc.)'],
+    ['   - vehicle_maker (Bajaj Auto, TVS, Piaggio, etc.)'],
     ['   - model'],
-    ['   - rto'],
+    ['   - state'],
     ['   - registration_date (YYYY-MM-DD format)'],
     [''],
     ['5. Save and upload via Admin Panel → Bulk Import button'],
