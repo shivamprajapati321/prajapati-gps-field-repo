@@ -5092,19 +5092,37 @@ function taSave() {
   var m = taState.selected;
   if (!m) return;
   var newRole = document.getElementById('taRole').value;
-  // Clean draft: drop entries that equal the role default (keep payload small),
-  // keep only true/false that differ — but simplest & safe: store full explicit map.
-  var payload = { role: newRole, module_access: taState.draft };
+  // ⭐ FIX: Saare modules ki CURRENT visible state (ON/OFF dono) explicitly save karo.
+  // Pehle sirf manually-toggled wale save hote the → role-default baaki ko override
+  // karta tha (jaise operations_manager role Campaigns dikha deta tha bina chahe).
+  // Ab har module ka explicit true/false store hota hai → exactly jo screen pe dikh
+  // raha hai wahi milega, role-default ka koi role nahi.
+  var role = String(newRole||'').toLowerCase();
+  var isAdminRole = (role==='owner'||role==='admin');
+  var fullAccess = {};
+  if (!isAdminRole) {
+    TA_SECTIONS.forEach(function(sec){
+      sec.mods.forEach(function(mod){
+        var id = mod[0];
+        fullAccess[id] = taEffectiveAccess(m, id) ? true : false;
+      });
+    });
+  } else {
+    // Owner/admin: explicit map ki zaroorat nahi (sab access), draft hi rakho
+    fullAccess = taState.draft;
+  }
+  var payload = { role: newRole, module_access: fullAccess };
   api('/rest/v1/trial_team_members?id=eq.'+m.id, {
     method:'PATCH',
     headers:{'Content-Type':'application/json', Prefer:'return=minimal'},
     body: payload
   }).then(function(){
     showToast('✓ Access saved for '+(m.name||'member'), 'success');
-    m.role = newRole; m.module_access = taState.draft;
+    m.role = newRole; m.module_access = fullAccess;
+    taState.draft = Object.assign({}, fullAccess);
     // If editing self, re-apply filter live
     if (String(m.id)===String(state.admin.id)) {
-      state.admin.role = newRole; state.admin.module_access = taState.draft;
+      state.admin.role = newRole; state.admin.module_access = fullAccess;
       applyModuleFilter();
     }
   }).catch(function(e){ showToast('Save error: '+e.message, 'error'); });
