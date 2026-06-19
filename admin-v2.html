@@ -11849,22 +11849,22 @@ async function downloadExcelReport() {
     if (allPlates.length > 0) {
       if (btn) btn.innerHTML = '⏳ Fetching owner details...';
       try {
-        var qs2 = '/rest/v1/prajapati_vehicle_lookup?select=*&plate=in.(' + 
+        var qs2 = '/rest/v1/prajapati_vehicle_lookup?select=*&vehicle_number=in.(' + 
                  allPlates.map(function(p) { return '"' + p + '"'; }).join(',') + ')';
         var ownerData = await api(qs2);
         ownerData = ownerData || [];
         
         var ownerMap = {};
-        ownerData.forEach(function(o) { ownerMap[o.plate] = o; });
+        ownerData.forEach(function(o) { ownerMap[o.vehicle_number] = o; });
         
         Object.keys(groups).forEach(function(k) {
           var g = groups[k];
           if (g.hasPlate && g.plate && ownerMap[g.plate]) {
             var o = ownerMap[g.plate];
-            g.ownerName = o.manual_override_name || o.owner_name || '';
-            g.mobile = o.manual_override_mobile || o.mobile || '';
-            g.maker = o.maker || '';
-            g.rto = o.rto || '';
+            g.ownerName = o.owner_name || '';
+            g.mobile = o.contact_number || o.owner_phone || '';
+            g.maker = o.vehicle_maker || '';
+            g.rto = o.state || '';
             g.fromCache = true;
           }
         });
@@ -12037,15 +12037,15 @@ async function fetchPPTData() {
   var plates = Object.keys(groups);
   if (plates.length > 0) {
     try {
-      var ownerData = await api('/rest/v1/prajapati_vehicle_lookup?select=*&plate=in.(' + 
+      var ownerData = await api('/rest/v1/prajapati_vehicle_lookup?select=*&vehicle_number=in.(' + 
         plates.map(function(p) { return '"' + p + '"'; }).join(',') + ')');
       ownerData = ownerData || [];
       ownerData.forEach(function(o) {
-        if (groups[o.plate]) {
-          groups[o.plate].ownerName = o.manual_override_name || o.owner_name;
-          groups[o.plate].mobile = o.manual_override_mobile || o.mobile;
-          groups[o.plate].maker = o.maker;
-          groups[o.plate].rto = o.rto;
+        if (groups[o.vehicle_number]) {
+          groups[o.vehicle_number].ownerName = o.owner_name;
+          groups[o.vehicle_number].mobile = o.contact_number || o.owner_phone;
+          groups[o.vehicle_number].maker = o.vehicle_maker;
+          groups[o.vehicle_number].rto = o.state;
         }
       });
     } catch (e) {
@@ -12774,16 +12774,16 @@ function handleBulkFileSelect(e) {
         });
         
         return {
-          plate: (n.plate || n.vehicle_number || n.reg_no || n.regno || n.vehicle_no || '').toUpperCase().replace(/[^A-Z0-9]/g, ''),
+          vehicle_number: (n.vehicle_number || n.plate || n.reg_no || n.regno || n.vehicle_no || '').toUpperCase().replace(/[^A-Z0-9]/g, ''),
           owner_name: n.owner_name || n.name || n.owner || n.driver_name || '',
-          mobile: (n.mobile || n.phone || n.contact || n.mobile_no || n.phone_no || '').replace(/[^0-9+]/g, ''),
-          maker: n.maker || n.make || n.brand || '',
+          contact_number: (n.contact_number || n.mobile || n.phone || n.contact || n.mobile_no || n.phone_no || '').replace(/[^0-9+]/g, ''),
+          vehicle_maker: n.vehicle_maker || n.maker || n.make || n.brand || '',
           model: n.model || '',
-          rto: n.rto || n.rto_office || '',
+          state: n.state || n.rto || n.rto_office || '',
           registration_date: n.registration_date || n.reg_date || n.regn_date || ''
         };
       }).filter(function(r) {
-        return r.plate && r.plate.length >= 4;
+        return r.vehicle_number && r.vehicle_number.length >= 4;
       });
       
       window._bulkData = normalized;
@@ -12804,10 +12804,10 @@ function handleBulkFileSelect(e) {
       normalized.slice(0, 10).forEach(function(r, i) {
         tableHtml += '<tr>' +
           '<td style="padding:5px;border:1px solid #e0e0e0;">' + (i + 1) + '</td>' +
-          '<td style="padding:5px;border:1px solid #e0e0e0;font-family:monospace;font-weight:700;">' + r.plate + '</td>' +
+          '<td style="padding:5px;border:1px solid #e0e0e0;font-family:monospace;font-weight:700;">' + r.vehicle_number + '</td>' +
           '<td style="padding:5px;border:1px solid #e0e0e0;">' + (r.owner_name || '—') + '</td>' +
-          '<td style="padding:5px;border:1px solid #e0e0e0;">' + (r.mobile || '—') + '</td>' +
-          '<td style="padding:5px;border:1px solid #e0e0e0;">' + (r.maker || '—') + '</td>' +
+          '<td style="padding:5px;border:1px solid #e0e0e0;">' + (r.contact_number || '—') + '</td>' +
+          '<td style="padding:5px;border:1px solid #e0e0e0;">' + (r.vehicle_maker || '—') + '</td>' +
         '</tr>';
       });
       
@@ -12880,15 +12880,13 @@ async function processBulkUpload() {
       // Prepare payload for Supabase
       var payload = batch.map(function(r) {
         var record = {
-          plate: r.plate,
-          plate_raw: r.plate,
+          vehicle_number: r.vehicle_number,
           owner_name: r.owner_name || null,
-          mobile: r.mobile || null,
-          maker: r.maker || null,
+          contact_number: r.contact_number || null,
+          vehicle_maker: r.vehicle_maker || null,
           model: r.model || null,
-          rto: r.rto || null,
+          state: r.state || null,
           source: 'manual_upload',
-          verified: true,
           fetched_at: new Date().toISOString()
         };
         
@@ -12908,7 +12906,7 @@ async function processBulkUpload() {
       btn.innerHTML = '⏳ Uploading batch ' + Math.floor(i / batchSize + 1) + '/' + Math.ceil(data.length / batchSize) + ' (' + uploaded + '/' + data.length + ')...';
       
       try {
-        var resp = await fetch(CONFIG.supabaseUrl + '/rest/v1/prajapati_vehicle_lookup?on_conflict=plate', {
+        var resp = await fetch(CONFIG.supabaseUrl + '/rest/v1/prajapati_vehicle_lookup?on_conflict=vehicle_number', {
           method: 'POST',
           headers: {
             'apikey': CONFIG.supabaseKey,
@@ -13231,23 +13229,23 @@ async function enrichVehiclesWithFindr(groups, btn, onProgress) {
   
   // STEP 1: Check Supabase cache first
   try {
-    var qs = '/rest/v1/prajapati_vehicle_lookup?select=*&plate=in.(' + 
+    var qs = '/rest/v1/prajapati_vehicle_lookup?select=*&vehicle_number=in.(' + 
              allPlates.map(function(p) { return '"' + p + '"'; }).join(',') + ')';
     var cached = await api(qs);
     cached = cached || [];
     
     var cachedMap = {};
-    cached.forEach(function(c) { cachedMap[c.plate] = c; });
+    cached.forEach(function(c) { cachedMap[c.vehicle_number] = c; });
     
     // Apply cached data to groups
     Object.keys(groups).forEach(function(key) {
       var g = groups[key];
       if (g.hasPlate && g.plate && cachedMap[g.plate]) {
         var c = cachedMap[g.plate];
-        g.ownerName = c.manual_override_name || c.owner_name || '';
-        g.mobile = c.manual_override_mobile || c.mobile || '';
-        g.maker = c.maker || '';
-        g.rto = c.rto || '';
+        g.ownerName = c.owner_name || '';
+        g.mobile = c.contact_number || c.owner_phone || '';
+        g.maker = c.vehicle_maker || '';
+        g.rto = c.state || '';
         g.fromCache = true;
         g.cacheSource = c.source;
       } else if (g.hasPlate && g.plate) {
@@ -13298,16 +13296,14 @@ async function enrichVehiclesWithFindr(groups, btn, onProgress) {
           // Prep for cache save
           if (r.source !== 'cache') {
             toCache.push({
-              plate: plate,
-              plate_raw: plate,
+              vehicle_number: plate,
               owner_name: d.ownerName,
-              mobile: d.mobile,
-              maker: d.maker,
-              rto: d.rto,
+              contact_number: d.mobile,
+              vehicle_maker: d.maker,
+              state: d.rto,
               registration_date: d.regDate || null,
               source: r.source || 'findr',
-              is_masked: d.isMasked || false,
-              raw_response: r,
+              raw_data: r,
               fetched_at: new Date().toISOString()
             });
           }
@@ -13317,7 +13313,7 @@ async function enrichVehiclesWithFindr(groups, btn, onProgress) {
       // Save to Supabase
       if (toCache.length > 0) {
         try {
-          await api('/rest/v1/prajapati_vehicle_lookup?on_conflict=plate', {
+          await api('/rest/v1/prajapati_vehicle_lookup?on_conflict=vehicle_number', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
