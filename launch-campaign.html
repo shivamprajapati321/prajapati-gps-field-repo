@@ -285,6 +285,10 @@ a{color:inherit;text-decoration:none}
           <div class="label">Campaign Start Date <span class="req">*</span></div>
           <input class="input" type="date" id="startDate">
         </div>
+        <div class="field">
+          <div class="label">Deadline / End Date</div>
+          <input class="input" type="date" id="endDate">
+        </div>
       </div>
       
       <div class="toggle-row" style="margin-top:8px">
@@ -463,6 +467,8 @@ async function loadCampaignForEdit(campId) {
     if (nameEl) nameEl.value = camp.campaign_name || camp.name || '';
     const startEl = document.getElementById('startDate');
     if (startEl && camp.start_date) startEl.value = String(camp.start_date).slice(0,10);
+    const endEl = document.getElementById('endDate');
+    if (endEl && camp.end_date) endEl.value = String(camp.end_date).slice(0,10);
 
     // Pre-select sales (use helper so the UI chip updates too)
     if (camp.sales_member_id) {
@@ -1293,6 +1299,7 @@ async function _submitCampaignInner(targetStatus = 'pending_execution_plan') {
       client_id: clientId,
       client_name: selectedClient?.name,
       start_date: document.getElementById('startDate').value || null,
+      end_date: document.getElementById('endDate').value || null,
       job_type_id: selectedJobType?.id,
       job_type_code: selectedJobType?.code,
       sales_member_id: selectedSales?.id,

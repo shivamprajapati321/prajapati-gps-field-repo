@@ -6684,6 +6684,38 @@ function getMediaTypeFromCounts(hood, back) {
   return 'hood';
 }
 
+// ── Campaign card pe Start → Deadline date line (deadline status color) ──
+function campaignDateLine(c, isCompleted){
+  var start = c.start_date ? String(c.start_date).slice(0,10) : '';
+  var end = c.end_date ? String(c.end_date).slice(0,10) : '';
+  if (!start && !end) return '';
+  function fmtD(d){
+    if (!d) return '';
+    var dt = new Date(d + 'T00:00:00+05:30');
+    if (isNaN(dt)) return d;
+    return dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit',timeZone:'Asia/Kolkata'});
+  }
+  var startTxt = start ? '<i class="ti ti-calendar-event" style="font-size:12px"></i> ' + fmtD(start) : '';
+  var endTxt = '', endColor = 'var(--text-2)', badge = '';
+  if (end){
+    endTxt = fmtD(end);
+    if (!isCompleted){
+      // Deadline status: overdue / due-soon / on-track
+      var today = new Date(); today.setHours(0,0,0,0);
+      var endDt = new Date(end + 'T00:00:00+05:30');
+      var days = Math.ceil((endDt - today) / 86400000);
+      if (days < 0){ endColor = '#DC2626'; badge = ' <span style="color:#DC2626;font-weight:700">⚠ ' + Math.abs(days) + 'd overdue</span>'; }
+      else if (days === 0){ endColor = '#DC2626'; badge = ' <span style="color:#DC2626;font-weight:700">⏰ aaj deadline</span>'; }
+      else if (days <= 3){ endColor = '#EA580C'; badge = ' <span style="color:#EA580C;font-weight:700">' + days + 'd baaki</span>'; }
+      else { badge = ' <span style="color:var(--text-3)">' + days + 'd baaki</span>'; }
+    }
+  }
+  var parts = [];
+  if (startTxt) parts.push('<span style="color:var(--text-2)">' + startTxt + '</span>');
+  if (endTxt) parts.push('<span style="color:' + endColor + ';font-weight:600"><i class="ti ti-flag" style="font-size:12px"></i> ' + endTxt + '</span>' + badge);
+  return '<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;font-size:11.5px;margin-bottom:10px;padding:6px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)">' + parts.join('<span style="color:var(--text-3)">→</span>') + '</div>';
+}
+
 function renderCampaigns() {
   var list = $('campaignsList');
   if (state.campaigns.length === 0) {
@@ -6785,6 +6817,7 @@ function renderCampaigns() {
               '<div class="campaign-card-tags">' +
                 activeTag + completedTag + orderTag + mediaTag + brandingTag + salesTag + manualTag +
               '</div>' +
+              campaignDateLine(c, isCompleted) +
               '<div class="campaign-card-stats">' +
                 '<div class="mini-stat"><div class="label">Order (veh)</div><div class="value" data-campaign-target="' + escapeHtml(c.key) + '">' + (c.target_count || 100) + '</div></div>' +
                 '<div class="mini-stat"><div class="label">Target Photos</div><div class="value" data-campaign-photos="' + escapeHtml(c.key) + '">—</div></div>' +
