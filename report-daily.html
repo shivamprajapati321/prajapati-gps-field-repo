@@ -171,6 +171,14 @@
     .summary-cards{grid-template-columns:1fr}
     .hero h1{font-size:22px}
   }
+  /* Location search dropdown */
+  .loc-drop{position:absolute;top:100%;left:0;right:0;z-index:60;background:#fff;border:1px solid var(--line,#E2E8F0);border-radius:10px;box-shadow:0 8px 24px rgba(11,25,87,.14);max-height:260px;overflow:auto;display:none;margin-top:4px}
+  .loc-drop.open{display:block}
+  .loc-drop .sd-opt{padding:10px 13px;cursor:pointer;font-size:13px;border-bottom:1px solid #F1F5F9;color:var(--text,#0F172A)}
+  .loc-drop .sd-opt:hover{background:#EFF6FF}
+  .loc-drop .sd-label{padding:10px 13px;color:#94A3B8;font-size:12.5px}
+  .loc-drop .sd-manual{padding:10px 13px;cursor:pointer;font-size:12.5px;font-weight:600;color:#4338CA;background:#F8FAFF;border-top:1px solid #E2E8F0}
+  .loc-drop .sd-manual:hover{background:#EEF2FF}
 </style>
 <!-- ═══ RLS LIBRARIES (Phase 3) ═══ -->
 <script src="/lib/wati-client.js"></script>
@@ -360,7 +368,10 @@
     <div class="form-grid full">
       <div class="form-field">
         <label>Location <span class="req">*</span></label>
-        <input type="text" id="editLocation" class="form-input" placeholder="Full location address">
+        <div style="position:relative;">
+          <input type="text" id="editLocation" class="form-input" placeholder="City / area / village type karo… (Google search)" autocomplete="off" oninput="searchLoc(this.value)" onfocus="searchLoc(this.value)">
+          <div id="loc-drop" class="loc-drop"></div>
+        </div>
       </div>
     </div>
     
@@ -697,6 +708,111 @@ function editEntry(id) {
   document.getElementById('editModal').classList.add('active');
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// Location search — Google Places (primary) + Photon + Nominatim fallback.
+// Areas, city, suburb, village — sab type ke results. India priority.
+// ═══════════════════════════════════════════════════════════════════
+var locTimer = null;
+function fetchTimeout(url, opts, ms){
+  return new Promise(function(res, rej){
+    var c = new AbortController();
+    var t = setTimeout(function(){ c.abort(); rej(new Error('timeout')); }, ms || 3500);
+    fetch(url, Object.assign({}, opts, { signal: c.signal }))
+      .then(function(r){ clearTimeout(t); res(r); })
+      .catch(function(e){ clearTimeout(t); rej(e); });
+  });
+}
+function searchLoc(q){
+  var drop = document.getElementById('loc-drop');
+  if(!q || q.length < 2){ drop.classList.remove('open'); return; }
+  clearTimeout(locTimer);
+  locTimer = setTimeout(function(){ runLocSearch(q); }, 240);
+}
+async function runLocSearch(q){
+  var drop = document.getElementById('loc-drop');
+  drop.classList.add('open');
+  drop.innerHTML = '<div class="sd-label">Searching "' + esc(q) + '"…</div>';
+  var results = [];
+  // Saved locations first
+  try{
+    var sUrl = CONFIG.url + '/rest/v1/prajapati_saved_locations?or=(name.ilike.*' + encodeURIComponent(q) + '*,city.ilike.*' + encodeURIComponent(q) + '*)&order=use_count.desc&limit=4';
+    var sRes = await fetchTimeout(sUrl, { headers:{ apikey:CONFIG.key, Authorization:'Bearer '+CONFIG.key } }, 2500);
+    if(sRes.ok){ var sd = await sRes.json(); results = (sd||[]).map(function(s){ return { label:[s.name,s.city].filter(Boolean).join(', '), saved:true }; }); }
+  }catch(e){}
+  // Google Places (primary — areas, city, village, suburb; India priority)
+  try{
+    var gRes = await fetchTimeout('https://places.googleapis.com/v1/places:searchText', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'X-Goog-Api-Key':'AIzaSyDAWJsoxdpqznMDAE5YqbJ17t6g3Bqc15c', 'X-Goog-FieldMask':'places.displayName,places.formattedAddress,places.addressComponents' },
+      body: JSON.stringify({ textQuery:q, regionCode:'IN', languageCode:'en', maxResultCount:6 })
+    }, 3500);
+    if(gRes.ok){
+      var gd = await gRes.json(); var gplaces = (gd && gd.places) || [];
+      gplaces.forEach(function(pl){
+        var city='', st='', adm2='';
+        (pl.addressComponents||[]).forEach(function(c){
+          var t=c.types||[], v=c.longText||c.shortText||'';
+          if(t.indexOf('locality')!==-1) city=v;
+          if(t.indexOf('administrative_area_level_2')!==-1) adm2=v;
+          if(t.indexOf('administrative_area_level_1')!==-1) st=v;
+        });
+        if(!city) city=adm2;
+        var nm0 = (pl.displayName && pl.displayName.text) || (pl.formattedAddress||'').split(',')[0];
+        var nm = [nm0, city&&city!==nm0?city:'', st].filter(Boolean).join(', ');
+        if(nm) results.push({ label:nm });
+      });
+    }
+  }catch(e){}
+  // Photon fallback
+  if(results.filter(function(r){ return !r.saved; }).length===0){
+    try{
+      var pUrl = 'https://photon.komoot.io/api/?q=' + encodeURIComponent(q) + '&limit=6&lang=en&lat=19.7&lon=75.7';
+      var pRes = await fetchTimeout(pUrl, { headers:{ 'Accept-Language':'en' } }, 3000);
+      if(pRes.ok){
+        var pd = await pRes.json(); var feats = (pd && pd.features) || [];
+        var inIndia = feats.filter(function(f){ return f.properties && (f.properties.countrycode==='IN'||f.properties.country==='India'); });
+        (inIndia.length?inIndia:feats).forEach(function(f){ var p=f.properties||{}; var nm=[p.name,p.city,p.state].filter(Boolean).join(', '); if(nm) results.push({ label:nm }); });
+      }
+    }catch(e){}
+  }
+  // Nominatim fallback
+  if(results.length===0){
+    try{
+      var nUrl = 'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) + '&format=json&addressdetails=1&limit=5&countrycodes=in';
+      var nRes = await fetchTimeout(nUrl, { headers:{ 'Accept-Language':'en' } }, 3500);
+      if(nRes.ok){ var nd = await nRes.json(); (nd||[]).forEach(function(r){ var a=r.address||{}; var nm=[a.suburb||a.neighbourhood||a.village||a.town||a.city,a.state].filter(Boolean).join(', '); if(nm) results.push({ label:nm }); }); }
+    }catch(e){}
+  }
+  var html = '';
+  if(results.length){
+    html += results.map(function(r){ return '<div class="sd-opt" onclick="pickLoc(\'' + esc(r.label).replace(/'/g,"\\'") + '\',' + (r.saved?'true':'false') + ')">' + (r.saved?'⭐ ':'📍 ') + esc(r.label) + '</div>'; }).join('');
+  } else {
+    html += '<div class="sd-label">Map pe nahi mila</div>';
+  }
+  html += '<div class="sd-manual" onclick="useManualLoc(\'' + esc(q).replace(/'/g,"\\'") + '\')">✍️ "' + esc(q) + '" manually use karo</div>';
+  drop.innerHTML = html;
+}
+function pickLoc(label, fromSaved){
+  document.getElementById('editLocation').value = label;
+  document.getElementById('loc-drop').classList.remove('open');
+  if(!fromSaved) saveLocation(label);
+}
+function useManualLoc(q){
+  document.getElementById('editLocation').value = q;
+  document.getElementById('loc-drop').classList.remove('open');
+  saveLocation(q);
+}
+async function saveLocation(label){
+  try{
+    var parts = label.split(',').map(function(s){ return s.trim(); });
+    await api('/rest/v1/prajapati_saved_locations', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Prefer':'return=minimal' },
+      body: JSON.stringify({ name:parts[0]||label, city:parts[1]||parts[0]||label, state:'Maharashtra', source:'report-daily', created_by:(state.admin&&state.admin.phone)||null })
+    });
+  }catch(e){ /* duplicate/ok */ }
+}
+
 function recalcEditTotal() {
   const qty = parseFloat(document.getElementById('editQty').value) || 0;
   const rate = parseFloat(document.getElementById('editRate').value) || 0;
@@ -849,6 +965,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // Close on Escape
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && document.getElementById('editModal').classList.contains('active')) closeEditModal();
+  });
+  // Location dropdown ko bahar click pe band karo
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#editLocation') && !e.target.closest('#loc-drop')) {
+      var d = document.getElementById('loc-drop');
+      if (d) d.classList.remove('open');
+    }
   });
 });
 </script>
