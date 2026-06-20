@@ -323,11 +323,19 @@
       <button class="modal-close" onclick="closeEditModal()">✕</button>
     </div>
     
-    <div style="background:var(--canvas);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:16px;">
-      <div style="font-size:10.5px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Campaign</div>
-      <div style="font-size:14px;font-weight:800;color:var(--ink-900);" id="editCampaign">—</div>
-      <div style="font-size:10.5px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-top:10px;margin-bottom:4px;">Member</div>
-      <div style="font-size:13px;font-weight:700;color:var(--ink-900);" id="editMember">—</div>
+    <div class="form-grid">
+      <div class="form-field">
+        <label>Campaign <span class="req">*</span></label>
+        <div class="select-wrap">
+          <select id="editCampaignSel" class="form-input"></select>
+        </div>
+      </div>
+      <div class="form-field">
+        <label>Member <span class="req">*</span></label>
+        <div class="select-wrap">
+          <select id="editMemberSel" class="form-input"></select>
+        </div>
+      </div>
     </div>
     
     <div class="form-grid">
@@ -385,7 +393,7 @@
 "use strict";
 
 const CONFIG = { url: 'https://fpbktcgtspqsqpaytslv.supabase.co', key: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j' };
-const state = { admin: null, entries: [], from: '', to: '', editing: null };
+const state = { admin: null, entries: [], from: '', to: '', editing: null, campaigns: [], members: [] };
 
 function esc(s) { if (s == null) return ''; return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function inr(n) { if (!n || isNaN(n)) return '₹0'; return '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 }); }
@@ -496,8 +504,15 @@ async function loadData() {
   document.getElementById('tableBody').innerHTML = '<div class="loading"><div class="spinner"></div><div style="margin-top:14px;font-weight:600;">Loading entries...</div></div>';
   
   try {
-    const entries = await api(`/rest/v1/execution_daily_log?log_date=gte.${from}&log_date=lte.${to}&select=*&order=log_date.desc,created_at.desc`);
+    const [entries, campaigns, members] = await Promise.all([
+      api(`/rest/v1/execution_daily_log?log_date=gte.${from}&log_date=lte.${to}&select=*&order=log_date.desc,created_at.desc`),
+      // campaigns + members sirf ek baar load (edit dropdowns ke liye)
+      state.campaigns.length ? Promise.resolve(state.campaigns) : api('/rest/v1/trial_campaigns?select=*&order=created_at.desc&limit=2000'),
+      state.members.length ? Promise.resolve(state.members) : api('/rest/v1/trial_team_members?active=eq.true&select=phone,name,role&order=name')
+    ]);
     state.entries = entries || [];
+    state.campaigns = campaigns || [];
+    state.members = members || [];
     renderTable();
     updateSummary();
   } catch (err) {
@@ -637,9 +652,42 @@ function editEntry(id) {
   const e = state.entries.find(x => x.id === id);
   if (!e) return;
   state.editing = e;
-  
-  document.getElementById('editCampaign').textContent = e.work_name || e.campaign_key;
-  document.getElementById('editMember').textContent = e.member_name + ' · ' + e.member_phone;
+
+  // Campaign dropdown populate (current value + all campaigns)
+  var campSel = document.getElementById('editCampaignSel');
+  var campKey = e.campaign_key || '';
+  var campName = e.work_name || e.campaign_key || '';
+  var campOpts = '';
+  var seenCamp = false;
+  state.campaigns.forEach(function(c){
+    var key = c.campaign_key || c.key || c.id;
+    var name = c.campaign_name || c.name || c.work_name || key;
+    if (!key) return;
+    if (String(key) === String(campKey)) seenCamp = true;
+    campOpts += '<option value="'+esc(key)+'"'+(String(key)===String(campKey)?' selected':'')+'>'+esc(name)+'</option>';
+  });
+  // Agar current campaign list me nahi mila, top par add karo (taaki value preserve rahe)
+  if (!seenCamp && campKey) {
+    campOpts = '<option value="'+esc(campKey)+'" selected>'+esc(campName)+' (current)</option>' + campOpts;
+  }
+  campSel.innerHTML = campOpts;
+
+  // Member dropdown populate
+  var memSel = document.getElementById('editMemberSel');
+  var memPhone = e.member_phone || '';
+  var memName = e.member_name || '';
+  var memOpts = '';
+  var seenMem = false;
+  state.members.forEach(function(m){
+    if (!m.phone) return;
+    if (String(m.phone) === String(memPhone)) seenMem = true;
+    memOpts += '<option value="'+esc(m.phone)+'" data-name="'+esc(m.name||m.phone)+'"'+(String(m.phone)===String(memPhone)?' selected':'')+'>'+esc(m.name||m.phone)+' · '+esc(m.phone)+'</option>';
+  });
+  if (!seenMem && memPhone) {
+    memOpts = '<option value="'+esc(memPhone)+'" data-name="'+esc(memName)+'" selected>'+esc(memName)+' · '+esc(memPhone)+' (current)</option>' + memOpts;
+  }
+  memSel.innerHTML = memOpts;
+
   document.getElementById('editMedia').value = e.media_type;
   document.getElementById('editLocation').value = e.location || '';
   document.getElementById('editCity').value = e.city || '';
@@ -668,7 +716,18 @@ async function saveEdit() {
   const city = document.getElementById('editCity').value.trim();
   const qty = parseFloat(document.getElementById('editQty').value);
   const rate = parseFloat(document.getElementById('editRate').value);
+
+  // Campaign + Member (ab editable)
+  var campSel = document.getElementById('editCampaignSel');
+  var memSel = document.getElementById('editMemberSel');
+  var campKey = campSel.value;
+  var campName = campSel.options[campSel.selectedIndex] ? campSel.options[campSel.selectedIndex].textContent.replace(/ \(current\)$/,'') : '';
+  var memPhone = memSel.value;
+  var memOpt = memSel.options[memSel.selectedIndex];
+  var memName = memOpt ? (memOpt.getAttribute('data-name') || memOpt.textContent.split(' · ')[0]) : '';
   
+  if (!campKey) { showToast('Campaign select karo', 'error'); return; }
+  if (!memPhone) { showToast('Member select karo', 'error'); return; }
   if (!location) { showToast('Location daalo', 'error'); return; }
   if (!qty || qty <= 0) { showToast('Valid quantity daalo', 'error'); return; }
   if (!rate || rate <= 0) { showToast('Valid rate daalo', 'error'); return; }
@@ -682,6 +741,10 @@ async function saveEdit() {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
       body: JSON.stringify({
+        campaign_key: campKey,
+        work_name: campName,
+        member_phone: memPhone,
+        member_name: memName,
         media_type: media,
         location: location,
         city: city || null,
