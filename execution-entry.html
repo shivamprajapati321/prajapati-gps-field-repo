@@ -671,6 +671,14 @@
     align-items: end;
   }
   
+  /* Remark row (optional, full width) */
+  .entry-remark-row {
+    display: flex;
+    margin-top: 12px;
+    padding-left: 36px;
+    padding-right: 40px;
+  }
+  
   .entry-field {
     display: flex;
     flex-direction: column;
@@ -832,11 +840,19 @@
       padding-left: 32px;
       padding-right: 36px;
     }
+    .entry-remark-row {
+      padding-left: 32px;
+      padding-right: 36px;
+    }
   }
   @media (max-width: 768px) {
     .entry-top-row,
     .entry-bottom-row {
       grid-template-columns: 1fr;
+      padding-left: 14px;
+      padding-right: 14px;
+    }
+    .entry-remark-row {
       padding-left: 14px;
       padding-right: 14px;
     }
@@ -1772,7 +1788,8 @@ function createEmptyRow() {
     location: '',
     locationData: null,
     qty: '',
-    rate: ''
+    rate: '',
+    remark: ''
   };
 }
 
@@ -1805,7 +1822,8 @@ function duplicateLast() {
     location: '',
     locationData: null,
     qty: '',
-    rate: last.rate
+    rate: last.rate,
+    remark: ''
   });
   renderTable();
   showToast('Last row duplicated (location + qty empty)', 'success');
@@ -1965,6 +1983,17 @@ function renderRow(r, i) {
                  id="total_${i}">
         </div>
       </div>
+      
+      <!-- REMARK ROW (optional) -->
+      <div class="entry-remark-row">
+        <div class="entry-field" style="flex:1;">
+          <label>📝 Remark <span class="hint" style="font-weight:normal;opacity:.7;">(optional)</span></label>
+          <input class="row-input" 
+                 value="${esc(r.remark || '')}" 
+                 placeholder="Koi note / remark... (optional)"
+                 oninput="updateText(${i}, 'remark', this.value)">
+        </div>
+      </div>
     </div>
   `;
 }
@@ -2059,6 +2088,11 @@ function updateNumber(idx, field, value) {
   const totalInput = document.getElementById(`total_${idx}`);
   if (totalInput) totalInput.value = inr(total);
   updateStats();
+  saveDraftSilent();
+}
+
+function updateText(idx, field, value) {
+  state.rows[idx][field] = value;
   saveDraftSilent();
 }
 
@@ -2299,6 +2333,7 @@ async function saveAll() {
     total_amount: parseFloat(r.qty) * parseFloat(r.rate),
     source: 'bulk',
     created_by: state.admin.phone,
+    remark: (r.remark && r.remark.trim()) ? r.remark.trim() : null,
     notes: r.locationData && r.locationData.lat ? `lat:${r.locationData.lat},lng:${r.locationData.lng}` : null
   }));
   
