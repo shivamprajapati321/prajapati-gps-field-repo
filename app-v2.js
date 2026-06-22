@@ -6,7 +6,7 @@
 //        + Strong PWA install + Aggressive auto-update
 // ═════════════════════════════════════════════════════════════════
 
-var APP_VERSION = 'v2.0.0';
+var APP_VERSION = 'v2.0.2';
 var BUILD_DATE = '2026-06-22';
 
 var CONFIG = {
@@ -1116,7 +1116,7 @@ window.startCapture = function(){
       if (existing){
         ensurePhotoFolder().then(afterSetup);
       } else {
-        if (confirm('First-time setup:\n\nPhone gallery mein photos save karne ke liye ek folder pick karo. (Recommend: Pictures folder)\n\nYeh ek hi baar hoga, baad mein silent save hoga.\n\nProceed?')){
+        if (confirm('Ek baar ka setup:\n\nPhotos phone gallery mein bhi save karne ke liye ek folder choose karo (Pictures recommend).\n\nProceed?')){
           pickPhotoFolder().then(afterSetup);
         } else { _photoFolderState = 'denied'; afterSetup(); }
       }

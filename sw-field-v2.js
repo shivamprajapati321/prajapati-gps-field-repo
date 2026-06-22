@@ -6,7 +6,7 @@
 // AUTO-UPDATE: naya version deploy hote hi app khud update (no reinstall).
 // ════════════════════════════════════════════════════════════════════
 
-const VERSION = 'field-v2.0.0-20260622';
+const VERSION = 'field-v2.0.2-20260622';
 const CACHE_NAME = 'prajapati-field-v2-' + VERSION;
 
 const FIELD_FILES = [

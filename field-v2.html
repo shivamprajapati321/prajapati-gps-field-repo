@@ -207,15 +207,13 @@ button,input{font-family:inherit}input{font-size:16px}
 .install-bar .ib-btn{padding:8px 14px;font-size:12px;font-weight:700;border-radius:8px;border:none;cursor:pointer;font-family:inherit}
 .install-bar .ib-btn.primary{background:var(--p);color:#fff}
 .install-bar .ib-btn.secondary{background:transparent;color:var(--mu);font-size:20px;padding:6px 8px}
-.update-banner{position:fixed;top:max(10px,env(safe-area-inset-top));left:12px;right:12px;background:var(--gd);color:var(--p);padding:10px 14px;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.18);display:none;align-items:center;gap:10px;z-index:201;font-size:12px;font-weight:600}
-.update-banner.show{display:flex}
-.update-banner .ub-icon{font-size:16px}
-.update-banner .ub-text{flex:1}
-.update-banner .ub-btn{background:var(--p);color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer}
 .version-badge{position:fixed;bottom:6px;right:8px;background:rgba(26,41,128,0.85);color:#fff;padding:3px 8px;border-radius:6px;font-size:9px;font-weight:700;z-index:50;font-family:'JetBrains Mono',monospace;pointer-events:none}
 
 /* v2: VEHICLE ENTRY SCREEN — mobile-first PWA polish */
-.ve-wrap{padding:20px 18px 110px;max-width:520px;margin:0 auto}
+/* screen-entry par .scr ka default padding hata do (ve-wrap apna deta hai) */
+#screen-entry{padding:0 !important}
+#screen-entry.active{display:flex !important;flex-direction:column}
+.ve-wrap{padding:20px 18px 120px;max-width:520px;margin:0 auto;width:100%}
 .ve-title{font-size:23px;font-weight:800;color:var(--p);letter-spacing:-.4px;line-height:1.15}
 .ve-sub{font-size:13px;color:var(--mu);margin:4px 0 22px;font-weight:500;line-height:1.4}
 .ve-field{margin-bottom:18px}
@@ -232,12 +230,15 @@ button,input{font-family:inherit}input{font-size:16px}
 .ve-dup-pics{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
 .ve-dup-pic{flex:1;min-width:64px;height:66px;border-radius:10px;background-size:cover;background-position:center;background-color:#f5a623;position:relative;overflow:hidden;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.14);text-decoration:none}
 .ve-dup-pic span{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);color:#fff;font-size:8px;text-align:center;padding:2px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
-/* Footer action bar — FIX: buttons fit properly, no overflow */
-.ve-actions{display:flex;gap:10px;position:fixed;left:0;right:0;bottom:0;padding:14px 18px calc(16px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg) 60%,rgba(244,246,249,.85) 85%,transparent);box-sizing:border-box;z-index:30;max-width:520px;margin:0 auto}
-.ve-actions .btn{width:auto;flex:1 1 0;min-width:0;padding:16px 12px;font-size:15px;font-weight:700;white-space:nowrap}
-.ve-actions .btn-g{flex:0 0 auto;width:auto;padding:16px 20px;background:#fff;color:var(--p);border:2px solid var(--ln)}
+/* Footer action bar — bulletproof fixed at bottom, button ALWAYS visible */
+.ve-actions{display:flex;gap:10px;position:fixed;left:0;right:0;bottom:0;
+  padding:14px 18px calc(16px + env(safe-area-inset-bottom));
+  background:#fff;border-top:1px solid var(--ln);box-sizing:border-box;z-index:90}
+@media(min-width:640px){.ve-actions{max-width:520px;left:50%;transform:translateX(-50%)}}
+.ve-actions .btn{width:auto;flex:1 1 0;min-width:0;padding:16px 12px;font-size:15px;font-weight:700;white-space:nowrap;border-radius:12px}
+.ve-actions .btn-g{flex:0 0 auto;width:auto;padding:16px 18px;background:#fff;color:var(--p);border:2px solid var(--ln)}
 .ve-actions .btn:disabled{background:#dde1ea;color:#a8aec0;box-shadow:none}
-.ve-actions .btn-primary,.ve-actions #ve-next{box-shadow:0 6px 18px rgba(26,41,128,.28)}
+.ve-actions .btn-primary,.ve-actions #ve-next{box-shadow:0 4px 14px rgba(26,41,128,.3)}
 .cap-veh{background:var(--p);color:#fff;padding:11px 14px;font-size:13px;font-weight:700;text-align:center;font-family:'JetBrains Mono',monospace;letter-spacing:.5px;line-height:1.3}
 </style>
 </head>
@@ -390,16 +391,8 @@ button,input{font-family:inherit}input{font-size:16px}
 <!-- PWA Install Bar -->
 <div class="install-bar" id="install-bar">
 <div class="ib-icon">P</div>
-<div class="ib-text"><div class="ib-title">📲 Install GPS OCR App</div><div class="ib-sub" id="install-sub">Home screen pe app jaisa add karo</div></div>
+<div class="ib-text"><div class="ib-title">📲 Install App</div><div class="ib-sub" id="install-sub">Home screen pe add karo — app jaisa khulega</div></div>
 <div class="ib-actions"><button class="ib-btn secondary" onclick="dismissInstall()">×</button><button class="ib-btn primary" id="install-btn" onclick="triggerInstall()">Install</button></div>
-</div>
-
-<!-- Auto-update Banner -->
-<div class="update-banner" id="update-banner">
-<span class="ub-icon">⬆</span>
-<span class="ub-text">Naya version aaya — abhi update karo</span>
-<button class="ub-btn" onclick="applyUpdate()">Update</button>
-<button class="ub-btn" onclick="dismissUpdate()" style="background:rgba(255,255,255,0.2);padding:6px 8px;" title="Abhi nahi">✕</button>
 </div>
 
 <!-- Camera modal -->
@@ -427,7 +420,7 @@ button,input{font-family:inherit}input{font-size:16px}
 <div class="cam-zoom-indicator" id="cam-zoom-indicator">1.0x</div>
 </div>
 
-<div class="version-badge">v2.0.0</div>
+<div class="version-badge">v2.0.2</div>
 
 <!-- ═══════════════════════════════════════════════════════════════
      CRITICAL: FIELD-ONLY SW REGISTRATION
@@ -463,14 +456,16 @@ button,input{font-family:inherit}input{font-size:16px}
     // Auto-update every 15 sec — naya version deploy hote hi app khud update
     setInterval(function(){ reg.update().catch(function(){}); }, 15000);
 
-    // Naya SW install hote hi turant activate + reload (auto-update, no reinstall)
+    // Naya SW install hote hi AUTOMATIC update — koi banner nahi, worker ko kuch
+    // dikhega nahi. Naya version turant activate + silent reload.
     reg.addEventListener('updatefound', function(){
       var nw = reg.installing;
       if (!nw) return;
       nw.addEventListener('statechange', function(){
         if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-          var ub = document.getElementById('update-banner');
-          if (ub) ub.classList.add('show');
+          // turant naya SW lo (skipWaiting) → controllerchange → silent reload
+          if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          else if (nw) nw.postMessage({ type: 'SKIP_WAITING' });
         }
       });
     });
@@ -558,6 +553,6 @@ button,input{font-family:inherit}input{font-size:16px}
 })();
 </script>
 
-<script src="/app-v2.js?v=2.0.0-2026-06-22"></script>
+<script src="/app-v2.js?v=2.0.2-2026-06-22"></script>
 </body>
 </html>
