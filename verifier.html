@@ -725,6 +725,14 @@ function buildVehicles() {
       };
     }
     var g = groups[groupKey];
+    // v2 FIX: same photo do baar na dikhe — public_url se dedup
+    // (field app ne kabhi double-upload kiya to same url 2 rows banaata hai)
+    var purl = (p.public_url || '').trim();
+    if (purl) {
+      if (!g._seenUrls) g._seenUrls = {};
+      if (g._seenUrls[purl]) { return; }   // already added — skip duplicate
+      g._seenUrls[purl] = true;
+    }
     g.photos.push(p);
     g.totalCount++;
     // v2: owner name + contact carry (jo bhi photo mein ho, pehla non-empty)
