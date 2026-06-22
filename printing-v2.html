@@ -470,26 +470,93 @@ function initApp() {
 // Looks up trial_campaign_designs by design_id and maps:
 //   design_url  → supabase_file_url (operator "Open File")
 //   drive_url   → drive_url        (operator "Open Drive")
+// ── Helper: design row se file fields job par copy karo ──
+function applyDesignFileToJob(j, d) {
+  if (!d) return;
+  if (!j.drive_url && d.drive_url) j.drive_url = d.drive_url;
+  if (!j.supabase_file_url && d.design_url) j.supabase_file_url = d.design_url;
+  if (!j.design_file_name && d.design_file_name) j.design_file_name = d.design_file_name;
+  // Multi-file array (har file: url, name, size, qty)
+  if (!j.design_files && d.design_files) j.design_files = d.design_files;
+}
+
+// ── Helper: design row mein koi printable file hai kya? ──
+function designRowHasFile(d) {
+  if (!d) return false;
+  if (Array.isArray(d.design_files) && d.design_files.some(f => f && f.url)) return true;
+  if (d.design_url) return true;
+  if (d.drive_url) return true;
+  return false;
+}
+
 async function enrichJobFiles(jobs) {
   if (!jobs || !jobs.length) return;
-  // Which jobs are missing file links OR design_files (multi-file)?
-  const need = jobs.filter(j => (!j.drive_url && !j.supabase_file_url && j.design_id) || (j.design_id && !j.design_files));
-  if (!need.length) return;
-  const ids = [...new Set(need.map(j => j.design_id))];
-  try {
-    const rows = await api(`/rest/v1/trial_campaign_designs?id=in.(${ids.join(',')})&select=id,design_url,drive_url,design_file_name,design_files`);
-    const byId = {};
-    (rows || []).forEach(r => { byId[String(r.id)] = r; });
-    jobs.forEach(j => {
-      const d = byId[String(j.design_id)];
-      if (!d) return;
-      if (!j.drive_url && d.drive_url) j.drive_url = d.drive_url;
-      if (!j.supabase_file_url && d.design_url) j.supabase_file_url = d.design_url;
-      if (!j.design_file_name && d.design_file_name) j.design_file_name = d.design_file_name;
-      // Multi-file array (har file: url, name, size, qty)
-      if (!j.design_files && d.design_files) j.design_files = d.design_files;
-    });
-  } catch (e) { /* non-fatal — file just won't show */ }
+
+  // ── PASS 1: design_id se direct resolve (most reliable link) ──
+  const needById = jobs.filter(j =>
+    j.design_id && (
+      (!j.drive_url && !j.supabase_file_url) || !j.design_files
+    )
+  );
+  if (needById.length) {
+    const ids = [...new Set(needById.map(j => j.design_id))];
+    try {
+      const rows = await api(`/rest/v1/trial_campaign_designs?id=in.(${ids.join(',')})&select=id,design_url,drive_url,design_file_name,design_files`);
+      const byId = {};
+      (rows || []).forEach(r => { byId[String(r.id)] = r; });
+      jobs.forEach(j => { if (j.design_id) applyDesignFileToJob(j, byId[String(j.design_id)]); });
+    } catch (e) { /* non-fatal */ }
+  }
+
+  // ── PASS 2: jin jobs ka design_id NULL hai (ya design_id se file na mili),
+  // unke campaign_id se us campaign ke designs dhoondo aur file utha lo.
+  // Yahi woh case hai jahan designer ne file attach ki par assignment
+  // campaign-level tha (design se link nahi tha). ──
+  const needByCampaign = jobs.filter(j =>
+    !jobHasPrintFile(j) && (j.campaign_id || j.campaign_key)
+  );
+  if (needByCampaign.length) {
+    // campaign_id (uuid) ya campaign_key (text) — dono support, defensive.
+    const cids = [...new Set(needByCampaign.map(j => j.campaign_id).filter(Boolean))];
+    const ckeys = [...new Set(needByCampaign.map(j => j.campaign_key).filter(Boolean))];
+    try {
+      const byCampaign = {}; // campaignId/key -> [design rows]
+      const stash = (k, r) => { if (!k) return; (byCampaign[String(k)] = byCampaign[String(k)] || []).push(r); };
+
+      if (cids.length) {
+        const rows = await api(`/rest/v1/trial_campaign_designs?campaign_id=in.(${cids.join(',')})&select=id,campaign_id,design_url,drive_url,design_file_name,design_files,print_status,sort_order`);
+        (rows || []).forEach(r => stash(r.campaign_id, r));
+      }
+      if (ckeys.length) {
+        const rowsK = await api(`/rest/v1/trial_campaign_designs?campaign_key=in.(${ckeys.map(encodeURIComponent).join(',')})&select=id,campaign_key,design_url,drive_url,design_file_name,design_files,print_status,sort_order`);
+        (rowsK || []).forEach(r => stash(r.campaign_key, r));
+      }
+
+      jobs.forEach(j => {
+        if (jobHasPrintFile(j)) return;
+        const pool = byCampaign[String(j.campaign_id)] || byCampaign[String(j.campaign_key)] || [];
+        if (!pool.length) return;
+        // Prefer 'sent'/'printing' designs that actually have a file; else any with a file.
+        const preferred = pool.filter(d => designRowHasFile(d) &&
+          ['sent','printing','completed'].indexOf(String(d.print_status||'').toLowerCase()) !== -1);
+        const candidates = preferred.length ? preferred : pool.filter(designRowHasFile);
+        if (!candidates.length) return;
+        candidates.sort((a,b) => (a.sort_order||0) - (b.sort_order||0));
+        applyDesignFileToJob(j, candidates[0]);
+      });
+    } catch (e) { /* non-fatal */ }
+  }
+}
+
+// ── Job mein actual printing file attached hai kya? ──
+// design_files (multi) ya supabase_file_url ya drive_url — koi ek bhi ho to true.
+function jobHasPrintFile(job) {
+  if (!job) return false;
+  const df = job.design_files;
+  if (Array.isArray(df) && df.some(f => f && f.url)) return true;
+  if (job.supabase_file_url) return true;
+  if (job.drive_url) return true;
+  return false;
 }
 
 // Render file links for a job — multi-file (design_files) ya single (backward-compat)
@@ -558,7 +625,13 @@ async function loadOperatorData() {
   // view sometimes lacks these columns → operator can't download). Enrich any job
   // missing a file link by fetching the design row directly by design_id. ──
   await enrichJobFiles(state.jobs);
-  
+
+  // ── ONLY-WITH-FILE GATE (operator) ──
+  // Operator ko job tabhi dikhe jab printing file attach + resolve ho chuki ho.
+  // Bina file ke (sample/draft/abhi tak design pending) jobs Active list mein
+  // dikhne hi nahi chahiye — kyunki bina file ke print nahi ho sakta.
+  state.jobs = state.jobs.filter(jobHasPrintFile);
+
   // Completed jobs (last 30 days)
   const completedJobs = await api(`/rest/v1/v_operator_completed_jobs?operator_id=eq.${state.user.id}&stage=eq.printing&select=*`);
   state.completedJobs = dedupeJobs(completedJobs || []);
@@ -1323,6 +1396,11 @@ function dedupeJobs(jobs) {
       if (!prev.drive_url && !prev.supabase_file_url && (j.drive_url || j.supabase_file_url)) {
         prev.drive_url = j.drive_url || prev.drive_url;
         prev.supabase_file_url = j.supabase_file_url || prev.supabase_file_url;
+      }
+      // Multi-file array bhi merge karo (jisme files ho woh rakho)
+      if ((!Array.isArray(prev.design_files) || !prev.design_files.length) &&
+          Array.isArray(j.design_files) && j.design_files.length) {
+        prev.design_files = j.design_files;
       }
       if ((j.quantity_done || 0) > (prev.quantity_done || 0)) prev.quantity_done = j.quantity_done;
       return;
