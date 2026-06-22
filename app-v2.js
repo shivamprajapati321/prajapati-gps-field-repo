@@ -1175,7 +1175,7 @@ function enterEntryScreen(){
 
   html += '<div class="ve-actions">';
   html += '<button class="btn btn-g" onclick="cancelEntry()">← Back</button>';
-  html += '<button class="btn" id="ve-next" onclick="entryNext()" disabled>📸 Photos →</button>';
+  html += '<button class="btn btn-primary" id="ve-next" onclick="entryNext()" disabled>📸 Take Photos →</button>';
   html += '</div>';
   html += '</div>';
 
