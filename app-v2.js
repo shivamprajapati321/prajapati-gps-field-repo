@@ -6,7 +6,7 @@
 //        + Strong PWA install + Aggressive auto-update
 // ═════════════════════════════════════════════════════════════════
 
-var APP_VERSION = 'v2.0.2';
+var APP_VERSION = 'v2.0.3';
 var BUILD_DATE = '2026-06-22';
 
 var CONFIG = {
@@ -345,13 +345,12 @@ window.forceRequestGpsPermission = function(){
       if (btn){ btn.disabled = false; btn.textContent = '📍 GPS Allow Karo'; }
       
       var elapsedMs = Date.now() - startedAt;
-      console.warn('[GPS v15.4.5] Permission failed:', err.code, 'elapsed:', elapsedMs + 'ms');
+      console.warn('[GPS v2] Permission failed:', err.code, 'elapsed:', elapsedMs + 'ms');
       
       if (err.code === 1){
         // PERMISSION_DENIED
-        // If failed in <500ms → no prompt was shown → permanently blocked
         if (elapsedMs < 500){
-          console.log('[GPS v15.4.5] Fast-fail detected — permission is BLOCKED, showing recovery');
+          console.log('[GPS v2] Fast-fail — permission BLOCKED, showing recovery');
           toast('⚠️ GPS block hai — recovery steps follow karo', 'warn');
           showBlockedRecovery();
         } else {
@@ -366,7 +365,7 @@ window.forceRequestGpsPermission = function(){
         reportGpsStatus('timeout');
       }
     },
-    { enableHighAccuracy:true, maximumAge:0, timeout:15000 }
+    { enableHighAccuracy:false, maximumAge:60000, timeout:8000 }   // ⚡ fast first lock (cached OK)
   );
 };
 
@@ -876,11 +875,22 @@ function watchGps(){
     reportGpsStatus('not_supported');
     return;
   }
+  // ⚡ TWO-STAGE GPS (fast lock): pehle cached/network location turant lo
+  // (maximumAge allow → instant agar phone ke paas recent location hai),
+  // phir watchPosition se high-accuracy refine background mein.
   navigator.geolocation.getCurrentPosition(
     function(pos){ setGpsFromPosition(pos); reportGpsStatus('granted'); },
-    function(err){ handleGpsError(err); },
-    { enableHighAccuracy:true, maximumAge:0, timeout:8000 }
+    function(err){
+      // Stage 1 fail (no cached) → turant high-accuracy try, taaki fresh mile
+      navigator.geolocation.getCurrentPosition(
+        function(pos){ setGpsFromPosition(pos); reportGpsStatus('granted'); },
+        function(err2){ handleGpsError(err2); },
+        { enableHighAccuracy:true, maximumAge:0, timeout:12000 }
+      );
+    },
+    { enableHighAccuracy:false, maximumAge:60000, timeout:4000 }   // Stage 1: fast, cached OK
   );
+  // Background refine — accuracy badhata rahega bina worker ko rok ke
   gpsWatchId = navigator.geolocation.watchPosition(
     function(pos){ setGpsFromPosition(pos); },
     function(err){ handleGpsError(err); },
