@@ -5074,6 +5074,18 @@ function taRenderEditor() {
       '</div>'+
     '</div>'+
     (isAdminRole ? '<div style="background:#FEF4E2;border-left:4px solid #D97706;padding:10px 14px;border-radius:8px;font-size:12px;color:#92500E;margin-bottom:14px;">Owner/Admin ko hamesha sab access milta hai (safety). Checkboxes sirf reference ke liye.</div>' : '')+
+    ((role==='field'||role==='field_worker') ? (
+      '<div style="background:#EEF7FF;border-left:4px solid #1d6fb8;padding:10px 14px;border-radius:8px;margin-bottom:14px;">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">'+
+          '<div><div style="font-size:12px;font-weight:700;color:#1d6fb8;">📸 Field Entry Mode</div>'+
+          '<div style="font-size:11px;color:#5B6480;margin-top:2px;">Photo Only = sirf photo (anpad) · Full Entry = owner/contact/number type kare</div></div>'+
+          '<select id="taEntryMode" onchange="taChangeEntryMode(this.value)" style="padding:7px 10px;border:1px solid #D5DAE9;border-radius:8px;font-size:13px;">'+
+            '<option value="photo_only"'+((m.field_entry_mode!=='full_entry')?' selected':'')+'>📸 Photo Only</option>'+
+            '<option value="full_entry"'+((m.field_entry_mode==='full_entry')?' selected':'')+'>✍️ Full Entry</option>'+
+          '</select>'+
+        '</div>'+
+      '</div>'
+    ) : '')+
     '<div style="margin-bottom:14px;"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#5B6480;margin-bottom:6px;">Quick preset</div>'+
       '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+presetBtns+'</div></div>'+
     '<div style="border-top:1px solid #E6E9F2;padding-top:14px;">'+sectionsHtml+'</div>'+
@@ -5119,6 +5131,11 @@ function taChangeRole(newRole) {
   taRenderEditor();
 }
 
+// v2: field worker entry mode draft (save ke time payload mein jaayega)
+function taChangeEntryMode(mode) {
+  if (taState.selected) taState.selected._entryModeDraft = mode;
+}
+
 function taSave() {
   var m = taState.selected;
   if (!m) return;
@@ -5143,6 +5160,11 @@ function taSave() {
     fullAccess = taState.draft;
   }
   var payload = { role: newRole, module_access: fullAccess };
+  // v2: field worker ke liye entry mode bhi save
+  if (role === 'field' || role === 'field_worker') {
+    var em = document.getElementById('taEntryMode');
+    payload.field_entry_mode = em ? em.value : (m.field_entry_mode || 'photo_only');
+  }
   api('/rest/v1/trial_team_members?id=eq.'+m.id, {
     method:'PATCH',
     headers:{'Content-Type':'application/json', Prefer:'return=minimal'},
@@ -5150,6 +5172,7 @@ function taSave() {
   }).then(function(){
     showToast('✓ Access saved for '+(m.name||'member'), 'success');
     m.role = newRole; m.module_access = fullAccess;
+    if (payload.field_entry_mode) m.field_entry_mode = payload.field_entry_mode;
     taState.draft = Object.assign({}, fullAccess);
     // If editing self, re-apply filter live
     if (String(m.id)===String(state.admin.id)) {
