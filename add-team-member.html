@@ -240,6 +240,23 @@ input,select,textarea{font-family:inherit;outline:none}
             <div class="modules" id="roleInfoModules">—</div>
           </div>
         </div>
+
+        <!-- v2: FIELD ENTRY MODE (sirf field workers ke liye relevant) -->
+        <div class="field" id="entryModeField" style="display:none">
+          <label class="label">📸 Field Entry Mode</label>
+          <div class="role-select-wrap">
+            <select class="select role-select" id="memberEntryMode">
+              <option value="photo_only">Photo Only — sirf photo le (anpad worker)</option>
+              <option value="full_entry">Full Entry — owner/contact/number bhi type kare</option>
+            </select>
+          </div>
+          <div class="role-info" style="display:block;background:var(--info-bg,#eef7ff);border-color:#cfe6fb">
+            <div class="modules" style="color:#1d6fb8">
+              <strong style="color:#1d6fb8">Photo Only:</strong> worker sirf photos leta hai, number/owner verifier daalega.
+              <strong style="color:#1d6fb8">Full Entry:</strong> worker khud owner name + contact + vehicle number type karega + duplicate check.
+            </div>
+          </div>
+        </div>
         
         <div class="callout info">
           <span>ℹ️</span>
@@ -367,6 +384,16 @@ function renderTeamList() {
   document.getElementById('teamList').innerHTML = list.map(m => {
     const initial = (m.name || '?').charAt(0).toUpperCase();
     const roleBadge = (m.role || 'no-role').toLowerCase();
+    const isField = (m.role === 'field' || m.role === 'field_worker');
+    const curMode = (m.field_entry_mode === 'full_entry') ? 'full_entry' : 'photo_only';
+    let modeCtrl = '';
+    if (isField){
+      modeCtrl = `<select class="select role-select" style="max-width:150px;font-size:11px;padding:6px 28px 6px 10px"
+                    onchange="changeEntryMode('${escapeHtml(m.phone)}', this.value, this)">
+                    <option value="photo_only"${curMode==='photo_only'?' selected':''}>📸 Photo Only</option>
+                    <option value="full_entry"${curMode==='full_entry'?' selected':''}>✍️ Full Entry</option>
+                  </select>`;
+    }
     return `
       <div class="team-row">
         <div class="team-avatar">${initial}</div>
@@ -374,14 +401,43 @@ function renderTeamList() {
           <div class="team-name">${escapeHtml(m.name || 'Unnamed')}</div>
           <div class="team-meta">${escapeHtml(m.phone || '—')}${m.city ? ' · ' + escapeHtml(m.city) : ''}</div>
         </div>
+        ${modeCtrl}
         <span class="role-badge ${roleBadge}">${escapeHtml(m.role || 'no role')}</span>
       </div>
     `;
   }).join('');
 }
 
+// v2: existing field worker ka entry mode change (inline, instant save)
+async function changeEntryMode(phone, mode, el){
+  if (el) el.disabled = true;
+  try {
+    await api('/rest/v1/trial_team_members?phone=eq.' + encodeURIComponent(phone), {
+      method: 'PATCH',
+      headers: { 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ field_entry_mode: mode })
+    });
+    // update local state
+    var m = state.team.find(function(x){ return x.phone === phone; });
+    if (m) m.field_entry_mode = mode;
+    var sa = document.getElementById('statusArea');
+    if (sa) sa.innerHTML = '<div class="callout success"><span>✅</span><div>Entry mode updated: ' + (mode === 'full_entry' ? 'Full Entry' : 'Photo Only') + '</div></div>';
+  } catch (e){
+    var sa2 = document.getElementById('statusArea');
+    if (sa2) sa2.innerHTML = '<div class="callout error"><span>⚠️</span><div>Update failed: ' + escapeHtml(e.message || String(e)) + '</div></div>';
+  } finally {
+    if (el) el.disabled = false;
+  }
+}
+
 function updateRoleInfo() {
   const role = document.getElementById('memberRole').value;
+  // v2: entry-mode field sirf field worker roles ke liye dikhao
+  var emField = document.getElementById('entryModeField');
+  if (emField){
+    var isField = (role === 'field' || role === 'field_worker');
+    emField.style.display = isField ? 'block' : 'none';
+  }
   const info = ROLE_INFO[role];
   if (!info) {
     document.getElementById('roleInfo').style.display = 'none';
@@ -411,6 +467,8 @@ async function addMember(thenOpenAccess) {
   const city = document.getElementById('memberCity').value.trim() || null;
   const dept = document.getElementById('memberDept').value.trim() || null;
   const role = document.getElementById('memberRole').value;
+  var entryModeEl = document.getElementById('memberEntryMode');
+  var entryMode = entryModeEl ? entryModeEl.value : 'photo_only';
   
   const statusArea = document.getElementById('statusArea');
   statusArea.innerHTML = '';
@@ -442,6 +500,8 @@ async function addMember(thenOpenAccess) {
     };
     if (city) payload.city = city;
     if (dept) payload.departments = JSON.stringify([dept]);
+    // v2: field workers ke liye entry mode save
+    if (role === 'field' || role === 'field_worker') payload.field_entry_mode = entryMode;
     
     // Use POST with ON CONFLICT logic via Prefer header
     await api('/rest/v1/trial_team_members', {
