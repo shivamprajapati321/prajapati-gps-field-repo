@@ -126,6 +126,7 @@ select.inp{background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='
         <input class="inp" id="inp-mobile" type="tel" inputmode="numeric" placeholder="10 digit number" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)">
       </div>
       <button class="btn btn-gold" onclick="sendLoginOtp()">Send OTP →</button>
+      <button class="btn" id="installBtn" onclick="doInstall()" style="display:none;background:#eef2ff;color:#1a2980;margin-top:10px;box-shadow:none;font-size:13px">📲 App install karo</button>
     </div>
     <!-- Step 2: OTP -->
     <div id="login-step-otp" style="display:none">
@@ -262,7 +263,7 @@ select.inp{background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='
     // STEP 1: Cleanup — koi galat SW jo expense scope pe wrongly claim kar raha ho
     // (live field SW scope "/" hai → woh expense page bhi claim kar leta hai).
     // Apna expense SW register karo APNE scope pe — yeh us page pe priority lega.
-    navigator.serviceWorker.register('/sw-expenses.js?v=1.0.7', { scope: '/expenses-field.html' })
+    navigator.serviceWorker.register('/sw-expenses.js?v=1.0.8', { scope: '/expenses-field.html' })
       .then(function(reg){
         console.log('[Expense PWA] ✅ SW registered, scope:', reg.scope);
         // Update check sirf ek baar shuru mein (frequent check + skipWaiting
@@ -290,6 +291,33 @@ select.inp{background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='
 })();
 </script>
 <script src="/lib/wati-client.js"></script>
-<script src="/expenses-field.js?v=1.0.9-2026-06-23"></script>
+<script>
+// ═══ INSTALL PROMPT + WatiClient load guard ═══
+var _deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', function(e){
+  e.preventDefault();
+  _deferredPrompt = e;
+  var btn = document.getElementById('installBtn');
+  if (btn) btn.style.display = 'inline-block';
+});
+function doInstall(){
+  if (!_deferredPrompt){ toast('Browser menu → "Add to Home Screen" se install karo'); return; }
+  _deferredPrompt.prompt();
+  _deferredPrompt.userChoice.then(function(){ _deferredPrompt = null; var b=document.getElementById('installBtn'); if(b)b.style.display='none'; });
+}
+window.addEventListener('appinstalled', function(){ var b=document.getElementById('installBtn'); if(b)b.style.display='none'; });
+
+// WatiClient load hua ya nahi — agar nahi to user ko clear batao (silent fail na ho)
+window.addEventListener('load', function(){
+  setTimeout(function(){
+    if (typeof WatiClient === 'undefined'){
+      console.error('[Expense] WatiClient load nahi hua — /lib/wati-client.js check karo');
+    } else {
+      console.log('[Expense] ✅ WatiClient ready');
+    }
+  }, 800);
+});
+</script>
+<script src="/expenses-field.js?v=1.0.10-2026-06-23"></script>
 </body>
 </html>
