@@ -2,289 +2,1397 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#1a2980">
-<link rel="manifest" href="/manifest-expenses.json">
-<link rel="apple-touch-icon" href="/icons/expense-192.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="PA Expenses">
-<title>Prajapati Advertising - Expenses</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Expenses · Prajapati Advertising</title>
+<meta name="theme-color" content="#0B1957">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght,ital@9..144,300..900,0..1&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@600;700&display=swap');
-:root{--p:#1a2980;--pd:#0f1c5e;--bg:#f4f6f9;--ln:#e8e8ee;--mu:#666;--ok:#10b981;--dn:#ef4444;--wn:#f59e0b;--gd:#f5b800}
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:#222;min-height:100vh;min-height:100dvh;overscroll-behavior:none}
-button,input,select{font-family:inherit}input,select{font-size:16px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+:root{
+  --navy:#0B1957;--navy-deep:#050B2E;--navy-mid:#1A237E;
+  --gold:#B89B4E;--gold-bright:#D4B45F;--gold-deep:#8B7430;--gold-soft:#F4E4B0;
+  --teal:#26d0ce;
+  --cream:#FAF8F3;--paper:#F7F4EC;--rule:#E5E0D2;
+  --ink-950:#0F172A;--ink-700:#475569;--text-dim:#94A3B8;
+  --success:#047857;--success-bg:#D1FAE5;
+  --warn:#C2410C;--warn-bg:#FED7AA;
+  --danger:#BE123C;--danger-bg:#FECACA;
+  --info:#1E40AF;--info-bg:#DBEAFE;
+}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--cream);color:var(--ink-950);font-size:14px;line-height:1.5;min-height:100vh}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+a{color:inherit;text-decoration:none}
 
-/* Header */
-.header{background:linear-gradient(135deg,var(--p),var(--pd));color:#fff;padding:16px 18px;padding-top:max(16px,env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:50;box-shadow:0 2px 12px rgba(0,0,0,.12)}
-.h-l{display:flex;align-items:center;gap:12px}
-.h-logo{width:36px;height:36px;background:var(--gd);border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--p);font-weight:800;font-size:18px}
-.header b{font-size:15px;display:block}
-.header .sub{font-size:11px;opacity:.8;margin-top:1px}
-.lo-btn{background:rgba(255,255,255,.15);color:#fff;border:none;padding:6px 13px;border-radius:14px;font-size:11px;cursor:pointer;font-weight:600}
+.topbar{background:var(--navy);color:#fff;padding:12px 24px;border-bottom:3px solid var(--gold);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.tb-brand{display:flex;align-items:center;gap:12px}
+.tb-logo{width:34px;height:34px;background:var(--gold);color:var(--navy);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:700;font-size:19px}
+.tb-name{font-size:14px;font-weight:700}
+.tb-tag{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--gold-bright);letter-spacing:0.16em;text-transform:uppercase;margin-top:2px}
+.tb-user{display:flex;align-items:center;gap:9px;padding:4px 12px 4px 4px;background:rgba(255,255,255,0.08);border:1px solid rgba(212,180,95,0.3);border-radius:999px}
+.tb-ava{width:28px;height:28px;border-radius:50%;background:var(--gold);color:var(--navy);display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-style:italic;font-weight:700;font-size:13px}
+.tb-info .name{font-size:12px;font-weight:700;line-height:1.1}
+.tb-info .role{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--gold-bright);letter-spacing:0.12em;text-transform:uppercase}
 
-/* Screens */
-.scr{display:none;padding:18px 16px 110px;max-width:520px;margin:0 auto}
-.scr.active{display:block}
+.main{padding:22px;max-width:1150px;margin:0 auto;padding-bottom:60px}
+.page-head{margin-bottom:18px}
+.page-title{font-family:'Fraunces',serif;font-size:26px;font-weight:600;color:var(--navy);letter-spacing:-0.02em}
+.page-title em{font-style:italic;color:var(--gold-deep)}
+.page-sub{font-size:12.5px;color:var(--text-dim);margin-top:2px}
 
-/* Login */
-#screen-login{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;min-height:100dvh;padding:24px;text-align:center}
-#screen-login .big-logo{width:72px;height:72px;background:var(--gd);border-radius:18px;display:flex;align-items:center;justify-content:center;color:var(--p);font-weight:800;font-size:36px;margin-bottom:20px}
-#screen-login h1{font-size:22px;color:var(--p);margin-bottom:6px}
-#screen-login p{font-size:13px;color:var(--mu);margin-bottom:28px}
-.login-box{width:100%;max-width:340px}
+/* Tabs */
+.tabs{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;border-bottom:1px solid var(--rule);padding-bottom:0}
+.tab{padding:10px 18px;font-size:13.5px;font-weight:600;color:var(--ink-700);border-bottom:2px solid transparent;cursor:pointer;transition:all .15s}
+.tab.active{color:var(--navy);border-bottom-color:var(--gold)}
+.tab:hover{color:var(--navy)}
 
-/* Fields */
-.fld{margin-bottom:15px}
-.fld label{display:block;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--p);margin-bottom:8px;opacity:.75}
-.inp{width:100%;padding:14px 14px;font-size:15px;font-weight:600;border:2px solid var(--ln);border-radius:13px;background:#fff;font-family:inherit;color:var(--p);transition:.15s;-webkit-appearance:none}
-.inp:focus{outline:none;border-color:var(--gd);box-shadow:0 0 0 4px rgba(245,184,0,.14)}
-.inp::placeholder{color:#bcc2d2;font-weight:500}
-select.inp{background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3e%3cpath d='M3 4l3 3 3-3' stroke='%231a2980' stroke-width='1.5' fill='none'/%3e%3c/svg%3e");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+.panel{display:none}
+.panel.active{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 
-/* Buttons */
-.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:16px;background:var(--p);color:#fff;font-weight:700;border-radius:13px;font-size:15px;border:none;cursor:pointer}
-.btn:disabled{background:#dde1ea;color:#a8aec0}
-.btn-gold{background:var(--gd);color:var(--p);box-shadow:0 6px 18px rgba(245,184,0,.32);font-weight:800;font-size:16px}
-.btn-g{background:#fff;color:var(--p);border:2px solid var(--ln)}
+.section{background:#fff;border:1px solid var(--rule);border-radius:12px;margin-bottom:16px;overflow:hidden}
+.section-head{padding:13px 18px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,var(--paper),#fff)}
+.section-title{font-family:'Fraunces',serif;font-size:15px;font-weight:600;color:var(--navy)}
+.section-body{padding:18px}
 
-/* Category grid */
-.cat-lbl{display:block;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--p);margin-bottom:10px;opacity:.75}
-.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.cat-box{background:#fff;border:2px solid var(--ln);border-radius:14px;padding:12px 14px;transition:.15s}
-.cat-box.filled{border-color:var(--gd);background:#fffdf5}
-.cat-box .ct{font-size:12px;font-weight:700;color:var(--p);display:flex;align-items:center;gap:6px;margin-bottom:6px}
-.cat-box .amt-in{width:100%;border:none;background:transparent;font-size:18px;font-weight:800;color:var(--p);font-family:'JetBrains Mono',monospace;outline:none;-webkit-appearance:none}
-.cat-box .amt-in::placeholder{color:#ccd2e0;font-weight:600}
+.row{display:flex;gap:14px;margin-bottom:14px;flex-wrap:wrap}
+.row.three .field{flex:1;min-width:160px}
+.field{flex:1;min-width:180px}
+.label{font-size:11.5px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+.hint{font-weight:500;color:var(--text-dim);text-transform:none;letter-spacing:0}
+.req{color:var(--danger)}
+.input{width:100%;padding:10px 12px;border:1px solid var(--rule);border-radius:8px;font-family:inherit;font-size:14px;background:#fff;outline:none;color:var(--ink-950)}
+.input:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(38,208,206,.12)}
+select.input{cursor:pointer}
+/* Searchable dropdown */
+.sd{position:relative}
+.sd-drop{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:60;background:#fff;border:1px solid var(--teal);border-radius:9px;box-shadow:0 10px 36px rgba(11,25,87,.18);max-height:280px;overflow:auto;display:none}
+.sd-drop.open{display:block}
+.sd-opt{padding:10px 13px;cursor:pointer;border-bottom:1px solid #F3F3F3;font-size:13.5px}
+.sd-opt:hover{background:#F7F8FC}
+.sd-opt .sub{font-size:11px;color:var(--text-dim);font-family:'JetBrains Mono',monospace}
+.sd-label{padding:7px 13px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#8E97B2;background:#FAFBFE;border-bottom:1px solid #EEE}
+.sd-manual{padding:11px 13px;border-top:2px dashed var(--rule);cursor:pointer;color:var(--gold-deep);font-weight:600;font-size:12.5px;background:#FBF6E4}
+.sd-input.chosen{border-color:var(--success);background:#F2FBF6}
 
-.total-card{background:linear-gradient(135deg,var(--p),var(--pd));color:#fff;border-radius:16px;padding:16px 18px;margin:14px 0 16px;display:flex;justify-content:space-between;align-items:center}
-.total-card .tl{font-size:12px;opacity:.85;text-transform:uppercase;letter-spacing:.5px;font-weight:700}
-.total-card .tv{font-size:28px;font-weight:800;font-family:'JetBrains Mono',monospace}
+.btn{padding:10px 18px;border-radius:8px;font-family:inherit;font-weight:600;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:all .15s}
+.btn-gold{background:var(--gold);color:#3a2f12}
+.btn-gold:hover{background:var(--gold-bright)}
+.btn-navy{background:var(--navy);color:#fff}
+.btn-navy:hover{background:var(--navy-mid)}
+.btn-teal{background:var(--teal);color:#04282a}
+.btn-secondary{background:#fff;border:1px solid var(--rule);color:var(--ink-700)}
+.btn-secondary:hover{border-color:var(--gold-deep);color:var(--navy)}
+.btn-sm{padding:6px 12px;font-size:12.5px}
+.btn-danger{background:var(--danger-bg);color:var(--danger)}
 
-.note{background:#eef7ff;border:1px solid #cfe6fb;border-radius:11px;padding:10px 13px;font-size:11.5px;color:#1d6fb8;font-weight:600;margin-bottom:16px;line-height:1.45}
+/* Expense type toggle */
+.etype-wrap{display:flex;gap:10px;margin-bottom:6px}
+.etype{flex:1;border:2px solid var(--rule);border-radius:10px;padding:14px;text-align:center;cursor:pointer;transition:all .15s}
+.etype.active{border-color:var(--gold);background:var(--gold-soft)}
+.etype .ico{font-size:22px}
+.etype .nm{font-weight:700;color:var(--navy);margin-top:4px}
+.etype .ds{font-size:11px;color:var(--text-dim);margin-top:2px}
 
-/* History */
-.hist-title{font-size:12px;font-weight:800;color:var(--p);text-transform:uppercase;letter-spacing:.5px;margin:4px 0 12px;opacity:.7}
-.exp-card{background:#fff;border:1px solid var(--ln);border-radius:14px;padding:13px 15px;margin-bottom:10px}
-.exp-card .er1{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
-.exp-card .ed{font-size:12px;color:var(--mu);font-weight:600}
-.exp-card .ea{font-size:17px;font-weight:800;color:var(--p);font-family:'JetBrains Mono',monospace}
-.exp-card .er2{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.exp-card .ecat{font-size:11px;color:var(--mu);flex:1;min-width:0}
-.exp-card .erem{font-size:11px;color:#999;margin-top:4px;font-style:italic}
-.badge{font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;text-transform:uppercase;letter-spacing:.3px;flex-shrink:0}
-.badge.pending{background:#fef3c7;color:#b45309}
-.badge.approved{background:#dcfce7;color:#15803d}
-.badge.rejected{background:#fee2e2;color:#b91c1c}
-.badge.paid{background:#dbeafe;color:#1d4ed8}
+/* Amount grid */
+.amt-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:680px){.amt-grid{grid-template-columns:repeat(2,1fr)}}
 
-/* Settings */
-.sec-card{background:#fff;border:1px solid var(--ln);border-radius:16px;padding:16px;margin-bottom:14px}
-.sec-card h3{font-size:13px;font-weight:800;color:var(--p);margin-bottom:14px;display:flex;align-items:center;gap:7px}
-.doc-up{display:flex;gap:10px;align-items:center;margin-top:8px}
-.doc-up .up-btn{flex:1;padding:11px;border:2px dashed var(--ln);border-radius:11px;text-align:center;font-size:12px;font-weight:700;color:var(--mu);background:#fafbfd;cursor:pointer}
-.doc-up .up-btn.cam{border-style:solid;border-color:var(--p);color:var(--p);background:#eef1fb}
-.doc-up .up-btn.has{border-color:var(--ok);color:var(--ok);background:#f0fdf4;border-style:solid}
-.doc-up img{width:46px;height:46px;border-radius:9px;object-fit:cover;border:1px solid var(--ln)}
-.priv-note{background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:9px 12px;font-size:11px;color:#9a3412;font-weight:600;margin-bottom:14px;line-height:1.4}
+.total-box{background:linear-gradient(135deg,var(--gold-soft),#fff);border:2px solid var(--gold);border-radius:12px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;margin-top:14px}
+.total-box .pl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--gold-deep)}
+.total-box .pv{font-size:26px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--navy)}
 
-/* Tab bar */
-.tabbar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--ln);display:flex;padding:8px 0 calc(10px + env(safe-area-inset-bottom));z-index:60;max-width:520px;margin:0 auto}
-@media(min-width:540px){.tabbar{left:50%;transform:translateX(-50%)}}
-.tabbar .tb{flex:1;text-align:center;font-size:10.5px;font-weight:700;color:var(--mu);background:none;border:none;cursor:pointer;padding:4px}
-.tabbar .tb.active{color:var(--p)}
-.tabbar .tb .ic{font-size:21px;display:block;margin-bottom:2px}
+/* Pay status toggle */
+.pay-toggle{display:flex;gap:8px}
+.pay-opt{flex:1;border:2px solid var(--rule);border-radius:8px;padding:9px;text-align:center;cursor:pointer;font-weight:600;font-size:13px}
+.pay-opt.active[data-v="unpaid"]{border-color:var(--warn);background:var(--warn-bg);color:var(--warn)}
+.pay-opt.active[data-v="paid"]{border-color:var(--success);background:var(--success-bg);color:var(--success)}
 
-/* Toast + loader */
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:90px;background:#222;color:#fff;padding:12px 20px;border-radius:24px;font-size:13px;font-weight:600;z-index:300;opacity:0;transition:.3s;pointer-events:none;max-width:90%;text-align:center}
+/* List/table */
+.exp-table{width:100%;border-collapse:collapse;font-size:13px}
+.exp-table th{background:var(--paper);color:var(--navy);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:10px 12px;text-align:left;border-bottom:1px solid var(--rule)}
+.exp-table td{padding:10px 12px;border-bottom:1px solid #F1F1F1}
+.exp-table tr:hover td{background:#FBFAF6}
+.tag{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.tag-paid{background:var(--success-bg);color:var(--success)}
+.tag-unpaid{background:var(--warn-bg);color:var(--warn)}
+.tag-camp{background:var(--info-bg);color:var(--info)}
+.tag-int{background:#EDE9FE;color:#7C3AED}
+
+/* Team payment card */
+.pay-card{border:1px solid var(--rule);border-radius:11px;padding:14px 16px;margin-bottom:10px;background:#fff;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.pay-card .pc-name{font-weight:700;color:var(--navy);font-size:14px}
+.pay-card .pc-phone{font-size:12px;color:var(--text-dim);font-family:'JetBrains Mono',monospace}
+.pay-card .pc-detail{font-size:12.5px;color:var(--ink-700);margin-top:6px;line-height:1.6}
+.pay-card .pc-detail b{color:var(--navy)}
+.pay-card .pc-qr{width:56px;height:56px;border-radius:8px;border:1px solid var(--rule);object-fit:cover;cursor:pointer}
+.has-pay{border-left:3px solid var(--success)}
+.no-pay{border-left:3px solid var(--warn)}
+
+/* Summary cards */
+.sum-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+@media(max-width:680px){.sum-cards{grid-template-columns:repeat(2,1fr)}}
+.sum-card{background:#fff;border:1px solid var(--rule);border-radius:11px;padding:14px;border-top:3px solid var(--gold)}
+.sum-card .sv{font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--navy)}
+.sum-card .sl{font-size:10.5px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.4px;margin-top:4px;font-weight:600}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(11,25,87,.5);display:none;align-items:center;justify-content:center;z-index:1000;padding:18px}
+.modal-bg.show{display:flex}
+.modal-box{background:#fff;border-radius:14px;max-width:500px;width:100%;padding:22px;max-height:92vh;overflow:auto}
+.modal-box h3{font-family:'Fraunces',serif;font-size:18px;color:var(--navy);margin-bottom:16px}
+
+.empty{padding:40px;text-align:center;color:var(--text-dim);font-size:13px}
+.cat-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border:1px solid var(--rule);border-radius:999px;font-size:12.5px;margin:0 6px 6px 0;background:#fff}
+.cat-chip button{color:var(--danger);font-size:14px;line-height:1}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:12px 22px;border-radius:10px;font-size:13.5px;font-weight:600;z-index:2000;opacity:0;transition:opacity .2s;box-shadow:0 8px 30px rgba(0,0,0,.25)}
 .toast.show{opacity:1}
-.toast.success{background:var(--ok)}.toast.error{background:var(--dn)}.toast.warn{background:var(--wn)}
-.loader{position:fixed;inset:0;background:rgba(255,255,255,.85);display:none;align-items:center;justify-content:center;flex-direction:column;z-index:400}
-.loader.show{display:flex}
-.spinner{width:42px;height:42px;border:4px solid var(--ln);border-top-color:var(--p);border-radius:50%;animation:spin 1s linear infinite}
+.spinner{width:34px;height:34px;border:3px solid var(--rule);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;margin:40px auto}
 @keyframes spin{to{transform:rotate(360deg)}}
-.loader span{margin-top:12px;font-size:13px;color:var(--mu);font-weight:600}
-.empty{text-align:center;padding:50px 20px;color:var(--mu)}
-.empty .ei{font-size:42px;margin-bottom:12px;opacity:.5}
-.version-badge{position:fixed;bottom:78px;right:10px;background:var(--p);color:#fff;font-size:9px;padding:3px 8px;border-radius:8px;opacity:.6;z-index:55;font-family:monospace}
 </style>
 </head>
 <body>
 
-<!-- LOGIN -->
-<div id="screen-login">
-  <div class="big-logo">₹</div>
-  <h1>My Expenses</h1>
-  <p>Prajapati Advertising · Field Team</p>
-  <div class="login-box">
-    <div class="fld">
-      <label>📱 Mobile Number</label>
-      <input class="inp" id="inp-mobile" type="tel" inputmode="numeric" placeholder="10 digit number" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)">
+<div class="topbar">
+  <div class="tb-brand">
+    <div class="tb-logo">P</div>
+    <div><div class="tb-name">Expense Manager</div><div class="tb-tag">Prajapati Advertising</div></div>
+  </div>
+  <div class="tb-user">
+    <div class="tb-ava" id="tbAva">?</div>
+    <div class="tb-info"><div class="name" id="tbName">User</div><div class="role" id="tbRole">role</div></div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="page-head">
+    <div class="page-title">Expense <em>Manager</em> <span style="font-size:11px;font-weight:600;color:#26d0ce;vertical-align:middle">v1</span></div>
+    <div class="page-sub" id="todayDate">…</div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="entry" onclick="switchTab('entry')">➕ New Expense</div>
+    <div class="tab" data-tab="list" onclick="switchTab('list')">📋 Expense List</div>
+    <div class="tab" data-tab="payments" onclick="switchTab('payments')">💳 Team Payments</div>
+    <div class="tab" data-tab="categories" onclick="switchTab('categories')">🏷️ Categories</div>
+  </div>
+
+  <!-- ════════ TAB: NEW EXPENSE ════════ -->
+  <div class="panel active" id="panel-entry">
+    <div class="section">
+      <div class="section-head"><div class="section-title">Expense Type</div></div>
+      <div class="section-body">
+        <div class="etype-wrap">
+          <div class="etype active" data-et="campaign" onclick="pickType('campaign')">
+            <div class="ico">🚖</div><div class="nm">Campaign Expense</div><div class="ds">Field — food, hotel, transport</div>
+          </div>
+          <div class="etype" data-et="internal" onclick="pickType('internal')">
+            <div class="ico">🏢</div><div class="nm">Internal Expense</div><div class="ds">Office, salary, production…</div>
+          </div>
+        </div>
+      </div>
     </div>
-    <button class="btn btn-gold" onclick="doLogin()">Login →</button>
-  </div>
-</div>
 
-<!-- APP HEADER (hidden until login) -->
-<div class="header" id="appHeader" style="display:none">
-  <div class="h-l"><div class="h-logo">₹</div><div><b>My Expenses</b><span class="sub" id="memName">—</span></div></div>
-  <button class="lo-btn" onclick="doLogout()">Logout</button>
-</div>
+    <!-- CAMPAIGN fields -->
+    <div class="section" id="campaignFields">
+      <div class="section-head"><div class="section-title">Campaign Details</div></div>
+      <div class="section-body">
+        <div class="row">
+          <div class="field">
+            <div class="label">Campaign <span class="req">*</span></div>
+            <div class="sd" id="sd-campaign">
+              <input class="input sd-input" id="sd-campaign-input" placeholder="Search campaign…" autocomplete="off" oninput="sdFilter('campaign')" onfocus="sdFilter('campaign')">
+              <div class="sd-drop" id="sd-campaign-drop"></div>
+            </div>
+          </div>
+          <div class="field">
+            <div class="label">Team Member <span class="hint">Kiske liye</span></div>
+            <div class="sd" id="sd-member">
+              <input class="input sd-input" id="sd-member-input" placeholder="Search member…" autocomplete="off" oninput="sdFilter('member')" onfocus="sdFilter('member')">
+              <div class="sd-drop" id="sd-member-drop"></div>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <div class="label">Location <span class="hint">Type karo — search/manual</span></div>
+            <div class="sd" id="sd-loc">
+              <input class="input sd-input" id="expLocation" placeholder="City / area type karo…" autocomplete="off" oninput="searchLoc(this.value)" onfocus="searchLoc(this.value)">
+              <div class="sd-drop" id="loc-drop"></div>
+            </div>
+          </div>
+          <div class="field">
+            <div class="label">Date <span class="req">*</span></div>
+            <input class="input" type="date" id="expDate">
+          </div>
+        </div>
+        <div class="label" style="margin-top:6px">Expense Heads (₹)</div>
+        <div class="amt-grid">
+          <div class="field"><div class="label" style="font-size:10px">🍽️ Food</div><input class="input" type="number" id="amtFood" value="0" oninput="calcTotal()"></div>
+          <div class="field"><div class="label" style="font-size:10px">🏨 Hotel</div><input class="input" type="number" id="amtHotel" value="0" oninput="calcTotal()"></div>
+          <div class="field"><div class="label" style="font-size:10px">🚗 Transport</div><input class="input" type="number" id="amtTransport" value="0" oninput="calcTotal()"></div>
+          <div class="field"><div class="label" style="font-size:10px">➕ Other</div><input class="input" type="number" id="amtOther" value="0" oninput="calcTotal()"></div>
+        </div>
+        <div class="field" style="margin-top:12px">
+          <div class="label">Other Description <span class="hint">Agar 'Other' bhara</span></div>
+          <input class="input" id="otherDesc" placeholder="e.g. parking, recharge…">
+        </div>
+      </div>
+    </div>
 
-<!-- TAB: ADD -->
-<div id="screen-add" class="scr">
-  <div class="note">💡 Apna kharcha daalo → admin approve karega → phir payment hoga</div>
-  <div class="fld">
-    <label>📋 Kis campaign ka kharcha</label>
-    <select class="inp" id="expCampaign"><option value="">Loading campaigns…</option></select>
-  </div>
-  <div class="fld">
-    <label>📅 Date</label>
-    <input class="inp" id="expDate" type="date">
-  </div>
-  <span class="cat-lbl">💸 Kharcha (jo laga woh daalo)</span>
-  <div class="cat-grid">
-    <div class="cat-box" id="box-food"><div class="ct">🍱 Food</div><input class="amt-in" id="amt-food" type="number" inputmode="numeric" placeholder="0" oninput="recalc()"></div>
-    <div class="cat-box" id="box-auto"><div class="ct">🛺 Auto</div><input class="amt-in" id="amt-auto" type="number" inputmode="numeric" placeholder="0" oninput="recalc()"></div>
-    <div class="cat-box" id="box-hotel"><div class="ct">🏨 Hotel</div><input class="amt-in" id="amt-hotel" type="number" inputmode="numeric" placeholder="0" oninput="recalc()"></div>
-    <div class="cat-box" id="box-bus"><div class="ct">🚌 Bus</div><input class="amt-in" id="amt-bus" type="number" inputmode="numeric" placeholder="0" oninput="recalc()"></div>
-    <div class="cat-box" id="box-other" style="grid-column:1/3"><div class="ct">📦 Other</div><input class="amt-in" id="amt-other" type="number" inputmode="numeric" placeholder="0" oninput="recalc()"></div>
-  </div>
-  <div class="fld" style="margin-top:15px">
-    <label>📝 Remark (optional)</label>
-    <input class="inp" id="expRemark" placeholder="Kuch likhna ho to...">
-  </div>
-  <div class="total-card"><div class="tl">Total</div><div class="tv" id="totalView">₹0</div></div>
-  <button class="btn btn-gold" id="submitExpBtn" onclick="submitExpense()">📤 Submit for Approval</button>
-</div>
+    <!-- INTERNAL fields -->
+    <div class="section" id="internalFields" style="display:none">
+      <div class="section-head"><div class="section-title">Internal Details</div></div>
+      <div class="section-body">
+        <div class="row">
+          <div class="field">
+            <div class="label">Category <span class="req">*</span></div>
+            <select class="input" id="intCategory"><option value="">Select…</option></select>
+          </div>
+          <div class="field">
+            <div class="label">Party / Vendor <span class="hint">Optional</span></div>
+            <input class="input" id="intParty" placeholder="Supplier name">
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <div class="label">Amount (₹) <span class="req">*</span></div>
+            <input class="input" type="number" id="intAmount" value="0" oninput="calcTotal()">
+          </div>
+          <div class="field">
+            <div class="label">Date <span class="req">*</span></div>
+            <input class="input" type="date" id="intDate">
+          </div>
+        </div>
+        <div class="field">
+          <div class="label">Details</div>
+          <input class="input" id="intDetails" placeholder="What was this expense for?">
+        </div>
+      </div>
+    </div>
 
-<!-- TAB: HISTORY -->
-<div id="screen-history" class="scr">
-  <div class="hist-title">Mere submitted expenses</div>
-  <div id="histList"><div class="empty"><div class="ei">📋</div>Loading…</div></div>
-</div>
-
-<!-- TAB: SETTINGS -->
-<div id="screen-settings" class="scr">
-  <div class="priv-note">🔒 Yeh details sirf admin dekh sakta hai — payment ke liye. Ek baar bharo, future mein edit kar sakte ho.</div>
-
-  <div class="sec-card">
-    <h3>🏦 Bank Details</h3>
-    <div class="fld"><label>Account Holder Name</label><input class="inp" id="pf-holder" placeholder="Naam jaisa bank mein hai"></div>
-    <div class="fld"><label>Bank Name</label><input class="inp" id="pf-bank" placeholder="e.g. SBI, HDFC"></div>
-    <div class="fld"><label>Account Number</label><input class="inp" id="pf-acc" inputmode="numeric" placeholder="Account number"></div>
-    <div class="fld"><label>IFSC Code</label><input class="inp" id="pf-ifsc" placeholder="e.g. SBIN0001234" style="text-transform:uppercase"></div>
-  </div>
-
-  <div class="sec-card">
-    <h3>📲 UPI</h3>
-    <div class="fld"><label>UPI ID</label><input class="inp" id="pf-upi" placeholder="e.g. 9999999999@upi"></div>
-    <label style="display:block;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--p);margin-bottom:6px;opacity:.75">UPI Scanner / QR Code</label>
-    <div class="doc-up">
-      <label class="up-btn cam" for="upiqr-cam">📷 Camera</label>
-      <input type="file" id="upiqr-cam" accept="image/*" capture="environment" style="display:none" onchange="pickDoc('upiqr', this)">
-      <label class="up-btn" id="upiqr-up-btn" for="upiqr-file">🖼️ Gallery</label>
-      <input type="file" id="upiqr-file" accept="image/*" style="display:none" onchange="pickDoc('upiqr', this)">
-      <img id="upiqr-prev" style="display:none">
+    <!-- TOTAL + PAYMENT -->
+    <div class="section">
+      <div class="section-head"><div class="section-title">Total & Payment</div></div>
+      <div class="section-body">
+        <div class="total-box">
+          <div class="pl">Total Amount</div>
+          <div class="pv" id="totalAmt">₹0</div>
+        </div>
+        <div class="row" style="margin-top:14px">
+          <div class="field">
+            <div class="label">Payment Status</div>
+            <div class="pay-toggle">
+              <div class="pay-opt active" data-v="unpaid" onclick="pickPay('unpaid')">⏳ Unpaid</div>
+              <div class="pay-opt" data-v="paid" onclick="pickPay('paid')">✓ Paid</div>
+            </div>
+          </div>
+          <div class="field" id="paidViaField" style="display:none">
+            <div class="label">Paid Via</div>
+            <select class="input" id="paidVia"><option value="upi">UPI</option><option value="bank">Bank</option><option value="cash">Cash</option></select>
+          </div>
+        </div>
+        <div class="field" id="receiptField" style="display:none">
+          <div class="label">Receipt <span class="hint">Upload bill/screenshot</span></div>
+          <input class="input" type="file" id="expReceipt" accept="image/*,application/pdf">
+        </div>
+        <div class="field" style="margin-top:4px">
+          <div class="label">Notes</div>
+          <input class="input" id="expNotes" placeholder="Optional remark">
+        </div>
+        <div id="entryStatus" style="margin-top:10px"></div>
+        <button class="btn btn-gold" style="margin-top:12px" id="saveExpBtn" onclick="saveExpense()">💾 Save Expense</button>
+      </div>
     </div>
   </div>
 
-  <div class="sec-card">
-    <h3>🪪 Aadhaar Card</h3>
-    <div class="fld"><label>Aadhaar Number</label><input class="inp" id="pf-aadhaar" inputmode="numeric" placeholder="12 digit" maxlength="12" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,12)"></div>
-    <label style="display:block;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--p);margin-bottom:6px;opacity:.75">Aadhaar Photo</label>
-    <div class="doc-up">
-      <label class="up-btn cam" for="aadhaar-cam">📷 Camera</label>
-      <input type="file" id="aadhaar-cam" accept="image/*" capture="environment" style="display:none" onchange="pickDoc('aadhaar', this)">
-      <label class="up-btn" id="aadhaar-up-btn" for="aadhaar-file">🖼️ Gallery</label>
-      <input type="file" id="aadhaar-file" accept="image/*" style="display:none" onchange="pickDoc('aadhaar', this)">
-      <img id="aadhaar-prev" style="display:none">
+  <!-- ════════ TAB: EXPENSE LIST ════════ -->
+  <div class="panel" id="panel-list">
+    <div class="sum-cards" id="sumCards"></div>
+    <div class="row">
+      <div class="field"><div class="label">Date Range</div>
+        <select class="input" id="fltPreset" onchange="onPresetChange()">
+          <option value="today">Today</option>
+          <option value="yesterday">Yesterday</option>
+          <option value="week">Last 7 days</option>
+          <option value="thisweek">This week</option>
+          <option value="month" selected>This month</option>
+          <option value="last30">Last 30 days</option>
+          <option value="alltime">All time</option>
+          <option value="custom">Custom</option>
+        </select>
+      </div>
+      <div class="field" id="customFrom" style="display:none"><div class="label">From</div><input class="input" type="date" id="fltFrom" onchange="loadExpenses()"></div>
+      <div class="field" id="customTo" style="display:none"><div class="label">To</div><input class="input" type="date" id="fltTo" onchange="loadExpenses()"></div>
+      <div class="field"><div class="label">Type</div><select class="input" id="fltType" onchange="loadExpenses()"><option value="">All</option><option value="campaign">Campaign</option><option value="internal">Internal</option></select></div>
+      <div class="field"><div class="label">Status</div><select class="input" id="fltStatus" onchange="loadExpenses()"><option value="">All</option><option value="paid">Paid</option><option value="unpaid">Unpaid</option></select></div>
+      <div class="field"><div class="label">Approval</div><select class="input" id="fltApproval" onchange="loadExpenses()"><option value="">All</option><option value="pending">Pending Approval</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select></div>
+    </div>
+    <div class="row">
+      <div class="field"><div class="label">Category</div><select class="input" id="fltCategory" onchange="loadExpenses()"><option value="">All categories</option></select></div>
+      <div class="field"><div class="label">Team Member</div><select class="input" id="fltMember" onchange="loadExpenses()"><option value="">All members</option></select></div>
+      <div class="field"><div class="label">Campaign</div><select class="input" id="fltCampaign" onchange="loadExpenses()"><option value="">All campaigns</option></select></div>
+    </div>
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">Expenses</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-teal btn-sm" onclick="exportExpensesExcel()">📊 Excel</button>
+          <button class="btn btn-sm" style="background:#E11D48;color:#fff" onclick="exportExpensesPDF()">📄 PDF</button>
+          <button class="btn btn-sm" style="background:#7C3AED;color:#fff" onclick="exportExpensesJPEG()">🖼️ JPEG</button>
+        </div>
+      </div>
+      <div style="overflow:auto" id="expReportArea"><table class="exp-table" id="expTable"><tbody><tr><td><div class="spinner"></div></td></tr></tbody></table></div>
+      <div id="campBreakdown"></div>
     </div>
   </div>
 
-  <div class="sec-card">
-    <h3>🪪 PAN Card</h3>
-    <div class="fld"><label>PAN Number</label><input class="inp" id="pf-pan" placeholder="e.g. ABCDE1234F" maxlength="10" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase().slice(0,10)"></div>
-    <label style="display:block;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--p);margin-bottom:6px;opacity:.75">PAN Photo</label>
-    <div class="doc-up">
-      <label class="up-btn cam" for="pan-cam">📷 Camera</label>
-      <input type="file" id="pan-cam" accept="image/*" capture="environment" style="display:none" onchange="pickDoc('pan', this)">
-      <label class="up-btn" id="pan-up-btn" for="pan-file">🖼️ Gallery</label>
-      <input type="file" id="pan-file" accept="image/*" style="display:none" onchange="pickDoc('pan', this)">
-      <img id="pan-prev" style="display:none">
+  <!-- ════════ TAB: TEAM PAYMENTS ════════ -->
+  <div class="panel" id="panel-payments">
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">Team Payment Details</div>
+        <button class="btn btn-gold btn-sm" onclick="openPayModal(null)">➕ Add Payment Info</button>
+      </div>
+      <div class="section-body">
+        <div style="position:relative;margin-bottom:14px">
+          <input class="input" id="paySearch" placeholder="🔍 Search member…" oninput="renderPayCards()">
+        </div>
+        <div id="payList"><div class="spinner"></div></div>
+      </div>
     </div>
   </div>
 
-  <button class="btn btn-gold" id="saveProfileBtn" onclick="saveProfile()">💾 Save My Details</button>
+  <!-- ════════ TAB: CATEGORIES ════════ -->
+  <div class="panel" id="panel-categories">
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">Expense Categories</div>
+        <button class="btn btn-gold btn-sm" onclick="openCatModal()">➕ Add Category</button>
+      </div>
+      <div class="section-body">
+        <div class="label">Campaign Heads</div>
+        <div id="catCampaign" style="margin-bottom:18px"></div>
+        <div class="label">Internal Categories</div>
+        <div id="catInternal"></div>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- TAB BAR -->
-<div class="tabbar" id="tabbar" style="display:none">
-  <button class="tb active" id="tab-add" onclick="switchTab('add')"><span class="ic">➕</span>Add</button>
-  <button class="tb" id="tab-history" onclick="switchTab('history')"><span class="ic">📋</span>History</button>
-  <button class="tb" id="tab-settings" onclick="switchTab('settings')"><span class="ic">⚙️</span>Settings</button>
+<!-- PAYMENT INFO MODAL -->
+<div class="modal-bg" id="payModal">
+  <div class="modal-box">
+    <h3 id="payModalTitle">Add Payment Info</h3>
+    <input type="hidden" id="payEditId">
+    <div class="row">
+      <div class="field"><div class="label">Member <span class="req">*</span></div>
+        <select class="input" id="payMember"><option value="">Select member…</option></select>
+      </div>
+    </div>
+    <div class="field"><div class="label">Account Holder Name</div><input class="input" id="payHolder" placeholder="As per bank"></div>
+    <div class="row">
+      <div class="field"><div class="label">UPI ID</div><input class="input" id="payUpi" placeholder="name@okhdfc"></div>
+      <div class="field"><div class="label">Preferred</div><select class="input" id="payPref"><option value="upi">UPI</option><option value="bank">Bank</option></select></div>
+    </div>
+    <div class="row">
+      <div class="field"><div class="label">Bank Account No.</div><input class="input" id="payAcc" placeholder="Account number"></div>
+      <div class="field"><div class="label">IFSC</div><input class="input" id="payIfsc" placeholder="HDFC0001234"></div>
+    </div>
+    <div class="field"><div class="label">Bank Name</div><input class="input" id="payBank" placeholder="HDFC Bank"></div>
+    <div class="field"><div class="label">QR Scanner <span class="hint">Upload image</span></div><input class="input" type="file" id="payQr" accept="image/*"></div>
+    <div id="payQrPreview" style="margin-top:8px"></div>
+    <div id="payStatus" style="margin-top:8px"></div>
+    <div style="display:flex;justify-content:space-between;gap:9px;margin-top:14px">
+      <button class="btn btn-danger btn-sm" id="payDeleteBtn" onclick="deletePayInfo()" style="display:none">🗑️ Delete</button>
+      <div style="display:flex;gap:9px;margin-left:auto">
+        <button class="btn btn-secondary" onclick="closePayModal()">Cancel</button>
+        <button class="btn btn-gold" id="paySaveBtn" onclick="savePayInfo()">💾 Save</button>
+      </div>
+    </div>
+  </div>
 </div>
 
-<div class="version-badge" id="appVer" style="display:none">v1.0.0</div>
+<!-- CATEGORY MODAL -->
+<div class="modal-bg" id="catModal">
+  <div class="modal-box" style="max-width:400px">
+    <h3>Add Category</h3>
+    <div class="field"><div class="label">Name <span class="req">*</span></div><input class="input" id="catName" placeholder="e.g. Diesel"></div>
+    <div class="field"><div class="label">Type</div><select class="input" id="catKind"><option value="internal">Internal</option><option value="campaign">Campaign Head</option></select></div>
+    <div id="catStatus" style="margin-top:8px"></div>
+    <div style="display:flex;justify-content:flex-end;gap:9px;margin-top:14px">
+      <button class="btn btn-secondary" onclick="closeCatModal()">Cancel</button>
+      <button class="btn btn-gold" onclick="saveCategory()">💾 Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Worker Bank/Payment Details Modal -->
+<div class="modal-bg" id="bankModal">
+  <div class="modal-box" style="max-width:440px">
+    <h3>🏦 Payment Details</h3>
+    <div id="bankModalBody" style="font-size:13.5px;color:var(--ink-700)">—</div>
+    <div style="display:flex;justify-content:flex-end;gap:9px;margin-top:18px">
+      <button class="btn btn-secondary" onclick="document.getElementById('bankModal').classList.remove('show')">Close</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
-<div class="loader" id="loader"><div class="spinner"></div><span id="loaderText">Loading…</span></div>
 
+<script src="/lib/access-guard.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
 <script>
-// ═══════════════════════════════════════════════════════════════
-// EXPENSE PWA — ISOLATED service worker registration + scope guard.
-// Goal: yeh app bilkul ALAG install ho. Jis worker ne live field app
-// install kiya hai, usme yeh divert/mix na ho.
-// ═══════════════════════════════════════════════════════════════
+// ── Iframe-safe + login bridge ──
 (function(){
-  if (!('serviceWorker' in navigator)) return;
-
-  window.addEventListener('load', function(){
-    // STEP 1: Cleanup — koi galat SW jo expense scope pe wrongly claim kar raha ho
-    // (live field SW scope "/" hai → woh expense page bhi claim kar leta hai).
-    // Apna expense SW register karo APNE scope pe — yeh us page pe priority lega.
-    navigator.serviceWorker.register('/sw-expenses.js?v=1.0.6', { scope: '/expenses-field.html' })
-      .then(function(reg){
-        console.log('[Expense PWA] ✅ SW registered, scope:', reg.scope);
-        // har 20 sec update check (naya version turant aaye)
-        setInterval(function(){ reg.update().catch(function(){}); }, 20000);
-        reg.addEventListener('updatefound', function(){
-          var nw = reg.installing;
-          if (!nw) return;
-          nw.addEventListener('statechange', function(){
-            if (nw.state === 'installed' && navigator.serviceWorker.controller){
-              if (reg.waiting) reg.waiting.postMessage({ type:'SKIP_WAITING' });
-            }
-          });
-        });
-      })
-      .catch(function(err){ console.warn('[Expense PWA] SW register fail:', err); });
-
-    // STEP 2: Controller change pe silent reload (fresh content)
-    var reloaded = false;
-    navigator.serviceWorker.addEventListener('controllerchange', function(){
-      if (reloaded) return; reloaded = true;
-      window.location.reload();
-    });
-  });
-
-  // STEP 3: SCOPE GUARD — agar koi doosre app ka SW (jaise live field, scope "/")
-  // ne is page ko galti se control kar liya, to bhi ensure karo ki hum
-  // expense page pe hi hain. Installed PWA hamesha apne start_url pe khulega
-  // (manifest scope /expenses-field.html), isliye redirect ka risk nahi.
-  // Yeh sirf safety check hai.
-  if (window.matchMedia('(display-mode: standalone)').matches){
-    // Standalone (installed) mode — confirm sahi page
-    if (location.pathname.indexOf('expenses-field') === -1){
-      location.replace('/expenses-field.html');
+  try {
+    if (window.AccessGuard && AccessGuard.getSession) {
+      var s = AccessGuard.getSession();
+      if (s && s.member && s.member.phone) localStorage.setItem('prajapati_admin_phone', s.member.phone);
     }
-  }
+  } catch(e){}
 })();
+
+var SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
+var SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
+
+if (window.AccessGuard && AccessGuard.protect) {
+  AccessGuard.protect({ module:'expenses', redirectTo:'/login.html', allowedRoles:['owner','admin','sales','hr_sales','sales_admin','operations_manager','ops_manager','data_manager','accountant','finance'] });
+}
+var user = ((window.AccessGuard && AccessGuard.getUser) ? AccessGuard.getUser() : null) || { name:'User', role:'user', phone:'' };
+var db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+var state = { type:'campaign', pay:'unpaid', members:[], campaigns:[], categories:[], expenses:[], payInfo:[],
+              sd:{ campaign:{items:[],value:'',label:''}, member:{items:[],value:'',label:''} }, savedLocs:[] };
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+
+// ═══════════════════════════════════════════════════════════════════
+// makeSearchable() — native <select> ko searchable bana deta hai.
+// value/onchange behaviour same rehta hai; sirf ek search box overlay.
+// Re-callable: agar options badle (e.g. members load hue), dobara call karo.
+// ═══════════════════════════════════════════════════════════════════
+function makeSearchable(selectId, placeholder){
+  var sel = document.getElementById(selectId);
+  if(!sel) return;
+  // Wrapper banao (ek hi baar)
+  var wrap = sel.parentNode.querySelector('.srch-wrap[data-for="'+selectId+'"]');
+  if(!wrap){
+    wrap = document.createElement('div');
+    wrap.className = 'srch-wrap';
+    wrap.setAttribute('data-for', selectId);
+    wrap.style.cssText = 'position:relative';
+    sel.parentNode.insertBefore(wrap, sel);
+    wrap.appendChild(sel);
+    var inp = document.createElement('input');
+    inp.type = 'text';
+    inp.className = 'input srch-input';
+    inp.placeholder = placeholder || 'Search…';
+    inp.autocomplete = 'off';
+    inp.style.cssText = 'cursor:pointer';
+    var drop = document.createElement('div');
+    drop.className = 'srch-drop';
+    drop.style.cssText = 'position:absolute;top:100%;left:0;right:0;z-index:50;background:#fff;border:1px solid var(--line,#E2E8F0);border-radius:10px;box-shadow:0 8px 24px rgba(11,25,87,.12);max-height:240px;overflow:auto;display:none;margin-top:3px';
+    wrap.appendChild(inp);
+    wrap.appendChild(drop);
+    sel.style.display = 'none';
+
+    function syncLabel(){
+      var o = sel.options[sel.selectedIndex];
+      inp.value = o ? o.textContent : '';
+    }
+    function renderOpts(q){
+      q = (q||'').toLowerCase();
+      var html = '';
+      for(var i=0;i<sel.options.length;i++){
+        var o = sel.options[i];
+        var t = o.textContent;
+        if(!q || t.toLowerCase().indexOf(q)>-1){
+          html += '<div class="srch-opt" data-idx="'+i+'" style="padding:9px 13px;cursor:pointer;font-size:13px;border-bottom:1px solid #F1F5F9'+(i===sel.selectedIndex?';background:#EFF6FF;font-weight:600':'')+'">'+esc(t)+'</div>';
+        }
+      }
+      drop.innerHTML = html || '<div style="padding:10px 13px;color:#94A3B8;font-size:12.5px">Koi match nahi</div>';
+    }
+    inp.addEventListener('focus', function(){ inp.value=''; renderOpts(''); drop.style.display='block'; });
+    inp.addEventListener('input', function(){ renderOpts(inp.value); drop.style.display='block'; });
+    inp.addEventListener('blur', function(){ setTimeout(function(){ drop.style.display='none'; syncLabel(); }, 180); });
+    drop.addEventListener('mousedown', function(ev){
+      var opt = ev.target.closest('.srch-opt');
+      if(!opt) return;
+      ev.preventDefault();
+      sel.selectedIndex = parseInt(opt.getAttribute('data-idx'));
+      syncLabel();
+      drop.style.display = 'none';
+      sel.dispatchEvent(new Event('change', {bubbles:true}));
+    });
+    wrap._sync = syncLabel;
+  }
+  // Refresh label (options change hone par)
+  if(wrap._sync) wrap._sync();
+}
+function fmt(n){ return '₹' + Math.round(n||0).toLocaleString('en-IN'); }
+function toast(msg){ var t=$('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(function(){t.classList.remove('show');},2600); }
+function todayIST(){ return new Date(new Date().getTime()+5.5*3600*1000).toISOString().slice(0,10); }
+
+async function api(path, opts){
+  opts = opts || {};
+  var headers = { apikey:SUPABASE_KEY, Authorization:'Bearer '+SUPABASE_KEY, 'Content-Type':'application/json' };
+  if (opts.prefer) headers['Prefer']=opts.prefer;
+  var res = await fetch(SUPABASE_URL+'/rest/v1'+path, { method:opts.method||'GET', headers:headers, body:opts.body?JSON.stringify(opts.body):undefined });
+  if (!res.ok){ var t=await res.text(); throw new Error(t||('HTTP '+res.status)); }
+  var txt = await res.text();
+  return txt ? JSON.parse(txt) : null;
+}
+
+function switchTab(tab){
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.toggle('active', t.getAttribute('data-tab')===tab); });
+  document.querySelectorAll('.panel').forEach(function(p){ p.classList.toggle('active', p.id==='panel-'+tab); });
+  if (tab==='list') loadExpenses();
+  if (tab==='payments') renderPayCards();
+  if (tab==='categories') renderCategories();
+}
+
+function pickType(t){
+  state.type=t;
+  document.querySelectorAll('.etype').forEach(function(e){ e.classList.toggle('active', e.getAttribute('data-et')===t); });
+  $('campaignFields').style.display = t==='campaign'?'':'none';
+  $('internalFields').style.display = t==='internal'?'':'none';
+  calcTotal();
+}
+function pickPay(v){
+  state.pay=v;
+  document.querySelectorAll('.pay-opt').forEach(function(e){ e.classList.toggle('active', e.getAttribute('data-v')===v); });
+  $('receiptField').style.display = v==='paid'?'':'none';
+  $('paidViaField').style.display = v==='paid'?'':'none';
+}
+// ── Searchable dropdown (reusable: campaign, member) ──
+function buildSearchDropdown(key, items, placeholder){
+  state.sd[key] = state.sd[key] || {};
+  state.sd[key].items = items || [];
+  var inp = $('sd-'+key+'-input');
+  if (inp && placeholder) inp.placeholder = placeholder;
+}
+function sdFilter(key){
+  var inp = $('sd-'+key+'-input');
+  var drop = $('sd-'+key+'-drop');
+  var q = (inp.value||'').toLowerCase().trim();
+  var items = (state.sd[key]&&state.sd[key].items)||[];
+  var matches = q ? items.filter(function(it){ return it.label.toLowerCase().indexOf(q)!==-1; }) : items.slice(0,50);
+  if (!matches.length){
+    drop.innerHTML = '<div class="sd-label">Koi match nahi</div>';
+  } else {
+    drop.innerHTML = matches.slice(0,50).map(function(it){
+      return '<div class="sd-opt" onclick="sdPick(\''+key+'\',\''+esc(it.value).replace(/'/g,"\\'")+'\',\''+esc(it.label).replace(/'/g,"\\'")+'\')">'+esc(it.label)+'</div>';
+    }).join('');
+  }
+  drop.classList.add('open');
+}
+function sdPick(key, value, label){
+  state.sd[key].value = value;
+  state.sd[key].label = label;
+  var inp = $('sd-'+key+'-input');
+  inp.value = label; inp.classList.add('chosen');
+  $('sd-'+key+'-drop').classList.remove('open');
+}
+function sdReset(key){
+  if(state.sd[key]){ state.sd[key].value=''; state.sd[key].label=''; }
+  var inp=$('sd-'+key+'-input'); if(inp){ inp.value=''; inp.classList.remove('chosen'); }
+}
+
+// ── Location search (Photon + Nominatim + saved + manual) ──
+function fetchTimeout(url,opts,ms){
+  return new Promise(function(res,rej){ var c=new AbortController(); var t=setTimeout(function(){c.abort();rej(new Error('timeout'));},ms||3500); fetch(url,Object.assign({},opts,{signal:c.signal})).then(function(r){clearTimeout(t);res(r);}).catch(function(e){clearTimeout(t);rej(e);}); });
+}
+var locTimer=null;
+function searchLoc(q){
+  var drop=$('loc-drop');
+  if(!q||q.length<2){ drop.classList.remove('open'); return; }
+  clearTimeout(locTimer);
+  locTimer=setTimeout(function(){ runLocSearch(q); }, 240);
+}
+async function runLocSearch(q){
+  var drop=$('loc-drop'); drop.classList.add('open');
+  drop.innerHTML='<div class="sd-label">Searching "'+esc(q)+'"…</div>';
+  var results=[];
+  // saved first
+  try{
+    var sUrl=SUPABASE_URL+'/rest/v1/prajapati_saved_locations?or=(name.ilike.*'+encodeURIComponent(q)+'*,city.ilike.*'+encodeURIComponent(q)+'*)&order=use_count.desc&limit=4';
+    var sRes=await fetchTimeout(sUrl,{headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY}},2500);
+    if(sRes.ok){ var sd=await sRes.json(); results=(sd||[]).map(function(s){ return { label:[s.name,s.city].filter(Boolean).join(', '), saved:true }; }); }
+  }catch(e){}
+  // Google Places (primary — business + areas, India priority)
+  try{
+    var gRes=await fetchTimeout('https://places.googleapis.com/v1/places:searchText',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Goog-Api-Key':'AIzaSyDAWJsoxdpqznMDAE5YqbJ17t6g3Bqc15c','X-Goog-FieldMask':'places.displayName,places.formattedAddress,places.addressComponents'},
+      body:JSON.stringify({textQuery:q,regionCode:'IN',languageCode:'en',maxResultCount:6})
+    },3500);
+    if(gRes.ok){
+      var gd=await gRes.json(); var gplaces=(gd&&gd.places)||[];
+      gplaces.forEach(function(pl){
+        var city='',st='',adm2='';
+        (pl.addressComponents||[]).forEach(function(c){ var t=c.types||[],v=c.longText||c.shortText||'';
+          if(t.indexOf('locality')!==-1)city=v;
+          if(t.indexOf('administrative_area_level_2')!==-1)adm2=v;
+          if(t.indexOf('administrative_area_level_1')!==-1)st=v; });
+        if(!city)city=adm2;
+        var nm0=(pl.displayName&&pl.displayName.text)||(pl.formattedAddress||'').split(',')[0];
+        var nm=[nm0,city&&city!==nm0?city:'',st].filter(Boolean).join(', ');
+        if(nm)results.push({label:nm});
+      });
+    }
+  }catch(e){}
+  // Photon
+  if(results.filter(function(r){return !r.saved;}).length===0){
+  try{
+    var pUrl='https://photon.komoot.io/api/?q='+encodeURIComponent(q)+'&limit=6&lang=en&lat=19.7&lon=75.7';
+    var pRes=await fetchTimeout(pUrl,{headers:{'Accept-Language':'en'}},3000);
+    if(pRes.ok){
+      var pd=await pRes.json(); var feats=(pd&&pd.features)||[];
+      var inIndia=feats.filter(function(f){return f.properties&&(f.properties.countrycode==='IN'||f.properties.country==='India');});
+      (inIndia.length?inIndia:feats).forEach(function(f){ var p=f.properties||{}; var nm=[p.name,p.city,p.state].filter(Boolean).join(', '); if(nm) results.push({label:nm}); });
+    }
+  }catch(e){}
+  }
+  // Nominatim fallback
+  if(results.length===0){
+    try{
+      var nUrl='https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(q)+'&format=json&addressdetails=1&limit=5&countrycodes=in';
+      var nRes=await fetchTimeout(nUrl,{headers:{'Accept-Language':'en'}},3500);
+      if(nRes.ok){ var nd=await nRes.json(); (nd||[]).forEach(function(r){ var a=r.address||{}; var nm=[a.suburb||a.neighbourhood||a.village||a.town||a.city,a.state].filter(Boolean).join(', '); if(nm)results.push({label:nm}); }); }
+    }catch(e){}
+  }
+  var html='';
+  if(results.length){
+    html += results.map(function(r){ return '<div class="sd-opt" onclick="pickLoc(\''+esc(r.label).replace(/'/g,"\\'")+'\','+(r.saved?'true':'false')+')">'+(r.saved?'⭐ ':'📍 ')+esc(r.label)+'</div>'; }).join('');
+  } else {
+    html += '<div class="sd-label">Map pe nahi mila</div>';
+  }
+  html += '<div class="sd-manual" onclick="useManualLoc(\''+esc(q).replace(/'/g,"\\'")+'\')">✍️ "'+esc(q)+'" manually use karo</div>';
+  drop.innerHTML=html;
+}
+function pickLoc(label, fromSaved){
+  $('expLocation').value=label;
+  $('loc-drop').classList.remove('open');
+  if(!fromSaved) saveLocation(label); // save new picks for future
+}
+function useManualLoc(q){
+  $('expLocation').value=q;
+  $('loc-drop').classList.remove('open');
+  saveLocation(q);
+}
+async function saveLocation(label){
+  try{
+    var parts=label.split(',').map(function(s){return s.trim();});
+    await api('/prajapati_saved_locations',{method:'POST',body:{name:parts[0]||label,city:parts[1]||parts[0]||label,state:'Maharashtra',source:'expense',created_by:user.phone||null}});
+  }catch(e){ /* duplicate/ok */ }
+}
+
+function calcTotal(){
+  var total=0;
+  if (state.type==='campaign'){
+    total = (+$('amtFood').value||0)+(+$('amtHotel').value||0)+(+$('amtTransport').value||0)+(+$('amtOther').value||0);
+  } else {
+    total = (+$('intAmount').value||0);
+  }
+  $('totalAmt').textContent = fmt(total);
+  return total;
+}
+
+async function init(){
+  $('tbAva').textContent = (user.name||'?').charAt(0).toUpperCase();
+  $('tbName').textContent = user.name||'User';
+  $('tbRole').textContent = (user.role||'user').replace(/_/g,' ');
+  $('todayDate').textContent = new Date().toLocaleDateString('en-IN',{weekday:'long',day:'2-digit',month:'long',year:'numeric',timeZone:'Asia/Kolkata'});
+  $('expDate').value = todayIST();
+  $('intDate').value = todayIST();
+  $('fltFrom').value = todayIST().slice(0,8)+'01';
+  $('fltTo').value = todayIST();
+  await checkApproverMode();   // approver hai to UI lock karo
+  await Promise.all([loadMembers(), loadCampaigns(), loadCategories(), loadPayInfo()]);
+  populateReportFilters();
+  onPresetChange();
+}
+
+// ════ APPROVER MODE ════
+// Agar member is_expense_approver hai (aur full admin nahi), to UI lock:
+// sirf pending list + approve/reject. Baaki sab (payments, campaign-wise,
+// summary, paid, new-entry, excel/pdf) hide.
+var IS_APPROVER_ONLY = false;
+async function checkApproverMode(){
+  var isFullAdmin = ['owner','admin','accountant','finance'].indexOf((user.role||'').toLowerCase()) !== -1;
+  if (isFullAdmin) return;  // admin ko sab dikhe
+  if (!user.phone) return;
+  try{
+    var rows = await api('/trial_team_members?phone=eq.'+encodeURIComponent(user.phone)+'&select=is_expense_approver');
+    if (rows && rows.length && rows[0].is_expense_approver === true){
+      IS_APPROVER_ONLY = true;
+      applyApproverLock();
+    }
+  }catch(e){ console.warn('approver check', e); }
+}
+
+function applyApproverLock(){
+  // Tabs: sirf List rakho
+  document.querySelectorAll('.tab').forEach(function(t){
+    var tb = t.getAttribute('data-tab');
+    if (tb !== 'list') t.style.display = 'none';
+  });
+  switchTab('list');
+  // Summary cards + campaign breakdown + export buttons hide
+  var hideIds = ['sumCards','campBreakdown'];
+  hideIds.forEach(function(id){ var el=$(id); if(el) el.style.display='none'; });
+  // Approval filter ko Pending pe lock
+  setTimeout(function(){
+    var fa = $('fltApproval'); if(fa){ fa.value='pending'; fa.disabled=true; }
+    var fs = $('fltStatus'); if(fs){ fs.value=''; }
+    loadExpenses();
+  }, 100);
+  // Header pe approver badge
+  var rEl = $('tbRole'); if(rEl) rEl.textContent = 'Expense Approver';
+  // Export buttons hide (approver ko data export na kare)
+  ['exportExpensesExcel','exportExpensesPDF','exportExpensesJPEG'].forEach(function(fn){
+    var btns = document.querySelectorAll('[onclick*="'+fn+'"]');
+    btns.forEach(function(b){ b.style.display='none'; });
+  });
+}
+
+// Date preset → from/to
+function getPresetRange(){
+  var t=todayIST();
+  var ist=new Date(new Date().getTime()+5.5*3600*1000);
+  var preset=$('fltPreset').value;
+  var from=t, to=t;
+  if(preset==='today'){ from=t; to=t; }
+  else if(preset==='yesterday'){ var y=new Date(ist.getTime()-86400000).toISOString().slice(0,10); from=y; to=y; }
+  else if(preset==='week'){ from=new Date(ist.getTime()-7*86400000).toISOString().slice(0,10); to=t; }
+  else if(preset==='thisweek'){ var dow=ist.getUTCDay(); var back=(dow===0?6:dow-1); from=new Date(ist.getTime()-back*86400000).toISOString().slice(0,10); to=t; }
+  else if(preset==='month'){ from=t.slice(0,8)+'01'; to=t; }
+  else if(preset==='last30'){ from=new Date(ist.getTime()-30*86400000).toISOString().slice(0,10); to=t; }
+  else if(preset==='alltime'){ from='2020-01-01'; to=t; }
+  else { from=$('fltFrom').value; to=$('fltTo').value; }
+  return {from:from,to:to};
+}
+function onPresetChange(){
+  var custom = $('fltPreset').value==='custom';
+  $('customFrom').style.display = custom?'':'none';
+  $('customTo').style.display = custom?'':'none';
+  if(!custom) loadExpenses();
+}
+function populateReportFilters(){
+  var allCats = state.categories.map(function(c){return c.name;});
+  var uniqCats=[]; allCats.forEach(function(n){ if(uniqCats.indexOf(n)===-1)uniqCats.push(n); });
+  $('fltCategory').innerHTML='<option value="">All categories</option>'+uniqCats.map(function(n){return '<option value="'+esc(n)+'">'+esc(n)+'</option>';}).join('');
+  $('fltMember').innerHTML='<option value="">All members</option>'+state.members.map(function(m){return '<option value="'+esc(m.phone)+'">'+esc(m.name||m.phone)+'</option>';}).join('');
+  $('fltCampaign').innerHTML='<option value="">All campaigns</option>'+state.campaigns.map(function(c){return '<option value="'+esc(c.key)+'">'+esc(c.name)+'</option>';}).join('');
+  // Sab filter dropdowns ko searchable banao (re-callable, value preserve)
+  makeSearchable('fltType','Type search…');
+  makeSearchable('fltStatus','Status search…');
+  makeSearchable('fltCategory','Category search…');
+  makeSearchable('fltMember','Member search…');
+  makeSearchable('fltCampaign','Campaign search…');
+}
+
+async function loadMembers(){
+  try{
+    var d = await api('/trial_team_members?select=name,phone,role&order=name');
+    state.members = d||[];
+    // payment-info modal still uses native select
+    var opts = '<option value="">Select member…</option>' + state.members.map(function(m){ return '<option value="'+esc(m.phone)+'">'+esc(m.name||m.phone)+'</option>'; }).join('');
+    $('payMember').innerHTML = opts;
+    // expense entry uses searchable dropdown
+    buildSearchDropdown('member', state.members.map(function(m){ return { value:m.phone, label:(m.name||m.phone) }; }), 'Member select karo…');
+  }catch(e){ console.warn('members',e); }
+}
+async function loadCampaigns(){
+  try{
+    var d = await api('/trial_campaigns?select=*&limit=1000');
+    state.campaigns = (d||[]).map(function(c){ return { key:c.campaign_key||c.key||c.id, name:c.campaign_name||c.name||c.campaign_key||c.key||'Untitled' }; });
+    // sort by name client-side (avoids server order on missing column)
+    state.campaigns.sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); });
+    buildSearchDropdown('campaign', state.campaigns.map(function(c){ return { value:c.key, label:c.name }; }), 'Campaign select karo…');
+  }catch(e){ console.warn('campaigns',e); }
+}
+async function loadCategories(){
+  try{
+    var d = await api('/prajapati_expense_categories?select=*&active=eq.true&order=sort_order');
+    state.categories = d||[];
+    var internal = state.categories.filter(function(c){ return c.kind==='internal'; });
+    $('intCategory').innerHTML = '<option value="">Select…</option>' + internal.map(function(c){ return '<option value="'+esc(c.name)+'">'+esc(c.name)+'</option>'; }).join('');
+  }catch(e){ console.warn('cats',e); }
+}
+async function loadPayInfo(){
+  try{ state.payInfo = await api('/prajapati_team_payment_info?select=*&order=member_name') || []; }
+  catch(e){ console.warn('payinfo',e); state.payInfo=[]; }
+}
+
+// ── Save expense ──
+async function saveExpense(){
+  var btn=$('saveExpBtn'); var st=$('entryStatus');
+  st.innerHTML='';
+  var total = calcTotal();
+  var payload = {
+    expense_type: state.type,
+    payment_status: state.pay,
+    total_amount: total,
+    notes: $('expNotes').value.trim()||null,
+    created_by: user.phone||null,
+    created_by_name: user.name||null
+  };
+  if (state.type==='campaign'){
+    var ck=state.sd.campaign.value;
+    if(!ck){ st.innerHTML='<span style="color:var(--danger);font-size:12.5px">Campaign select karo</span>'; return; }
+    var cname=state.sd.campaign.label||ck;
+    var mph=state.sd.member.value;
+    var mname=state.sd.member.label||'';
+    payload.campaign_key=ck; payload.campaign_name=cname;
+    payload.team_member_phone=mph||null; payload.team_member_name=mname||null;
+    payload.location=$('expLocation').value.trim()||null;
+    payload.expense_date=$('expDate').value||todayIST();
+    payload.food_amount=+$('amtFood').value||0;
+    payload.hotel_amount=+$('amtHotel').value||0;
+    payload.transport_amount=+$('amtTransport').value||0;
+    payload.other_amount=+$('amtOther').value||0;
+    payload.other_description=$('otherDesc').value.trim()||null;
+  } else {
+    var cat=$('intCategory').value;
+    if(!cat){ st.innerHTML='<span style="color:var(--danger);font-size:12.5px">Category select karo</span>'; return; }
+    if(total<=0){ st.innerHTML='<span style="color:var(--danger);font-size:12.5px">Amount daalo</span>'; return; }
+    payload.internal_category=cat;
+    payload.internal_party=$('intParty').value.trim()||null;
+    payload.internal_details=$('intDetails').value.trim()||null;
+    payload.expense_date=$('intDate').value||todayIST();
+  }
+  if (state.pay==='paid'){ payload.paid_via=$('paidVia').value; payload.paid_date=todayIST(); }
+
+  btn.disabled=true; btn.textContent='Saving…';
+  try{
+    var rows = await api('/prajapati_expenses', { method:'POST', body:payload, prefer:'return=representation' });
+    var newId = rows && rows[0] && rows[0].id;
+    // receipt upload (best effort)
+    var rcFile = $('expReceipt').files[0];
+    if (state.pay==='paid' && rcFile && newId){
+      try{
+        var safe=rcFile.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+        var path='expense-receipts/'+newId+'_'+Date.now()+'_'+safe;
+        var up=await fetch(SUPABASE_URL+'/storage/v1/object/payment-receipts/'+encodeURI(path),{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY,'Content-Type':rcFile.type,'x-upsert':'true'},body:rcFile});
+        if(up.ok){ var rcUrl=SUPABASE_URL+'/storage/v1/object/public/payment-receipts/'+encodeURI(path); await api('/prajapati_expenses?id=eq.'+newId,{method:'PATCH',body:{receipt_url:rcUrl}}); }
+      }catch(rcErr){ console.warn('receipt',rcErr); }
+    }
+    toast('✓ Expense saved');
+    resetEntry();
+    // Refresh list + summary so new entry shows immediately (no manual reload)
+    if (typeof loadExpenses === 'function') { try { loadExpenses(); } catch(e){} }
+  }catch(e){
+    st.innerHTML='<span style="color:var(--danger);font-size:12.5px">'+esc(e.message||'Save failed')+'</span>';
+  }finally{ btn.disabled=false; btn.textContent='💾 Save Expense'; }
+}
+function resetEntry(){
+  ['amtFood','amtHotel','amtTransport','amtOther','otherDesc','expLocation','expNotes','intAmount','intParty','intDetails'].forEach(function(id){ if($(id))$(id).value = (id.indexOf('amt')===0||id==='intAmount')?'0':''; });
+  sdReset('campaign'); sdReset('member'); $('intCategory').value='';
+  pickPay('unpaid'); calcTotal();
+}
+
+// ── Expense list ──
+async function loadExpenses(){
+  var tbody=$('expTable').querySelector('tbody');
+  tbody.innerHTML='<tr><td colspan="8"><div class="spinner"></div></td></tr>';
+  var qs='/prajapati_expenses?select=*&order=expense_date.desc&limit=5000';
+  var range=getPresetRange();
+  var from=range.from, to=range.to;
+  var typ=$('fltType').value, sts=$('fltStatus').value;
+  var cat=$('fltCategory').value, mem=$('fltMember').value, camp=$('fltCampaign').value;
+  var appr=($('fltApproval')||{}).value||'';
+  if(from) qs+='&expense_date=gte.'+from;
+  if(to) qs+='&expense_date=lte.'+to;
+  if(typ) qs+='&expense_type=eq.'+typ;
+  if(sts) qs+='&payment_status=eq.'+sts;
+  if(appr) qs+='&approval_status=eq.'+appr;
+  if(mem) qs+='&team_member_phone=eq.'+encodeURIComponent(mem);
+  if(camp) qs+='&campaign_key=eq.'+encodeURIComponent(camp);
+  if(cat) qs+='&internal_category=eq.'+encodeURIComponent(cat);
+  try{
+    state.expenses = await api(qs) || [];
+    renderExpenseTable();
+    renderSummary();
+  }catch(e){ tbody.innerHTML='<tr><td style="color:var(--danger);padding:18px">'+esc(e.message)+'</td></tr>'; }
+}
+function renderSummary(){
+  var total=0, paid=0, unpaid=0, camp=0, intl=0, pending=0;
+  var byCamp = {};
+  state.expenses.forEach(function(e){
+    var amt=+e.total_amount||0; total+=amt;
+    if(e.payment_status==='paid')paid+=amt; else unpaid+=amt;
+    if(e.expense_type==='campaign')camp+=amt; else intl+=amt;
+    if((e.approval_status||'approved')==='pending') pending+=amt;
+    // campaign-wise (only campaign type, exclude rejected)
+    if(e.expense_type==='campaign' && (e.approval_status||'approved')!=='rejected'){
+      var k = getWork(e.campaign_name)||'—';
+      if(!byCamp[k]) byCamp[k]={total:0,food:0,auto:0,hotel:0,bus:0,transport:0,other:0,count:0};
+      byCamp[k].total+=amt; byCamp[k].count++;
+      byCamp[k].food+=+e.food_amount||0; byCamp[k].auto+=+e.auto_amount||0;
+      byCamp[k].hotel+=+e.hotel_amount||0; byCamp[k].bus+=+e.bus_amount||0;
+      byCamp[k].transport+=+e.transport_amount||0; byCamp[k].other+=+e.other_amount||0;
+    }
+  });
+  $('sumCards').innerHTML =
+    card(fmt(total),'Total','#0B1957')+
+    (pending>0?card(fmt(pending),'Pending Approval','#B45309'):'')+
+    card(fmt(unpaid),'Unpaid','#C2410C')+
+    card(fmt(camp),'Campaign','#1E40AF')+
+    card(fmt(intl),'Internal','#7C3AED');
+  renderCampaignBreakdown(byCamp);
+}
+
+// ════ CAMPAIGN-WISE EXPENSE BREAKDOWN ════
+function renderCampaignBreakdown(byCamp){
+  var host = $('campBreakdown');
+  if(!host) return;
+  var keys = Object.keys(byCamp).sort(function(a,b){ return byCamp[b].total - byCamp[a].total; });
+  if(!keys.length){ host.innerHTML=''; return; }
+  var rows = keys.map(function(k){
+    var c = byCamp[k];
+    var parts=[];
+    if(c.food)parts.push('🍱'+fmt(c.food)); if(c.auto)parts.push('🛺'+fmt(c.auto));
+    if(c.hotel)parts.push('🏨'+fmt(c.hotel)); if(c.bus)parts.push('🚌'+fmt(c.bus));
+    if(c.transport)parts.push('🚗'+fmt(c.transport)); if(c.other)parts.push('📦'+fmt(c.other));
+    return '<tr><td style="font-weight:600">'+esc(k)+'</td>'+
+      '<td style="color:var(--ink-700);font-size:11px">'+parts.join(' · ')+'</td>'+
+      '<td style="text-align:center;color:var(--text-dim)">'+c.count+'</td>'+
+      '<td style="font-weight:700;font-family:JetBrains Mono,monospace;text-align:right">'+fmt(c.total)+'</td></tr>';
+  }).join('');
+  host.innerHTML = '<div style="margin-top:24px"><div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:10px">📊 Campaign-wise Kharcha</div>'+
+    '<table class="exp-table"><thead><tr><th>Campaign</th><th>Breakdown</th><th style="text-align:center">Entries</th><th style="text-align:right">Total</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+function card(v,l,c){ return '<div class="sum-card" style="border-top-color:'+c+'"><div class="sv" style="color:'+c+'">'+v+'</div><div class="sl">'+l+'</div></div>'; }
+function renderExpenseTable(){
+  var tbody=$('expTable').querySelector('tbody');
+  if(!state.expenses.length){ tbody.innerHTML='<tr><td colspan="8"><div class="empty">Koi expense nahi is filter mein</div></td></tr>'; return; }
+  // header
+  $('expTable').querySelector('thead')?.remove();
+  var thead=document.createElement('thead');
+  thead.innerHTML='<tr><th>Date</th><th>Type</th><th>For / Category</th><th>Party / Member</th><th>Detail</th><th>Amount</th><th>Approval</th><th>Status</th><th>Receipt</th></tr>';
+  $('expTable').insertBefore(thead, tbody);
+  tbody.innerHTML = state.expenses.map(function(e){
+    var d = e.expense_date ? new Date(e.expense_date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}) : '—';
+    var typeTag = e.expense_type==='campaign' ? '<span class="tag tag-camp">Campaign</span>' : '<span class="tag tag-int">Internal</span>';
+    var srcTag = e.source==='field' ? ' <span class="tag" style="background:#EEF2FF;color:#4338CA">field</span>' : '';
+    var forCol = e.expense_type==='campaign' ? esc(getWork(e.campaign_name)) : esc(e.internal_category||'—');
+    var partyCol = e.expense_type==='campaign'
+      ? (e.team_member_name ? esc(e.team_member_name) : '<span style="color:var(--text-dim)">—</span>')
+      : (e.internal_party ? esc(e.internal_party) : '<span style="color:var(--text-dim)">—</span>');
+    var detail = e.expense_type==='campaign'
+      ? [e.location, headsSummary(e)].filter(Boolean).join(' · ')
+      : [e.internal_details].filter(Boolean).join(' · ');
+    // Approval column
+    var ap = e.approval_status || 'approved';
+    var apCol;
+    if (ap === 'pending') {
+      apCol = '<span class="tag" style="background:#FEF3C7;color:#B45309">Pending</span>'+
+              '<div style="margin-top:5px;display:flex;gap:4px"><button class="btn btn-sm" style="background:#16a34a;color:#fff;padding:3px 9px" onclick="approveExp(\''+e.id+'\')">✓</button>'+
+              '<button class="btn btn-sm" style="background:#dc2626;color:#fff;padding:3px 9px" onclick="rejectExp(\''+e.id+'\')">✗</button>'+
+              (IS_APPROVER_ONLY ? '' : '<button class="btn btn-sm btn-secondary" style="padding:3px 9px" onclick="showWorkerPay(\''+esc(e.team_member_phone||'')+'\')" title="Bank details">🏦</button>')+'</div>';
+    } else if (ap === 'rejected') {
+      apCol = '<span class="tag" style="background:#FEE2E2;color:#B91C1C">Rejected</span>'+(e.reject_reason?'<div style="font-size:10px;color:#999;margin-top:3px">'+esc(e.reject_reason)+'</div>':'');
+    } else {
+      apCol = '<span class="tag" style="background:#DCFCE7;color:#15803D">Approved</span>';
+    }
+    var statusTag = e.payment_status==='paid' ? '<span class="tag tag-paid">Paid</span>' : '<span class="tag tag-unpaid">Unpaid</span>';
+    var rc = e.receipt_url ? '<a href="'+esc(e.receipt_url)+'" target="_blank" style="color:var(--info)">📎</a>' : '—';
+    // Approver ko pay/slip/voucher nahi — sirf approve/reject
+    var payBtn = (!IS_APPROVER_ONLY && e.payment_status!=='paid' && ap==='approved') ? '<button class="btn btn-sm btn-secondary" style="margin-left:6px" onclick="markPaid(\''+e.id+'\')">Pay</button>' : '';
+    var slipBtn = IS_APPROVER_ONLY ? '' : '<button class="btn btn-sm btn-secondary" style="margin-left:4px;padding:3px 7px" onclick="expenseSlipPDF(\''+e.id+'\')" title="Slip PDF">📄</button>';
+    var voucherBtn = (!IS_APPROVER_ONLY && e.payment_status==='paid') ? '<button class="btn btn-sm btn-secondary" style="margin-left:4px;padding:3px 7px" onclick="payVoucherPDF(\''+e.id+'\')" title="Pay Voucher PDF">🧾</button>' : '';
+    return '<tr><td>'+d+'</td><td>'+typeTag+srcTag+'</td><td>'+forCol+'</td><td style="font-weight:600">'+partyCol+'</td><td style="color:var(--ink-700)">'+esc(detail||'—')+'</td><td style="font-weight:700;font-family:JetBrains Mono,monospace">'+fmt(e.total_amount)+'</td><td>'+apCol+'</td><td>'+statusTag+payBtn+slipBtn+voucherBtn+'</td><td>'+rc+'</td></tr>';
+  }).join('');
+}
+function getWork(name){ var s=String(name||'').trim(); var i=s.search(/[·\-–—|]/); if(i>0)s=s.slice(0,i).trim(); return s||name||'—'; }
+function headsSummary(e){ var p=[]; if(+e.food_amount)p.push('F'+e.food_amount); if(+e.auto_amount)p.push('A'+e.auto_amount); if(+e.hotel_amount)p.push('H'+e.hotel_amount); if(+e.bus_amount)p.push('B'+e.bus_amount); if(+e.transport_amount)p.push('T'+e.transport_amount); if(+e.other_amount)p.push('O'+e.other_amount); return p.join('+'); }
+async function markPaid(id){
+  if(!confirm('Paid mark karna hai?')) return;
+  try{ await api('/prajapati_expenses?id=eq.'+id,{method:'PATCH',body:{payment_status:'paid',paid_date:todayIST()}}); toast('✓ Marked paid'); loadExpenses(); }
+  catch(e){ toast('Failed'); }
+}
+
+// ════ APPROVE / REJECT (field se aaye expenses) ════
+async function approveExp(id){
+  try{
+    await api('/prajapati_expenses?id=eq.'+id,{method:'PATCH',body:{approval_status:'approved',approved_by:(user.phone||''),approved_at:new Date().toISOString()}});
+    toast('✓ Approved'); loadExpenses();
+  }catch(e){ toast('Failed: '+e.message); }
+}
+async function rejectExp(id){
+  var reason = prompt('Reject reason (optional):','');
+  if (reason===null) return; // cancelled
+  try{
+    await api('/prajapati_expenses?id=eq.'+id,{method:'PATCH',body:{approval_status:'rejected',reject_reason:reason||null,approved_by:(user.phone||''),approved_at:new Date().toISOString()}});
+    toast('Rejected'); loadExpenses();
+  }catch(e){ toast('Failed: '+e.message); }
+}
+
+// ════ WORKER BANK/PAY DETAILS — professional modal ════
+function maskNum(s, showLast){
+  s = String(s||'').trim();
+  if(!s) return '—';
+  showLast = showLast||4;
+  if(s.length<=showLast) return s;
+  return s.slice(0,-showLast).replace(/./g,'X') + s.slice(-showLast);
+}
+async function showWorkerPay(phone){
+  if(!phone) return toast('No phone');
+  var modal = $('bankModal'), body = $('bankModalBody');
+  body.innerHTML = '<div class="spinner"></div>';
+  modal.classList.add('show');
+  try{
+    var rows = await api('/prajapati_team_bank_profile?member_phone=eq.'+encodeURIComponent(phone)+'&select=*');
+    if(!rows || !rows.length){ body.innerHTML = '<div style="color:var(--warn);padding:8px 0">Is worker ne abhi bank/payment details nahi bhare.</div>'; return; }
+    var p = rows[0];
+    // role-based: admin/owner ko poora, baaki ko masked
+    var isAdmin = ['owner','admin','accountant','finance'].indexOf((user.role||'').toLowerCase()) !== -1;
+    var aadhaar = isAdmin ? (p.aadhaar_number||'—') : maskNum(p.aadhaar_number,4);
+    var pan = isAdmin ? (p.pan_number||'—') : (p.pan_number ? maskNum(p.pan_number,4) : '—');
+    function r(l,v,bold){ return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f1f1f1"><span style="color:var(--text-dim)">'+l+'</span><span style="font-weight:'+(bold?'700':'600')+';color:var(--navy)'+(bold?';font-family:JetBrains Mono,monospace':'')+'">'+esc(v||'—')+'</span></div>'; }
+    var html = '<div style="font-weight:700;font-size:15px;color:var(--navy);margin-bottom:10px">'+esc(p.account_holder||p.member_name||'—')+'</div>';
+    html += '<div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.4px;margin:12px 0 4px">Bank</div>';
+    html += r('Bank Name', p.bank_name);
+    html += r('A/C Number', p.account_number, true);
+    html += r('IFSC', p.ifsc_code, true);
+    html += '<div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.4px;margin:14px 0 4px">UPI</div>';
+    html += r('UPI ID', p.upi_id, true);
+    if(p.upi_qr_url){
+      html += '<div style="text-align:center;margin:12px 0"><a href="'+esc(p.upi_qr_url)+'" target="_blank"><img src="'+esc(p.upi_qr_url)+'" style="max-width:160px;border:1px solid #eee;border-radius:10px;padding:6px;background:#fff"></a><div style="font-size:11px;color:var(--text-dim);margin-top:4px">Tap to scan / open</div></div>';
+    }
+    html += '<div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.4px;margin:14px 0 4px">Documents'+(isAdmin?'':' (masked)')+'</div>';
+    html += r('Aadhaar', aadhaar);
+    html += r('PAN', pan);
+    if(isAdmin && (p.aadhaar_photo_url||p.pan_photo_url)){
+      html += '<div style="display:flex;gap:8px;margin-top:10px">';
+      if(p.aadhaar_photo_url) html += '<a href="'+esc(p.aadhaar_photo_url)+'" target="_blank" class="btn btn-sm btn-secondary">📄 Aadhaar</a>';
+      if(p.pan_photo_url) html += '<a href="'+esc(p.pan_photo_url)+'" target="_blank" class="btn btn-sm btn-secondary">📄 PAN</a>';
+      html += '</div>';
+    }
+    body.innerHTML = html;
+  }catch(e){ body.innerHTML = '<div style="color:var(--danger)">Failed: '+esc(e.message)+'</div>'; }
+}
+
+// ════ PDF-A: professional expense slip ════
+function expenseSlipPDF(id){
+  var e = state.expenses.find(function(x){ return String(x.id)===String(id); });
+  if(!e){ toast('Not found'); return; }
+  if(typeof window.jspdf==='undefined'){ toast('PDF lib loading…'); return; }
+  var jsPDF = window.jspdf.jsPDF;
+  var doc = new jsPDF({unit:'pt',format:'a5'});
+  var W = doc.internal.pageSize.getWidth();
+  var M = 32;
+  // Header band
+  doc.setFillColor(11,25,87); doc.rect(0,0,W,82,'F');
+  doc.setTextColor(255,255,255); doc.setFontSize(17); doc.setFont('helvetica','bold');
+  doc.text('Prajapati Advertising',M,34);
+  doc.setFontSize(8.5); doc.setFont('helvetica','normal'); doc.setTextColor(220,225,240);
+  doc.text('Ph: 9922138138   |   www.prajapatiadvertising.com',M,50);
+  doc.setFillColor(245,184,0); doc.rect(0,82,W,3,'F');
+  // Title + slip no
+  var slipNo = 'EXP-'+String(e.id||'').slice(-6).toUpperCase();
+  doc.setTextColor(11,25,87); doc.setFontSize(13); doc.setFont('helvetica','bold');
+  doc.text('EXPENSE SLIP',M,112);
+  doc.setFontSize(8.5); doc.setFont('helvetica','normal'); doc.setTextColor(120,120,120);
+  doc.text('Slip No: '+slipNo,W-M,104,{align:'right'});
+  doc.text('Date: '+(e.expense_date||'-'),W-M,116,{align:'right'});
+  // Info rows
+  var y=138; doc.setTextColor(40,40,40);
+  function info(l,v){ doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(110,110,110); doc.text(String(l),M,y); doc.setFont('helvetica','normal'); doc.setTextColor(30,30,30); doc.text(String(v==null?'-':v),M+90,y); y+=18; }
+  info('Campaign', getWork(e.campaign_name)||'-');
+  info('Member', e.team_member_name||'-');
+  if(e.location) info('Location', e.location);
+  y+=4;
+  // Table header
+  doc.setFillColor(243,244,248); doc.rect(M,y,W-2*M,22,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(11,25,87);
+  doc.text('CATEGORY',M+8,y+15); doc.text('AMOUNT (Rs.)',W-M-8,y+15,{align:'right'});
+  y+=22;
+  doc.setFont('helvetica','normal'); doc.setTextColor(40,40,40); doc.setFontSize(9.5);
+  function line(l,v){ if(!v) return; doc.text(l,M+8,y+14); doc.text('Rs. '+v,W-M-8,y+14,{align:'right'}); doc.setDrawColor(235); doc.line(M,y+20,W-M,y+20); y+=22; }
+  line('Food', e.food_amount); line('Auto', e.auto_amount); line('Hotel', e.hotel_amount);
+  line('Bus', e.bus_amount); line('Transport', e.transport_amount); line('Other', e.other_amount);
+  if(e.remark){ doc.setFontSize(8); doc.setTextColor(120,120,120); doc.text('Remark: '+e.remark, M+8, y+12); y+=18; }
+  // Total box
+  y+=6; doc.setFillColor(11,25,87); doc.rect(M,y,W-2*M,30,'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(13);
+  doc.text('TOTAL',M+10,y+20); doc.text('Rs. '+(e.total_amount||0),W-M-10,y+20,{align:'right'});
+  y+=44;
+  // Status badges
+  var ap=(e.approval_status||'approved'), ps=(e.payment_status||'unpaid');
+  doc.setFontSize(8.5); doc.setFont('helvetica','bold');
+  doc.setTextColor(ap==='approved'?21:ap==='rejected'?185:180, ap==='approved'?128:ap==='rejected'?29:83, ap==='approved'?61:ap==='rejected'?29:9);
+  doc.text('Approval: '+ap.toUpperCase(),M,y);
+  doc.setTextColor(ps==='paid'?29:194, ps==='paid'?78:65, ps==='paid'?216:12);
+  doc.text('Payment: '+ps.toUpperCase(),M+140,y);
+  y+=40;
+  // Signatures
+  doc.setDrawColor(170); doc.line(M,y,M+110,y); doc.line(W-M-110,y,W-M,y); y+=12;
+  doc.setFontSize(8); doc.setTextColor(120,120,120); doc.setFont('helvetica','normal');
+  doc.text('Prepared by',M+20,y); doc.text('Approved by',W-M-90,y);
+  // Footer
+  doc.setFontSize(7); doc.setTextColor(160,160,160);
+  doc.text('This is a computer-generated slip.',W/2,doc.internal.pageSize.getHeight()-20,{align:'center'});
+  doc.save('ExpenseSlip_'+slipNo+'.pdf');
+  toast('✓ Slip PDF downloaded');
+}
+
+// ════ PDF-C: Pay Voucher (payment proof + bank details) ════
+async function payVoucherPDF(id){
+  var e = state.expenses.find(function(x){ return String(x.id)===String(id); });
+  if(!e){ toast('Not found'); return; }
+  if(typeof window.jspdf==='undefined'){ toast('PDF lib loading…'); return; }
+  // worker bank details
+  var bank = {};
+  try{
+    var rows = await api('/prajapati_team_bank_profile?member_phone=eq.'+encodeURIComponent(e.team_member_phone||'')+'&select=*');
+    if(rows && rows.length) bank = rows[0];
+  }catch(_){}
+  var jsPDF = window.jspdf.jsPDF;
+  var doc = new jsPDF({unit:'pt',format:'a5'});
+  var W = doc.internal.pageSize.getWidth();
+  var M = 32;
+  doc.setFillColor(11,25,87); doc.rect(0,0,W,82,'F');
+  doc.setTextColor(255,255,255); doc.setFontSize(17); doc.setFont('helvetica','bold');
+  doc.text('Prajapati Advertising',M,34);
+  doc.setFontSize(8.5); doc.setFont('helvetica','normal'); doc.setTextColor(220,225,240);
+  doc.text('Ph: 9922138138   |   www.prajapatiadvertising.com',M,50);
+  doc.setFillColor(245,184,0); doc.rect(0,82,W,3,'F');
+  var vNo = 'PV-'+String(e.id||'').slice(-6).toUpperCase();
+  doc.setTextColor(11,25,87); doc.setFontSize(13); doc.setFont('helvetica','bold');
+  doc.text('PAYMENT VOUCHER',M,112);
+  doc.setFontSize(8.5); doc.setFont('helvetica','normal'); doc.setTextColor(120,120,120);
+  doc.text('Voucher No: '+vNo,W-M,104,{align:'right'});
+  doc.text('Date: '+todayIST(),W-M,116,{align:'right'});
+  var y=140; doc.setTextColor(40,40,40);
+  function info(l,v){ doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(110,110,110); doc.text(String(l),M,y); doc.setFont('helvetica','normal'); doc.setTextColor(30,30,30); doc.text(String(v==null?'-':v),M+95,y); y+=17; }
+  info('Paid To', e.team_member_name||'-');
+  info('Campaign', getWork(e.campaign_name)||'-');
+  info('Expense Date', e.expense_date||'-');
+  y+=6; doc.setFillColor(243,244,248); doc.rect(M,y,W-2*M,20,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(11,25,87); doc.text('BANK DETAILS',M+8,y+14); y+=28;
+  doc.setTextColor(40,40,40);
+  info('A/C Holder', bank.account_holder||e.team_member_name||'-');
+  info('Bank', bank.bank_name||'-');
+  info('A/C No.', bank.account_number||'-');
+  info('IFSC', bank.ifsc_code||'-');
+  info('UPI', bank.upi_id||'-');
+  y+=8; doc.setFillColor(11,25,87); doc.rect(M,y,W-2*M,30,'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(13);
+  doc.text('AMOUNT PAID',M+10,y+20); doc.text('Rs. '+(e.total_amount||0),W-M-10,y+20,{align:'right'});
+  y+=46;
+  doc.setFontSize(8.5); doc.setTextColor(120,120,120); doc.setFont('helvetica','normal');
+  doc.text('Paid via: '+(e.paid_via||'-')+'    Status: '+(e.payment_status||'-').toUpperCase(),M,y); y+=40;
+  doc.setDrawColor(170); doc.line(M,y,M+110,y); doc.line(W-M-110,y,W-M,y); y+=12;
+  doc.setFontSize(8); doc.setTextColor(120,120,120);
+  doc.text('Receiver Sign',M+25,y); doc.text('Authorised Sign',W-M-95,y);
+  doc.setFontSize(7); doc.setTextColor(160,160,160);
+  doc.text('This is a computer-generated voucher.',W/2,doc.internal.pageSize.getHeight()-20,{align:'center'});
+  doc.save('PayVoucher_'+vNo+'.pdf');
+  toast('✓ Voucher PDF downloaded');
+}
+
+function exportExpensesExcel(){
+  if(typeof XLSX==='undefined'){ toast('Excel lib loading…'); return; }
+  var aoa=[['Date','Type','For/Category','Party/Member','Member','Location','Food','Hotel','Transport','Other','Detail','Total','Status','Paid Via']];
+  var total=0;
+  state.expenses.forEach(function(e){
+    total+=+e.total_amount||0;
+    var party=e.expense_type==='campaign'?(e.team_member_name||''):(e.internal_party||'');
+    aoa.push([e.expense_date,e.expense_type,e.expense_type==='campaign'?getWork(e.campaign_name):e.internal_category,party,e.team_member_name||'',e.location||'',e.food_amount||0,e.hotel_amount||0,e.transport_amount||0,e.other_amount||0,e.internal_details||e.other_description||'',e.total_amount||0,e.payment_status,e.paid_via||'']);
+  });
+  aoa.push(['','','','','','','','','','','TOTAL',total,'','']);
+  var ws=XLSX.utils.aoa_to_sheet(aoa); var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Expenses');
+  XLSX.writeFile(wb,'Expenses_'+(getPresetRange().from||'all')+'_to_'+(getPresetRange().to||'all')+'.xlsx');
+  toast('✓ Excel downloaded');
+}
+
+// PDF + JPEG export — capture the report area
+function ensureLib(src, check){
+  return new Promise(function(res,rej){
+    try{ if(check()){res();return;} }catch(e){}
+    var s=document.createElement('script'); s.src=src;
+    s.onload=function(){res();}; s.onerror=function(){rej(new Error('load failed: '+src));};
+    document.head.appendChild(s);
+    setTimeout(function(){ try{ if(check())res(); else rej(new Error('timeout')); }catch(e){rej(e);} },8000);
+  });
+}
+function buildReportNode(){
+  var range=getPresetRange();
+  var total=0,paid=0,unpaid=0,camp=0,intl=0;
+  state.expenses.forEach(function(e){ var a=+e.total_amount||0; total+=a; if(e.payment_status==='paid')paid+=a;else unpaid+=a; if(e.expense_type==='campaign')camp+=a;else intl+=a; });
+  var rows=state.expenses.map(function(e,i){
+    var bg=i%2?'#FAFBFC':'#fff';
+    var forCol=e.expense_type==='campaign'?getWork(e.campaign_name):(e.internal_category||'—');
+    var party=e.expense_type==='campaign'?(e.team_member_name||'—'):(e.internal_party||'—');
+    var detail=e.expense_type==='campaign'?[e.location,headsSummary(e)].filter(Boolean).join(' · '):[e.internal_details].filter(Boolean).join(' · ');
+    var d=e.expense_date?new Date(e.expense_date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}):'—';
+    return '<tr style="background:'+bg+'"><td style="padding:8px 11px;border:1px solid #EEE">'+esc(d)+'</td><td style="padding:8px 11px;border:1px solid #EEE">'+esc(e.expense_type)+'</td><td style="padding:8px 11px;border:1px solid #EEE">'+esc(forCol)+'</td><td style="padding:8px 11px;border:1px solid #EEE">'+esc(party)+'</td><td style="padding:8px 11px;border:1px solid #EEE;color:#475569">'+esc(detail||'—')+'</td><td style="padding:8px 11px;border:1px solid #EEE;text-align:right;font-weight:700;font-family:monospace">'+fmt(e.total_amount)+'</td><td style="padding:8px 11px;border:1px solid #EEE;text-align:center;font-weight:600;color:'+(e.payment_status==='paid'?'#047857':'#C2410C')+'">'+esc(e.payment_status)+'</td></tr>';
+  }).join('');
+  var node=document.createElement('div');
+  node.style.cssText='position:fixed;left:-99999px;top:0;width:880px;background:#fff;font-family:Arial,sans-serif';
+  node.innerHTML='<div style="background:#0B1957;color:#fff;padding:16px 22px"><div style="font-size:19px;font-weight:700">Prajapati Advertising — Expense Report</div><div style="font-size:12px;opacity:.85;margin-top:2px">'+esc(range.from)+' → '+esc(range.to)+' · '+state.expenses.length+' entries</div></div>'+
+    '<div style="display:flex;gap:10px;padding:14px 22px;background:#F7F9FC">'+
+      [['Total',fmt(total),'#0B1957'],['Unpaid',fmt(unpaid),'#C2410C'],['Campaign',fmt(camp),'#1E40AF'],['Internal',fmt(intl),'#7C3AED']].map(function(c){return '<div style="flex:1;border:1px solid #E5E0D2;border-top:3px solid '+c[2]+';border-radius:10px;padding:11px;text-align:center"><div style="font-size:20px;font-weight:800;font-family:monospace;color:'+c[2]+'">'+c[1]+'</div><div style="font-size:10px;color:#64748B;text-transform:uppercase;margin-top:3px;font-weight:600">'+c[0]+'</div></div>';}).join('')+
+    '</div>'+
+    '<div style="padding:0 22px 22px"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr>'+
+      ['DATE','TYPE','FOR/CATEGORY','PARTY/MEMBER','DETAIL','AMOUNT','STATUS'].map(function(h){return '<th style="background:#FFF200;color:#000;font-size:10.5px;font-weight:700;padding:9px 11px;text-align:left;border:1px solid #E5C800">'+h+'</th>';}).join('')+
+      '</tr></thead><tbody>'+rows+'</tbody><tfoot><tr><td colspan="4" style="padding:10px 11px;background:#FFF7CC;border:1px solid #E5C800;text-align:right;font-weight:700">TOTAL</td><td style="padding:10px 11px;background:#FFF7CC;border:1px solid #E5C800;text-align:right;font-weight:800;font-family:monospace;color:#0B1957">'+fmt(total)+'</td><td style="background:#FFF7CC;border:1px solid #E5C800"></td></tr></tfoot></table>'+
+      '<div style="margin-top:12px;font-size:10px;color:#94A3B8;text-align:right">Generated '+new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})+' · prajapatiadvertising.com</div></div>';
+  return node;
+}
+async function captureReport(){
+  await ensureLib('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',function(){return typeof html2canvas!=='undefined';});
+  var node=buildReportNode(); document.body.appendChild(node);
+  try{ return await html2canvas(node,{scale:2,backgroundColor:'#fff',logging:false}); }
+  finally{ node.remove(); }
+}
+function reportFname(ext){ var r=getPresetRange(); return 'Expense_Report_'+(r.from||'all')+'_to_'+(r.to||'all')+'.'+ext; }
+async function exportExpensesJPEG(){
+  if(!state.expenses.length){ toast('Koi expense nahi'); return; }
+  toast('Building JPEG…');
+  try{ var c=await captureReport(); var a=document.createElement('a'); a.href=c.toDataURL('image/jpeg',0.92); a.download=reportFname('jpg'); a.click(); toast('✓ JPEG saved'); }
+  catch(e){ alert('JPEG failed: '+e.message); }
+}
+async function exportExpensesPDF(){
+  if(!state.expenses.length){ toast('Koi expense nahi'); return; }
+  toast('Building PDF…');
+  try{
+    var c=await captureReport();
+    await ensureLib('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',function(){return !!((window.jspdf&&window.jspdf.jsPDF)||window.jsPDF);});
+    var J=(window.jspdf&&window.jspdf.jsPDF)?window.jspdf.jsPDF:window.jsPDF;
+    var pdf=new J('p','mm','a4'); var pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight(), mg=8;
+    var iw=pw-mg*2, ih=c.height*iw/c.width; var img=c.toDataURL('image/jpeg',0.92);
+    if(ih<=ph-mg*2){ pdf.addImage(img,'JPEG',mg,mg,iw,ih); }
+    else{ var pph=ph-mg*2, pxmm=c.width/iw, slice=pph*pxmm, done=0, first=true;
+      while(done<c.height){ var sh=Math.min(slice,c.height-done); var pc=document.createElement('canvas'); pc.width=c.width; pc.height=sh; var ct=pc.getContext('2d'); ct.fillStyle='#fff'; ct.fillRect(0,0,pc.width,sh); ct.drawImage(c,0,done,c.width,sh,0,0,c.width,sh); if(!first)pdf.addPage(); pdf.addImage(pc.toDataURL('image/jpeg',0.92),'JPEG',mg,mg,iw,sh*iw/c.width); done+=sh; first=false; } }
+    pdf.save(reportFname('pdf')); toast('✓ PDF saved');
+  }catch(e){ alert('PDF failed: '+e.message); }
+}
+
+// ── Team payment cards ──
+function renderPayCards(){
+  var q=($('paySearch').value||'').toLowerCase().trim();
+  var wrap=$('payList');
+  // Show ALL members, with/without payment info
+  var html = state.members.filter(function(m){
+    if(!q) return true;
+    return ((m.name||'')+' '+(m.phone||'')).toLowerCase().indexOf(q)!==-1;
+  }).map(function(m){
+    var info = state.payInfo.find(function(p){ return p.member_phone===m.phone; });
+    if(info){
+      var details=[];
+      if(info.upi_id) details.push('<b>UPI:</b> '+esc(info.upi_id));
+      if(info.bank_account_no) details.push('<b>A/c:</b> '+esc(info.bank_account_no)+(info.ifsc_code?' ('+esc(info.ifsc_code)+')':''));
+      if(info.bank_name) details.push('<b>Bank:</b> '+esc(info.bank_name));
+      var qr = info.qr_scanner_url ? '<img src="'+esc(info.qr_scanner_url)+'" class="pc-qr" onclick="window.open(this.src)">' : '';
+      return '<div class="pay-card has-pay"><div><div class="pc-name">'+esc(m.name||m.phone)+' <span class="tag tag-paid" style="font-size:9px">✓ Setup</span></div><div class="pc-phone">'+esc(m.phone)+'</div><div class="pc-detail">'+(details.join('<br>')||'—')+'</div></div><div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">'+qr+'<button class="btn btn-sm btn-secondary" onclick="openPayModal(\''+esc(m.phone)+'\')">✏️ Edit</button></div></div>';
+    } else {
+      return '<div class="pay-card no-pay"><div><div class="pc-name">'+esc(m.name||m.phone)+'</div><div class="pc-phone">'+esc(m.phone)+'</div><div class="pc-detail" style="color:var(--warn)">⚠️ Payment info nahi — add karo</div></div><button class="btn btn-sm btn-gold" onclick="openPayModal(\''+esc(m.phone)+'\')">➕ Add</button></div>';
+    }
+  }).join('');
+  wrap.innerHTML = html || '<div class="empty">Koi member nahi</div>';
+}
+function openPayModal(phone){
+  $('payEditId').value=''; $('payStatus').innerHTML=''; $('payQrPreview').innerHTML='';
+  $('payDeleteBtn').style.display='none';
+  ['payHolder','payUpi','payAcc','payIfsc','payBank'].forEach(function(id){ $(id).value=''; });
+  $('payPref').value='upi';
+  if(phone){
+    $('payMember').value=phone;
+    var info=state.payInfo.find(function(p){ return p.member_phone===phone; });
+    if(info){
+      $('payModalTitle').textContent='Edit Payment Info';
+      $('payEditId').value=info.id;
+      $('payHolder').value=info.account_holder_name||'';
+      $('payUpi').value=info.upi_id||''; $('payAcc').value=info.bank_account_no||'';
+      $('payIfsc').value=info.ifsc_code||''; $('payBank').value=info.bank_name||'';
+      $('payPref').value=info.preferred_method||'upi';
+      $('payDeleteBtn').style.display='';
+      if(info.qr_scanner_url) $('payQrPreview').innerHTML='<img src="'+esc(info.qr_scanner_url)+'" style="width:70px;border-radius:8px;border:1px solid var(--rule)">';
+    } else { $('payModalTitle').textContent='Add Payment Info'; }
+  } else { $('payModalTitle').textContent='Add Payment Info'; $('payMember').value=''; }
+  $('payModal').classList.add('show');
+}
+function closePayModal(){ $('payModal').classList.remove('show'); }
+async function savePayInfo(){
+  var phone=$('payMember').value;
+  if(!phone){ $('payStatus').innerHTML='<span style="color:var(--danger);font-size:12px">Member select karo</span>'; return; }
+  var mname=(state.members.find(function(m){return m.phone===phone})||{}).name||'';
+  var btn=$('paySaveBtn'); btn.disabled=true; btn.textContent='Saving…';
+  var payload={ member_phone:phone, member_name:mname, account_holder_name:$('payHolder').value.trim()||null, upi_id:$('payUpi').value.trim()||null, bank_account_no:$('payAcc').value.trim()||null, ifsc_code:$('payIfsc').value.trim()||null, bank_name:$('payBank').value.trim()||null, preferred_method:$('payPref').value, updated_at:new Date().toISOString() };
+  try{
+    var editId=$('payEditId').value;
+    var saved;
+    if(editId){ saved=await api('/prajapati_team_payment_info?id=eq.'+editId,{method:'PATCH',body:payload,prefer:'return=representation'}); }
+    else {
+      // upsert on member_phone
+      saved=await api('/prajapati_team_payment_info',{method:'POST',body:payload,prefer:'resolution=merge-duplicates,return=representation'});
+    }
+    var rowId = (saved&&saved[0]&&saved[0].id) || editId;
+    // QR upload
+    var qrFile=$('payQr').files[0];
+    if(qrFile && rowId){
+      try{
+        var safe=qrFile.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+        var path='qr-scanners/'+phone+'_'+Date.now()+'_'+safe;
+        var up=await fetch(SUPABASE_URL+'/storage/v1/object/payment-receipts/'+encodeURI(path),{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY,'Content-Type':qrFile.type,'x-upsert':'true'},body:qrFile});
+        if(up.ok){ var qrUrl=SUPABASE_URL+'/storage/v1/object/public/payment-receipts/'+encodeURI(path); await api('/prajapati_team_payment_info?id=eq.'+rowId,{method:'PATCH',body:{qr_scanner_url:qrUrl}}); }
+      }catch(qe){ console.warn('qr',qe); }
+    }
+    await loadPayInfo(); renderPayCards(); closePayModal(); toast('✓ Payment info saved');
+  }catch(e){ $('payStatus').innerHTML='<span style="color:var(--danger);font-size:12px">'+esc(e.message||'Failed')+'</span>'; }
+  finally{ btn.disabled=false; btn.textContent='💾 Save'; }
+}
+async function deletePayInfo(){
+  var id=$('payEditId').value; if(!id) return;
+  if(!confirm('Payment info delete karna hai?')) return;
+  try{ await api('/prajapati_team_payment_info?id=eq.'+id,{method:'DELETE'}); await loadPayInfo(); renderPayCards(); closePayModal(); toast('✓ Deleted'); }
+  catch(e){ toast('Delete failed'); }
+}
+
+// ── Categories ──
+function renderCategories(){
+  var camp=state.categories.filter(function(c){return c.kind==='campaign';});
+  var intl=state.categories.filter(function(c){return c.kind==='internal';});
+  $('catCampaign').innerHTML = camp.map(catChip).join('') || '<span style="color:var(--text-dim);font-size:12px">None</span>';
+  $('catInternal').innerHTML = intl.map(catChip).join('') || '<span style="color:var(--text-dim);font-size:12px">None</span>';
+}
+function catChip(c){ return '<span class="cat-chip">'+esc(c.name)+' <button onclick="deleteCategory(\''+c.id+'\',\''+esc(c.name)+'\')">×</button></span>'; }
+function openCatModal(){ $('catName').value=''; $('catKind').value='internal'; $('catStatus').innerHTML=''; $('catModal').classList.add('show'); }
+function closeCatModal(){ $('catModal').classList.remove('show'); }
+async function saveCategory(){
+  var name=$('catName').value.trim();
+  if(!name){ $('catStatus').innerHTML='<span style="color:var(--danger);font-size:12px">Name daalo</span>'; return; }
+  try{
+    await api('/prajapati_expense_categories',{method:'POST',body:{name:name,kind:$('catKind').value,sort_order:200}});
+    await loadCategories(); renderCategories(); closeCatModal(); toast('✓ Category added');
+  }catch(e){ $('catStatus').innerHTML='<span style="color:var(--danger);font-size:12px">'+esc(/duplicate|unique/i.test(e.message)?'Already exists':e.message)+'</span>'; }
+}
+async function deleteCategory(id,name){
+  if(!confirm('"'+name+'" delete karna hai?')) return;
+  try{ await api('/prajapati_expense_categories?id=eq.'+id,{method:'DELETE'}); await loadCategories(); renderCategories(); toast('✓ Deleted'); }
+  catch(e){ toast('Delete failed'); }
+}
+
+// close modals on backdrop
+['payModal','catModal'].forEach(function(id){ var m=$(id); if(m) m.addEventListener('click',function(e){ if(e.target===m) m.classList.remove('show'); }); });
+// close search dropdowns on outside click
+document.addEventListener('click',function(e){
+  if(!e.target.closest('#sd-campaign')){ var d=$('sd-campaign-drop'); if(d)d.classList.remove('open'); }
+  if(!e.target.closest('#sd-member')){ var d=$('sd-member-drop'); if(d)d.classList.remove('open'); }
+  if(!e.target.closest('#sd-loc')){ var d=$('loc-drop'); if(d)d.classList.remove('open'); }
+});
+
+init();
 </script>
-<script src="/expenses-field.js?v=1.0.6-2026-06-23"></script>
 </body>
 </html>
