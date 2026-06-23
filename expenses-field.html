@@ -119,11 +119,25 @@ select.inp{background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='
   <h1>My Expenses</h1>
   <p>Prajapati Advertising · Field Team</p>
   <div class="login-box">
-    <div class="fld">
-      <label>📱 Mobile Number</label>
-      <input class="inp" id="inp-mobile" type="tel" inputmode="numeric" placeholder="10 digit number" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)">
+    <!-- Step 1: phone -->
+    <div id="login-step-phone">
+      <div class="fld">
+        <label>📱 Mobile Number</label>
+        <input class="inp" id="inp-mobile" type="tel" inputmode="numeric" placeholder="10 digit number" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)">
+      </div>
+      <button class="btn btn-gold" onclick="sendLoginOtp()">Send OTP →</button>
     </div>
-    <button class="btn btn-gold" onclick="doLogin()">Login →</button>
+    <!-- Step 2: OTP -->
+    <div id="login-step-otp" style="display:none">
+      <div class="fld">
+        <label>🔐 WhatsApp OTP daalo</label>
+        <input class="inp" id="inp-otp" type="tel" inputmode="numeric" placeholder="6 digit OTP" maxlength="6" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,6)" style="text-align:center;letter-spacing:6px;font-size:20px;font-weight:700">
+        <div style="font-size:12px;color:var(--mu);margin-top:8px" id="otp-sent-to">WhatsApp pe OTP bheja</div>
+      </div>
+      <button class="btn btn-gold" onclick="verifyLoginOtp()">Verify & Login →</button>
+      <button class="btn" onclick="backToPhone()" style="background:transparent;color:var(--mu);margin-top:8px;box-shadow:none">← Number badlo</button>
+      <div style="margin-top:10px"><button id="resend-btn" onclick="sendLoginOtp(true)" style="background:none;border:none;color:var(--p);font-size:12px;font-weight:600;cursor:pointer" disabled>Resend OTP (<span id="resend-timer">30</span>s)</button></div>
+    </div>
   </div>
 </div>
 
@@ -286,6 +300,7 @@ select.inp{background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='
   }
 })();
 </script>
-<script src="/expenses-field.js?v=1.0.7-2026-06-23"></script>
+<script src="/lib/wati-client.js"></script>
+<script src="/expenses-field.js?v=1.0.9-2026-06-23"></script>
 </body>
 </html>
