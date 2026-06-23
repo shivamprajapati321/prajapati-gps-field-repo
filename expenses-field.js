@@ -5,7 +5,7 @@
    ════════════════════════════════════════════════════════════════════ */
 var SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
 var SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
-var APP_VERSION = 'v1.0.5';
+var APP_VERSION = 'v1.0.7';
 var RECEIPT_BUCKET = 'payment-receipts';   // existing public bucket; docs go to private path prefix
 
 var state = { member:null, campaigns:[], profile:null, currentTab:'add' };
@@ -100,33 +100,63 @@ function switchTab(tab){
 }
 
 // ════════ ASSIGNED CAMPAIGNS ════════
-// Worker ke recent assignments (last 45 din) ke distinct campaigns — sirf yahi dikhe.
+// Worker ke recent assignments (last 7 din) ke distinct campaigns — sirf yahi dikhe.
+// Privacy: completed campaigns hide; 7-day window (purane auto-hide).
 function loadAssignedCampaigns(){
   var sel = $('expCampaign');
-  var fromDate = new Date(Date.now() - 45*86400000).toISOString().slice(0,10);
+  var fromDate = new Date(Date.now() - 7*86400000).toISOString().slice(0,10);
   api('/trial_daily_assignments?member_phone=eq.'+encodeURIComponent(state.member.phone)+'&assignment_date=gte.'+fromDate+'&select=campaign_key&order=assignment_date.desc')
     .then(function(rows){
       var keys = [];
       (rows||[]).forEach(function(r){ if(r.campaign_key && keys.indexOf(r.campaign_key)===-1) keys.push(r.campaign_key); });
       if (!keys.length){
-        sel.innerHTML = '<option value="">Koi campaign assign nahi hua</option>';
+        state.campaigns = [];
+        renderCampaignOptions([]);
         return;
       }
-      // Fetch campaign names
+      // Fetch campaign names + completed flag (completed = hide)
       var inList = keys.map(function(k){ return encodeURIComponent(k); }).join(',');
-      return api('/trial_campaigns?key=in.('+inList+')&select=key,name,client_name').then(function(camps){
-        state.campaigns = camps||[];
-        // Keep assignment order
+      return api('/trial_campaigns?key=in.('+inList+')&select=key,name,client_name,completed').then(function(camps){
         var byKey = {}; (camps||[]).forEach(function(c){ byKey[c.key]=c; });
-        var opts = '<option value="">Campaign select karo…</option>';
+        // Keep assignment order; SKIP completed campaigns (privacy)
+        var list = [];
         keys.forEach(function(k){
           var c = byKey[k];
-          if (c) opts += '<option value="'+esc(c.key)+'">'+esc(c.name||c.key)+'</option>';
+          if (c && c.completed !== true) list.push(c);
         });
-        sel.innerHTML = opts;
+        state.campaigns = list;
+        renderCampaignOptions(list);
       });
     })
     .catch(function(e){ sel.innerHTML='<option value="">Load error</option>'; console.warn(e); });
+}
+
+// Searchable campaign dropdown render
+function renderCampaignOptions(list){
+  var sel = $('expCampaign');
+  var search = $('campSearch');
+  if (!list || !list.length){
+    sel.innerHTML = '<option value="">Koi campaign assign nahi (7 din)</option>';
+    if (search) search.style.display = 'none';
+    return;
+  }
+  // search box dikhao agar 5+ campaigns
+  if (search) search.style.display = list.length >= 5 ? 'block' : 'none';
+  var q = (search && search.value || '').toLowerCase().trim();
+  var filtered = q
+    ? list.filter(function(c){ return (c.name||c.key||'').toLowerCase().indexOf(q) !== -1; })
+    : list;
+  var opts = '<option value="">Campaign select karo…</option>';
+  filtered.forEach(function(c){
+    opts += '<option value="'+esc(c.key)+'">'+esc(c.name||c.key)+'</option>';
+  });
+  if (!filtered.length) opts = '<option value="">Koi match nahi — search badlo</option>';
+  sel.innerHTML = opts;
+}
+
+// search box ke input pe filter
+function filterCampaigns(){
+  renderCampaignOptions(state.campaigns || []);
 }
 
 // ════════ ADD EXPENSE ════════

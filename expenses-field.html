@@ -138,6 +138,7 @@ select.inp{background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='
   <div class="note">💡 Apna kharcha daalo → admin approve karega → phir payment hoga</div>
   <div class="fld">
     <label>📋 Kis campaign ka kharcha</label>
+    <input class="inp" id="campSearch" placeholder="🔍 Campaign dhundo…" oninput="filterCampaigns()" style="display:none;margin-bottom:8px" autocomplete="off">
     <select class="inp" id="expCampaign"><option value="">Loading campaigns…</option></select>
   </div>
   <div class="fld">
@@ -234,6 +235,57 @@ select.inp{background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
-<script src="/expenses-field.js?v=1.0.5-2026-06-22"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════
+// EXPENSE PWA — ISOLATED service worker registration + scope guard.
+// Goal: yeh app bilkul ALAG install ho. Jis worker ne live field app
+// install kiya hai, usme yeh divert/mix na ho.
+// ═══════════════════════════════════════════════════════════════
+(function(){
+  if (!('serviceWorker' in navigator)) return;
+
+  window.addEventListener('load', function(){
+    // STEP 1: Cleanup — koi galat SW jo expense scope pe wrongly claim kar raha ho
+    // (live field SW scope "/" hai → woh expense page bhi claim kar leta hai).
+    // Apna expense SW register karo APNE scope pe — yeh us page pe priority lega.
+    navigator.serviceWorker.register('/sw-expenses.js?v=1.0.6', { scope: '/expenses-field.html' })
+      .then(function(reg){
+        console.log('[Expense PWA] ✅ SW registered, scope:', reg.scope);
+        // har 20 sec update check (naya version turant aaye)
+        setInterval(function(){ reg.update().catch(function(){}); }, 20000);
+        reg.addEventListener('updatefound', function(){
+          var nw = reg.installing;
+          if (!nw) return;
+          nw.addEventListener('statechange', function(){
+            if (nw.state === 'installed' && navigator.serviceWorker.controller){
+              if (reg.waiting) reg.waiting.postMessage({ type:'SKIP_WAITING' });
+            }
+          });
+        });
+      })
+      .catch(function(err){ console.warn('[Expense PWA] SW register fail:', err); });
+
+    // STEP 2: Controller change pe silent reload (fresh content)
+    var reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      if (reloaded) return; reloaded = true;
+      window.location.reload();
+    });
+  });
+
+  // STEP 3: SCOPE GUARD — agar koi doosre app ka SW (jaise live field, scope "/")
+  // ne is page ko galti se control kar liya, to bhi ensure karo ki hum
+  // expense page pe hi hain. Installed PWA hamesha apne start_url pe khulega
+  // (manifest scope /expenses-field.html), isliye redirect ka risk nahi.
+  // Yeh sirf safety check hai.
+  if (window.matchMedia('(display-mode: standalone)').matches){
+    // Standalone (installed) mode — confirm sahi page
+    if (location.pathname.indexOf('expenses-field') === -1){
+      location.replace('/expenses-field.html');
+    }
+  }
+})();
+</script>
+<script src="/expenses-field.js?v=1.0.7-2026-06-23"></script>
 </body>
 </html>
