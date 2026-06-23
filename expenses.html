@@ -428,6 +428,17 @@ select.input{cursor:pointer}
   </div>
 </div>
 
+<!-- Worker Bank/Payment Details Modal -->
+<div class="modal-bg" id="bankModal">
+  <div class="modal-box" style="max-width:440px">
+    <h3>🏦 Payment Details</h3>
+    <div id="bankModalBody" style="font-size:13.5px;color:var(--ink-700)">—</div>
+    <div style="display:flex;justify-content:flex-end;gap:9px;margin-top:18px">
+      <button class="btn btn-secondary" onclick="document.getElementById('bankModal').classList.remove('show')">Close</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script src="/lib/access-guard.js"></script>
@@ -980,30 +991,52 @@ async function rejectExp(id){
   }catch(e){ toast('Failed: '+e.message); }
 }
 
-// ════ WORKER BANK/PAY DETAILS popup ════
+// ════ WORKER BANK/PAY DETAILS — professional modal ════
+function maskNum(s, showLast){
+  s = String(s||'').trim();
+  if(!s) return '—';
+  showLast = showLast||4;
+  if(s.length<=showLast) return s;
+  return s.slice(0,-showLast).replace(/./g,'X') + s.slice(-showLast);
+}
 async function showWorkerPay(phone){
   if(!phone) return toast('No phone');
+  var modal = $('bankModal'), body = $('bankModalBody');
+  body.innerHTML = '<div class="spinner"></div>';
+  modal.classList.add('show');
   try{
     var rows = await api('/prajapati_team_bank_profile?member_phone=eq.'+encodeURIComponent(phone)+'&select=*');
-    if(!rows || !rows.length){ alert('Is worker ne abhi bank/payment details nahi bhare.'); return; }
+    if(!rows || !rows.length){ body.innerHTML = '<div style="color:var(--warn);padding:8px 0">Is worker ne abhi bank/payment details nahi bhare.</div>'; return; }
     var p = rows[0];
-    var msg = '🏦 PAYMENT DETAILS\n\n'+
-      'Name: '+(p.account_holder||p.member_name||'—')+'\n'+
-      'Bank: '+(p.bank_name||'—')+'\n'+
-      'A/C: '+(p.account_number||'—')+'\n'+
-      'IFSC: '+(p.ifsc_code||'—')+'\n'+
-      'UPI: '+(p.upi_id||'—')+'\n\n'+
-      'Aadhaar: '+(p.aadhaar_number||'—')+'\n'+
-      'PAN: '+(p.pan_number||'—');
-    alert(msg);
-    // UPI QR scanner naye tab mein (admin scan kar ke pay kar sake)
-    if (p.upi_qr_url && confirm('UPI QR scanner kholna hai? (scan kar ke pay karo)')) {
-      window.open(p.upi_qr_url, '_blank');
+    // role-based: admin/owner ko poora, baaki ko masked
+    var isAdmin = ['owner','admin','accountant','finance'].indexOf((user.role||'').toLowerCase()) !== -1;
+    var aadhaar = isAdmin ? (p.aadhaar_number||'—') : maskNum(p.aadhaar_number,4);
+    var pan = isAdmin ? (p.pan_number||'—') : (p.pan_number ? maskNum(p.pan_number,4) : '—');
+    function r(l,v,bold){ return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f1f1f1"><span style="color:var(--text-dim)">'+l+'</span><span style="font-weight:'+(bold?'700':'600')+';color:var(--navy)'+(bold?';font-family:JetBrains Mono,monospace':'')+'">'+esc(v||'—')+'</span></div>'; }
+    var html = '<div style="font-weight:700;font-size:15px;color:var(--navy);margin-bottom:10px">'+esc(p.account_holder||p.member_name||'—')+'</div>';
+    html += '<div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.4px;margin:12px 0 4px">Bank</div>';
+    html += r('Bank Name', p.bank_name);
+    html += r('A/C Number', p.account_number, true);
+    html += r('IFSC', p.ifsc_code, true);
+    html += '<div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.4px;margin:14px 0 4px">UPI</div>';
+    html += r('UPI ID', p.upi_id, true);
+    if(p.upi_qr_url){
+      html += '<div style="text-align:center;margin:12px 0"><a href="'+esc(p.upi_qr_url)+'" target="_blank"><img src="'+esc(p.upi_qr_url)+'" style="max-width:160px;border:1px solid #eee;border-radius:10px;padding:6px;background:#fff"></a><div style="font-size:11px;color:var(--text-dim);margin-top:4px">Tap to scan / open</div></div>';
     }
-  }catch(e){ toast('Failed: '+e.message); }
+    html += '<div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.4px;margin:14px 0 4px">Documents'+(isAdmin?'':' (masked)')+'</div>';
+    html += r('Aadhaar', aadhaar);
+    html += r('PAN', pan);
+    if(isAdmin && (p.aadhaar_photo_url||p.pan_photo_url)){
+      html += '<div style="display:flex;gap:8px;margin-top:10px">';
+      if(p.aadhaar_photo_url) html += '<a href="'+esc(p.aadhaar_photo_url)+'" target="_blank" class="btn btn-sm btn-secondary">📄 Aadhaar</a>';
+      if(p.pan_photo_url) html += '<a href="'+esc(p.pan_photo_url)+'" target="_blank" class="btn btn-sm btn-secondary">📄 PAN</a>';
+      html += '</div>';
+    }
+    body.innerHTML = html;
+  }catch(e){ body.innerHTML = '<div style="color:var(--danger)">Failed: '+esc(e.message)+'</div>'; }
 }
 
-// ════ PDF-A: single expense slip ════
+// ════ PDF-A: professional expense slip ════
 function expenseSlipPDF(id){
   var e = state.expenses.find(function(x){ return String(x.id)===String(id); });
   if(!e){ toast('Not found'); return; }
@@ -1011,32 +1044,59 @@ function expenseSlipPDF(id){
   var jsPDF = window.jspdf.jsPDF;
   var doc = new jsPDF({unit:'pt',format:'a5'});
   var W = doc.internal.pageSize.getWidth();
-  var y = 40;
-  doc.setFillColor(11,25,87); doc.rect(0,0,W,70,'F');
-  doc.setTextColor(255,255,255); doc.setFontSize(16); doc.setFont(undefined,'bold');
-  doc.text('Prajapati Advertising',30,34);
-  doc.setFontSize(10); doc.setFont(undefined,'normal');
-  doc.text('Expense Slip',30,52);
-  y=95; doc.setTextColor(40,40,40);
-  function row(l,v){ doc.setFont(undefined,'bold'); doc.setFontSize(9); doc.text(String(l),30,y); doc.setFont(undefined,'normal'); doc.text(String(v==null?'—':v),150,y); y+=20; }
-  row('Date', e.expense_date||'—');
-  row('Campaign', getWork(e.campaign_name)||'—');
-  row('Member', e.team_member_name||'—');
-  if(e.location) row('Location', e.location);
-  y+=6; doc.setDrawColor(220); doc.line(30,y,W-30,y); y+=18;
-  if(+e.food_amount)  row('Food','₹'+e.food_amount);
-  if(+e.auto_amount)  row('Auto','₹'+e.auto_amount);
-  if(+e.hotel_amount) row('Hotel','₹'+e.hotel_amount);
-  if(+e.bus_amount)   row('Bus','₹'+e.bus_amount);
-  if(+e.transport_amount) row('Transport','₹'+e.transport_amount);
-  if(+e.other_amount) row('Other','₹'+e.other_amount);
-  if(e.remark) row('Remark', e.remark);
-  y+=6; doc.setDrawColor(220); doc.line(30,y,W-30,y); y+=22;
-  doc.setFont(undefined,'bold'); doc.setFontSize(13); doc.setTextColor(11,25,87);
-  doc.text('TOTAL: ₹'+(e.total_amount||0),30,y); y+=24;
-  doc.setFontSize(9); doc.setTextColor(120,120,120); doc.setFont(undefined,'normal');
-  doc.text('Approval: '+(e.approval_status||'approved')+'   |   Payment: '+(e.payment_status||'unpaid'),30,y);
-  doc.save('ExpenseSlip_'+(e.team_member_name||'member').replace(/\s+/g,'_')+'_'+(e.expense_date||'')+'.pdf');
+  var M = 32;
+  // Header band
+  doc.setFillColor(11,25,87); doc.rect(0,0,W,82,'F');
+  doc.setTextColor(255,255,255); doc.setFontSize(17); doc.setFont('helvetica','bold');
+  doc.text('Prajapati Advertising',M,34);
+  doc.setFontSize(8.5); doc.setFont('helvetica','normal'); doc.setTextColor(220,225,240);
+  doc.text('Ph: 9922138138   |   www.prajapatiadvertising.com',M,50);
+  doc.setFillColor(245,184,0); doc.rect(0,82,W,3,'F');
+  // Title + slip no
+  var slipNo = 'EXP-'+String(e.id||'').slice(-6).toUpperCase();
+  doc.setTextColor(11,25,87); doc.setFontSize(13); doc.setFont('helvetica','bold');
+  doc.text('EXPENSE SLIP',M,112);
+  doc.setFontSize(8.5); doc.setFont('helvetica','normal'); doc.setTextColor(120,120,120);
+  doc.text('Slip No: '+slipNo,W-M,104,{align:'right'});
+  doc.text('Date: '+(e.expense_date||'-'),W-M,116,{align:'right'});
+  // Info rows
+  var y=138; doc.setTextColor(40,40,40);
+  function info(l,v){ doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(110,110,110); doc.text(String(l),M,y); doc.setFont('helvetica','normal'); doc.setTextColor(30,30,30); doc.text(String(v==null?'-':v),M+90,y); y+=18; }
+  info('Campaign', getWork(e.campaign_name)||'-');
+  info('Member', e.team_member_name||'-');
+  if(e.location) info('Location', e.location);
+  y+=4;
+  // Table header
+  doc.setFillColor(243,244,248); doc.rect(M,y,W-2*M,22,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(11,25,87);
+  doc.text('CATEGORY',M+8,y+15); doc.text('AMOUNT (Rs.)',W-M-8,y+15,{align:'right'});
+  y+=22;
+  doc.setFont('helvetica','normal'); doc.setTextColor(40,40,40); doc.setFontSize(9.5);
+  function line(l,v){ if(!v) return; doc.text(l,M+8,y+14); doc.text('Rs. '+v,W-M-8,y+14,{align:'right'}); doc.setDrawColor(235); doc.line(M,y+20,W-M,y+20); y+=22; }
+  line('Food', e.food_amount); line('Auto', e.auto_amount); line('Hotel', e.hotel_amount);
+  line('Bus', e.bus_amount); line('Transport', e.transport_amount); line('Other', e.other_amount);
+  if(e.remark){ doc.setFontSize(8); doc.setTextColor(120,120,120); doc.text('Remark: '+e.remark, M+8, y+12); y+=18; }
+  // Total box
+  y+=6; doc.setFillColor(11,25,87); doc.rect(M,y,W-2*M,30,'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(13);
+  doc.text('TOTAL',M+10,y+20); doc.text('Rs. '+(e.total_amount||0),W-M-10,y+20,{align:'right'});
+  y+=44;
+  // Status badges
+  var ap=(e.approval_status||'approved'), ps=(e.payment_status||'unpaid');
+  doc.setFontSize(8.5); doc.setFont('helvetica','bold');
+  doc.setTextColor(ap==='approved'?21:ap==='rejected'?185:180, ap==='approved'?128:ap==='rejected'?29:83, ap==='approved'?61:ap==='rejected'?29:9);
+  doc.text('Approval: '+ap.toUpperCase(),M,y);
+  doc.setTextColor(ps==='paid'?29:194, ps==='paid'?78:65, ps==='paid'?216:12);
+  doc.text('Payment: '+ps.toUpperCase(),M+140,y);
+  y+=40;
+  // Signatures
+  doc.setDrawColor(170); doc.line(M,y,M+110,y); doc.line(W-M-110,y,W-M,y); y+=12;
+  doc.setFontSize(8); doc.setTextColor(120,120,120); doc.setFont('helvetica','normal');
+  doc.text('Prepared by',M+20,y); doc.text('Approved by',W-M-90,y);
+  // Footer
+  doc.setFontSize(7); doc.setTextColor(160,160,160);
+  doc.text('This is a computer-generated slip.',W/2,doc.internal.pageSize.getHeight()-20,{align:'center'});
+  doc.save('ExpenseSlip_'+slipNo+'.pdf');
   toast('✓ Slip PDF downloaded');
 }
 
@@ -1054,31 +1114,44 @@ async function payVoucherPDF(id){
   var jsPDF = window.jspdf.jsPDF;
   var doc = new jsPDF({unit:'pt',format:'a5'});
   var W = doc.internal.pageSize.getWidth();
-  doc.setFillColor(11,25,87); doc.rect(0,0,W,70,'F');
-  doc.setTextColor(255,255,255); doc.setFontSize(16); doc.setFont(undefined,'bold');
-  doc.text('Prajapati Advertising',30,34);
-  doc.setFontSize(10); doc.setFont(undefined,'normal'); doc.text('Payment Voucher',30,52);
-  var y=95; doc.setTextColor(40,40,40);
-  function row(l,v){ doc.setFont(undefined,'bold'); doc.setFontSize(9); doc.text(String(l),30,y); doc.setFont(undefined,'normal'); doc.text(String(v==null?'—':v),150,y); y+=19; }
-  row('Voucher Date', todayIST());
-  row('Paid To', e.team_member_name||'—');
-  row('Campaign', getWork(e.campaign_name)||'—');
-  row('Expense Date', e.expense_date||'—');
-  y+=4; doc.setDrawColor(220); doc.line(30,y,W-30,y); y+=16;
-  doc.setFont(undefined,'bold'); doc.setFontSize(10); doc.setTextColor(11,25,87); doc.text('Bank Details',30,y); y+=18; doc.setTextColor(40,40,40);
-  row('A/C Holder', bank.account_holder||e.team_member_name||'—');
-  row('Bank', bank.bank_name||'—');
-  row('A/C No.', bank.account_number||'—');
-  row('IFSC', bank.ifsc_code||'—');
-  row('UPI', bank.upi_id||'—');
-  y+=4; doc.setDrawColor(220); doc.line(30,y,W-30,y); y+=22;
-  doc.setFont(undefined,'bold'); doc.setFontSize(14); doc.setTextColor(11,25,87);
-  doc.text('AMOUNT PAID: ₹'+(e.total_amount||0),30,y); y+=30;
-  doc.setFontSize(8); doc.setTextColor(120,120,120); doc.setFont(undefined,'normal');
-  doc.text('Paid via: '+(e.paid_via||'—')+'   Status: '+(e.payment_status||'—'),30,y); y+=30;
-  doc.setDrawColor(180); doc.line(30,y,150,y); doc.line(W-150,y,W-30,y); y+=14;
-  doc.setFontSize(8); doc.text('Receiver Sign',60,y); doc.text('Authorised Sign',W-130,y);
-  doc.save('PayVoucher_'+(e.team_member_name||'member').replace(/\s+/g,'_')+'_'+(e.expense_date||'')+'.pdf');
+  var M = 32;
+  doc.setFillColor(11,25,87); doc.rect(0,0,W,82,'F');
+  doc.setTextColor(255,255,255); doc.setFontSize(17); doc.setFont('helvetica','bold');
+  doc.text('Prajapati Advertising',M,34);
+  doc.setFontSize(8.5); doc.setFont('helvetica','normal'); doc.setTextColor(220,225,240);
+  doc.text('Ph: 9922138138   |   www.prajapatiadvertising.com',M,50);
+  doc.setFillColor(245,184,0); doc.rect(0,82,W,3,'F');
+  var vNo = 'PV-'+String(e.id||'').slice(-6).toUpperCase();
+  doc.setTextColor(11,25,87); doc.setFontSize(13); doc.setFont('helvetica','bold');
+  doc.text('PAYMENT VOUCHER',M,112);
+  doc.setFontSize(8.5); doc.setFont('helvetica','normal'); doc.setTextColor(120,120,120);
+  doc.text('Voucher No: '+vNo,W-M,104,{align:'right'});
+  doc.text('Date: '+todayIST(),W-M,116,{align:'right'});
+  var y=140; doc.setTextColor(40,40,40);
+  function info(l,v){ doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(110,110,110); doc.text(String(l),M,y); doc.setFont('helvetica','normal'); doc.setTextColor(30,30,30); doc.text(String(v==null?'-':v),M+95,y); y+=17; }
+  info('Paid To', e.team_member_name||'-');
+  info('Campaign', getWork(e.campaign_name)||'-');
+  info('Expense Date', e.expense_date||'-');
+  y+=6; doc.setFillColor(243,244,248); doc.rect(M,y,W-2*M,20,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(11,25,87); doc.text('BANK DETAILS',M+8,y+14); y+=28;
+  doc.setTextColor(40,40,40);
+  info('A/C Holder', bank.account_holder||e.team_member_name||'-');
+  info('Bank', bank.bank_name||'-');
+  info('A/C No.', bank.account_number||'-');
+  info('IFSC', bank.ifsc_code||'-');
+  info('UPI', bank.upi_id||'-');
+  y+=8; doc.setFillColor(11,25,87); doc.rect(M,y,W-2*M,30,'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(13);
+  doc.text('AMOUNT PAID',M+10,y+20); doc.text('Rs. '+(e.total_amount||0),W-M-10,y+20,{align:'right'});
+  y+=46;
+  doc.setFontSize(8.5); doc.setTextColor(120,120,120); doc.setFont('helvetica','normal');
+  doc.text('Paid via: '+(e.paid_via||'-')+'    Status: '+(e.payment_status||'-').toUpperCase(),M,y); y+=40;
+  doc.setDrawColor(170); doc.line(M,y,M+110,y); doc.line(W-M-110,y,W-M,y); y+=12;
+  doc.setFontSize(8); doc.setTextColor(120,120,120);
+  doc.text('Receiver Sign',M+25,y); doc.text('Authorised Sign',W-M-95,y);
+  doc.setFontSize(7); doc.setTextColor(160,160,160);
+  doc.text('This is a computer-generated voucher.',W/2,doc.internal.pageSize.getHeight()-20,{align:'center'});
+  doc.save('PayVoucher_'+vNo+'.pdf');
   toast('✓ Voucher PDF downloaded');
 }
 

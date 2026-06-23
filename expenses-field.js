@@ -5,7 +5,7 @@
    ════════════════════════════════════════════════════════════════════ */
 var SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
 var SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
-var APP_VERSION = 'v1.0.4';
+var APP_VERSION = 'v1.0.5';
 var RECEIPT_BUCKET = 'payment-receipts';   // existing public bucket; docs go to private path prefix
 
 var state = { member:null, campaigns:[], profile:null, currentTab:'add' };
@@ -238,29 +238,40 @@ function slipPDF(id){
   var jsPDF = window.jspdf.jsPDF;
   var doc = new jsPDF({unit:'pt',format:'a5'});
   var W = doc.internal.pageSize.getWidth();
-  doc.setFillColor(26,41,128); doc.rect(0,0,W,68,'F');
-  doc.setTextColor(255,255,255); doc.setFontSize(15); doc.setFont(undefined,'bold');
-  doc.text('Prajapati Advertising',28,32);
-  doc.setFontSize(10); doc.setFont(undefined,'normal'); doc.text('Expense Slip',28,50);
-  var y=92; doc.setTextColor(40,40,40);
-  function row(l,v){ doc.setFont(undefined,'bold'); doc.setFontSize(9); doc.text(String(l),28,y); doc.setFont(undefined,'normal'); doc.text(String(v==null?'-':v),140,y); y+=19; }
-  row('Date', e.expense_date||'-');
-  row('Campaign', e.campaign_name||'-');
-  row('Member', e.team_member_name||'-');
-  y+=4; doc.setDrawColor(220); doc.line(28,y,W-28,y); y+=16;
-  if(+e.food_amount)  row('Food','Rs '+e.food_amount);
-  if(+e.auto_amount)  row('Auto','Rs '+e.auto_amount);
-  if(+e.hotel_amount) row('Hotel','Rs '+e.hotel_amount);
-  if(+e.bus_amount)   row('Bus','Rs '+e.bus_amount);
-  if(+e.other_amount) row('Other','Rs '+e.other_amount);
-  if(e.remark) row('Remark', e.remark);
-  y+=4; doc.setDrawColor(220); doc.line(28,y,W-28,y); y+=22;
-  doc.setFont(undefined,'bold'); doc.setFontSize(13); doc.setTextColor(26,41,128);
-  doc.text('TOTAL: Rs '+(e.total_amount||0),28,y); y+=22;
-  doc.setFontSize(9); doc.setTextColor(120,120,120); doc.setFont(undefined,'normal');
-  var st = e.payment_status==='paid'?'Paid':(e.approval_status||'pending');
-  doc.text('Status: '+st,28,y);
-  doc.save('ExpenseSlip_'+(e.expense_date||'')+'.pdf');
+  var M = 32;
+  doc.setFillColor(26,41,128); doc.rect(0,0,W,82,'F');
+  doc.setTextColor(255,255,255); doc.setFontSize(17); doc.setFont('helvetica','bold');
+  doc.text('Prajapati Advertising',M,34);
+  doc.setFontSize(8.5); doc.setFont('helvetica','normal'); doc.setTextColor(220,225,240);
+  doc.text('Ph: 9922138138   |   www.prajapatiadvertising.com',M,50);
+  doc.setFillColor(245,184,0); doc.rect(0,82,W,3,'F');
+  var slipNo = 'EXP-'+String(e.id||'').slice(-6).toUpperCase();
+  doc.setTextColor(26,41,128); doc.setFontSize(13); doc.setFont('helvetica','bold');
+  doc.text('EXPENSE SLIP',M,112);
+  doc.setFontSize(8.5); doc.setFont('helvetica','normal'); doc.setTextColor(120,120,120);
+  doc.text('Slip No: '+slipNo,W-M,104,{align:'right'});
+  doc.text('Date: '+(e.expense_date||'-'),W-M,116,{align:'right'});
+  var y=138; doc.setTextColor(40,40,40);
+  function info(l,v){ doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(110,110,110); doc.text(String(l),M,y); doc.setFont('helvetica','normal'); doc.setTextColor(30,30,30); doc.text(String(v==null?'-':v),M+90,y); y+=18; }
+  info('Campaign', e.campaign_name||'-');
+  info('Member', e.team_member_name||'-');
+  y+=4; doc.setFillColor(243,244,248); doc.rect(M,y,W-2*M,22,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(26,41,128);
+  doc.text('CATEGORY',M+8,y+15); doc.text('AMOUNT (Rs.)',W-M-8,y+15,{align:'right'}); y+=22;
+  doc.setFont('helvetica','normal'); doc.setTextColor(40,40,40); doc.setFontSize(9.5);
+  function line(l,v){ if(!v) return; doc.text(l,M+8,y+14); doc.text('Rs. '+v,W-M-8,y+14,{align:'right'}); doc.setDrawColor(235); doc.line(M,y+20,W-M,y+20); y+=22; }
+  line('Food', e.food_amount); line('Auto', e.auto_amount); line('Hotel', e.hotel_amount);
+  line('Bus', e.bus_amount); line('Other', e.other_amount);
+  if(e.remark){ doc.setFontSize(8); doc.setTextColor(120,120,120); doc.text('Remark: '+e.remark, M+8, y+12); y+=18; }
+  y+=6; doc.setFillColor(26,41,128); doc.rect(M,y,W-2*M,30,'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(13);
+  doc.text('TOTAL',M+10,y+20); doc.text('Rs. '+(e.total_amount||0),W-M-10,y+20,{align:'right'}); y+=42;
+  var st = e.payment_status==='paid'?'PAID':(e.approval_status||'pending').toUpperCase();
+  doc.setFontSize(9); doc.setTextColor(110,110,110); doc.setFont('helvetica','normal');
+  doc.text('Status: '+st,M,y);
+  doc.setFontSize(7); doc.setTextColor(160,160,160);
+  doc.text('This is a computer-generated slip.',W/2,doc.internal.pageSize.getHeight()-20,{align:'center'});
+  doc.save('ExpenseSlip_'+slipNo+'.pdf');
   toast('✅ Slip downloaded','success');
 }
 
