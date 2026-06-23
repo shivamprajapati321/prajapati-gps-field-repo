@@ -5,7 +5,7 @@
    ════════════════════════════════════════════════════════════════════ */
 var SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
 var SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
-var APP_VERSION = 'v1.0.7';
+var APP_VERSION = 'v1.0.10';
 var RECEIPT_BUCKET = 'payment-receipts';   // existing public bucket; docs go to private path prefix
 
 var state = { member:null, campaigns:[], profile:null, currentTab:'add' };
@@ -41,19 +41,79 @@ function todayIST(){
 }
 
 // ════════ AUTH ════════
-function doLogin(){
+// ═══ OTP LOGIN (WhatsApp via Wati) ═══
+var _loginPhone = '';
+var _resendInt = null;
+
+function sendLoginOtp(isResend){
   var phone = $('inp-mobile').value.trim().replace(/\D/g,'');
   if (phone.length !== 10) return toast('10-digit mobile number daalo','error');
-  loader(true,'Logging in…');
+  // pehle check karo number registered hai
+  loader(true, isResend ? 'OTP dobara bhej rahe…' : 'Number check kar rahe…');
   api('/trial_team_members?phone=eq.'+phone+'&active=eq.true&select=*')
     .then(function(rows){
-      loader(false);
-      if (!rows || !rows.length) return toast('Number registered nahi hai','error');
+      if (!rows || !rows.length){ loader(false); return toast('Number registered nahi hai','error'); }
       state.member = rows[0];
-      localStorage.setItem('exp_member_phone', phone);
-      enterApp();
+      _loginPhone = phone;
+      // Wati OTP bhejo
+      if (typeof WatiClient === 'undefined'){
+        loader(false);
+        toast('OTP service load nahi hua — reload karo','error');
+        return;
+      }
+      loader(true,'WhatsApp pe OTP bhej rahe…');
+      return WatiClient.sendOTP(phone).then(function(result){
+        loader(false);
+        if (!result || !result.success){
+          return toast('OTP bhejne mein dikkat: '+((result&&result.error)||'try again'),'error');
+        }
+        // show OTP step
+        $('login-step-phone').style.display='none';
+        $('login-step-otp').style.display='block';
+        $('otp-sent-to').textContent = 'WhatsApp pe OTP bheja: +91 '+phone.slice(0,5)+' '+phone.slice(5);
+        var otpInp = $('inp-otp'); if(otpInp){ otpInp.value=''; otpInp.focus(); }
+        startResendTimer();
+      });
     })
-    .catch(function(e){ loader(false); toast('Login error: '+e.message,'error'); });
+    .catch(function(e){ loader(false); toast('Error: '+e.message,'error'); });
+}
+
+function startResendTimer(){
+  var btn = $('resend-btn'), tEl = $('resend-timer');
+  var sec = 30;
+  if (btn){ btn.disabled = true; }
+  if (_resendInt) clearInterval(_resendInt);
+  _resendInt = setInterval(function(){
+    sec--;
+    if (tEl) tEl.textContent = sec;
+    if (sec <= 0){
+      clearInterval(_resendInt);
+      if (btn){ btn.disabled = false; btn.innerHTML = 'Resend OTP'; }
+    }
+  }, 1000);
+}
+
+function verifyLoginOtp(){
+  var code = $('inp-otp').value.trim().replace(/\D/g,'');
+  if (code.length !== 6) return toast('6-digit OTP daalo','error');
+  if (typeof WatiClient === 'undefined') return toast('OTP service error','error');
+  loader(true,'Verify kar rahe…');
+  WatiClient.verifyOTP(_loginPhone, code).then(function(result){
+    loader(false);
+    if (!result || !result.success){
+      return toast(result&&result.error||'Galat OTP — phir try karo','error');
+    }
+    // success — login
+    localStorage.setItem('exp_member_phone', _loginPhone);
+    if (_resendInt) clearInterval(_resendInt);
+    enterApp();
+  }).catch(function(e){ loader(false); toast('Verify error: '+e.message,'error'); });
+}
+
+function backToPhone(){
+  $('login-step-otp').style.display='none';
+  $('login-step-phone').style.display='block';
+  if (_resendInt) clearInterval(_resendInt);
 }
 
 function doLogout(){
@@ -250,11 +310,21 @@ function renderExpCard(e){
   var campStr = e.campaign_name ? (' · '+e.campaign_name) : '';
   var rejRow = (e.approval_status==='rejected' && e.reject_reason) ? '<div class="erem">❌ '+esc(e.reject_reason)+'</div>' : '';
   var remRow = e.remark ? '<div class="erem">📝 '+esc(e.remark)+'</div>' : '';
+  // Payment proof — paid hone pe mode + receipt photo dikhe
+  var payRow = '';
+  if (e.payment_status === 'paid'){
+    var pm = e.paid_via ? ('💸 Paid via '+esc(e.paid_via)) : '💸 Paid';
+    if (e.paid_date) pm += ' · '+esc(e.paid_date);
+    payRow = '<div class="erem" style="color:#15803d;font-weight:600">'+pm+'</div>';
+    if (e.payment_receipt_url){
+      payRow += '<div style="margin-top:6px"><a href="'+esc(e.payment_receipt_url)+'" target="_blank"><img src="'+esc(e.payment_receipt_url)+'" style="max-width:100%;border-radius:8px;border:1px solid #86efac"></a><div style="font-size:10px;color:#888;margin-top:2px">Payment receipt — tap to view</div></div>';
+    }
+  }
 
   return '<div class="exp-card">'+
     '<div class="er1"><span class="ed">📅 '+d+'</span><span class="ea">₹'+(e.total_amount||0)+'</span></div>'+
     '<div class="er2"><span class="ecat">'+esc(catStr)+esc(campStr)+'</span><span class="badge '+badge+'">'+btxt+'</span></div>'+
-    remRow + rejRow +
+    remRow + rejRow + payRow +
     '<div style="margin-top:8px;text-align:right"><button onclick="slipPDF(\''+esc(e.id)+'\')" style="background:#eef2ff;color:#4338ca;border:none;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">📄 Slip PDF</button></div>'+
   '</div>';
 }

@@ -1,7 +1,7 @@
 /* Expenses PWA Service Worker — ISOLATED, scope /expenses-field.html
    Sirf expense app ki requests handle karta hai. Live field SW se alag.
    Auto-update, network-first. */
-var CACHE = 'expenses-v1.0.7-20260623';
+var CACHE = 'expenses-v1.0.8-20260623';
 var ASSETS = ['/expenses-field.html', '/expenses-field.js', '/manifest-expenses.json'];
 
 self.addEventListener('install', function(e){
@@ -39,6 +39,20 @@ self.addEventListener('fetch', function(e){
   var isLib = url.indexOf('cdnjs.cloudflare.com') !== -1 || url.indexOf('jsdelivr') !== -1 ||
               url.indexOf('fonts.googleapis') !== -1 || url.indexOf('fonts.gstatic') !== -1;
   if (!isOwnFile && !isLib) return;  // baaki sab chhod do — divert nahi
+
+  // HTML + JS = NETWORK ONLY (purana code kabhi serve na ho — OTP/feature update turant aaye).
+  // Sirf offline pe cache fallback.
+  var isCode = url.indexOf('expenses-field.html') !== -1 || url.indexOf('expenses-field.js') !== -1;
+  if (isCode){
+    e.respondWith(
+      fetch(e.request, { cache: 'no-store' }).then(function(resp){
+        var copy = resp.clone();
+        caches.open(CACHE).then(function(c){ c.put(e.request, copy).catch(function(){}); });
+        return resp;
+      }).catch(function(){ return caches.match(e.request); })
+    );
+    return;
+  }
 
   e.respondWith(
     fetch(e.request).then(function(resp){
