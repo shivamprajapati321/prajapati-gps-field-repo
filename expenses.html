@@ -439,6 +439,29 @@ select.input{cursor:pointer}
   </div>
 </div>
 
+<!-- Expense Detail (view) Modal -->
+<div class="modal-bg" id="detailModal">
+  <div class="modal-box" style="max-width:460px">
+    <h3>📋 Expense Detail</h3>
+    <div id="detailModalBody" style="font-size:13.5px;color:var(--ink-700)">—</div>
+    <div style="display:flex;justify-content:flex-end;gap:9px;margin-top:18px">
+      <button class="btn btn-secondary" onclick="document.getElementById('detailModal').classList.remove('show')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Expense Edit Modal -->
+<div class="modal-bg" id="editModal">
+  <div class="modal-box" style="max-width:460px">
+    <h3>✏️ Edit Expense</h3>
+    <div id="editModalBody"></div>
+    <div style="display:flex;justify-content:flex-end;gap:9px;margin-top:18px">
+      <button class="btn btn-secondary" onclick="document.getElementById('editModal').classList.remove('show')">Cancel</button>
+      <button class="btn btn-gold" id="editSaveBtn" onclick="saveEditExpense()">💾 Save Changes</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script src="/lib/access-guard.js"></script>
@@ -1008,7 +1031,10 @@ function renderExpenseTable(){
     var payBtn = (!IS_APPROVER_ONLY && e.payment_status!=='paid' && ap==='approved') ? '<button class="btn btn-sm btn-secondary" style="margin-left:6px" onclick="markPaid(\''+e.id+'\')">Pay</button>' : '';
     var slipBtn = IS_APPROVER_ONLY ? '' : '<button class="btn btn-sm btn-secondary" style="margin-left:4px;padding:3px 7px" onclick="expenseSlipPDF(\''+e.id+'\')" title="Slip PDF">📄</button>';
     var voucherBtn = (!IS_APPROVER_ONLY && e.payment_status==='paid') ? '<button class="btn btn-sm btn-secondary" style="margin-left:4px;padding:3px 7px" onclick="payVoucherPDF(\''+e.id+'\')" title="Pay Voucher PDF">🧾</button>' : '';
-    return '<tr><td>'+d+'</td><td>'+typeTag+srcTag+'</td><td>'+forCol+'</td><td style="font-weight:600">'+partyCol+'</td><td style="color:var(--ink-700)">'+esc(detail||'—')+'</td><td style="font-weight:700;font-family:JetBrains Mono,monospace">'+fmt(e.total_amount)+'</td><td>'+apCol+'</td><td>'+statusTag+payBtn+slipBtn+voucherBtn+'</td><td>'+rc+'</td></tr>';
+    // Detail (view) + Edit buttons — approver ko nahi
+    var detailBtn = '<button class="btn btn-sm btn-secondary" style="padding:3px 8px" onclick="showExpenseDetail(\''+e.id+'\')" title="Pura detail dekho">👁️</button>';
+    var editBtn = IS_APPROVER_ONLY ? '' : '<button class="btn btn-sm btn-secondary" style="margin-left:4px;padding:3px 8px" onclick="openEditExpense(\''+e.id+'\')" title="Edit">✏️</button>';
+    return '<tr><td>'+d+'</td><td>'+typeTag+srcTag+'</td><td>'+forCol+'</td><td style="font-weight:600">'+partyCol+'</td><td style="color:var(--ink-700)">'+esc(detail||'—')+'</td><td style="font-weight:700;font-family:JetBrains Mono,monospace">'+fmt(e.total_amount)+'</td><td>'+apCol+'</td><td>'+statusTag+payBtn+slipBtn+voucherBtn+'</td><td>'+rc+detailBtn+editBtn+'</td></tr>';
   }).join('');
 }
 function getWork(name){ var s=String(name||'').trim(); var i=s.search(/[·\-–—|]/); if(i>0)s=s.slice(0,i).trim(); return s||name||'—'; }
@@ -1078,6 +1104,110 @@ async function showWorkerPay(phone){
     }
     body.innerHTML = html;
   }catch(e){ body.innerHTML = '<div style="color:var(--danger)">Failed: '+esc(e.message)+'</div>'; }
+}
+
+// ════ EXPENSE DETAIL (view) ════
+function showExpenseDetail(id){
+  var e = state.expenses.find(function(x){ return String(x.id)===String(id); });
+  if(!e){ toast('Not found'); return; }
+  var modal = $('detailModal'), body = $('detailModalBody');
+  function r(l,v,bold){ return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f1f1f1"><span style="color:var(--text-dim)">'+l+'</span><span style="font-weight:'+(bold?'700':'600')+';color:var(--navy);text-align:right;max-width:60%">'+esc(v==null||v===''?'—':v)+'</span></div>'; }
+  var html = '';
+  html += r('Date', e.expense_date);
+  html += r('Type', (e.expense_type==='campaign'?'Campaign':'Internal')+(e.source==='field'?' (field)':''));
+  if(e.expense_type==='campaign'){
+    html += r('Campaign', getWork(e.campaign_name));
+    html += r('Member', e.team_member_name);
+    if(e.location) html += r('Location', e.location);
+  } else {
+    html += r('Category', e.internal_category);
+    if(e.internal_party) html += r('Party', e.internal_party);
+  }
+  // category breakdown
+  html += '<div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin:12px 0 4px">Breakdown</div>';
+  if(+e.food_amount) html += r('🍱 Food', fmt(e.food_amount));
+  if(+e.auto_amount) html += r('🛺 Auto', fmt(e.auto_amount));
+  if(+e.hotel_amount) html += r('🏨 Hotel', fmt(e.hotel_amount));
+  if(+e.bus_amount) html += r('🚌 Bus', fmt(e.bus_amount));
+  if(+e.transport_amount) html += r('🚗 Transport', fmt(e.transport_amount));
+  if(+e.other_amount) html += r('📦 Other', fmt(e.other_amount));
+  if(e.internal_details) html += r('Details', e.internal_details);
+  if(e.remark) html += r('Remark', e.remark);
+  html += '<div style="display:flex;justify-content:space-between;padding:10px 0;border-top:2px solid var(--navy);margin-top:6px"><span style="font-weight:700;color:var(--navy)">TOTAL</span><span style="font-weight:800;color:var(--navy);font-family:JetBrains Mono,monospace">'+fmt(e.total_amount)+'</span></div>';
+  html += r('Approval', (e.approval_status||'approved').toUpperCase());
+  html += r('Payment', (e.payment_status||'unpaid').toUpperCase());
+  if(e.reject_reason) html += r('Reject reason', e.reject_reason);
+  // receipt photo
+  if(e.receipt_url){
+    html += '<div style="margin-top:12px"><div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:6px">Receipt</div><a href="'+esc(e.receipt_url)+'" target="_blank"><img src="'+esc(e.receipt_url)+'" style="max-width:100%;border-radius:10px;border:1px solid #eee"></a></div>';
+  }
+  body.innerHTML = html;
+  modal.classList.add('show');
+}
+
+// ════ EDIT EXPENSE ════
+var _editId = null;
+function openEditExpense(id){
+  var e = state.expenses.find(function(x){ return String(x.id)===String(id); });
+  if(!e){ toast('Not found'); return; }
+  _editId = id;
+  var body = $('editModalBody');
+  function fieldRow(label, inputHtml){ return '<div class="field"><div class="label">'+label+'</div>'+inputHtml+'</div>'; }
+  var html = '';
+  html += fieldRow('Date', '<input class="input" id="ed-date" type="date" value="'+esc(e.expense_date||'')+'">');
+  // campaign dropdown (campaign type only)
+  if(e.expense_type==='campaign'){
+    var campOpts = '<option value="">—</option>';
+    (state.campaigns||[]).forEach(function(c){
+      var sel = (c.name===e.campaign_name || c.key===e.campaign_key) ? ' selected' : '';
+      campOpts += '<option value="'+esc(c.name||c.key)+'"'+sel+'>'+esc(c.name||c.key)+'</option>';
+    });
+    html += fieldRow('Campaign', '<select class="input" id="ed-campaign">'+campOpts+'</select>');
+  }
+  // category amounts
+  html += '<div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin:8px 0 6px">Category Amounts (Rs.)</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+  html += '<div class="field" style="margin:0"><div class="label">🍱 Food</div><input class="input" id="ed-food" type="number" inputmode="numeric" value="'+(+e.food_amount||'')+'"></div>';
+  html += '<div class="field" style="margin:0"><div class="label">🛺 Auto</div><input class="input" id="ed-auto" type="number" inputmode="numeric" value="'+(+e.auto_amount||'')+'"></div>';
+  html += '<div class="field" style="margin:0"><div class="label">🏨 Hotel</div><input class="input" id="ed-hotel" type="number" inputmode="numeric" value="'+(+e.hotel_amount||'')+'"></div>';
+  html += '<div class="field" style="margin:0"><div class="label">🚌 Bus</div><input class="input" id="ed-bus" type="number" inputmode="numeric" value="'+(+e.bus_amount||'')+'"></div>';
+  html += '<div class="field" style="margin:0"><div class="label">🚗 Transport</div><input class="input" id="ed-transport" type="number" inputmode="numeric" value="'+(+e.transport_amount||'')+'"></div>';
+  html += '<div class="field" style="margin:0"><div class="label">📦 Other</div><input class="input" id="ed-other" type="number" inputmode="numeric" value="'+(+e.other_amount||'')+'"></div>';
+  html += '</div>';
+  html += fieldRow('Remark', '<input class="input" id="ed-remark" value="'+esc(e.remark||'')+'" placeholder="Optional">');
+  html += '<div style="font-size:11px;color:var(--text-dim);margin-top:4px">Total auto-calculate hoga category amounts se</div>';
+  body.innerHTML = html;
+  $('editModal').classList.add('show');
+}
+
+async function saveEditExpense(){
+  if(!_editId) return;
+  var btn = $('editSaveBtn');
+  btn.disabled = true; btn.textContent = '⏳ Saving…';
+  var food=+($('ed-food')||{}).value||0, auto=+($('ed-auto')||{}).value||0;
+  var hotel=+($('ed-hotel')||{}).value||0, bus=+($('ed-bus')||{}).value||0;
+  var transport=+($('ed-transport')||{}).value||0, other=+($('ed-other')||{}).value||0;
+  var total = food+auto+hotel+bus+transport+other;
+  var payload = {
+    expense_date: ($('ed-date')||{}).value || null,
+    food_amount: food, auto_amount: auto, hotel_amount: hotel,
+    bus_amount: bus, transport_amount: transport, other_amount: other,
+    total_amount: total,
+    remark: ($('ed-remark')||{}).value.trim() || null
+  };
+  var campEl = $('ed-campaign');
+  if(campEl) payload.campaign_name = campEl.value || null;
+  try{
+    await api('/prajapati_expenses?id=eq.'+_editId,{method:'PATCH',body:payload});
+    toast('✓ Expense updated');
+    $('editModal').classList.remove('show');
+    _editId = null;
+    loadExpenses();
+  }catch(e){
+    toast('Failed: '+e.message);
+  }finally{
+    btn.disabled = false; btn.textContent = '💾 Save Changes';
+  }
 }
 
 // ════ PDF-A: professional expense slip ════
