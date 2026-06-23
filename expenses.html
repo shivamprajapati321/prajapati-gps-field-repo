@@ -713,9 +713,53 @@ async function init(){
   $('intDate').value = todayIST();
   $('fltFrom').value = todayIST().slice(0,8)+'01';
   $('fltTo').value = todayIST();
+  await checkApproverMode();   // approver hai to UI lock karo
   await Promise.all([loadMembers(), loadCampaigns(), loadCategories(), loadPayInfo()]);
   populateReportFilters();
   onPresetChange();
+}
+
+// ════ APPROVER MODE ════
+// Agar member is_expense_approver hai (aur full admin nahi), to UI lock:
+// sirf pending list + approve/reject. Baaki sab (payments, campaign-wise,
+// summary, paid, new-entry, excel/pdf) hide.
+var IS_APPROVER_ONLY = false;
+async function checkApproverMode(){
+  var isFullAdmin = ['owner','admin','accountant','finance'].indexOf((user.role||'').toLowerCase()) !== -1;
+  if (isFullAdmin) return;  // admin ko sab dikhe
+  if (!user.phone) return;
+  try{
+    var rows = await api('/trial_team_members?phone=eq.'+encodeURIComponent(user.phone)+'&select=is_expense_approver');
+    if (rows && rows.length && rows[0].is_expense_approver === true){
+      IS_APPROVER_ONLY = true;
+      applyApproverLock();
+    }
+  }catch(e){ console.warn('approver check', e); }
+}
+
+function applyApproverLock(){
+  // Tabs: sirf List rakho
+  document.querySelectorAll('.tab').forEach(function(t){
+    var tb = t.getAttribute('data-tab');
+    if (tb !== 'list') t.style.display = 'none';
+  });
+  switchTab('list');
+  // Summary cards + campaign breakdown + export buttons hide
+  var hideIds = ['sumCards','campBreakdown'];
+  hideIds.forEach(function(id){ var el=$(id); if(el) el.style.display='none'; });
+  // Approval filter ko Pending pe lock
+  setTimeout(function(){
+    var fa = $('fltApproval'); if(fa){ fa.value='pending'; fa.disabled=true; }
+    var fs = $('fltStatus'); if(fs){ fs.value=''; }
+    loadExpenses();
+  }, 100);
+  // Header pe approver badge
+  var rEl = $('tbRole'); if(rEl) rEl.textContent = 'Expense Approver';
+  // Export buttons hide (approver ko data export na kare)
+  ['exportExpensesExcel','exportExpensesPDF','exportExpensesJPEG'].forEach(function(fn){
+    var btns = document.querySelectorAll('[onclick*="'+fn+'"]');
+    btns.forEach(function(b){ b.style.display='none'; });
+  });
 }
 
 // Date preset → from/to
@@ -952,7 +996,7 @@ function renderExpenseTable(){
       apCol = '<span class="tag" style="background:#FEF3C7;color:#B45309">Pending</span>'+
               '<div style="margin-top:5px;display:flex;gap:4px"><button class="btn btn-sm" style="background:#16a34a;color:#fff;padding:3px 9px" onclick="approveExp(\''+e.id+'\')">✓</button>'+
               '<button class="btn btn-sm" style="background:#dc2626;color:#fff;padding:3px 9px" onclick="rejectExp(\''+e.id+'\')">✗</button>'+
-              '<button class="btn btn-sm btn-secondary" style="padding:3px 9px" onclick="showWorkerPay(\''+esc(e.team_member_phone||'')+'\')" title="Bank details">🏦</button></div>';
+              (IS_APPROVER_ONLY ? '' : '<button class="btn btn-sm btn-secondary" style="padding:3px 9px" onclick="showWorkerPay(\''+esc(e.team_member_phone||'')+'\')" title="Bank details">🏦</button>')+'</div>';
     } else if (ap === 'rejected') {
       apCol = '<span class="tag" style="background:#FEE2E2;color:#B91C1C">Rejected</span>'+(e.reject_reason?'<div style="font-size:10px;color:#999;margin-top:3px">'+esc(e.reject_reason)+'</div>':'');
     } else {
@@ -960,10 +1004,10 @@ function renderExpenseTable(){
     }
     var statusTag = e.payment_status==='paid' ? '<span class="tag tag-paid">Paid</span>' : '<span class="tag tag-unpaid">Unpaid</span>';
     var rc = e.receipt_url ? '<a href="'+esc(e.receipt_url)+'" target="_blank" style="color:var(--info)">📎</a>' : '—';
-    // Pay button only if approved + unpaid
-    var payBtn = (e.payment_status!=='paid' && ap==='approved') ? '<button class="btn btn-sm btn-secondary" style="margin-left:6px" onclick="markPaid(\''+e.id+'\')">Pay</button>' : '';
-    var slipBtn = '<button class="btn btn-sm btn-secondary" style="margin-left:4px;padding:3px 7px" onclick="expenseSlipPDF(\''+e.id+'\')" title="Slip PDF">📄</button>';
-    var voucherBtn = e.payment_status==='paid' ? '<button class="btn btn-sm btn-secondary" style="margin-left:4px;padding:3px 7px" onclick="payVoucherPDF(\''+e.id+'\')" title="Pay Voucher PDF">🧾</button>' : '';
+    // Approver ko pay/slip/voucher nahi — sirf approve/reject
+    var payBtn = (!IS_APPROVER_ONLY && e.payment_status!=='paid' && ap==='approved') ? '<button class="btn btn-sm btn-secondary" style="margin-left:6px" onclick="markPaid(\''+e.id+'\')">Pay</button>' : '';
+    var slipBtn = IS_APPROVER_ONLY ? '' : '<button class="btn btn-sm btn-secondary" style="margin-left:4px;padding:3px 7px" onclick="expenseSlipPDF(\''+e.id+'\')" title="Slip PDF">📄</button>';
+    var voucherBtn = (!IS_APPROVER_ONLY && e.payment_status==='paid') ? '<button class="btn btn-sm btn-secondary" style="margin-left:4px;padding:3px 7px" onclick="payVoucherPDF(\''+e.id+'\')" title="Pay Voucher PDF">🧾</button>' : '';
     return '<tr><td>'+d+'</td><td>'+typeTag+srcTag+'</td><td>'+forCol+'</td><td style="font-weight:600">'+partyCol+'</td><td style="color:var(--ink-700)">'+esc(detail||'—')+'</td><td style="font-weight:700;font-family:JetBrains Mono,monospace">'+fmt(e.total_amount)+'</td><td>'+apCol+'</td><td>'+statusTag+payBtn+slipBtn+voucherBtn+'</td><td>'+rc+'</td></tr>';
   }).join('');
 }
