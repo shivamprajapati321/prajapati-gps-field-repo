@@ -262,29 +262,18 @@ select.inp{background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='
     // STEP 1: Cleanup — koi galat SW jo expense scope pe wrongly claim kar raha ho
     // (live field SW scope "/" hai → woh expense page bhi claim kar leta hai).
     // Apna expense SW register karo APNE scope pe — yeh us page pe priority lega.
-    navigator.serviceWorker.register('/sw-expenses.js?v=1.0.6', { scope: '/expenses-field.html' })
+    navigator.serviceWorker.register('/sw-expenses.js?v=1.0.7', { scope: '/expenses-field.html' })
       .then(function(reg){
         console.log('[Expense PWA] ✅ SW registered, scope:', reg.scope);
-        // har 20 sec update check (naya version turant aaye)
-        setInterval(function(){ reg.update().catch(function(){}); }, 20000);
-        reg.addEventListener('updatefound', function(){
-          var nw = reg.installing;
-          if (!nw) return;
-          nw.addEventListener('statechange', function(){
-            if (nw.state === 'installed' && navigator.serviceWorker.controller){
-              if (reg.waiting) reg.waiting.postMessage({ type:'SKIP_WAITING' });
-            }
-          });
-        });
+        // Update check sirf ek baar shuru mein (frequent check + skipWaiting
+        // login type karte time reload loop banata tha — hata diya).
+        // Naya version agli baar app khulne pe apne aap aa jaata hai.
       })
       .catch(function(err){ console.warn('[Expense PWA] SW register fail:', err); });
 
-    // STEP 2: Controller change pe silent reload (fresh content)
-    var reloaded = false;
-    navigator.serviceWorker.addEventListener('controllerchange', function(){
-      if (reloaded) return; reloaded = true;
-      window.location.reload();
-    });
+    // STEP 2: SW update silently activate hota hai — koi auto-reload NAHI
+    // (auto-reload login type karte time user ko bahar nikaal deta tha — loop).
+    // Naya version next time app khulne pe apne aap aa jaayega.
   });
 
   // STEP 3: SCOPE GUARD — agar koi doosre app ka SW (jaise live field, scope "/")
