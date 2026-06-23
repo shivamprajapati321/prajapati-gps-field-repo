@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1a2980">
+<link rel="manifest" href="/manifest-expenses.json">
+<link rel="apple-touch-icon" href="/icons/expense-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PA Expenses">
+<title>Prajapati Advertising - Expenses</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@600;700&display=swap');
+:root{--p:#1a2980;--pd:#0f1c5e;--bg:#f4f6f9;--ln:#e8e8ee;--mu:#666;--ok:#10b981;--dn:#ef4444;--wn:#f59e0b;--gd:#f5b800}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:#222;min-height:100vh;min-height:100dvh;overscroll-behavior:none}
+button,input,select{font-family:inherit}input,select{font-size:16px}
+
+/* Header */
+.header{background:linear-gradient(135deg,var(--p),var(--pd));color:#fff;padding:16px 18px;padding-top:max(16px,env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:50;box-shadow:0 2px 12px rgba(0,0,0,.12)}
+.h-l{display:flex;align-items:center;gap:12px}
+.h-logo{width:36px;height:36px;background:var(--gd);border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--p);font-weight:800;font-size:18px}
+.header b{font-size:15px;display:block}
+.header .sub{font-size:11px;opacity:.8;margin-top:1px}
+.lo-btn{background:rgba(255,255,255,.15);color:#fff;border:none;padding:6px 13px;border-radius:14px;font-size:11px;cursor:pointer;font-weight:600}
+
+/* Screens */
+.scr{display:none;padding:18px 16px 110px;max-width:520px;margin:0 auto}
+.scr.active{display:block}
+
+/* Login */
+#screen-login{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;min-height:100dvh;padding:24px;text-align:center}
+#screen-login .big-logo{width:72px;height:72px;background:var(--gd);border-radius:18px;display:flex;align-items:center;justify-content:center;color:var(--p);font-weight:800;font-size:36px;margin-bottom:20px}
+#screen-login h1{font-size:22px;color:var(--p);margin-bottom:6px}
+#screen-login p{font-size:13px;color:var(--mu);margin-bottom:28px}
+.login-box{width:100%;max-width:340px}
+
+/* Fields */
+.fld{margin-bottom:15px}
+.fld label{display:block;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--p);margin-bottom:8px;opacity:.75}
+.inp{width:100%;padding:14px 14px;font-size:15px;font-weight:600;border:2px solid var(--ln);border-radius:13px;background:#fff;font-family:inherit;color:var(--p);transition:.15s;-webkit-appearance:none}
+.inp:focus{outline:none;border-color:var(--gd);box-shadow:0 0 0 4px rgba(245,184,0,.14)}
+.inp::placeholder{color:#bcc2d2;font-weight:500}
+select.inp{background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3e%3cpath d='M3 4l3 3 3-3' stroke='%231a2980' stroke-width='1.5' fill='none'/%3e%3c/svg%3e");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+
+/* Buttons */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:16px;background:var(--p);color:#fff;font-weight:700;border-radius:13px;font-size:15px;border:none;cursor:pointer}
+.btn:disabled{background:#dde1ea;color:#a8aec0}
+.btn-gold{background:var(--gd);color:var(--p);box-shadow:0 6px 18px rgba(245,184,0,.32);font-weight:800;font-size:16px}
+.btn-g{background:#fff;color:var(--p);border:2px solid var(--ln)}
+
+/* Category grid */
+.cat-lbl{display:block;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--p);margin-bottom:10px;opacity:.75}
+.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cat-box{background:#fff;border:2px solid var(--ln);border-radius:14px;padding:12px 14px;transition:.15s}
+.cat-box.filled{border-color:var(--gd);background:#fffdf5}
+.cat-box .ct{font-size:12px;font-weight:700;color:var(--p);display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.cat-box .amt-in{width:100%;border:none;background:transparent;font-size:18px;font-weight:800;color:var(--p);font-family:'JetBrains Mono',monospace;outline:none;-webkit-appearance:none}
+.cat-box .amt-in::placeholder{color:#ccd2e0;font-weight:600}
+
+.total-card{background:linear-gradient(135deg,var(--p),var(--pd));color:#fff;border-radius:16px;padding:16px 18px;margin:14px 0 16px;display:flex;justify-content:space-between;align-items:center}
+.total-card .tl{font-size:12px;opacity:.85;text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+.total-card .tv{font-size:28px;font-weight:800;font-family:'JetBrains Mono',monospace}
+
+.note{background:#eef7ff;border:1px solid #cfe6fb;border-radius:11px;padding:10px 13px;font-size:11.5px;color:#1d6fb8;font-weight:600;margin-bottom:16px;line-height:1.45}
+
+/* History */
+.hist-title{font-size:12px;font-weight:800;color:var(--p);text-transform:uppercase;letter-spacing:.5px;margin:4px 0 12px;opacity:.7}
+.exp-card{background:#fff;border:1px solid var(--ln);border-radius:14px;padding:13px 15px;margin-bottom:10px}
+.exp-card .er1{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.exp-card .ed{font-size:12px;color:var(--mu);font-weight:600}
+.exp-card .ea{font-size:17px;font-weight:800;color:var(--p);font-family:'JetBrains Mono',monospace}
+.exp-card .er2{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.exp-card .ecat{font-size:11px;color:var(--mu);flex:1;min-width:0}
+.exp-card .erem{font-size:11px;color:#999;margin-top:4px;font-style:italic}
+.badge{font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;text-transform:uppercase;letter-spacing:.3px;flex-shrink:0}
+.badge.pending{background:#fef3c7;color:#b45309}
+.badge.approved{background:#dcfce7;color:#15803d}
+.badge.rejected{background:#fee2e2;color:#b91c1c}
+.badge.paid{background:#dbeafe;color:#1d4ed8}
+
+/* Settings */
+.sec-card{background:#fff;border:1px solid var(--ln);border-radius:16px;padding:16px;margin-bottom:14px}
+.sec-card h3{font-size:13px;font-weight:800;color:var(--p);margin-bottom:14px;display:flex;align-items:center;gap:7px}
+.doc-up{display:flex;gap:10px;align-items:center;margin-top:8px}
+.doc-up .up-btn{flex:1;padding:11px;border:2px dashed var(--ln);border-radius:11px;text-align:center;font-size:12px;font-weight:700;color:var(--mu);background:#fafbfd;cursor:pointer}
+.doc-up .up-btn.has{border-color:var(--ok);color:var(--ok);background:#f0fdf4;border-style:solid}
+.doc-up img{width:46px;height:46px;border-radius:9px;object-fit:cover;border:1px solid var(--ln)}
+.priv-note{background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:9px 12px;font-size:11px;color:#9a3412;font-weight:600;margin-bottom:14px;line-height:1.4}
+
+/* Tab bar */
+.tabbar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--ln);display:flex;padding:8px 0 calc(10px + env(safe-area-inset-bottom));z-index:60;max-width:520px;margin:0 auto}
+@media(min-width:540px){.tabbar{left:50%;transform:translateX(-50%)}}
+.tabbar .tb{flex:1;text-align:center;font-size:10.5px;font-weight:700;color:var(--mu);background:none;border:none;cursor:pointer;padding:4px}
+.tabbar .tb.active{color:var(--p)}
+.tabbar .tb .ic{font-size:21px;display:block;margin-bottom:2px}
+
+/* Toast + loader */
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:90px;background:#222;color:#fff;padding:12px 20px;border-radius:24px;font-size:13px;font-weight:600;z-index:300;opacity:0;transition:.3s;pointer-events:none;max-width:90%;text-align:center}
+.toast.show{opacity:1}
+.toast.success{background:var(--ok)}.toast.error{background:var(--dn)}.toast.warn{background:var(--wn)}
+.loader{position:fixed;inset:0;background:rgba(255,255,255,.85);display:none;align-items:center;justify-content:center;flex-direction:column;z-index:400}
+.loader.show{display:flex}
+.spinner{width:42px;height:42px;border:4px solid var(--ln);border-top-color:var(--p);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loader span{margin-top:12px;font-size:13px;color:var(--mu);font-weight:600}
+.empty{text-align:center;padding:50px 20px;color:var(--mu)}
+.empty .ei{font-size:42px;margin-bottom:12px;opacity:.5}
+.version-badge{position:fixed;bottom:78px;right:10px;background:var(--p);color:#fff;font-size:9px;padding:3px 8px;border-radius:8px;opacity:.6;z-index:55;font-family:monospace}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="screen-login">
+  <div class="big-logo">₹</div>
+  <h1>My Expenses</h1>
+  <p>Prajapati Advertising · Field Team</p>
+  <div class="login-box">
+    <div class="fld">
+      <label>📱 Mobile Number</label>
+      <input class="inp" id="inp-mobile" type="tel" inputmode="numeric" placeholder="10 digit number" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)">
+    </div>
+    <button class="btn btn-gold" onclick="doLogin()">Login →</button>
+  </div>
+</div>
+
+<!-- APP HEADER (hidden until login) -->
+<div class="header" id="appHeader" style="display:none">
+  <div class="h-l"><div class="h-logo">₹</div><div><b>My Expenses</b><span class="sub" id="memName">—</span></div></div>
+  <button class="lo-btn" onclick="doLogout()">Logout</button>
+</div>
+
+<!-- TAB: ADD -->
+<div id="screen-add" class="scr">
+  <div class="note">💡 Apna kharcha daalo → admin approve karega → phir payment hoga</div>
+  <div class="fld">
+    <label>📋 Kis campaign ka kharcha</label>
+    <select class="inp" id="expCampaign"><option value="">Loading campaigns…</option></select>
+  </div>
+  <div class="fld">
+    <label>📅 Date</label>
+    <input class="inp" id="expDate" type="date">
+  </div>
+  <span class="cat-lbl">💸 Kharcha (jo laga woh daalo)</span>
+  <div class="cat-grid">
+    <div class="cat-box" id="box-food"><div class="ct">🍱 Food</div><input class="amt-in" id="amt-food" type="number" inputmode="numeric" placeholder="0" oninput="recalc()"></div>
+    <div class="cat-box" id="box-auto"><div class="ct">🛺 Auto</div><input class="amt-in" id="amt-auto" type="number" inputmode="numeric" placeholder="0" oninput="recalc()"></div>
+    <div class="cat-box" id="box-hotel"><div class="ct">🏨 Hotel</div><input class="amt-in" id="amt-hotel" type="number" inputmode="numeric" placeholder="0" oninput="recalc()"></div>
+    <div class="cat-box" id="box-bus"><div class="ct">🚌 Bus</div><input class="amt-in" id="amt-bus" type="number" inputmode="numeric" placeholder="0" oninput="recalc()"></div>
+    <div class="cat-box" id="box-other" style="grid-column:1/3"><div class="ct">📦 Other</div><input class="amt-in" id="amt-other" type="number" inputmode="numeric" placeholder="0" oninput="recalc()"></div>
+  </div>
+  <div class="fld" style="margin-top:15px">
+    <label>📝 Remark (optional)</label>
+    <input class="inp" id="expRemark" placeholder="Kuch likhna ho to...">
+  </div>
+  <div class="total-card"><div class="tl">Total</div><div class="tv" id="totalView">₹0</div></div>
+  <button class="btn btn-gold" id="submitExpBtn" onclick="submitExpense()">📤 Submit for Approval</button>
+</div>
+
+<!-- TAB: HISTORY -->
+<div id="screen-history" class="scr">
+  <div class="hist-title">Mere submitted expenses</div>
+  <div id="histList"><div class="empty"><div class="ei">📋</div>Loading…</div></div>
+</div>
+
+<!-- TAB: SETTINGS -->
+<div id="screen-settings" class="scr">
+  <div class="priv-note">🔒 Yeh details sirf admin dekh sakta hai — payment ke liye. Ek baar bharo, future mein edit kar sakte ho.</div>
+
+  <div class="sec-card">
+    <h3>🏦 Bank Details</h3>
+    <div class="fld"><label>Account Holder Name</label><input class="inp" id="pf-holder" placeholder="Naam jaisa bank mein hai"></div>
+    <div class="fld"><label>Bank Name</label><input class="inp" id="pf-bank" placeholder="e.g. SBI, HDFC"></div>
+    <div class="fld"><label>Account Number</label><input class="inp" id="pf-acc" inputmode="numeric" placeholder="Account number"></div>
+    <div class="fld"><label>IFSC Code</label><input class="inp" id="pf-ifsc" placeholder="e.g. SBIN0001234" style="text-transform:uppercase"></div>
+  </div>
+
+  <div class="sec-card">
+    <h3>📲 UPI</h3>
+    <div class="fld"><label>UPI ID</label><input class="inp" id="pf-upi" placeholder="e.g. 9999999999@upi"></div>
+  </div>
+
+  <div class="sec-card">
+    <h3>🪪 Aadhaar Card</h3>
+    <div class="fld"><label>Aadhaar Number</label><input class="inp" id="pf-aadhaar" inputmode="numeric" placeholder="12 digit" maxlength="12" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,12)"></div>
+    <label style="display:block;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--p);margin-bottom:6px;opacity:.75">Aadhaar Photo</label>
+    <div class="doc-up">
+      <label class="up-btn" id="aadhaar-up-btn" for="aadhaar-file">📷 Upload Aadhaar photo</label>
+      <input type="file" id="aadhaar-file" accept="image/*" style="display:none" onchange="pickDoc('aadhaar', this)">
+      <img id="aadhaar-prev" style="display:none">
+    </div>
+  </div>
+
+  <div class="sec-card">
+    <h3>🪪 PAN Card</h3>
+    <div class="fld"><label>PAN Number</label><input class="inp" id="pf-pan" placeholder="e.g. ABCDE1234F" maxlength="10" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase().slice(0,10)"></div>
+    <label style="display:block;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--p);margin-bottom:6px;opacity:.75">PAN Photo</label>
+    <div class="doc-up">
+      <label class="up-btn" id="pan-up-btn" for="pan-file">📷 Upload PAN photo</label>
+      <input type="file" id="pan-file" accept="image/*" style="display:none" onchange="pickDoc('pan', this)">
+      <img id="pan-prev" style="display:none">
+    </div>
+  </div>
+
+  <button class="btn btn-gold" id="saveProfileBtn" onclick="saveProfile()">💾 Save My Details</button>
+</div>
+
+<!-- TAB BAR -->
+<div class="tabbar" id="tabbar" style="display:none">
+  <button class="tb active" id="tab-add" onclick="switchTab('add')"><span class="ic">➕</span>Add</button>
+  <button class="tb" id="tab-history" onclick="switchTab('history')"><span class="ic">📋</span>History</button>
+  <button class="tb" id="tab-settings" onclick="switchTab('settings')"><span class="ic">⚙️</span>Settings</button>
+</div>
+
+<div class="version-badge" id="appVer" style="display:none">v1.0.0</div>
+<div class="toast" id="toast"></div>
+<div class="loader" id="loader"><div class="spinner"></div><span id="loaderText">Loading…</span></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="/expenses-field.js?v=1.0.1-2026-06-22"></script>
+</body>
+</html>
