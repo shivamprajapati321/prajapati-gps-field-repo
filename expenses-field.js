@@ -5,7 +5,7 @@
    ════════════════════════════════════════════════════════════════════ */
 var SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
 var SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
-var APP_VERSION = 'v1.0.1';
+var APP_VERSION = 'v1.0.4';
 var RECEIPT_BUCKET = 'payment-receipts';   // existing public bucket; docs go to private path prefix
 
 var state = { member:null, campaigns:[], profile:null, currentTab:'add' };
@@ -265,7 +265,7 @@ function slipPDF(id){
 }
 
 // ════════ PROFILE (Settings) ════════
-var _docFiles = { aadhaar:null, pan:null };
+var _docFiles = { aadhaar:null, pan:null, upiqr:null };
 
 function loadProfile(){
   api('/prajapati_team_bank_profile?member_phone=eq.'+encodeURIComponent(state.member.phone)+'&select=*')
@@ -281,6 +281,7 @@ function loadProfile(){
         $('pf-pan').value    = p.pan_number||'';
         if (p.aadhaar_photo_url){ var ai=$('aadhaar-prev'); ai.src=p.aadhaar_photo_url; ai.style.display='block'; $('aadhaar-up-btn').className='up-btn has'; $('aadhaar-up-btn').textContent='✓ Aadhaar uploaded'; }
         if (p.pan_photo_url){ var pi=$('pan-prev'); pi.src=p.pan_photo_url; pi.style.display='block'; $('pan-up-btn').className='up-btn has'; $('pan-up-btn').textContent='✓ PAN uploaded'; }
+        if (p.upi_qr_url){ var qi=$('upiqr-prev'); qi.src=p.upi_qr_url; qi.style.display='block'; $('upiqr-up-btn').className='up-btn has'; $('upiqr-up-btn').textContent='✓ UPI QR uploaded'; }
       }
     })
     .catch(function(e){ console.warn('profile load', e); });
@@ -291,21 +292,87 @@ function pickDoc(kind, input){
   if (!f) return;
   _docFiles[kind] = f;
   var prev = $(kind+'-prev');
-  prev.src = URL.createObjectURL(f); prev.style.display='block';
+  var objUrl = URL.createObjectURL(f);
+  prev.src = objUrl; prev.style.display='block';
+  var lbl = kind==='aadhaar'?'Aadhaar':(kind==='pan'?'PAN':'UPI QR');
   var btn = $(kind+'-up-btn');
-  btn.className='up-btn has'; btn.textContent='✓ '+(kind==='aadhaar'?'Aadhaar':'PAN')+' selected';
+  if (btn){ btn.className='up-btn has'; btn.textContent='✓ '+lbl+' selected'; }
+
+  // ── SCANNER: Aadhaar/PAN se number auto-read ──
+  if (kind === 'aadhaar' || kind === 'pan'){
+    scanDocument(kind, f, objUrl);
+  }
+}
+
+// Scan: pehle QR (Aadhaar — 100% accurate), phir OCR (number nikaalo)
+function scanDocument(kind, file, objUrl){
+  var numInput = $('pf-'+kind);
+  var btn = $(kind+'-up-btn');
+  var orig = btn ? btn.textContent : '';
+  if (btn) btn.textContent = '🔍 Scanning…';
+
+  var img = new Image();
+  img.onload = function(){
+    // 1) Aadhaar QR try (sirf aadhaar)
+    if (kind === 'aadhaar' && typeof jsQR !== 'undefined'){
+      try{
+        var cv = document.createElement('canvas');
+        var sc = Math.min(1000/img.width, 1);
+        cv.width = img.width*sc; cv.height = img.height*sc;
+        var cx = cv.getContext('2d');
+        cx.drawImage(img,0,0,cv.width,cv.height);
+        var imgData = cx.getImageData(0,0,cv.width,cv.height);
+        var qr = jsQR(imgData.data, cv.width, cv.height);
+        if (qr && qr.data){
+          // Aadhaar QR mein number hota hai (secure QR mein last 4, old mein full)
+          var qnum = (qr.data.match(/\d{12}/)||[])[0];
+          if (qnum && numInput){ numInput.value = qnum; toast('✅ Aadhaar QR se number mila','success'); if(btn)btn.textContent=orig; return; }
+        }
+      }catch(e){ console.warn('QR fail', e); }
+    }
+    // 2) OCR fallback (Tesseract) — number text se nikaalo
+    runOCR(kind, objUrl, numInput, btn, orig);
+  };
+  img.onerror = function(){ if(btn)btn.textContent=orig; };
+  img.src = objUrl;
+}
+
+function runOCR(kind, objUrl, numInput, btn, orig){
+  if (typeof Tesseract === 'undefined'){ if(btn)btn.textContent=orig; return; }
+  if (btn) btn.textContent = '🔍 Reading number…';
+  Tesseract.recognize(objUrl, 'eng', {})
+    .then(function(res){
+      var text = (res.data.text||'').replace(/\s+/g,' ');
+      var num = '';
+      if (kind === 'aadhaar'){
+        // 12 digit (may have spaces: 1234 5678 9012)
+        var m = text.replace(/[^0-9]/g,'').match(/\d{12}/);
+        if (m) num = m[0];
+      } else if (kind === 'pan'){
+        // PAN: 5 letters + 4 digits + 1 letter
+        var p = text.toUpperCase().match(/[A-Z]{5}[0-9]{4}[A-Z]/);
+        if (p) num = p[0];
+      }
+      if (num && numInput){
+        numInput.value = num;
+        toast('✅ '+(kind==='aadhaar'?'Aadhaar':'PAN')+' number mila — check kar lo','success');
+      } else {
+        toast('⚠️ Number clear nahi mila — manually daalo','warn');
+      }
+    })
+    .catch(function(e){ console.warn('OCR fail', e); toast('Scan fail — manually daalo','warn'); })
+    .finally(function(){ if(btn)btn.textContent=orig; });
 }
 
 function uploadDoc(kind, file){
-  // private path prefix — admin-only conceptually
   var safe = file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
   var path = 'team-docs/'+state.member.phone+'/'+kind+'_'+Date.now()+'_'+safe;
   return fetch(SUPABASE_URL+'/storage/v1/object/'+RECEIPT_BUCKET+'/'+encodeURI(path), {
     method:'POST',
-    headers:{ apikey:SUPABASE_KEY, Authorization:'Bearer '+SUPABASE_KEY, 'Content-Type':file.type, 'x-upsert':'true' },
+    headers:{ apikey:SUPABASE_KEY, Authorization:'Bearer '+SUPABASE_KEY, 'Content-Type':file.type||'image/jpeg', 'x-upsert':'true' },
     body:file
   }).then(function(r){
-    if (!r.ok) throw new Error('Upload failed');
+    if (!r.ok) return r.text().then(function(t){ throw new Error('Upload '+r.status+': '+(t||'').slice(0,100)); });
     return SUPABASE_URL+'/storage/v1/object/public/'+RECEIPT_BUCKET+'/'+encodeURI(path);
   });
 }
@@ -327,25 +394,47 @@ function saveProfile(){
     updated_at: new Date().toISOString()
   };
 
-  // Upload docs first (if newly picked), then upsert
+  // Photo upload — agar fail ho to bhi text save ho jaaye (non-blocking)
+  var photoWarn = [];
   var uploads = [];
-  if (_docFiles.aadhaar) uploads.push(uploadDoc('aadhaar', _docFiles.aadhaar).then(function(u){ payload.aadhaar_photo_url=u; }));
-  if (_docFiles.pan)     uploads.push(uploadDoc('pan', _docFiles.pan).then(function(u){ payload.pan_photo_url=u; }));
+  function tryUp(kind, urlKey){
+    if (!_docFiles[kind]) return;
+    uploads.push(
+      uploadDoc(kind, _docFiles[kind])
+        .then(function(u){ payload[urlKey]=u; })
+        .catch(function(e){ photoWarn.push(kind); console.warn('upload fail', kind, e); })
+    );
+  }
+  tryUp('aadhaar','aadhaar_photo_url');
+  tryUp('pan','pan_photo_url');
+  tryUp('upiqr','upi_qr_url');
 
   Promise.all(uploads).then(function(){
-    // upsert by member_phone (UNIQUE)
     return api('/prajapati_team_bank_profile?on_conflict=member_phone', {
       method:'POST',
       body:payload,
       prefer:'resolution=merge-duplicates,return=minimal'
     });
   }).then(function(){
-    _docFiles = { aadhaar:null, pan:null };
+    _docFiles = { aadhaar:null, pan:null, upiqr:null };
     btn.disabled=false; btn.textContent='💾 Save My Details';
-    toast('✅ Details saved','success');
+    if (photoWarn.length){
+      toast('✅ Details saved (par '+photoWarn.join(', ')+' photo upload fail — phir try karo)','warn');
+    } else {
+      toast('✅ Details saved','success');
+    }
   }).catch(function(e){
     btn.disabled=false; btn.textContent='💾 Save My Details';
-    toast('Failed: '+e.message,'error');
+    var msg = e.message||String(e);
+    // Common errors ko samajhne layak banao
+    if (msg.indexOf('does not exist')!==-1 || msg.indexOf('relation')!==-1){
+      toast('❌ Database table nahi bani — admin se SQL chalwao','error');
+    } else if (msg.indexOf('on_conflict')!==-1 || msg.indexOf('constraint')!==-1){
+      toast('❌ Save error — admin se backend SQL check karwao','error');
+    } else {
+      toast('❌ Save fail: '+msg.slice(0,80),'error');
+    }
+    console.error('saveProfile error:', e);
   });
 }
 
