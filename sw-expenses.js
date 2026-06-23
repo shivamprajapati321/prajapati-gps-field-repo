@@ -1,7 +1,7 @@
 /* Expenses PWA Service Worker — ISOLATED, scope /expenses-field.html
    Sirf expense app ki requests handle karta hai. Live field SW se alag.
    Auto-update, network-first. */
-var CACHE = 'expenses-v1.0.6-20260623';
+var CACHE = 'expenses-v1.0.7-20260623';
 var ASSETS = ['/expenses-field.html', '/expenses-field.js', '/manifest-expenses.json'];
 
 self.addEventListener('install', function(e){
