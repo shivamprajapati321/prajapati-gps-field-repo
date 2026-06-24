@@ -150,6 +150,18 @@ select.input{cursor:pointer}
 .toast.show{opacity:1}
 .spinner{width:34px;height:34px;border:3px solid var(--rule);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;margin:40px auto}
 @keyframes spin{to{transform:rotate(360deg)}}
+.quick-chips{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 6px;padding-bottom:14px;border-bottom:1px solid #EEF2F7}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;border:1.5px solid #E2E8F0;background:#fff;color:var(--ink-700);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit}
+.chip:hover{border-color:var(--navy);transform:translateY(-1px)}
+.chip.active{background:var(--navy);color:#fff;border-color:var(--navy);box-shadow:0 3px 10px rgba(11,25,87,.22)}
+.chip-n{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#F1F5F9;color:var(--ink-700);font-size:11px;font-weight:800}
+.chip.active .chip-n{background:rgba(255,255,255,.25);color:#fff}
+.chip-approved.active{background:#15803D;border-color:#15803D;box-shadow:0 3px 10px rgba(21,128,61,.22)}
+.chip-pending.active{background:#D97706;border-color:#D97706;box-shadow:0 3px 10px rgba(217,119,6,.22)}
+.chip-rejected.active{background:#DC2626;border-color:#DC2626;box-shadow:0 3px 10px rgba(220,38,38,.22)}
+.chip-unpaid.active{background:#B45309;border-color:#B45309}
+.chip-paid.active{background:#0F766E;border-color:#0F766E;box-shadow:0 3px 10px rgba(15,118,110,.22)}
+.chip-camp.active{background:var(--gold-deep);border-color:var(--gold-deep)}
 </style>
 </head>
 <body>
@@ -342,6 +354,17 @@ select.input{cursor:pointer}
           <button class="btn btn-sm" style="background:#E11D48;color:#fff" onclick="exportExpensesPDF()">📄 PDF</button>
           <button class="btn btn-sm" style="background:#7C3AED;color:#fff" onclick="exportExpensesJPEG()">🖼️ JPEG</button>
         </div>
+      </div>
+
+      <!-- Quick filter chips (fast tracking) -->
+      <div class="quick-chips" id="quickChips">
+        <button class="chip chip-all active" data-qf="all" onclick="quickFilter('all')">All <span class="chip-n" id="qn-all">0</span></button>
+        <button class="chip chip-approved" data-qf="approved" onclick="quickFilter('approved')">✓ Approved <span class="chip-n" id="qn-approved">0</span></button>
+        <button class="chip chip-pending" data-qf="pending" onclick="quickFilter('pending')">⏳ Pending <span class="chip-n" id="qn-pending">0</span></button>
+        <button class="chip chip-rejected" data-qf="rejected" onclick="quickFilter('rejected')">✗ Rejected <span class="chip-n" id="qn-rejected">0</span></button>
+        <button class="chip chip-unpaid" data-qf="unpaid" onclick="quickFilter('unpaid')">💰 Unpaid <span class="chip-n" id="qn-unpaid">0</span></button>
+        <button class="chip chip-paid" data-qf="paid" onclick="quickFilter('paid')">✅ Paid <span class="chip-n" id="qn-paid">0</span></button>
+        <button class="chip chip-camp" data-qf="campaign" onclick="quickFilter('campaign')">📁 Campaign-wise</button>
       </div>
       <div style="overflow:auto" id="expReportArea"><table class="exp-table" id="expTable"><tbody><tr><td><div class="spinner"></div></td></tr></tbody></table></div>
       <div id="campBreakdown"></div>
@@ -955,7 +978,54 @@ async function loadExpenses(){
     state.expenses = await api(qs) || [];
     renderExpenseTable();
     renderSummary();
+    updateQuickCounts();
   }catch(e){ tbody.innerHTML='<tr><td style="color:var(--danger);padding:18px">'+esc(e.message)+'</td></tr>'; }
+}
+
+// ── Quick filter chips (Approved/Pending/Rejected/Unpaid/Paid/Campaign-wise) ──
+var _activeQuick = 'all';
+function quickFilter(qf){
+  _activeQuick = qf;
+  // chip active state
+  document.querySelectorAll('#quickChips .chip').forEach(function(c){
+    c.classList.toggle('active', c.getAttribute('data-qf')===qf);
+  });
+  // campaign-wise → scroll to breakdown table
+  if(qf==='campaign'){
+    var bd = document.getElementById('campBreakdown') || document.getElementById('campaignBreakdown');
+    if(bd){ bd.scrollIntoView({behavior:'smooth', block:'start'}); }
+    return;
+  }
+  // map chip → existing filter dropdowns
+  var fa=$('fltApproval'), fs=$('fltStatus');
+  if(fa){ fa.disabled=false; }
+  if(qf==='all'){ if(fa)fa.value=''; if(fs)fs.value=''; }
+  else if(qf==='approved'){ if(fa)fa.value='approved'; if(fs)fs.value=''; }
+  else if(qf==='pending'){ if(fa)fa.value='pending'; if(fs)fs.value=''; }
+  else if(qf==='rejected'){ if(fa)fa.value='rejected'; if(fs)fs.value=''; }
+  else if(qf==='unpaid'){ if(fs)fs.value='unpaid'; if(fa)fa.value=''; }
+  else if(qf==='paid'){ if(fs)fs.value='paid'; if(fa)fa.value=''; }
+  loadExpenses();
+}
+
+// Counts — current date-range ke saare expenses se (filter se pehle)
+async function updateQuickCounts(){
+  try{
+    var range=getPresetRange();
+    var q='/prajapati_expenses?select=approval_status,payment_status&order=expense_date.desc&limit=5000';
+    if(range.from) q+='&expense_date=gte.'+range.from;
+    if(range.to) q+='&expense_date=lte.'+range.to;
+    var all = await api(q) || [];
+    var c={all:all.length,approved:0,pending:0,rejected:0,unpaid:0,paid:0};
+    all.forEach(function(e){
+      var a=e.approval_status||'approved';
+      if(a==='approved')c.approved++; else if(a==='pending')c.pending++; else if(a==='rejected')c.rejected++;
+      if(e.payment_status==='paid')c.paid++; else c.unpaid++;
+    });
+    ['all','approved','pending','rejected','unpaid','paid'].forEach(function(k){
+      var el=$('qn-'+k); if(el)el.textContent=c[k];
+    });
+  }catch(e){ console.warn('counts',e); }
 }
 function renderSummary(){
   var total=0, paid=0, unpaid=0, camp=0, intl=0, pending=0;
@@ -1091,7 +1161,8 @@ async function confirmPay(){
     paid_date: ($('pay-date')||{}).value || todayIST()
   };
   try{
-    // receipt upload (optional)
+    var receiptWarn = '';
+    // receipt upload (optional but recommended)
     if(_payReceiptFile){
       try{
         var safe = _payReceiptFile.name.replace(/[^a-zA-Z0-9._-]/g,'_');
@@ -1101,8 +1172,15 @@ async function confirmPay(){
           headers:{ apikey:SUPABASE_KEY, Authorization:'Bearer '+SUPABASE_KEY, 'Content-Type':_payReceiptFile.type||'image/jpeg', 'x-upsert':'true' },
           body:_payReceiptFile
         });
-        if(up.ok){ payload.payment_receipt_url = SUPABASE_URL+'/storage/v1/object/public/payment-receipts/'+encodeURI(path); }
-      }catch(upErr){ console.warn('receipt upload fail', upErr); }
+        if(up.ok){
+          payload.payment_receipt_url = SUPABASE_URL+'/storage/v1/object/public/payment-receipts/'+encodeURI(path);
+        } else {
+          // upload fail — exact reason capture karo (chup na raho)
+          var et = ''; try{ et = await up.text(); }catch(_){}
+          receiptWarn = ' (⚠️ receipt upload fail: '+(up.status)+' '+(et.slice(0,80))+' — payment-receipts bucket policy check karo)';
+          console.warn('receipt upload fail', up.status, et);
+        }
+      }catch(upErr){ receiptWarn = ' (⚠️ receipt upload error: '+upErr.message+')'; console.warn('receipt upload fail', upErr); }
     }
     // PATCH with return=representation — taaki verify ho sake actually update hua
     var updated = await api('/prajapati_expenses?id=eq.'+_payId, {
@@ -1119,7 +1197,7 @@ async function confirmPay(){
     if(newStatus !== 'paid'){
       throw new Error('Update hua par status "'+newStatus+'" raha (paid nahi). Column issue.');
     }
-    toast('✓ Payment done'+(payload.payment_receipt_url?' + receipt saved':''));
+    toast('✓ Payment done'+(payload.payment_receipt_url?' + receipt saved':receiptWarn||''));
     $('payModal').classList.remove('show');
     _payId = null; _payReceiptFile = null;
     loadExpenses();
