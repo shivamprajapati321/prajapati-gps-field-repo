@@ -5,7 +5,7 @@
    ════════════════════════════════════════════════════════════════════ */
 var SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
 var SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
-var APP_VERSION = 'v1.0.10';
+var APP_VERSION = 'v1.0.11';
 var RECEIPT_BUCKET = 'payment-receipts';   // existing public bucket; docs go to private path prefix
 
 var state = { member:null, campaigns:[], profile:null, currentTab:'add' };
@@ -316,8 +316,9 @@ function renderExpCard(e){
     var pm = e.paid_via ? ('💸 Paid via '+esc(e.paid_via)) : '💸 Paid';
     if (e.paid_date) pm += ' · '+esc(e.paid_date);
     payRow = '<div class="erem" style="color:#15803d;font-weight:600">'+pm+'</div>';
-    if (e.payment_receipt_url){
-      payRow += '<div style="margin-top:6px"><a href="'+esc(e.payment_receipt_url)+'" target="_blank"><img src="'+esc(e.payment_receipt_url)+'" style="max-width:100%;border-radius:8px;border:1px solid #86efac"></a><div style="font-size:10px;color:#888;margin-top:2px">Payment receipt — tap to view</div></div>';
+    var rcptUrl = e.payment_receipt_url || e.receipt_url;
+    if (rcptUrl){
+      payRow += '<div style="margin-top:6px"><a href="'+esc(rcptUrl)+'" target="_blank"><img src="'+esc(rcptUrl)+'" style="max-width:100%;border-radius:8px;border:1px solid #86efac"></a><div style="font-size:10px;color:#888;margin-top:2px">Payment receipt — tap to view</div></div>';
     }
   }
 
