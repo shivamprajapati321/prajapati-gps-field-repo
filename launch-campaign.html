@@ -390,9 +390,10 @@ a{color:inherit;text-decoration:none}
   <div class="section" id="paymentSection" style="display:none">
     <div class="section-head">
       <div class="section-title">Part <em>Payments</em></div>
-      <div class="section-meta">Client se aaya paisa</div>
+      <div class="section-meta">Client se aaya paisa · v2</div>
     </div>
     <div class="section-body">
+      <div id="payDebug"></div>
       <!-- balance summary -->
       <div class="pricing-bar" style="margin-top:0;grid-template-columns:repeat(3,1fr)">
         <div class="pricing-item"><div class="pricing-val" id="payTotalAmt">₹0</div><div class="pricing-lbl">Total Amount</div></div>
@@ -1553,6 +1554,16 @@ async function loadCampaignPayments(){
   document.getElementById('payTotalAmt').textContent = '₹' + Math.round(total).toLocaleString('en-IN');
   document.getElementById('payPaidAmt').textContent = '₹' + Math.round(paid).toLocaleString('en-IN');
   document.getElementById('payBalAmt').textContent = '₹' + Math.round(bal).toLocaleString('en-IN');
+
+  // Debug helper: agar total 0 hai to user ko batao kyun (campaign mein pricing nahi)
+  const dbgEl = document.getElementById('payDebug');
+  if(dbgEl){
+    if(!total){
+      dbgEl.innerHTML = '<div style="background:#FEF3C7;color:#92400E;padding:8px 12px;border-radius:8px;font-size:12px;margin-bottom:10px">⚠️ Total ₹0 — is campaign mein rate/quantity set nahi hai. Upar <strong>Pricing</strong> section mein rate daalo, total calculate hoga, phir balance dikhega.</div>';
+    } else {
+      dbgEl.innerHTML = '';
+    }
+  }
 
   const list = document.getElementById('paymentList');
   if(loadErr){
