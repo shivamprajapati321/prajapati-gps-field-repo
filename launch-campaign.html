@@ -1515,13 +1515,20 @@ async function loadCampaignPayments(){
   const dEl = document.getElementById('payDate');
   if(dEl && !dEl.value) dEl.value = new Date().toISOString().slice(0,10);
   let rows = [];
+  let loadErr = null;
   try {
-    const { data } = await db.from('prajapati_campaign_payments')
+    const { data, error } = await db.from('prajapati_campaign_payments')
       .select('*').eq('campaign_id', EDIT_ID).order('paid_date', {ascending:true});
+    if(error) loadErr = error;
     rows = data || [];
-  } catch(e){ console.warn('payments load', e); }
+  } catch(e){ loadErr = e; console.warn('payments load', e); }
 
-  const total = parseFloat(editingCampaign.total_amount) || 0;
+  // total_amount fallback (purane campaigns mein total_amount na ho to base/grand total se nikalo)
+  let total = parseFloat(editingCampaign.total_amount) || 0;
+  if(!total){
+    const t = document.getElementById('priceTotal');
+    if(t) total = parseFloat((t.textContent||'').replace(/[^0-9.]/g,'')) || 0;
+  }
   const paid = rows.reduce((s,r)=> s + (parseFloat(r.amount)||0), 0);
   const bal = Math.max(0, total - paid);
 
@@ -1530,6 +1537,10 @@ async function loadCampaignPayments(){
   document.getElementById('payBalAmt').textContent = '₹' + bal.toLocaleString('en-IN');
 
   const list = document.getElementById('paymentList');
+  if(loadErr){
+    list.innerHTML = '<div class="callout error" style="padding:10px"><span class="callout-icon">❌</span><div>Payments load nahi hue: '+escapeHtml(loadErr.message||String(loadErr))+'<br><small>campaign_payments.sql chala? Table exist karti hai?</small></div></div>';
+    return;
+  }
   if(!rows.length){
     list.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;padding:10px">Abhi koi payment nahi — niche add karo</div>';
     return;
@@ -1575,8 +1586,12 @@ async function addCampaignPayment(){
       receipt_url: receiptUrl,
       created_by: user.id
     };
-    const { error } = await db.from('prajapati_campaign_payments').insert(payload);
+    const { data: insRows, error } = await db.from('prajapati_campaign_payments').insert(payload).select();
     if(error) throw error;
+    // RLS check: insert 0 rows = silent block (success dikhega par save nahi)
+    if(!insRows || !insRows.length){
+      throw new Error('Payment save nahi hua (0 rows) — prajapati_campaign_payments pe RLS INSERT policy missing. campaign_payments.sql dobara chalao.');
+    }
     // reset form
     document.getElementById('payAmount').value = '';
     document.getElementById('payRemark').value = '';
