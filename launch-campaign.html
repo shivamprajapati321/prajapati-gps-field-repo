@@ -1403,19 +1403,25 @@ async function _submitCampaignInner(targetStatus = 'pending_execution_plan') {
       delete campaignPayload.created_by;
       delete campaignPayload.status;   // keep existing status
       // Strip nulls again (already done above, safe)
-      let { data: updated, error: upErr } = await db.from('trial_campaigns')
-        .update(campaignPayload).eq('id', EDIT_ID).select().single();
+      let { data: updRows, error: upErr } = await db.from('trial_campaigns')
+        .update(campaignPayload).eq('id', EDIT_ID).select();
       // If a column is missing in DB (e.g. end_date not migrated), strip it and retry once.
       if (upErr && /column .* does not exist|could not find/i.test(upErr.message || '')) {
         const m = (upErr.message || '').match(/column "?([a-z_]+)"?/i);
         if (m && m[1] && (m[1] in campaignPayload)) {
           delete campaignPayload[m[1]];
-          const retry = await db.from('trial_campaigns').update(campaignPayload).eq('id', EDIT_ID).select().single();
-          updated = retry.data; upErr = retry.error;
+          const retry = await db.from('trial_campaigns').update(campaignPayload).eq('id', EDIT_ID).select();
+          updRows = retry.data; upErr = retry.error;
         }
       }
       if (upErr) throw upErr;
-      campaign = updated || { id: EDIT_ID };
+      const updated = (updRows && updRows[0]) || null;
+      // RLS SILENT BLOCK CHECK: agar update 0 rows kare (RLS policy missing),
+      // Supabase error nahi deta par updRows empty hota hai → false "success".
+      if (!updated || !updated.id) {
+        throw new Error('Update save nahi hua (0 rows). trial_campaigns pe RLS UPDATE policy missing — fix_campaign_edit_rls.sql chalao.');
+      }
+      campaign = updated;
 
       // Replace designs: delete old rows, insert fresh (simplest reliable sync)
       await db.from('trial_campaign_designs').delete().eq('campaign_id', EDIT_ID);
