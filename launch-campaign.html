@@ -1523,18 +1523,36 @@ async function loadCampaignPayments(){
     rows = data || [];
   } catch(e){ loadErr = e; console.warn('payments load', e); }
 
-  // total_amount fallback (purane campaigns mein total_amount na ho to base/grand total se nikalo)
-  let total = parseFloat(editingCampaign.total_amount) || 0;
+  // ── TOTAL nikalo (robust) — DB column naam alag ho sakta hai, multiple try ──
+  let total = parseFloat(editingCampaign.total_amount)
+           || parseFloat(editingCampaign.total)
+           || parseFloat(editingCampaign.grand_total)
+           || parseFloat(editingCampaign.final_amount)
+           || 0;
+  // Fallback 1: live pricing element se (agar calcPricing chal chuka)
   if(!total){
     const t = document.getElementById('priceTotal');
     if(t) total = parseFloat((t.textContent||'').replace(/[^0-9.]/g,'')) || 0;
   }
+  // Fallback 2: khud calculate karo designs × rate (− disc + gst)
+  if(!total){
+    try {
+      let qty = 0;
+      (designs||[]).forEach(d => (d.locations||[]).forEach(l => { if(l.name && l.quantity>0) qty += (parseFloat(l.quantity)||0); }));
+      const rate = parseFloat((document.getElementById('rateUnit')||{}).value) || parseFloat(editingCampaign.rate_per_unit) || 0;
+      const disc = parseFloat((document.getElementById('discount')||{}).value) || parseFloat(editingCampaign.discount) || 0;
+      const gstP = parseFloat((document.getElementById('gstPct')||{}).value) || parseFloat(editingCampaign.gst_pct) || 0;
+      const base = qty * rate;
+      const afterDisc = Math.max(0, base - disc);
+      total = afterDisc + afterDisc*(gstP/100);
+    } catch(e){}
+  }
   const paid = rows.reduce((s,r)=> s + (parseFloat(r.amount)||0), 0);
   const bal = Math.max(0, total - paid);
 
-  document.getElementById('payTotalAmt').textContent = '₹' + total.toLocaleString('en-IN');
-  document.getElementById('payPaidAmt').textContent = '₹' + paid.toLocaleString('en-IN');
-  document.getElementById('payBalAmt').textContent = '₹' + bal.toLocaleString('en-IN');
+  document.getElementById('payTotalAmt').textContent = '₹' + Math.round(total).toLocaleString('en-IN');
+  document.getElementById('payPaidAmt').textContent = '₹' + Math.round(paid).toLocaleString('en-IN');
+  document.getElementById('payBalAmt').textContent = '₹' + Math.round(bal).toLocaleString('en-IN');
 
   const list = document.getElementById('paymentList');
   if(loadErr){
