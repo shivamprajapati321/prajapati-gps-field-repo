@@ -385,7 +385,58 @@ a{color:inherit;text-decoration:none}
       </div>
     </div>
   </div>
-  
+
+  <!-- ── PART PAYMENTS (edit mode only — campaign already saved) ── -->
+  <div class="section" id="paymentSection" style="display:none">
+    <div class="section-head">
+      <div class="section-title">Part <em>Payments</em></div>
+      <div class="section-meta">Client se aaya paisa</div>
+    </div>
+    <div class="section-body">
+      <!-- balance summary -->
+      <div class="pricing-bar" style="margin-top:0;grid-template-columns:repeat(3,1fr)">
+        <div class="pricing-item"><div class="pricing-val" id="payTotalAmt">₹0</div><div class="pricing-lbl">Total Amount</div></div>
+        <div class="pricing-item"><div class="pricing-val" id="payPaidAmt" style="color:#34d399">₹0</div><div class="pricing-lbl">Paid</div></div>
+        <div class="pricing-item"><div class="pricing-val" id="payBalAmt" style="color:#fbbf24">₹0</div><div class="pricing-lbl">Balance</div></div>
+      </div>
+
+      <!-- existing payments list -->
+      <div id="paymentList" style="margin-top:16px"></div>
+
+      <!-- add new payment -->
+      <div style="margin-top:16px;border-top:1px dashed var(--line);padding-top:16px">
+        <div class="row three">
+          <div class="field">
+            <div class="label">Amount (₹)</div>
+            <input class="input" type="number" id="payAmount" placeholder="e.g. 10000">
+          </div>
+          <div class="field">
+            <div class="label">Date</div>
+            <input class="input" type="date" id="payDate">
+          </div>
+          <div class="field">
+            <div class="label">Mode</div>
+            <select class="input" id="payMode"><option value="UPI">UPI</option><option value="Bank">Bank Transfer</option><option value="Cash">Cash</option><option value="Cheque">Cheque</option></select>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <div class="label">Remark (optional)</div>
+            <input class="input" id="payRemark" placeholder="e.g. advance, 1st installment">
+          </div>
+        </div>
+        <div class="field">
+          <div class="label">Receipt Photo <span style="color:var(--muted);font-weight:400">(recommend)</span></div>
+          <label class="btn btn-secondary" for="payReceiptFile" id="payReceiptBtn" style="cursor:pointer">📷 Receipt upload karo</label>
+          <input type="file" id="payReceiptFile" accept="image/*" style="display:none" onchange="payReceiptPicked(this)">
+          <img id="payReceiptPrev" style="display:none;max-width:160px;border-radius:10px;margin-top:8px;border:1px solid var(--line)">
+        </div>
+        <button class="btn btn-gold" onclick="addCampaignPayment()" id="addPayBtn" style="margin-top:6px">+ Add Payment</button>
+        <div id="payStatus" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+
   <div id="submitStatus"></div>
   
 </div>
@@ -551,6 +602,9 @@ async function loadCampaignForEdit(campId) {
     if (subEl) subEl.innerHTML = '💾 Update Campaign';
     const banner = document.getElementById('submitStatus');
     if (banner) banner.innerHTML = '<div class="callout info"><span class="callout-icon">✏️</span><div><strong>Edit mode</strong> — "' + escapeHtml(camp.campaign_name||camp.name||'Campaign') + '" modify kar rahe hain. Naya design add karein ya location/qty badlein, phir Update dabayein.</div></div>';
+
+    // Part payments load karo (sirf edit mode mein dikhe)
+    try { await loadCampaignPayments(); } catch(e){ console.warn('payments init', e); }
   } catch(e) {
     console.error(e);
     alert('Campaign load nahi hui: ' + (e.message||e));
@@ -1258,8 +1312,17 @@ async function _submitCampaignInner(targetStatus = 'pending_execution_plan') {
   if (targetStatus !== 'draft') {
     // Edit mode mein job_type optional (admin-v2 se bane campaigns ka job_type nahi hota)
     const jobTypeMissing = !isEdit && !selectedJobType;
-    if (!selectedSales || !selectedClient || jobTypeMissing || !campaignName) {
-      document.getElementById('submitStatus').innerHTML = '<div class="callout error"><span class="callout-icon">⚠️</span><div>Please complete: Sales person, Client, ' + (isEdit ? '' : 'Job Type, ') + 'Campaign name</div></div>';
+    // EDIT FIX: agar edit mode hai aur campaign mein already sales/client hai (load se),
+    // toh selection re-find fail hone par bhi block na karo — purana value use karo.
+    const salesOk = selectedSales || (isEdit && editingCampaign && editingCampaign.sales_member_id);
+    const clientOk = selectedClient || (isEdit && editingCampaign && (editingCampaign.client_id || editingCampaign.client_name));
+    if (!salesOk || !clientOk || jobTypeMissing || !campaignName) {
+      var missing = [];
+      if (!salesOk) missing.push('Sales person');
+      if (!clientOk) missing.push('Client');
+      if (jobTypeMissing) missing.push('Job Type');
+      if (!campaignName) missing.push('Campaign name');
+      document.getElementById('submitStatus').innerHTML = '<div class="callout error"><span class="callout-icon">⚠️</span><div>Please complete: ' + missing.join(', ') + '</div></div>';
       window.scrollTo({top: 0, behavior: 'smooth'});
       return;
     }
@@ -1318,6 +1381,16 @@ async function _submitCampaignInner(targetStatus = 'pending_execution_plan') {
       status: targetStatus,
       created_by: user.id
     };
+
+    // EDIT FIX: agar re-selection fail hua par edit mode hai, purane campaign ke
+    // sales/client/job_type rakho (warna update inhe null kar dega).
+    if (isEdit && editingCampaign) {
+      if (!selectedSales && editingCampaign.sales_member_id) campaignPayload.sales_member_id = editingCampaign.sales_member_id;
+      if (!clientId && editingCampaign.client_id) campaignPayload.client_id = editingCampaign.client_id;
+      if (!selectedClient?.name && editingCampaign.client_name) campaignPayload.client_name = editingCampaign.client_name;
+      if (!selectedJobType && editingCampaign.job_type_id) campaignPayload.job_type_id = editingCampaign.job_type_id;
+      if (!selectedJobType && editingCampaign.job_type_code) campaignPayload.job_type_code = editingCampaign.job_type_code;
+    }
     
     // Strip nulls to avoid type errors
     Object.keys(campaignPayload).forEach(k => {
@@ -1329,8 +1402,18 @@ async function _submitCampaignInner(targetStatus = 'pending_execution_plan') {
       // ── EDIT MODE: update existing campaign, don't change created_by/status ──
       delete campaignPayload.created_by;
       delete campaignPayload.status;   // keep existing status
-      const { data: updated, error: upErr } = await db.from('trial_campaigns')
+      // Strip nulls again (already done above, safe)
+      let { data: updated, error: upErr } = await db.from('trial_campaigns')
         .update(campaignPayload).eq('id', EDIT_ID).select().single();
+      // If a column is missing in DB (e.g. end_date not migrated), strip it and retry once.
+      if (upErr && /column .* does not exist|could not find/i.test(upErr.message || '')) {
+        const m = (upErr.message || '').match(/column "?([a-z_]+)"?/i);
+        if (m && m[1] && (m[1] in campaignPayload)) {
+          delete campaignPayload[m[1]];
+          const retry = await db.from('trial_campaigns').update(campaignPayload).eq('id', EDIT_ID).select().single();
+          updated = retry.data; upErr = retry.error;
+        }
+      }
       if (upErr) throw upErr;
       campaign = updated || { id: EDIT_ID };
 
@@ -1403,6 +1486,113 @@ async function _submitCampaignInner(targetStatus = 'pending_execution_plan') {
     btn.disabled = false;
     btn.innerHTML = 'Submit for Operations →';
   }
+}
+
+// ════════════════════════════════════════════════════════════════
+// PART PAYMENTS (campaign ke against — edit mode mein dikhe)
+// ════════════════════════════════════════════════════════════════
+let _payReceiptFile = null;
+
+function payReceiptPicked(input){
+  const f = input.files && input.files[0];
+  if(!f) return;
+  _payReceiptFile = f;
+  const prev = document.getElementById('payReceiptPrev');
+  prev.src = URL.createObjectURL(f); prev.style.display='block';
+  document.getElementById('payReceiptBtn').textContent = '✓ Receipt selected';
+}
+
+async function loadCampaignPayments(){
+  if(!EDIT_ID || !editingCampaign) return;
+  // section dikhao (sirf edit mode)
+  document.getElementById('paymentSection').style.display = 'block';
+  const dEl = document.getElementById('payDate');
+  if(dEl && !dEl.value) dEl.value = new Date().toISOString().slice(0,10);
+  let rows = [];
+  try {
+    const { data } = await db.from('prajapati_campaign_payments')
+      .select('*').eq('campaign_id', EDIT_ID).order('paid_date', {ascending:true});
+    rows = data || [];
+  } catch(e){ console.warn('payments load', e); }
+
+  const total = parseFloat(editingCampaign.total_amount) || 0;
+  const paid = rows.reduce((s,r)=> s + (parseFloat(r.amount)||0), 0);
+  const bal = Math.max(0, total - paid);
+
+  document.getElementById('payTotalAmt').textContent = '₹' + total.toLocaleString('en-IN');
+  document.getElementById('payPaidAmt').textContent = '₹' + paid.toLocaleString('en-IN');
+  document.getElementById('payBalAmt').textContent = '₹' + bal.toLocaleString('en-IN');
+
+  const list = document.getElementById('paymentList');
+  if(!rows.length){
+    list.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;padding:10px">Abhi koi payment nahi — niche add karo</div>';
+    return;
+  }
+  list.innerHTML = rows.map(function(r){
+    const amt = '₹' + (parseFloat(r.amount)||0).toLocaleString('en-IN');
+    const rc = r.receipt_url
+      ? '<a href="'+escapeHtml(r.receipt_url)+'" target="_blank" style="color:var(--gold-deep);font-weight:600;font-size:12px">📄 Receipt</a>'
+      : '<span style="color:var(--muted);font-size:12px">No receipt</span>';
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f8f9fc;border-radius:10px;margin-bottom:8px;gap:10px">'
+      + '<div><div style="font-weight:700;color:var(--navy);font-family:JetBrains Mono,monospace">'+amt+'</div>'
+      + '<div style="font-size:11px;color:var(--muted)">'+escapeHtml(r.paid_date||'')+' · '+escapeHtml(r.paid_via||'')+(r.remark?' · '+escapeHtml(r.remark):'')+'</div></div>'
+      + '<div style="display:flex;gap:10px;align-items:center">'+rc
+      + '<button onclick="deleteCampaignPayment(\''+r.id+'\')" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:14px" title="Delete">🗑️</button></div></div>';
+  }).join('');
+}
+
+async function addCampaignPayment(){
+  if(!EDIT_ID){ return; }
+  const amount = parseFloat(document.getElementById('payAmount').value) || 0;
+  if(amount <= 0){ document.getElementById('payStatus').innerHTML = '<div class="callout error" style="padding:8px"><span class="callout-icon">⚠️</span><div>Amount daalo</div></div>'; return; }
+  const btn = document.getElementById('addPayBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Saving…';
+  try {
+    let receiptUrl = null;
+    if(_payReceiptFile){
+      try {
+        const safe = _payReceiptFile.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+        const path = 'campaign-payments/'+EDIT_ID+'_'+Date.now()+'_'+safe;
+        const { error: upErr } = await db.storage.from('payment-receipts').upload(path, _payReceiptFile, { upsert:true });
+        if(!upErr){
+          const { data: pub } = db.storage.from('payment-receipts').getPublicUrl(path);
+          receiptUrl = pub.publicUrl;
+        }
+      } catch(ue){ console.warn('receipt upload', ue); }
+    }
+    const payload = {
+      campaign_id: EDIT_ID,
+      amount: amount,
+      paid_date: document.getElementById('payDate').value || null,
+      paid_via: document.getElementById('payMode').value || 'UPI',
+      remark: document.getElementById('payRemark').value.trim() || null,
+      receipt_url: receiptUrl,
+      created_by: user.id
+    };
+    const { error } = await db.from('prajapati_campaign_payments').insert(payload);
+    if(error) throw error;
+    // reset form
+    document.getElementById('payAmount').value = '';
+    document.getElementById('payRemark').value = '';
+    document.getElementById('payReceiptPrev').style.display = 'none';
+    document.getElementById('payReceiptBtn').textContent = '📷 Receipt upload karo';
+    _payReceiptFile = null;
+    document.getElementById('payStatus').innerHTML = '<div class="callout success" style="padding:8px"><span class="callout-icon">✅</span><div>Payment added</div></div>';
+    setTimeout(function(){ document.getElementById('payStatus').innerHTML=''; }, 2000);
+    await loadCampaignPayments();
+  } catch(e){
+    document.getElementById('payStatus').innerHTML = '<div class="callout error" style="padding:8px"><span class="callout-icon">❌</span><div>Failed: '+escapeHtml(e.message||String(e))+'</div></div>';
+  } finally {
+    btn.disabled = false; btn.innerHTML = '+ Add Payment';
+  }
+}
+
+async function deleteCampaignPayment(id){
+  if(!confirm('Yeh payment entry delete karni hai?')) return;
+  try {
+    await db.from('prajapati_campaign_payments').delete().eq('id', id);
+    await loadCampaignPayments();
+  } catch(e){ alert('Delete failed: '+(e.message||e)); }
 }
 
 init();
