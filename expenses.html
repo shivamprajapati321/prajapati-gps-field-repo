@@ -1162,25 +1162,21 @@ async function confirmPay(){
   };
   try{
     var receiptWarn = '';
-    // receipt upload (optional but recommended)
+    // receipt upload (optional but recommended) — supabase client se (reliable)
     if(_payReceiptFile){
       try{
         var safe = _payReceiptFile.name.replace(/[^a-zA-Z0-9._-]/g,'_');
         var path = 'payment-proofs/'+_payId+'_'+Date.now()+'_'+safe;
-        var up = await fetch(SUPABASE_URL+'/storage/v1/object/payment-receipts/'+encodeURI(path),{
-          method:'POST',
-          headers:{ apikey:SUPABASE_KEY, Authorization:'Bearer '+SUPABASE_KEY, 'Content-Type':_payReceiptFile.type||'image/jpeg', 'x-upsert':'true' },
-          body:_payReceiptFile
-        });
-        if(up.ok){
-          payload.payment_receipt_url = SUPABASE_URL+'/storage/v1/object/public/payment-receipts/'+encodeURI(path);
+        var upRes = await db.storage.from('payment-receipts').upload(path, _payReceiptFile, { upsert:true, contentType:_payReceiptFile.type||'image/jpeg' });
+        if(upRes && !upRes.error){
+          var pub = db.storage.from('payment-receipts').getPublicUrl(path);
+          payload.payment_receipt_url = (pub && pub.data && pub.data.publicUrl) || (SUPABASE_URL+'/storage/v1/object/public/payment-receipts/'+encodeURI(path));
         } else {
-          // upload fail — exact reason capture karo (chup na raho)
-          var et = ''; try{ et = await up.text(); }catch(_){}
-          receiptWarn = ' (⚠️ receipt upload fail: '+(up.status)+' '+(et.slice(0,80))+' — payment-receipts bucket policy check karo)';
-          console.warn('receipt upload fail', up.status, et);
+          var em = (upRes && upRes.error && upRes.error.message) || 'unknown';
+          receiptWarn = ' (⚠️ receipt upload fail: '+em+' — bucket "payment-receipts" + policy check karo)';
+          console.warn('receipt upload fail', upRes && upRes.error);
         }
-      }catch(upErr){ receiptWarn = ' (⚠️ receipt upload error: '+upErr.message+')'; console.warn('receipt upload fail', upErr); }
+      }catch(upErr){ receiptWarn = ' (⚠️ receipt error: '+upErr.message+')'; console.warn('receipt upload fail', upErr); }
     }
     // PATCH with return=representation — taaki verify ho sake actually update hua
     var updated = await api('/prajapati_expenses?id=eq.'+_payId, {
@@ -1198,6 +1194,7 @@ async function confirmPay(){
       throw new Error('Update hua par status "'+newStatus+'" raha (paid nahi). Column issue.');
     }
     toast('✓ Payment done'+(payload.payment_receipt_url?' + receipt saved':receiptWarn||''));
+    if(receiptWarn){ alert('Payment ho gaya, PAR receipt save nahi hua:\n\n'+receiptWarn+'\n\nfix_receipt_storage.sql chalao ya bucket "payment-receipts" check karo.'); }
     $('payModal').classList.remove('show');
     _payId = null; _payReceiptFile = null;
     loadExpenses();
