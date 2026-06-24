@@ -1104,7 +1104,15 @@ async function confirmPay(){
         if(up.ok){ payload.payment_receipt_url = SUPABASE_URL+'/storage/v1/object/public/payment-receipts/'+encodeURI(path); }
       }catch(upErr){ console.warn('receipt upload fail', upErr); }
     }
-    await api('/prajapati_expenses?id=eq.'+_payId,{method:'PATCH',body:payload});
+    // PATCH with return=representation — taaki verify ho sake actually update hua
+    var updated = await api('/prajapati_expenses?id=eq.'+_payId, {
+      method:'PATCH', body:payload, prefer:'return=representation'
+    });
+    // RLS SILENT BLOCK CHECK: agar 0 rows update (RLS policy missing),
+    // Supabase error nahi deta par updated empty hota hai → false "success".
+    if(!updated || !updated.length || updated[0].payment_status !== 'paid'){
+      throw new Error('Payment save nahi hua (0 rows). prajapati_expenses pe RLS UPDATE policy missing — fix_expense_update_rls.sql chalao.');
+    }
     toast('✓ Payment done'+(payload.payment_receipt_url?' + receipt saved':''));
     $('payModal').classList.remove('show');
     _payId = null; _payReceiptFile = null;
