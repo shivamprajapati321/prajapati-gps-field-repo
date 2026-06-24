@@ -862,7 +862,7 @@ async function loadCategories(){
   }catch(e){ console.warn('cats',e); }
 }
 async function loadPayInfo(){
-  try{ state.payInfo = await api('/prajapati_team_payment_info?select=*&order=member_name') || []; }
+  try{ state.payInfo = await api('/prajapati_team_bank_profile?select=*&order=member_name') || []; }
   catch(e){ console.warn('payinfo',e); state.payInfo=[]; }
 }
 
@@ -1511,9 +1511,9 @@ function renderPayCards(){
     if(info){
       var details=[];
       if(info.upi_id) details.push('<b>UPI:</b> '+esc(info.upi_id));
-      if(info.bank_account_no) details.push('<b>A/c:</b> '+esc(info.bank_account_no)+(info.ifsc_code?' ('+esc(info.ifsc_code)+')':''));
+      if(info.account_number) details.push('<b>A/c:</b> '+esc(info.account_number)+(info.ifsc_code?' ('+esc(info.ifsc_code)+')':''));
       if(info.bank_name) details.push('<b>Bank:</b> '+esc(info.bank_name));
-      var qr = info.qr_scanner_url ? '<img src="'+esc(info.qr_scanner_url)+'" class="pc-qr" onclick="window.open(this.src)">' : '';
+      var qr = info.upi_qr_url ? '<img src="'+esc(info.upi_qr_url)+'" class="pc-qr" onclick="window.open(this.src)">' : '';
       return '<div class="pay-card has-pay"><div><div class="pc-name">'+esc(m.name||m.phone)+' <span class="tag tag-paid" style="font-size:9px">✓ Setup</span></div><div class="pc-phone">'+esc(m.phone)+'</div><div class="pc-detail">'+(details.join('<br>')||'—')+'</div></div><div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">'+qr+'<button class="btn btn-sm btn-secondary" onclick="openPayModal(\''+esc(m.phone)+'\')">✏️ Edit</button></div></div>';
     } else {
       return '<div class="pay-card no-pay"><div><div class="pc-name">'+esc(m.name||m.phone)+'</div><div class="pc-phone">'+esc(m.phone)+'</div><div class="pc-detail" style="color:var(--warn)">⚠️ Payment info nahi — add karo</div></div><button class="btn btn-sm btn-gold" onclick="openPayModal(\''+esc(m.phone)+'\')">➕ Add</button></div>';
@@ -1532,12 +1532,12 @@ function openPayModal(phone){
     if(info){
       $('payModalTitle').textContent='Edit Payment Info';
       $('payEditId').value=info.id;
-      $('payHolder').value=info.account_holder_name||'';
-      $('payUpi').value=info.upi_id||''; $('payAcc').value=info.bank_account_no||'';
+      $('payHolder').value=info.account_holder||'';
+      $('payUpi').value=info.upi_id||''; $('payAcc').value=info.account_number||'';
       $('payIfsc').value=info.ifsc_code||''; $('payBank').value=info.bank_name||'';
       $('payPref').value=info.preferred_method||'upi';
       $('payDeleteBtn').style.display='';
-      if(info.qr_scanner_url) $('payQrPreview').innerHTML='<img src="'+esc(info.qr_scanner_url)+'" style="width:70px;border-radius:8px;border:1px solid var(--rule)">';
+      if(info.upi_qr_url) $('payQrPreview').innerHTML='<img src="'+esc(info.upi_qr_url)+'" style="width:70px;border-radius:8px;border:1px solid var(--rule)">';
     } else { $('payModalTitle').textContent='Add Payment Info'; }
   } else { $('payModalTitle').textContent='Add Payment Info'; $('payMember').value=''; }
   $('payModal').classList.add('show');
@@ -1548,24 +1548,24 @@ async function savePayInfo(){
   if(!phone){ $('payStatus').innerHTML='<span style="color:var(--danger);font-size:12px">Member select karo</span>'; return; }
   var mname=(state.members.find(function(m){return m.phone===phone})||{}).name||'';
   var btn=$('paySaveBtn'); btn.disabled=true; btn.textContent='Saving…';
-  var payload={ member_phone:phone, member_name:mname, account_holder_name:$('payHolder').value.trim()||null, upi_id:$('payUpi').value.trim()||null, bank_account_no:$('payAcc').value.trim()||null, ifsc_code:$('payIfsc').value.trim()||null, bank_name:$('payBank').value.trim()||null, preferred_method:$('payPref').value, updated_at:new Date().toISOString() };
+  var payload={ member_phone:phone, member_name:mname, account_holder:$('payHolder').value.trim()||null, upi_id:$('payUpi').value.trim()||null, account_number:$('payAcc').value.trim()||null, ifsc_code:$('payIfsc').value.trim()||null, bank_name:$('payBank').value.trim()||null, preferred_method:$('payPref').value, updated_at:new Date().toISOString() };
   try{
     var editId=$('payEditId').value;
     var saved;
-    if(editId){ saved=await api('/prajapati_team_payment_info?id=eq.'+editId,{method:'PATCH',body:payload,prefer:'return=representation'}); }
+    if(editId){ saved=await api('/prajapati_team_bank_profile?id=eq.'+editId,{method:'PATCH',body:payload,prefer:'return=representation'}); }
     else {
-      // upsert on member_phone
-      saved=await api('/prajapati_team_payment_info',{method:'POST',body:payload,prefer:'resolution=merge-duplicates,return=representation'});
+      // upsert on member_phone (worker + admin same row)
+      saved=await api('/prajapati_team_bank_profile?on_conflict=member_phone',{method:'POST',body:payload,prefer:'resolution=merge-duplicates,return=representation'});
     }
     var rowId = (saved&&saved[0]&&saved[0].id) || editId;
-    // QR upload
+    // QR upload → upi_qr_url
     var qrFile=$('payQr').files[0];
     if(qrFile && rowId){
       try{
         var safe=qrFile.name.replace(/[^a-zA-Z0-9._-]/g,'_');
         var path='qr-scanners/'+phone+'_'+Date.now()+'_'+safe;
         var up=await fetch(SUPABASE_URL+'/storage/v1/object/payment-receipts/'+encodeURI(path),{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY,'Content-Type':qrFile.type,'x-upsert':'true'},body:qrFile});
-        if(up.ok){ var qrUrl=SUPABASE_URL+'/storage/v1/object/public/payment-receipts/'+encodeURI(path); await api('/prajapati_team_payment_info?id=eq.'+rowId,{method:'PATCH',body:{qr_scanner_url:qrUrl}}); }
+        if(up.ok){ var qrUrl=SUPABASE_URL+'/storage/v1/object/public/payment-receipts/'+encodeURI(path); await api('/prajapati_team_bank_profile?id=eq.'+rowId,{method:'PATCH',body:{upi_qr_url:qrUrl}}); }
       }catch(qe){ console.warn('qr',qe); }
     }
     await loadPayInfo(); renderPayCards(); closePayModal(); toast('✓ Payment info saved');
@@ -1575,7 +1575,7 @@ async function savePayInfo(){
 async function deletePayInfo(){
   var id=$('payEditId').value; if(!id) return;
   if(!confirm('Payment info delete karna hai?')) return;
-  try{ await api('/prajapati_team_payment_info?id=eq.'+id,{method:'DELETE'}); await loadPayInfo(); renderPayCards(); closePayModal(); toast('✓ Deleted'); }
+  try{ await api('/prajapati_team_bank_profile?id=eq.'+id,{method:'DELETE'}); await loadPayInfo(); renderPayCards(); closePayModal(); toast('✓ Deleted'); }
   catch(e){ toast('Delete failed'); }
 }
 
