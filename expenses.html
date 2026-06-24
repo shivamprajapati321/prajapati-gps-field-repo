@@ -1108,10 +1108,16 @@ async function confirmPay(){
     var updated = await api('/prajapati_expenses?id=eq.'+_payId, {
       method:'PATCH', body:payload, prefer:'return=representation'
     });
+    // DIAGNOSTIC: exact response dikhao (debug ke liye)
+    var rowCount = (updated && updated.length) ? updated.length : 0;
+    var newStatus = (updated && updated[0]) ? updated[0].payment_status : 'NULL';
     // RLS SILENT BLOCK CHECK: agar 0 rows update (RLS policy missing),
-    // Supabase error nahi deta par updated empty hota hai → false "success".
-    if(!updated || !updated.length || updated[0].payment_status !== 'paid'){
-      throw new Error('Payment save nahi hua (0 rows). prajapati_expenses pe RLS UPDATE policy missing — fix_expense_update_rls.sql chalao.');
+    // Supabase 200 OK deta hai par empty body → updated null/[] → false "success".
+    if(rowCount === 0){
+      throw new Error('PATCH ne 0 rows update kiye! Iska matlab: (1) RLS UPDATE policy abhi bhi missing hai, YA (2) is id ka expense nahi mila. fix_expense_update_rls.sql DOBARA chalao aur "policyname" mein UPDATE/ALL dikhe confirm karo. id='+_payId);
+    }
+    if(newStatus !== 'paid'){
+      throw new Error('Update hua par status "'+newStatus+'" raha (paid nahi). Column issue.');
     }
     toast('✓ Payment done'+(payload.payment_receipt_url?' + receipt saved':''));
     $('payModal').classList.remove('show');
