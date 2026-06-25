@@ -11478,7 +11478,44 @@ async function buildStaffReportData() {
     total += r.qty; members[r.name]=1; works[r.work]=1; cities[r.location]=1;
     if (r.media === 'AUTO BACK') back += r.qty; else hood += r.qty;
   });
-  return { rows: arr, total: total, members: Object.keys(members).length, works: Object.keys(works).length, cities: Object.keys(cities).length, hood: hood, back: back };
+
+  // ── OUTSTANDING (work quantity) — per campaign: target − done ──
+  // Done = jitna field staff ne kaam kiya (report qty). Target = campaign launch quantity.
+  var doneByCampaign = {}, doneByMember = {}, doneByCity = {}, doneByDate = {};
+  arr.forEach(function(r){
+    doneByCampaign[r.work] = (doneByCampaign[r.work]||0) + r.qty;
+    doneByMember[r.name] = (doneByMember[r.name]||0) + r.qty;
+    doneByCity[r.location] = (doneByCity[r.location]||0) + r.qty;
+    doneByDate[r.date] = (doneByDate[r.date]||0) + r.qty;
+  });
+  // campaign target lookup (name → target)
+  var campaignBreakdown = [];
+  var totalTarget = 0, totalOutstanding = 0;
+  Object.keys(doneByCampaign).forEach(function(workName){
+    var target = 0;
+    if (state.campaigns) {
+      var cm = state.campaigns.find(function(c){
+        var nm = getWorkNameClean(c.name || c.campaign_name || '');
+        return nm === workName;
+      });
+      if (cm) target = Number(cm.target_vehicles) || Number(cm.total_quantity) || 0;
+    }
+    var done = doneByCampaign[workName];
+    var outstanding = Math.max(0, target - done);
+    totalTarget += target; totalOutstanding += outstanding;
+    campaignBreakdown.push({ name:workName, target:target, done:done, outstanding:outstanding,
+      pct: target>0 ? Math.round(done/target*100) : 0 });
+  });
+  campaignBreakdown.sort(function(a,b){ return b.outstanding - a.outstanding; });
+
+  // team-wise, city-wise, date-wise done breakdowns
+  var teamBreakdown = Object.keys(doneByMember).map(function(k){ return {name:k, done:doneByMember[k]}; }).sort(function(a,b){return b.done-a.done;});
+  var cityBreakdown = Object.keys(doneByCity).map(function(k){ return {name:k, done:doneByCity[k]}; }).sort(function(a,b){return b.done-a.done;});
+  var dateBreakdown = Object.keys(doneByDate).map(function(k){ return {name:k, done:doneByDate[k]}; });
+
+  return { rows: arr, total: total, members: Object.keys(members).length, works: Object.keys(works).length, cities: Object.keys(cities).length, hood: hood, back: back,
+    totalTarget: totalTarget, totalOutstanding: totalOutstanding,
+    campaignBreakdown: campaignBreakdown, teamBreakdown: teamBreakdown, cityBreakdown: cityBreakdown, dateBreakdown: dateBreakdown };
 }
 
 // Open interactive preview modal
@@ -11507,18 +11544,42 @@ function openStaffReportModal(data) {
   var rangeLabel = (range.from === range.to || !range.to) ? (range.from || 'All dates') : (range.from + ' → ' + range.to);
 
   var cards = [
-    ['Total Qty', data.total, '#0B1957'],
+    ['Total Done', data.total, '#0B1957'],
+    ['Target Qty', data.totalTarget||0, '#1A237E'],
+    ['Outstanding', data.totalOutstanding||0, '#C2410C'],
     ['Field Staff', data.members, '#26d0ce'],
     ['Campaigns', data.works, '#B89B4E'],
-    ['Cities', data.cities, '#7C3AED'],
-    ['Auto Hood', data.hood, '#047857'],
-    ['Auto Back', data.back, '#C2410C']
+    ['Cities', data.cities, '#7C3AED']
   ].map(function(c){
     return '<div class="srp-card" style="border-top:3px solid '+c[2]+'">' +
              '<div class="srp-card-val" style="color:'+c[2]+'">'+c[1]+'</div>' +
              '<div class="srp-card-lbl">'+c[0]+'</div>' +
            '</div>';
   }).join('');
+
+  // ── Campaign-wise: Target / Done / Outstanding breakdown table ──
+  var campRows = (data.campaignBreakdown||[]).map(function(c){
+    var pctColor = c.pct>=100?'#047857':(c.pct>=50?'#B89B4E':'#C2410C');
+    var outColor = c.outstanding>0?'#C2410C':'#047857';
+    return '<tr>'+
+      '<td style="font-weight:600">'+escapeHtml(c.name)+'</td>'+
+      '<td style="text-align:center;font-family:JetBrains Mono,monospace">'+(c.target||'—')+'</td>'+
+      '<td style="text-align:center;font-weight:700;font-family:JetBrains Mono,monospace;color:#0B1957">'+c.done+'</td>'+
+      '<td style="text-align:center;font-weight:700;font-family:JetBrains Mono,monospace;color:'+outColor+'">'+c.outstanding+'</td>'+
+      '<td style="text-align:center"><div style="display:inline-block;min-width:90px"><div style="background:#E5E7EB;border-radius:99px;height:7px;overflow:hidden"><div style="width:'+Math.min(100,c.pct)+'%;height:100%;background:'+pctColor+'"></div></div><span style="font-size:10px;color:'+pctColor+';font-weight:700">'+c.pct+'%</span></div></td>'+
+    '</tr>';
+  }).join('');
+  var campaignSection = (data.campaignBreakdown && data.campaignBreakdown.length) ?
+    '<div style="margin-top:18px"><div style="font-size:13px;font-weight:800;color:#0B1957;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📁 Campaign-wise — Target vs Done vs Outstanding</div>'+
+    '<div class="srp-table-wrap"><table class="srp-table">'+
+    '<thead><tr><th>CAMPAIGN</th><th style="text-align:center">TARGET</th><th style="text-align:center">DONE</th><th style="text-align:center">OUTSTANDING</th><th style="text-align:center">PROGRESS</th></tr></thead>'+
+    '<tbody>'+campRows+'</tbody>'+
+    '<tfoot><tr><td style="text-align:right;font-weight:700">TOTAL</td>'+
+    '<td style="text-align:center;font-weight:800;font-family:JetBrains Mono,monospace">'+(data.totalTarget||0)+'</td>'+
+    '<td style="text-align:center;font-weight:800;font-family:JetBrains Mono,monospace;color:#0B1957">'+data.total+'</td>'+
+    '<td style="text-align:center;font-weight:800;font-family:JetBrains Mono,monospace;color:#C2410C">'+(data.totalOutstanding||0)+'</td>'+
+    '<td></td></tr></tfoot>'+
+    '</table></div></div>' : '';
 
   var tbody = data.rows.map(function(r, i){
     var mediaColor = r.media === 'AUTO BACK' ? '#C2410C' : '#047857';
@@ -11555,6 +11616,7 @@ function openStaffReportModal(data) {
             '<tfoot><tr><td colspan="4" style="text-align:right;font-weight:700">TOTAL</td><td style="text-align:center;font-weight:800;font-family:JetBrains Mono,monospace;color:#0B1957">'+data.total+'</td><td></td></tr></tfoot>' +
           '</table>' +
         '</div>' +
+        campaignSection +
       '</div>' +
     '</div>';
 
