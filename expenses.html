@@ -463,13 +463,13 @@ select.input{cursor:pointer}
 </div>
 
 <!-- Payment Modal (mode + receipt) -->
-<div class="modal-bg" id="payModal">
+<div class="modal-bg" id="expensePayModal">
   <div class="modal-box" style="max-width:420px">
     <h3>💸 Record Payment</h3>
-    <div id="payModalBody"></div>
+    <div id="expensePayBody"></div>
     <div style="display:flex;justify-content:flex-end;gap:9px;margin-top:18px">
-      <button class="btn btn-secondary" onclick="document.getElementById('payModal').classList.remove('show')">Cancel</button>
-      <button class="btn btn-gold" id="payConfirmBtn" onclick="confirmPay()">✓ Confirm Payment</button>
+      <button class="btn btn-secondary" onclick="document.getElementById('expensePayModal').classList.remove('show')">Cancel</button>
+      <button class="btn btn-gold" id="expensePayConfirmBtn" onclick="confirmPay()">✓ Confirm Payment</button>
     </div>
   </div>
 </div>
@@ -1126,7 +1126,7 @@ function markPaid(id){
   var e = state.expenses.find(function(x){ return String(x.id)===String(id); });
   if(!e){ toast('Not found'); return; }
   _payId = id;
-  var body = $('payModalBody');
+  var body = $('expensePayBody');
   var html = '';
   html += '<div style="background:#f8f9fc;border-radius:10px;padding:12px;margin-bottom:14px"><div style="font-weight:700;color:var(--navy)">'+esc(e.team_member_name||e.internal_party||'—')+'</div><div style="font-size:12px;color:var(--text-dim)">'+esc(getWork(e.campaign_name)||e.internal_category||'')+' · '+fmt(e.total_amount)+'</div></div>';
   html += '<div class="field"><div class="label">Payment Mode</div><select class="input" id="pay-mode"><option value="UPI">UPI</option><option value="Bank">Bank Transfer</option><option value="Cash">Cash</option></select></div>';
@@ -1138,7 +1138,7 @@ function markPaid(id){
   html += '<div style="font-size:11px;color:var(--text-dim);margin-top:6px">💡 Bina receipt bhi pay kar sakte ho, par worker ko proof nahi dikhega</div></div>';
   body.innerHTML = html;
   _payReceiptFile = null;
-  $('payModal').classList.add('show');
+  $('expensePayModal').classList.add('show');
 }
 
 var _payReceiptFile = null;
@@ -1153,7 +1153,7 @@ function payReceiptPick(input){
 
 async function confirmPay(){
   if(!_payId) return;
-  var btn = $('payConfirmBtn');
+  var btn = $('expensePayConfirmBtn');
   btn.disabled = true; btn.textContent = '⏳ Saving…';
   var payload = {
     payment_status: 'paid',
@@ -1182,20 +1182,8 @@ async function confirmPay(){
     var updated = await api('/prajapati_expenses?id=eq.'+_payId, {
       method:'PATCH', body:payload, prefer:'return=representation'
     });
-    // DIAGNOSTIC: exact response dikhao (debug ke liye)
     var rowCount = (updated && updated.length) ? updated.length : 0;
     var newStatus = (updated && updated[0]) ? updated[0].payment_status : 'NULL';
-    var retId = (updated && updated[0]) ? updated[0].id : 'NULL';
-    // HARD DIAGNOSTIC ALERT — exact kya hua dikhao
-    alert('PAYMENT DEBUG:\n\n'
-      + 'Expense id (jise pay kar rahe): '+_payId+'\n'
-      + 'PATCH ne rows update kiye: '+rowCount+'\n'
-      + 'Returned row id: '+retId+'\n'
-      + 'Returned payment_status: '+newStatus+'\n'
-      + 'Receipt url: '+(payload.payment_receipt_url||'none')+'\n\n'
-      + 'Agar rowCount=0 → RLS block ya id mismatch\n'
-      + 'Agar status=paid par DB unpaid → kuch aur PATCH overwrite kar raha');
-    // RLS SILENT BLOCK CHECK
     if(rowCount === 0){
       throw new Error('PATCH ne 0 rows update kiye! RLS UPDATE policy missing YA id match nahi. id='+_payId);
     }
@@ -1204,7 +1192,7 @@ async function confirmPay(){
     }
     toast('✓ Payment done'+(payload.payment_receipt_url?' + receipt saved':receiptWarn||''));
     if(receiptWarn){ alert('Payment ho gaya, PAR receipt save nahi hua:\n\n'+receiptWarn); }
-    $('payModal').classList.remove('show');
+    $('expensePayModal').classList.remove('show');
     _payId = null; _payReceiptFile = null;
     loadExpenses();
   }catch(e){
@@ -1702,7 +1690,7 @@ async function deleteCategory(id,name){
 }
 
 // close modals on backdrop
-['payModal','catModal'].forEach(function(id){ var m=$(id); if(m) m.addEventListener('click',function(e){ if(e.target===m) m.classList.remove('show'); }); });
+['payModal','expensePayModal','catModal'].forEach(function(id){ var m=$(id); if(m) m.addEventListener('click',function(e){ if(e.target===m) m.classList.remove('show'); }); });
 // close search dropdowns on outside click
 document.addEventListener('click',function(e){
   if(!e.target.closest('#sd-campaign')){ var d=$('sd-campaign-drop'); if(d)d.classList.remove('open'); }
