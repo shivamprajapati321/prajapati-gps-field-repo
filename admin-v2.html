@@ -11429,10 +11429,39 @@ function normalizeCity(city) {
 }
 
 // Shared builder — used by BOTH the on-screen preview and the Excel download
+// ── Pagination helper: Supabase 1000-row cap bypass, saare rows fetch ──
+async function fetchAllPhotos(baseQs) {
+  // limit param hata do (Range header use hoga)
+  var cleanQs = baseQs.replace(/&?limit=\d+/g, '');
+  var all = [];
+  var pageSize = 1000;
+  var from = 0;
+  for (var page = 0; page < 60; page++) {  // max 60k rows safety
+    var to = from + pageSize - 1;
+    try {
+      var res = await fetch(CONFIG.supabaseUrl + cleanQs, {
+        headers: {
+          apikey: CONFIG.supabaseKey,
+          Authorization: 'Bearer ' + CONFIG.supabaseKey,
+          'Range-Unit': 'items',
+          'Range': from + '-' + to
+        }
+      });
+      var batch = await res.json();
+      if (!Array.isArray(batch) || batch.length === 0) break;
+      all = all.concat(batch);
+      if (batch.length < pageSize) break;  // last page
+      from += pageSize;
+    } catch (e) { console.warn('[fetchAllPhotos] page', page, e); break; }
+  }
+  return all;
+}
+
 async function buildStaffReportData() {
-  var qs = '/rest/v1/trial_photos' + buildPhotoFilterQS();
-  qs = qs.replace('limit=5000', 'limit=50000'); // report needs full data (esp. All time)
-  var photos = await api(qs);
+  var baseQs = '/rest/v1/trial_photos' + buildPhotoFilterQS();
+  // Supabase default 1000-row cap bypass: pagination se SAARE photos fetch
+  // (1000 cap → 1000÷3 = 334, isliye report kam dikhता tha!)
+  var photos = await fetchAllPhotos(baseQs);
   photos = photos || [];
   if (!photos.length) return null;
 
