@@ -4715,6 +4715,33 @@ function api(path, options) {
   });
 }
 
+// ═══ apiAll() — paginated fetch (Supabase ~1000-row gateway cap bypass) ═══
+// Reports/PPT/ZIP/analytics ke liye: 1000-1000 ke batch mein loop karke POORA data laata hai.
+// limit= cap ko upar nahi badha sakta, isliye offset paging zaroori hai.
+async function apiAll(path, pageSize) {
+  pageSize = pageSize || 1000;
+  var base = path
+    .replace(/([?&])limit=\d+/gi, '$1')
+    .replace(/([?&])offset=\d+/gi, '$1')
+    .replace(/([?&])&+/g, '$1')
+    .replace(/[?&]$/, '');
+  if (/[?&]order=/.test(base)) {
+    if (!/[?&]order=[^&]*\bid\b/.test(base)) base = base.replace(/([?&]order=[^&]*)/, '$1,id.asc');
+  } else {
+    base += (base.indexOf('?') === -1 ? '?' : '&') + 'order=id.asc';
+  }
+  var sep = base.indexOf('?') === -1 ? '?' : '&';
+  var all = [], offset = 0;
+  for (;;) {
+    var batch = await api(base + sep + 'limit=' + pageSize + '&offset=' + offset);
+    if (!batch || !batch.length) break;
+    all = all.concat(batch);
+    if (batch.length < pageSize) break;
+    offset += pageSize;
+  }
+  return all;
+}
+
 // ─── LOGIN ───
 $('loginPhone').addEventListener('input', function() {
   this.value = this.value.replace(/\D/g, '');
@@ -6988,7 +7015,7 @@ function renderCampaigns() {
   visible.forEach(function(c) {
     Promise.all([
       api('/rest/v1/trial_campaign_cities?campaign_key=eq.' + encodeURIComponent(c.key) + '&select=id'),
-      api('/rest/v1/trial_photos?campaign_key=eq.' + encodeURIComponent(c.key) + '&select=vehicle_number'),
+      apiAll('/rest/v1/trial_photos?campaign_key=eq.' + encodeURIComponent(c.key) + '&select=vehicle_number'),
       api('/rest/v1/trial_campaign_designs?campaign_id=eq.' + encodeURIComponent(c.id) + '&select=quantity')
     ]).then(function(results) {
       var citiesCount = (results[0] || []).length;
@@ -8853,7 +8880,7 @@ function loadReports() {
   if (toDateOnly) execQ += '&log_date=lte.' + toDateOnly;
 
   Promise.all([
-    api(qs),
+    apiAll(qs),
     api(printQ).catch(function(){ return []; }),
     api(stitchQ).catch(function(){ return []; }),
     api(execQ).catch(function(){ return []; })
@@ -11351,7 +11378,7 @@ function downloadPhotosZip() {
 
   // full data — Supabase 1000-cap bypass: limit badhao (jaise report mein)
   var zipQs = ('/rest/v1/trial_photos' + qs).replace('limit=5000', 'limit=50000');
-  api(zipQs)
+  apiAll(zipQs)
     .then(function(photos) {
       photos = photos || [];
       if (photos.length === 0) {
@@ -11434,7 +11461,7 @@ function normalizeCity(city) {
 async function buildStaffReportData() {
   var qs = '/rest/v1/trial_photos' + buildPhotoFilterQS();
   qs = qs.replace('limit=5000', 'limit=50000'); // report needs full data (esp. All time)
-  var photos = await api(qs);
+  var photos = await apiAll(qs);
   photos = photos || [];
   if (!photos.length) return null;
 
@@ -12120,7 +12147,7 @@ async function downloadExcelReport() {
     if (btn) btn.innerHTML = '⏳ Loading photos...';
     console.log('[Excel] Query:', qs);
     
-    var photos = await api(qs);
+    var photos = await apiAll(qs);
     photos = photos || [];
     console.log('[Excel] Photos loaded:', photos.length);
     
@@ -12300,7 +12327,7 @@ async function fetchPPTData() {
   }
   if (campaign) qs += '&campaign_key=eq.' + encodeURIComponent(campaign);
   
-  var photos = await api(qs);
+  var photos = await apiAll(qs);
   photos = photos || [];
   
   // Group by verified_plate first, fallback to vehicle_number
