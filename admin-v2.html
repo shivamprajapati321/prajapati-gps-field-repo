@@ -11448,15 +11448,26 @@ async function buildStaffReportData() {
     var veh = ((p.verified_plate || p.vehicle_number || '') + '').trim().toUpperCase();
 
     var key = dateStr + '||' + name + '||' + work + '||' + loc;
-    if (!rows[key]) rows[key] = { date:dateStr, name:name, work:work, location:loc, mediaCounts:{}, vehicles:{}, _sortDate:(d?d.getTime():0) };
-    if (veh && veh.length >= 4) rows[key].vehicles[veh] = 1;
-    else rows[key].vehicles['__row_' + p.id] = 1;
+    if (!rows[key]) rows[key] = { date:dateStr, name:name, work:work, location:loc, mediaCounts:{}, vehicles:{}, noPlateHood:0, noPlateBack:0, _sortDate:(d?d.getTime():0) };
+    if (veh && veh.length >= 4) {
+      // vehicle number mila → us number se dedup (same vehicle ke saare photos = 1)
+      rows[key].vehicles[veh] = 1;
+    } else {
+      // vehicle number nahi mila → mode ke hisaab se photos count karo
+      // Hood = 1 vehicle ke 3 photos (3 angle), Back = 1 vehicle ka 1 photo
+      if (isBack) rows[key].noPlateBack += 1;
+      else rows[key].noPlateHood += 1;
+    }
     rows[key].mediaCounts[media] = (rows[key].mediaCounts[media] || 0) + 1;
   });
 
   var arr = Object.keys(rows).map(function(k){
     var r = rows[k];
-    r.qty = Object.keys(r.vehicles).length;
+    // qty = numbered unique vehicles + (no-plate hood photos ÷ 3) + (no-plate back photos ÷ 1)
+    var numberedVehicles = Object.keys(r.vehicles).length;
+    var hoodVehicles = Math.round((r.noPlateHood||0) / 3);  // 3 photos = 1 hood vehicle
+    var backVehicles = (r.noPlateBack||0);                   // 1 photo = 1 back vehicle
+    r.qty = numberedVehicles + hoodVehicles + backVehicles;
     // dominant media for that row
     r.media = Object.keys(r.mediaCounts).sort(function(a,b){ return r.mediaCounts[b]-r.mediaCounts[a]; })[0] || 'AUTO HOOD';
     return r;
