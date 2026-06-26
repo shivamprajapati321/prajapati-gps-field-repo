@@ -11483,22 +11483,58 @@ async function buildStaffReportData() {
     return a._sortDate - b._sortDate;              // chronological within a person
   });
 
-  // summary
-  var total = 0, members = {}, works = {}, cities = {}, hood = 0, back = 0;
-  arr.forEach(function(r){
-    total += r.qty; members[r.name]=1; works[r.work]=1; cities[r.location]=1;
-    if (r.media === 'AUTO BACK') back += r.qty; else hood += r.qty;
+  // summary — ACCURATE totals (global sum se, per-row rounding se nahi)
+  // Per-row qty display ke liye theek hai, par total alag se: saare hood photos sum ÷ 3
+  var globalNumbered = {}, globalNoPlateHood = 0, globalNoPlateBack = 0;
+  var members = {}, works = {}, cities = {};
+  Object.keys(rows).forEach(function(k){
+    var r = rows[k];
+    members[r.name]=1; works[r.work]=1; cities[r.location]=1;
+    Object.keys(r.vehicles).forEach(function(v){ globalNumbered[v]=1; });
+    globalNoPlateHood += (r.noPlateHood||0);
+    globalNoPlateBack += (r.noPlateBack||0);
   });
+  var numberedTotal = Object.keys(globalNumbered).length;
+  var hoodTotal = Math.round(globalNoPlateHood / 3);   // saare hood photos ÷ 3 (ek baar)
+  var backTotal = globalNoPlateBack;                    // back = 1 photo 1 vehicle
+  var total = numberedTotal + hoodTotal + backTotal;
+  // hood/back split (media-wise) — numbered ko mode se split karna mushkil, approximate
+  var hood = hoodTotal + Math.round(numberedTotal * (globalNoPlateHood/(globalNoPlateHood+globalNoPlateBack||1)));
+  var back = total - hood;
+  if (back < 0) { back = backTotal; hood = total - back; }
 
   // ── OUTSTANDING (work quantity) — per campaign: target − done ──
   // Done = jitna field staff ne kaam kiya (report qty). Target = campaign launch quantity.
-  var doneByCampaign = {}, doneByMember = {}, doneByCity = {}, doneByDate = {};
-  arr.forEach(function(r){
-    doneByCampaign[r.work] = (doneByCampaign[r.work]||0) + r.qty;
-    doneByMember[r.name] = (doneByMember[r.name]||0) + r.qty;
-    doneByCity[r.location] = (doneByCity[r.location]||0) + r.qty;
-    doneByDate[r.date] = (doneByDate[r.date]||0) + r.qty;
-  });
+  // ── Breakdowns — ACCURATE: global photo-sum se (per-row rounding nahi) ──
+  // Har dimension ke liye: numbered vehicles + (hood photos ÷ 3) + back photos
+  function accumulate(dimKey){
+    var acc = {}; // dimValue → { numbered:{}, hood:0, back:0 }
+    photos.forEach(function(p){
+      var dv;
+      if (dimKey === 'campaign') dv = resolveCampaignName(p.campaign_key, p.campaign_name);
+      else if (dimKey === 'member') dv = (p.member_name || p.member_phone || '—');
+      else if (dimKey === 'city') dv = normalizeCity(p.city);
+      else if (dimKey === 'date') {
+        var d = p.captured_at ? new Date(p.captured_at) : null;
+        dv = d ? d.toLocaleDateString('en-GB',{timeZone:'Asia/Kolkata',day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
+      }
+      if (!acc[dv]) acc[dv] = { numbered:{}, hood:0, back:0 };
+      var veh = ((p.verified_plate || p.vehicle_number || '')+'').trim().toUpperCase();
+      var isBack = (p.mode === 'back_panel');
+      if (veh && veh.length >= 4) acc[dv].numbered[veh] = 1;
+      else if (isBack) acc[dv].back += 1;
+      else acc[dv].hood += 1;
+    });
+    var out = {};
+    Object.keys(acc).forEach(function(k){
+      out[k] = Object.keys(acc[k].numbered).length + Math.round(acc[k].hood/3) + acc[k].back;
+    });
+    return out;
+  }
+  var doneByCampaign = accumulate('campaign');
+  var doneByMember = accumulate('member');
+  var doneByCity = accumulate('city');
+  var doneByDate = accumulate('date');
   // campaign target lookup (name → target)
   var campaignBreakdown = [];
   var totalTarget = 0, totalOutstanding = 0;
