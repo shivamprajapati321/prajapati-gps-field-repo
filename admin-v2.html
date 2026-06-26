@@ -11535,6 +11535,13 @@ async function downloadStaffReport() {
   var orig = btn ? btn.innerHTML : 'Staff Report';
   if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Building...'; }
   try {
+    // campaigns load karo taaki null-name photos ka naam key se resolve ho
+    if (!state.campaigns || !state.campaigns.length) {
+      try {
+        var camps = await api('/rest/v1/trial_campaigns?select=*&limit=2000');
+        state.campaigns = (camps||[]).map(function(c){ c.key = c.key || c.campaign_key || c.id; return c; });
+      } catch(ce){ console.warn('campaigns preload', ce); }
+    }
     var data = await buildStaffReportData();
     if (!data) { alert('❌ Is filter mein koi photo nahi.\nDate range ya campaign badal ke dekho.'); return; }
     window._staffReportData = data;
