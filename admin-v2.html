@@ -11348,8 +11348,10 @@ function downloadPhotosZip() {
 
   btn.disabled = true;
   btn.innerHTML = '⏳ Loading photos...';
-  
-  api('/rest/v1/trial_photos' + qs)
+
+  // full data — Supabase 1000-cap bypass: limit badhao (jaise report mein)
+  var zipQs = ('/rest/v1/trial_photos' + qs).replace('limit=5000', 'limit=50000');
+  api(zipQs)
     .then(function(photos) {
       photos = photos || [];
       if (photos.length === 0) {
@@ -11429,39 +11431,10 @@ function normalizeCity(city) {
 }
 
 // Shared builder — used by BOTH the on-screen preview and the Excel download
-// ── Pagination helper: Supabase 1000-row cap bypass, saare rows fetch ──
-async function fetchAllPhotos(baseQs) {
-  // limit param hata do (Range header use hoga)
-  var cleanQs = baseQs.replace(/&?limit=\d+/g, '');
-  var all = [];
-  var pageSize = 1000;
-  var from = 0;
-  for (var page = 0; page < 60; page++) {  // max 60k rows safety
-    var to = from + pageSize - 1;
-    try {
-      var res = await fetch(CONFIG.supabaseUrl + cleanQs, {
-        headers: {
-          apikey: CONFIG.supabaseKey,
-          Authorization: 'Bearer ' + CONFIG.supabaseKey,
-          'Range-Unit': 'items',
-          'Range': from + '-' + to
-        }
-      });
-      var batch = await res.json();
-      if (!Array.isArray(batch) || batch.length === 0) break;
-      all = all.concat(batch);
-      if (batch.length < pageSize) break;  // last page
-      from += pageSize;
-    } catch (e) { console.warn('[fetchAllPhotos] page', page, e); break; }
-  }
-  return all;
-}
-
 async function buildStaffReportData() {
-  var baseQs = '/rest/v1/trial_photos' + buildPhotoFilterQS();
-  // Supabase default 1000-row cap bypass: pagination se SAARE photos fetch
-  // (1000 cap → 1000÷3 = 334, isliye report kam dikhता tha!)
-  var photos = await fetchAllPhotos(baseQs);
+  var qs = '/rest/v1/trial_photos' + buildPhotoFilterQS();
+  qs = qs.replace('limit=5000', 'limit=50000'); // report needs full data (esp. All time)
+  var photos = await api(qs);
   photos = photos || [];
   if (!photos.length) return null;
 
@@ -11474,10 +11447,16 @@ async function buildStaffReportData() {
     var loc = normalizeCity(p.city);
     var isBack = (p.mode === 'back_panel');
     var media = isBack ? 'AUTO BACK' : (p.mode === 'hood' ? 'AUTO HOOD' : (p.mode ? String(p.mode).toUpperCase() : 'AUTO HOOD'));
+    // "before" enabled? campaign ke before_photo setting se (per-campaign)
+    var campBefore = false;
+    if (state.campaigns) {
+      var cm = state.campaigns.find(function(c){ return (c.key===p.campaign_key)||(c.campaign_key===p.campaign_key)||(c.id===p.campaign_key); });
+      if (cm) campBefore = !!cm.before_photo;
+    }
 
     var key = dateStr + '||' + name + '||' + work + '||' + loc;
-    if (!rows[key]) rows[key] = { date:dateStr, name:name, work:work, location:loc, mediaCounts:{}, hoodPhotos:0, backPhotos:0, _sortDate:(d?d.getTime():0) };
-    // SIMPLE COUNT: vehicle number ignore. Hood photos ÷ 3, Back photos ÷ 1 (total pe).
+    if (!rows[key]) rows[key] = { date:dateStr, name:name, work:work, location:loc, mediaCounts:{}, hoodPhotos:0, backPhotos:0, beforeOn:false, _sortDate:(d?d.getTime():0) };
+    if (campBefore) rows[key].beforeOn = true;
     if (isBack) rows[key].backPhotos += 1;
     else rows[key].hoodPhotos += 1;
     rows[key].mediaCounts[media] = (rows[key].mediaCounts[media] || 0) + 1;
@@ -11485,9 +11464,12 @@ async function buildStaffReportData() {
 
   var arr = Object.keys(rows).map(function(k){
     var r = rows[k];
-    // SIMPLE: hood photos ÷ 3 (3 angle = 1 vehicle) + back photos (1 photo = 1 vehicle)
-    var hoodVehicles = Math.round((r.hoodPhotos||0) / 3);
-    var backVehicles = (r.backPhotos||0);
+    // before ON: hood 4 photos=1 (1before+3), back 2 photos=1 (1before+1)
+    // before OFF: hood 3 photos=1, back 1 photo=1
+    var hoodDiv = r.beforeOn ? 4 : 3;
+    var backDiv = r.beforeOn ? 2 : 1;
+    var hoodVehicles = Math.round((r.hoodPhotos||0) / hoodDiv);
+    var backVehicles = Math.round((r.backPhotos||0) / backDiv);
     r.qty = hoodVehicles + backVehicles;
     r.media = Object.keys(r.mediaCounts).sort(function(a,b){ return r.mediaCounts[b]-r.mediaCounts[a]; })[0] || 'AUTO HOOD';
     return r;
@@ -11503,25 +11485,21 @@ async function buildStaffReportData() {
     return a._sortDate - b._sortDate;              // chronological within a person
   });
 
-  // summary — ACCURATE: global photo sum ÷ 3 (ek baar, per-row round nahi)
+  // summary — before-aware: arr ke qty (jo per-row before-aware hai) ka sum
   var members = {}, works = {}, cities = {};
-  var globalHoodPhotos = 0, globalBackPhotos = 0;
-  Object.keys(rows).forEach(function(k){
-    var r = rows[k];
+  var total = 0, hood = 0, back = 0;
+  arr.forEach(function(r){
     members[r.name]=1; works[r.work]=1; cities[r.location]=1;
-    globalHoodPhotos += (r.hoodPhotos||0);
-    globalBackPhotos += (r.backPhotos||0);
+    total += r.qty;
+    if (r.media === 'AUTO BACK') back += r.qty; else hood += r.qty;
   });
-  var hood = Math.round(globalHoodPhotos / 3);   // saare hood photos ÷ 3
-  var back = globalBackPhotos;                    // back 1:1
-  var total = hood + back;
 
   // ── OUTSTANDING (work quantity) — per campaign: target − done ──
   // Done = jitna field staff ne kaam kiya (report qty). Target = campaign launch quantity.
   // ── Breakdowns — ACCURATE: global photo-sum se (per-row rounding nahi) ──
   // Har dimension ke liye: numbered vehicles + (hood photos ÷ 3) + back photos
   function accumulate(dimKey){
-    var acc = {}; // dimValue → { hood:0, back:0 }
+    var acc = {}; // dimValue → { hood:0, back:0, beforeOn:false }
     photos.forEach(function(p){
       var dv;
       if (dimKey === 'campaign') dv = resolveCampaignName(p.campaign_key, p.campaign_name);
@@ -11531,14 +11509,22 @@ async function buildStaffReportData() {
         var d = p.captured_at ? new Date(p.captured_at) : null;
         dv = d ? d.toLocaleDateString('en-GB',{timeZone:'Asia/Kolkata',day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
       }
-      if (!acc[dv]) acc[dv] = { hood:0, back:0 };
-      // SIMPLE: vehicle number ignore. Sirf mode count karo.
+      if (!acc[dv]) acc[dv] = { hood:0, back:0, beforeOn:false };
+      // campaign before setting
+      var cb = false;
+      if (state.campaigns) {
+        var cm = state.campaigns.find(function(c){ return (c.key===p.campaign_key)||(c.campaign_key===p.campaign_key)||(c.id===p.campaign_key); });
+        if (cm) cb = !!cm.before_photo;
+      }
+      if (cb) acc[dv].beforeOn = true;
       if (p.mode === 'back_panel') acc[dv].back += 1;
       else acc[dv].hood += 1;
     });
     var out = {};
     Object.keys(acc).forEach(function(k){
-      out[k] = Math.round(acc[k].hood/3) + acc[k].back;  // hood ÷ 3, back ÷ 1
+      var hd = acc[k].beforeOn ? 4 : 3;   // before: hood÷4, normal÷3
+      var bd = acc[k].beforeOn ? 2 : 1;   // before: back÷2, normal÷1
+      out[k] = Math.round(acc[k].hood/hd) + Math.round(acc[k].back/bd);
     });
     return out;
   }
@@ -12301,7 +12287,8 @@ async function fetchPPTData() {
   
   // ⭐ v16.4 FIX: Removed is_verified filter — include ALL photos with vehicle plate
   // (verified or OCR-detected). User wants PPT of total photos, not just verified.
-  var qs = '/rest/v1/trial_photos?select=*&order=captured_at.desc&limit=5000';
+  // limit=50000 — Supabase 1000-cap bypass (full data)
+  var qs = '/rest/v1/trial_photos?select=*&order=captured_at.desc&limit=50000';
   
   if (dateFrom) {
     var istStart = new Date(dateFrom + 'T00:00:00+05:30');
