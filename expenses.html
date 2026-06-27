@@ -1265,7 +1265,8 @@ async function showWorkerPay(phone){
 }
 
 // ════ EXPENSE DETAIL (view) ════
-function showExpenseDetail(id){
+async function showExpenseDetail(id){
+  var _scannerDl = null;
   var e = state.expenses.find(function(x){ return String(x.id)===String(id); });
   if(!e){ toast('Not found'); return; }
   var modal = $('detailModal'), body = $('detailModalBody');
@@ -1318,8 +1319,75 @@ function showExpenseDetail(id){
   if(e.receipt_url){
     html += '<div style="margin-top:12px"><div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:6px">Receipt</div><a href="'+esc(e.receipt_url)+'" target="_blank"><img src="'+esc(e.receipt_url)+'" style="max-width:100%;border-radius:10px;border:1px solid #eee"></a></div>';
   }
+  // ════ Payment Method (UPI + Scanner QR) — bank profile se ════
+  try{
+    var _phone = e.team_member_phone || '';
+    var _prof = null;
+    if(_phone && state.payInfo && state.payInfo.length){
+      _prof = state.payInfo.find(function(p){ return String(p.member_phone)===String(_phone); });
+    }
+    if(!_prof && _phone){
+      var _rows = await api('/prajapati_team_bank_profile?member_phone=eq.'+encodeURIComponent(_phone)+'&select=*&limit=1');
+      _prof = _rows && _rows[0];
+    }
+    if(!_prof && callName && state.payInfo){
+      _prof = state.payInfo.find(function(p){ return (p.member_name||'').trim().toLowerCase()===String(callName).trim().toLowerCase(); });
+    }
+    if(_prof){
+      html += '<div style="font-size:11px;font-weight:700;color:#1d4ed8;text-transform:uppercase;margin:14px 0 4px">💳 Payment Method</div>';
+      if(_prof.upi_id)          html += r('UPI ID', _prof.upi_id);
+      if(_prof.preferred_method)html += r('Preferred', String(_prof.preferred_method).toUpperCase());
+      if(_prof.bank_name)       html += r('Bank', _prof.bank_name);
+      if(_prof.account_number)  html += r('A/C No', _prof.account_number);
+      if(_prof.ifsc_code)       html += r('IFSC', _prof.ifsc_code);
+      if(_prof.account_holder)  html += r('Holder', _prof.account_holder);
+      if(_prof.upi_qr_url){
+        html += '<div style="margin-top:12px"><div style="font-size:11px;font-weight:700;color:#1d4ed8;text-transform:uppercase;margin-bottom:6px">📲 Scanner (QR)</div>';
+        html += '<a href="'+esc(_prof.upi_qr_url)+'" target="_blank"><img src="'+esc(_prof.upi_qr_url)+'" style="max-width:210px;width:62%;border-radius:10px;border:1px solid #bfdbfe;display:block"></a>';
+        html += '<button class="btn btn-sm btn-secondary" style="margin-top:8px" id="dlScannerBtn">⬇ Download JPG</button></div>';
+        _scannerDl = { url: _prof.upi_qr_url, name: (callName || 'scanner') };
+      }
+    }
+  }catch(_err){ console.warn('[ExpenseDetail] payment method load failed:', _err); }
+
   body.innerHTML = html;
   modal.classList.add('show');
+  var _dlBtn = document.getElementById('dlScannerBtn');
+  if(_dlBtn && _scannerDl) _dlBtn.onclick = function(){ downloadScannerJpg(_scannerDl.url, _scannerDl.name); };
+}
+
+// ════ Scanner QR → JPG download ════
+function _triggerBlobDownload(blob, filename){
+  var a=document.createElement('a'); var u=URL.createObjectURL(blob);
+  a.href=u; a.download=filename; document.body.appendChild(a); a.click();
+  setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(u); }, 120);
+}
+async function downloadScannerJpg(url, name){
+  var fname = (String(name||'scanner').replace(/[^a-z0-9]+/gi,'_').replace(/^_+|_+$/g,'') || 'scanner') + '_scanner.jpg';
+  try{
+    var res = await fetch(url, { mode:'cors' });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var blob = await res.blob();
+    if(blob.type === 'image/jpeg' || blob.type === 'image/jpg'){
+      _triggerBlobDownload(blob, fname); return;
+    }
+    // PNG/other → canvas pe JPEG mein convert (white bg)
+    var objUrl = URL.createObjectURL(blob);
+    var img = new Image();
+    img.onload = function(){
+      try{
+        var c=document.createElement('canvas'); c.width=img.naturalWidth||img.width; c.height=img.naturalHeight||img.height;
+        var ctx=c.getContext('2d'); ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,c.width,c.height); ctx.drawImage(img,0,0);
+        c.toBlob(function(jpg){ URL.revokeObjectURL(objUrl); _triggerBlobDownload(jpg||blob, fname); }, 'image/jpeg', 0.92);
+      }catch(e2){ URL.revokeObjectURL(objUrl); _triggerBlobDownload(blob, fname); }
+    };
+    img.onerror = function(){ URL.revokeObjectURL(objUrl); _triggerBlobDownload(blob, fname); };
+    img.src = objUrl;
+  }catch(err){
+    console.warn('[ScannerDownload] failed, opening in new tab:', err);
+    window.open(url, '_blank');
+    if(typeof toast==='function') toast('Direct download nahi hua — tab mein khol diya');
+  }
 }
 
 // ════ EDIT EXPENSE ════
