@@ -879,7 +879,8 @@ function renderVehicleCard(v, idx) {
   } else if (v.rejected) {
     verifiedInfoHtml = '<div class="vc-verified-info" style="background:#fef2f2;border-color:#fecaca">' +
       '<div><div class="field-label">Rejected Reason</div><div class="field-value" style="color:var(--err)">' + escHtml(v.photos[0].rejection_reason || '—') + '</div></div>' +
-      '<button onclick="openDeleteModal(' + idx + ')" style="margin-left:auto;background:var(--err);color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;">🗑️ Delete Permanently</button>' +
+      '<button onclick="restoreVehicle(' + idx + ')" style="margin-left:auto;background:#dcfce7;color:#15803d;border:1px solid #86efac;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;" title="Reject hata ke wapas pending mein laao">♻️ Restore</button>' +
+      '<button onclick="openDeleteModal(' + idx + ')" style="background:var(--err);color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;">🗑️ Delete Permanently</button>' +
     '</div>';
   }
   
@@ -1189,6 +1190,27 @@ function closeRejectModal() {
   $('rejectModal').classList.remove('show');
   state.pendingAction = null;
 }
+// ── Restore rejected vehicle — reject hata ke wapas pending mein laao ──
+async function restoreVehicle(idx) {
+  var v = getFilteredVehicles()[idx];
+  if (!v) return toast('Vehicle not found', 'error');
+  if (!confirm('Yeh ' + v.photos.length + ' photo wapas Pending mein aa jaayegi. Restore karein?')) return;
+  try {
+    var photoIds = v.photos.map(function(p){ return p.id; });
+    await api('/rest/v1/trial_photos?id=in.(' + photoIds.join(',') + ')', {
+      method: 'PATCH',
+      body: { rejected: false, rejection_reason: null, is_verified: false }
+    });
+    v.rejected = false;
+    v.photos.forEach(function(p){ p.rejected = false; p.rejection_reason = null; p.is_verified = false; });
+    toast('♻️ Restored — wapas Pending mein', 'success');
+    renderVehicles();
+    refreshStats();
+  } catch(err) {
+    toast('Restore failed: ' + err.message, 'error');
+  }
+}
+
 async function confirmReject() {
   var reason = $('rejectReason').value;
   var notes = $('rejectNotes').value.trim();
