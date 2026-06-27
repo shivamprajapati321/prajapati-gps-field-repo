@@ -337,12 +337,29 @@
         </div>
       </div>
       
+      <div class="filter-bar" style="margin-bottom:10px;flex-wrap:wrap;">
+        <label>📅 Date:</label>
+        <button class="filter-btn date-btn active" data-range="all" onclick="setDateRange(this)">All Time</button>
+        <button class="filter-btn date-btn" data-range="today" onclick="setDateRange(this)">Today</button>
+        <button class="filter-btn date-btn" data-range="yesterday" onclick="setDateRange(this)">Yesterday</button>
+        <button class="filter-btn date-btn" data-range="week" onclick="setDateRange(this)">Last 7 Days</button>
+        <button class="filter-btn date-btn" data-range="15days" onclick="setDateRange(this)">Last 15 Days</button>
+        <button class="filter-btn date-btn" data-range="month" onclick="setDateRange(this)">This Month</button>
+        <button class="filter-btn date-btn" data-range="custom" onclick="setDateRange(this)">Custom</button>
+        <div id="customDateBox" style="display:none;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input type="date" id="dateFrom" onchange="applyCustomDate()" style="padding:6px 10px;border:1px solid var(--line);border-radius:7px;font-size:12px;">
+          <span style="color:var(--text-mid);font-size:12px;">to</span>
+          <input type="date" id="dateTo" onchange="applyCustomDate()" style="padding:6px 10px;border:1px solid var(--line);border-radius:7px;font-size:12px;">
+          <span style="color:var(--text-mid);font-size:11px;">(ek hi date ke liye dono same rakho)</span>
+        </div>
+      </div>
+
       <div class="filter-bar">
-        <label>Filter:</label>
+        <label>Status:</label>
         <button class="filter-btn active" data-filter="all" onclick="setFilter(this)">All Members</button>
-        <button class="filter-btn" data-filter="pending" onclick="setFilter(this)">With Pending</button>
+        <button class="filter-btn" data-filter="pending" onclick="setFilter(this)">Unpaid (Pending)</button>
         <button class="filter-btn" data-filter="critical" onclick="setFilter(this)">Critical (>₹10k)</button>
-        <button class="filter-btn" data-filter="settled" onclick="setFilter(this)">Settled</button>
+        <button class="filter-btn" data-filter="settled" onclick="setFilter(this)">Paid (Settled)</button>
         
         <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
           <label>Sort:</label>
@@ -455,7 +472,10 @@ const state = {
   earnings: [],  // From execution_daily_log
   payments: [],  // From execution_payments
   rows: [],      // Computed
-  filter: 'all'
+  filter: 'all',
+  dateRange: 'all',     // all|today|yesterday|week|15days|month|custom
+  dateFrom: null,       // YYYY-MM-DD (IST)
+  dateTo: null
 };
 
 // ─── UTILS ───
@@ -581,9 +601,14 @@ async function loadData() {
 }
 
 function computeRows() {
+  // date range ke hisaab se earnings + payments filter karo
+  const useDate = state.dateRange !== 'all';
+  const filteredEarnings = useDate ? state.earnings.filter(e => dateInRange(e.log_date)) : state.earnings;
+  const filteredPayments = useDate ? state.payments.filter(p => dateInRange(p.payment_date)) : state.payments;
+
   // Aggregate earnings per member
   const earnMap = {};
-  state.earnings.forEach(e => {
+  filteredEarnings.forEach(e => {
     const phone = e.member_phone;
     if (!earnMap[phone]) {
       earnMap[phone] = { phone, name: e.member_name, earned: 0, entries: 0, lastWork: null };
@@ -597,7 +622,7 @@ function computeRows() {
   
   // Aggregate payments per member
   const payMap = {};
-  state.payments.forEach(p => {
+  filteredPayments.forEach(p => {
     const phone = p.member_phone;
     if (!payMap[phone]) {
       payMap[phone] = { paid: 0, lastPaid: null, payments: 0 };
@@ -632,6 +657,67 @@ function computeRows() {
   });
   
   state.rows = rows;
+}
+
+// ─── DATE FILTERING (IST) ───
+function istTodayStr() {
+  // aaj ki date IST mein YYYY-MM-DD
+  const now = new Date();
+  const ist = new Date(now.getTime() + (5.5 * 60 * 60 * 1000) - (now.getTimezoneOffset() * 60 * 1000));
+  return ist.toISOString().slice(0, 10);
+}
+function istDateNDaysAgo(n) {
+  const now = new Date();
+  const ist = new Date(now.getTime() + (5.5 * 60 * 60 * 1000) - (now.getTimezoneOffset() * 60 * 1000));
+  ist.setDate(ist.getDate() - n);
+  return ist.toISOString().slice(0, 10);
+}
+function istMonthStart() {
+  const now = new Date();
+  const ist = new Date(now.getTime() + (5.5 * 60 * 60 * 1000) - (now.getTimezoneOffset() * 60 * 1000));
+  return ist.toISOString().slice(0, 8) + '01';
+}
+
+// active range ke from/to (YYYY-MM-DD) — null = no limit
+function getActiveDateBounds() {
+  const r = state.dateRange;
+  if (r === 'all') return { from: null, to: null };
+  if (r === 'today') { const t = istTodayStr(); return { from: t, to: t }; }
+  if (r === 'yesterday') { const y = istDateNDaysAgo(1); return { from: y, to: y }; }
+  if (r === 'week') return { from: istDateNDaysAgo(6), to: istTodayStr() };
+  if (r === '15days') return { from: istDateNDaysAgo(14), to: istTodayStr() };
+  if (r === 'month') return { from: istMonthStart(), to: istTodayStr() };
+  if (r === 'custom') return { from: state.dateFrom || null, to: state.dateTo || null };
+  return { from: null, to: null };
+}
+
+// kisi date (YYYY-MM-DD ya ISO) ko bounds ke andar check
+function dateInRange(dateStr) {
+  if (!dateStr) return false;
+  const d = String(dateStr).slice(0, 10);
+  const b = getActiveDateBounds();
+  if (b.from && d < b.from) return false;
+  if (b.to && d > b.to) return false;
+  return true;
+}
+
+function setDateRange(btn) {
+  document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.dateRange = btn.dataset.range;
+  document.getElementById('customDateBox').style.display = (state.dateRange === 'custom') ? 'flex' : 'none';
+  if (state.dateRange !== 'custom') {
+    computeRows(); renderRows(); updateSummary();
+  }
+}
+
+function applyCustomDate() {
+  state.dateFrom = document.getElementById('dateFrom').value || null;
+  state.dateTo = document.getElementById('dateTo').value || null;
+  // agar sirf ek date di hai to dono same maan lo (single date)
+  if (state.dateFrom && !state.dateTo) state.dateTo = state.dateFrom;
+  if (state.dateTo && !state.dateFrom) state.dateFrom = state.dateTo;
+  computeRows(); renderRows(); updateSummary();
 }
 
 function setFilter(btn) {
@@ -739,6 +825,14 @@ function updateSummary() {
   
   setText('heroOutstanding', inrShort(totalPending));
   setText('heroMembers', membersWithPending + '/' + state.rows.length);
+  // date range label hero-sub mein dikhao
+  var rangeLabels = { all:'All time', today:'Today', yesterday:'Yesterday', week:'Last 7 days', '15days':'Last 15 days', month:'This month', custom:'Custom' };
+  var rLabel = rangeLabels[state.dateRange] || 'All time';
+  if (state.dateRange === 'custom' && state.dateFrom) {
+    rLabel = (state.dateFrom === state.dateTo) ? state.dateFrom : (state.dateFrom + ' → ' + state.dateTo);
+  }
+  var heroSub = document.querySelector('.hero-sub');
+  if (heroSub) heroSub.textContent = '📅 ' + rLabel + ' · Earned − Paid = Pending. Execution work se.';
   
   setText('totalEarned', inr(totalEarned));
   setText('totalEarnedSub', state.rows.reduce((s, r) => s + r.entries, 0).toLocaleString('en-IN') + ' entries');
