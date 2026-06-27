@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>Payments v1.0 — Prajapati</title>
+<title>Outstanding Report v1.0 — Prajapati</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
@@ -12,171 +12,195 @@
 <style>
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
   :root{
-    --ink-900:#050818;--ink-800:#0B1130;--ink-700:#131A3F;
-    --canvas:#FAFBFF;--paper:#FFFFFF;--line:#E8EAF4;--line-soft:#F0F2F8;
-    --text:#0F172A;--text-mid:#475569;--text-dim:#94A3B8;
-    --teal:#00D4D2;--teal-dark:#00A8A6;
+    --ink-900:#050818;--ink-800:#0B1130;--ink-700:#131A3F;--ink-600:#1c2654;
+    --canvas:#FAFBFF;--paper:#FFFFFF;--line:#E8EAF4;--line-soft:#F0F2F8;--line-strong:#D4D8E8;
+    --text:#0F172A;--text-mid:#475569;--text-dim:#94A3B8;--text-faint:#CBD5E1;
+    --teal:#00D4D2;--teal-glow:#5EEAE8;--teal-dark:#00A8A6;
     --gold:#F5B83D;--gold-warm:#FFC857;--gold-deep:#B8860B;
-    --rose:#FF5470;--mint:#34D399;--violet:#8B5CF6;--blue:#3B82F6;--orange:#F97316;
-    --shadow-md:0 4px 12px rgba(15,23,42,0.06);--shadow-lg:0 12px 32px rgba(15,23,42,0.08);
+    --rose:#FF5470;--mint:#34D399;--mint-glow:#6EE7B7;
+    --violet:#8B5CF6;--blue:#3B82F6;--orange:#F97316;
+    --shadow-sm:0 1px 2px rgba(15,23,42,0.04);
+    --shadow-md:0 4px 12px rgba(15,23,42,0.06);
+    --shadow-lg:0 12px 32px rgba(15,23,42,0.08);
+    --shadow-xl:0 24px 60px rgba(15,23,42,0.12);
   }
-  body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--canvas);color:var(--text);min-height:100vh}
+  body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--canvas);color:var(--text);min-height:100vh;overflow-x:hidden}
+  .mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
+  .serif{font-family:'Fraunces',serif}
   button{font-family:inherit;cursor:pointer;border:none;background:none}
-  input,select,textarea{font-family:inherit;outline:none;border:none}
+  input,select{font-family:inherit;outline:none;border:none}
   
-  .login-bg{min-height:100vh;background:linear-gradient(135deg,var(--ink-900),var(--ink-800),var(--gold-deep));display:flex;align-items:center;justify-content:center;padding:20px}
-  .login-card{background:white;border-radius:20px;padding:36px 32px;width:100%;max-width:420px;box-shadow:0 30px 80px rgba(0,0,0,0.4)}
-  .login-logo{width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;margin-bottom:22px;box-shadow:0 8px 30px rgba(245,184,61,0.4)}
-  .login-card h1{font-family:'Fraunces',serif;font-size:26px;font-weight:600;color:var(--ink-900);margin-bottom:4px}
+  /* LOGIN */
+  .login-bg{min-height:100vh;background:linear-gradient(135deg,var(--ink-900),var(--ink-800),#7c2d12);display:flex;align-items:center;justify-content:center;padding:20px;position:relative;overflow:hidden}
+  .login-bg::before{content:'';position:absolute;top:-200px;right:-200px;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(255,84,112,0.15),transparent 70%)}
+  .login-card{background:rgba(255,255,255,0.98);border-radius:20px;padding:36px 32px;width:100%;max-width:420px;box-shadow:0 30px 80px rgba(0,0,0,0.4);position:relative;animation:loginIn 0.6s cubic-bezier(0.16,1,0.3,1)}
+  @keyframes loginIn{from{opacity:0;transform:translateY(20px) scale(0.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+  .login-logo{width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,var(--rose),#dc2626);display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:24px;margin-bottom:22px;box-shadow:0 8px 30px rgba(255,84,112,0.4)}
+  .login-card h1{font-family:'Fraunces',serif;font-size:26px;font-weight:600;color:var(--ink-900);letter-spacing:-0.02em;margin-bottom:4px}
   .login-card .sub{color:var(--text-mid);font-size:13px;margin-bottom:26px}
   .field-group{margin-bottom:16px}
   .field-group label{display:block;font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:7px}
-  .login-input{width:100%;padding:12px 14px;font-size:14px;border:1.5px solid var(--line);border-radius:10px;background:white;transition:all 0.15s}
-  .login-input:focus{border-color:var(--gold);box-shadow:0 0 0 4px rgba(245,184,61,0.1)}
+  .login-input{width:100%;padding:12px 14px;font-size:14px;font-family:inherit;border:1.5px solid var(--line);border-radius:10px;background:var(--paper);transition:all 0.15s}
+  .login-input:focus{border-color:var(--rose);box-shadow:0 0 0 4px rgba(255,84,112,0.1)}
   .login-input.mono{font-family:'JetBrains Mono',monospace;text-align:center;letter-spacing:0.05em;font-weight:600}
   .err-banner{background:#fef2f2;color:#991b1b;padding:10px 12px;border-radius:8px;font-size:12px;font-weight:600;margin-top:12px;display:none}
   .err-banner.show{display:block}
-  .login-btn{width:100%;padding:13px 18px;background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:white;border-radius:10px;font-size:14px;font-weight:700;box-shadow:0 4px 14px rgba(245,184,61,0.3)}
-  .login-btn:hover{transform:translateY(-1px)}
-  .login-btn:disabled{opacity:0.6}
+  .login-btn{width:100%;padding:13px 18px;background:linear-gradient(135deg,var(--rose),#dc2626);color:white;border-radius:10px;font-size:14px;font-weight:700;box-shadow:0 4px 14px rgba(255,84,112,0.3);transition:all 0.15s}
+  .login-btn:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(255,84,112,0.5)}
+  .login-btn:disabled{opacity:0.6;cursor:not-allowed}
+  
   .app{display:none}.app.active{display:block}
   
+  /* SIDEBAR (compact) */
   .sidebar{width:240px;background:linear-gradient(180deg,var(--ink-900) 0%,var(--ink-800) 60%,var(--ink-700) 100%);height:100vh;position:fixed;left:0;top:0;padding:24px 14px 20px;z-index:50;overflow-y:auto}
+  .sidebar::-webkit-scrollbar{width:4px}
+  .sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px}
   .brand{display:flex;align-items:center;gap:12px;padding:0 8px 24px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:20px}
-  .brand-logo{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;box-shadow:0 4px 14px rgba(245,184,61,0.5)}
+  .brand-logo{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--rose),#dc2626);display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:16px;box-shadow:0 4px 14px rgba(255,84,112,0.4)}
   .brand-text{color:white}
-  .brand-text .name{font-weight:800;font-size:14px}
-  .brand-text .sub{color:#fde68a;font-size:9.5px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin-top:3px}
+  .brand-text .name{font-weight:800;font-size:14px;letter-spacing:-0.015em;line-height:1.1}
+  .brand-text .sub{color:#fda4af;font-size:9.5px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin-top:3px}
   .nav-section{margin-bottom:18px}
   .nav-section-title{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.3);padding:0 12px;margin-bottom:8px}
-  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;color:rgba(255,255,255,0.65);font-size:12.5px;font-weight:600;border-radius:9px;margin-bottom:2px;text-decoration:none;transition:all 0.2s;position:relative}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;color:rgba(255,255,255,0.65);font-size:12.5px;font-weight:600;border-radius:9px;cursor:pointer;margin-bottom:2px;text-decoration:none;transition:all 0.2s cubic-bezier(0.16,1,0.3,1);position:relative}
   .nav-item:hover{background:rgba(255,255,255,0.05);color:white;transform:translateX(2px)}
-  .nav-item.active{background:linear-gradient(90deg,rgba(245,184,61,0.2),rgba(245,184,61,0.04));color:#fde68a}
-  .nav-item.active::before{content:'';position:absolute;left:-14px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--gold);box-shadow:0 0 12px rgba(245,184,61,0.6)}
+  .nav-item.active{background:linear-gradient(90deg,rgba(255,84,112,0.2),rgba(255,84,112,0.04));color:#fda4af}
+  .nav-item.active::before{content:'';position:absolute;left:-14px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--rose);box-shadow:0 0 12px rgba(255,84,112,0.6)}
   .nav-icon{width:16px;height:16px;flex-shrink:0;opacity:0.9}
   
+  /* MAIN */
   .main{margin-left:240px;min-height:100vh}
-  .topbar{background:rgba(255,255,255,0.75);backdrop-filter:blur(20px);border-bottom:1px solid var(--line);padding:14px 28px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:40}
+  .topbar{background:rgba(255,255,255,0.75);backdrop-filter:blur(20px) saturate(180%);border-bottom:1px solid var(--line);padding:14px 28px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:40}
   .breadcrumb{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-mid);font-weight:600}
   .breadcrumb .current{color:var(--ink-900);font-weight:700}
-  .breadcrumb .sep{color:#cbd5e1}
+  .breadcrumb .sep{color:var(--text-faint)}
   .top-actions{display:flex;gap:10px;align-items:center;margin-left:auto}
-  .user-chip{display:flex;align-items:center;gap:9px;padding:4px 10px 4px 4px;border-radius:999px;background:white;border:1px solid var(--line)}
+  .user-chip{display:flex;align-items:center;gap:9px;padding:4px 10px 4px 4px;border-radius:999px;background:var(--paper);border:1px solid var(--line)}
   .user-chip .avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
   .user-chip .name{font-size:12px;font-weight:700;color:var(--ink-900)}
-  .ab-btn{padding:7px 12px;border-radius:8px;font-size:12px;font-weight:700;border:1px solid var(--line);background:white;color:var(--text-mid);transition:all 0.15s}
-  .ab-btn:hover{background:var(--line-soft)}
-  .ab-btn.primary{background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:white;border:none;box-shadow:0 2px 8px rgba(245,184,61,0.3)}
-  .ab-btn.primary:hover{box-shadow:0 4px 14px rgba(245,184,61,0.5);transform:translateY(-1px)}
   
   .content{padding:24px 28px 80px;max-width:1400px}
-  .hero{background:linear-gradient(135deg,var(--ink-900) 0%,#854d0e 50%,var(--gold) 130%);border-radius:20px;padding:28px 32px;color:white;position:relative;overflow:hidden;margin-bottom:22px}
-  .hero::before{content:'';position:absolute;top:-50%;right:-10%;width:500px;height:500px;background:radial-gradient(circle,rgba(245,184,61,0.25),transparent 60%)}
+  
+  /* HERO */
+  .hero{background:linear-gradient(135deg,#7c2d12 0%,#991b1b 50%,#dc2626 100%);border-radius:20px;padding:28px 32px;color:white;position:relative;overflow:hidden;margin-bottom:22px}
+  .hero::before{content:'';position:absolute;top:-50%;right:-10%;width:500px;height:500px;background:radial-gradient(circle,rgba(255,84,112,0.25),transparent 60%)}
   .hero-content{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap}
   .hero-eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);color:white;padding:5px 12px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:0.06em;margin-bottom:12px}
-  .hero-eyebrow .pulse{width:6px;height:6px;background:#fde68a;border-radius:50%;animation:pulse 2s infinite}
+  .hero-eyebrow .pulse{width:6px;height:6px;background:#fda4af;border-radius:50%;animation:pulse 2s infinite}
   @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(1.6)}}
   .hero h1{font-family:'Fraunces',serif;font-size:32px;font-weight:600;letter-spacing:-0.035em;line-height:1.05;margin-bottom:8px}
-  .hero h1 .accent{color:#fde68a;font-style:italic;font-weight:500}
+  .hero h1 .accent{color:#fda4af;font-style:italic;font-weight:500}
   .hero-sub{color:rgba(255,255,255,0.75);font-size:14px;font-weight:500;max-width:520px;line-height:1.5}
+  .hero-stats{display:flex;gap:24px}
   .hero-stat{text-align:right}
   .hero-stat .l{color:rgba(255,255,255,0.6);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em}
   .hero-stat .v{font-family:'JetBrains Mono',monospace;color:white;font-size:30px;font-weight:800;margin-top:4px;letter-spacing:-0.03em}
+  .hero-stat .v.warn{color:#fde68a}
   
-  .summary-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
-  .summary-card{background:white;border:1px solid var(--line);border-radius:12px;padding:16px 18px;transition:all 0.2s}
-  .summary-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
-  .summary-card .label{font-size:10.5px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px}
-  .summary-card .value{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:800;color:var(--ink-900);letter-spacing:-0.02em;line-height:1.1}
-  .summary-card .value.gold{color:var(--gold-deep)}
-  .summary-card .value.mint{color:#047857}
-  .summary-card .value.blue{color:var(--blue)}
-  .summary-card .value.violet{color:var(--violet)}
-  .summary-card .delta{font-size:11px;font-weight:600;margin-top:4px;color:var(--text-mid)}
+  /* FILTER BAR */
+  .filter-bar{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 14px;display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;align-items:center}
+  .filter-bar label{font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.04em}
+  .filter-bar select,.filter-bar input{padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--paper);font-size:12.5px;font-weight:600}
+  .filter-bar .filter-btn{padding:7px 12px;border-radius:7px;font-size:12px;font-weight:700;color:var(--text-mid);background:transparent;border:1px solid var(--line);transition:all 0.15s}
+  .filter-bar .filter-btn:hover{background:var(--line-soft)}
+  .filter-bar .filter-btn.active{background:var(--ink-900);color:white;border-color:var(--ink-900)}
   
-  .filter-bar{background:white;border:1px solid var(--line);border-radius:12px;padding:12px 16px;display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap}
-  .filter-bar label{font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase}
-  .filter-bar select,.filter-bar input{padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-weight:600;background:white}
-  
-  .table-card{background:white;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow-md)}
-  .table-header{padding:16px 22px;border-bottom:1px solid var(--line-soft);display:flex;justify-content:space-between;align-items:center;background:linear-gradient(180deg,white,var(--canvas))}
-  .table-header h2{font-size:15px;font-weight:800;color:var(--ink-900)}
+  /* TABLE */
+  .table-card{background:var(--paper);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow-md)}
+  .table-header{padding:16px 22px;border-bottom:1px solid var(--line-soft);display:flex;justify-content:space-between;align-items:center;background:linear-gradient(180deg,var(--paper),var(--canvas))}
+  .table-header h2{font-size:15px;font-weight:800;color:var(--ink-900);letter-spacing:-0.015em}
   .table-header .count{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-mid);font-weight:700}
-  .table-scroll{overflow-x:auto;max-height:700px;overflow-y:auto}
+  .table-scroll{overflow-x:auto}
   table{width:100%;border-collapse:collapse}
-  thead th{background:var(--canvas);font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.04em;padding:11px 14px;text-align:left;border-bottom:2px solid var(--line);white-space:nowrap;position:sticky;top:0;z-index:10}
+  thead th{background:var(--canvas);font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.04em;padding:11px 14px;text-align:left;border-bottom:2px solid var(--line);white-space:nowrap}
   thead th.num{text-align:right}
   tbody td{padding:13px 14px;font-size:13px;border-bottom:1px solid var(--line-soft);color:var(--text)}
   tbody tr:hover{background:var(--canvas)}
-  td.num{font-family:'JetBrains Mono',monospace;text-align:right;font-weight:600}
-  td.num.bold{font-weight:800;color:var(--ink-900)}
-  td.num.gold{color:var(--gold-deep);font-weight:800;font-size:14px}
+  tbody tr:last-child td{border-bottom:none}
+  td.num{font-family:'JetBrains Mono',monospace;text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+  td.num.big{font-weight:800;color:var(--ink-900);font-size:14px}
+  td.num.red{color:var(--rose);font-weight:800}
+  td.num.green{color:var(--mint);font-weight:800}
+  td.num.gold{color:var(--gold-deep);font-weight:800}
   
+  /* MEMBER CELL */
   .member-cell{display:flex;align-items:center;gap:10px}
-  .member-cell .avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--violet),#a78bfa);color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0}
+  .member-cell .avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--violet),var(--blue));color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0}
   .member-cell .info .name{font-weight:700;color:var(--ink-900)}
   .member-cell .info .phone{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-mid)}
   
-  .mode-pill{display:inline-block;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;text-transform:capitalize}
-  .mode-pill.cash{background:rgba(52,211,153,0.12);color:#047857}
-  .mode-pill.upi{background:rgba(139,92,246,0.12);color:#6d28d9}
-  .mode-pill.bank_transfer{background:rgba(59,130,246,0.12);color:#1d4ed8}
-  .mode-pill.cheque{background:rgba(245,184,61,0.15);color:var(--gold-deep)}
-  .mode-pill.other{background:var(--line-soft);color:var(--text-mid)}
+  /* AMOUNT BAR */
+  .amt-bar{position:relative;background:var(--line-soft);border-radius:6px;height:6px;width:80px;overflow:hidden;margin-top:3px}
+  .amt-bar-fill{position:absolute;left:0;top:0;height:100%;background:linear-gradient(90deg,var(--rose),var(--orange));border-radius:6px;transition:width 0.5s ease-out}
   
-  /* MODAL */
-  .modal{position:fixed;inset:0;background:rgba(5,8,24,0.6);backdrop-filter:blur(8px);display:none;align-items:flex-start;justify-content:center;z-index:200;padding:60px 20px;overflow-y:auto}
-  .modal.active{display:flex}
-  .modal-content{background:white;border-radius:18px;width:100%;max-width:560px;padding:28px;box-shadow:0 24px 80px rgba(0,0,0,0.3);animation:modalIn 0.3s cubic-bezier(0.16,1,0.3,1)}
-  @keyframes modalIn{from{opacity:0;transform:translateY(20px) scale(0.95)}to{opacity:1;transform:translateY(0) scale(1)}}
-  .modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
-  .modal-head h2{font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--ink-900);letter-spacing:-0.015em}
-  .modal-close{width:30px;height:30px;border-radius:8px;background:var(--line-soft);color:var(--text-mid);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;cursor:pointer}
-  .modal-close:hover{background:var(--line)}
+  /* ACTION BTNS */
+  .row-actions{display:flex;gap:5px}
+  .row-btn{padding:5px 10px;border-radius:6px;font-size:11px;font-weight:700;border:1px solid var(--line);background:var(--paper);transition:all 0.12s;color:var(--text-mid);white-space:nowrap}
+  .row-btn:hover{background:var(--line-soft);color:var(--ink-900)}
+  .row-btn.pay{background:linear-gradient(135deg,var(--mint),#10b981);color:white;border:none;box-shadow:0 2px 8px rgba(52,211,153,0.3)}
+  .row-btn.pay:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(52,211,153,0.5)}
   
-  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
-  .form-grid.full{grid-template-columns:1fr}
-  .form-field label{display:block;font-size:11px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px}
-  .form-field label .req{color:var(--rose);font-size:13px}
-  .form-input{width:100%;padding:10px 12px;font-size:13.5px;border:1.5px solid var(--line);border-radius:9px;background:white;font-weight:500;transition:all 0.15s}
-  .form-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(245,184,61,0.1)}
-  .form-input.mono{font-family:'JetBrains Mono',monospace}
-  textarea.form-input{resize:vertical;min-height:70px}
-  .select-wrap{position:relative}
-  .select-wrap::after{content:'▾';position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--text-dim);pointer-events:none}
-  .select-wrap select.form-input{appearance:none;padding-right:32px;cursor:pointer}
-  
-  .member-search-results{margin-top:6px;background:var(--canvas);border:1px solid var(--line);border-radius:8px;max-height:200px;overflow-y:auto;display:none}
-  .member-search-results.show{display:block}
-  .member-result{padding:8px 12px;cursor:pointer;font-size:12.5px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line-soft)}
-  .member-result:hover{background:white}
-  .member-result:last-child{border-bottom:none}
-  .member-result .avatar{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--violet),#a78bfa);color:white;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800}
-  .member-result .info{flex:1}
-  .member-result .name{font-weight:700;color:var(--ink-900)}
-  .member-result .phone{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--text-mid)}
-  .member-result .pending{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:800;color:var(--rose)}
-  
-  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
-  
+  /* EMPTY */
   .empty-state{text-align:center;padding:80px 20px;color:var(--text-mid)}
   .empty-state .icon{font-size:56px;margin-bottom:16px;opacity:0.5}
   .empty-state .title{font-size:20px;font-weight:700;color:var(--ink-900);margin-bottom:6px;font-family:'Fraunces',serif}
   .empty-state .desc{font-size:13px;max-width:400px;margin:0 auto;line-height:1.5}
+  
   .loading{text-align:center;padding:60px 20px;color:var(--text-mid)}
-  .spinner{display:inline-block;width:32px;height:32px;border:3px solid rgba(245,184,61,0.2);border-top-color:var(--gold);border-radius:50%;animation:spin 0.7s linear infinite}
+  .spinner{display:inline-block;width:32px;height:32px;border:3px solid rgba(255,84,112,0.2);border-top-color:var(--rose);border-radius:50%;animation:spin 0.7s linear infinite}
   .spinner.sm{width:14px;height:14px;border-width:2px}
+  
+  /* PAY MODAL */
+  .pay-modal{position:fixed;inset:0;background:rgba(5,8,24,0.6);backdrop-filter:blur(8px);display:none;align-items:flex-start;justify-content:center;z-index:200;padding:40px 20px;overflow-y:auto}
+  .pay-modal.active{display:flex}
+  .pay-modal-content{background:white;border-radius:18px;width:100%;max-width:560px;padding:26px;box-shadow:0 24px 80px rgba(0,0,0,0.3)}
+  .pay-modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+  .pay-modal-head h2{font-size:20px;font-weight:700;color:var(--ink-900)}
+  .pay-modal-close{width:30px;height:30px;border-radius:8px;background:#F0F2F8;color:#475569;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;cursor:pointer;border:none}
+  .pay-recipient{background:linear-gradient(135deg,rgba(255,84,112,0.08),rgba(255,84,112,0.02));border:1px solid rgba(255,84,112,0.25);border-radius:10px;padding:14px 16px;margin-bottom:16px}
+  .pay-recipient .label{font-size:10.5px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px}
+  .pay-recipient .name{font-size:16px;font-weight:800;color:var(--ink-900);margin-bottom:4px}
+  .pay-recipient .phone{font-family:'JetBrains Mono',monospace;font-size:12px;color:#475569}
+  .pay-recipient .outstanding{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,84,112,0.15)}
+  .pay-recipient .outstanding .l{font-size:10.5px;font-weight:700;color:#475569;text-transform:uppercase}
+  .pay-recipient .outstanding .v{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:800;color:var(--rose);margin-top:2px}
+  .pay-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+  .pay-form-grid.full{grid-template-columns:1fr}
+  .pay-form-field label{display:block;font-size:10.5px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px}
+  .pay-form-field label .req{color:var(--rose);font-size:13px}
+  .pay-form-input{width:100%;padding:10px 12px;font-size:13.5px;border:1.5px solid #E8EAF4;border-radius:9px;background:white;font-weight:500;outline:none}
+  .pay-form-input:focus{border-color:var(--rose);box-shadow:0 0 0 3px rgba(255,84,112,0.1)}
+  .pay-form-input.mono{font-family:'JetBrains Mono',monospace}
+  textarea.pay-form-input{resize:vertical;min-height:50px;font-family:inherit}
+  .pay-select-wrap{position:relative}
+  .pay-select-wrap::after{content:'▾';position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#94A3B8;pointer-events:none}
+  .pay-select-wrap select.pay-form-input{appearance:none;padding-right:32px;cursor:pointer}
+  .pay-receipt-preview{display:none;margin-top:8px;padding:8px 12px;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.3);border-radius:8px;font-size:12px;font-weight:600;color:#047857}
+  .pay-modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid #E8EAF4}
+  .pay-btn{padding:10px 18px;border-radius:9px;font-size:13px;font-weight:700;border:1px solid #E8EAF4;background:white;color:#475569;cursor:pointer;font-family:inherit}
+  .pay-btn:hover{background:#F0F2F8}
+  .pay-btn.primary{background:linear-gradient(135deg,var(--rose),#e11d48);color:white;border:none;box-shadow:0 2px 8px rgba(255,84,112,0.3)}
+  .pay-btn:disabled{opacity:0.6;cursor:not-allowed}
   @keyframes spin{to{transform:rotate(360deg)}}
   
-  .toast{position:fixed;bottom:24px;right:24px;background:var(--ink-900);color:white;padding:14px 20px;border-radius:12px;font-size:13px;font-weight:700;box-shadow:0 24px 60px rgba(0,0,0,0.2);z-index:9999;opacity:0;transform:translateY(20px);transition:all 0.3s;display:flex;gap:10px}
+  /* SUMMARY CARDS */
+  .summary-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+  .summary-card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px 18px;position:relative;overflow:hidden;transition:all 0.2s}
+  .summary-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+  .summary-card .label{font-size:10.5px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px}
+  .summary-card .value{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:800;color:var(--ink-900);letter-spacing:-0.02em;line-height:1.1}
+  .summary-card .value.red{color:var(--rose)}
+  .summary-card .value.gold{color:var(--gold-deep)}
+  .summary-card .value.green{color:var(--mint)}
+  .summary-card .delta{font-size:11px;font-weight:600;margin-top:4px;color:var(--text-mid)}
+  
+  /* TOAST */
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--ink-900);color:white;padding:14px 20px;border-radius:12px;font-size:13px;font-weight:700;box-shadow:var(--shadow-xl);z-index:9999;opacity:0;transform:translateY(20px);transition:all 0.3s;display:flex;align-items:center;gap:10px;max-width:400px}
   .toast.show{opacity:1;transform:translateY(0)}
   .toast.success{background:linear-gradient(135deg,var(--mint),#10b981)}
   .toast.error{background:linear-gradient(135deg,var(--rose),#e11d48)}
   
-  .delete-btn{padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700;background:var(--canvas);color:var(--text-mid);border:1px solid var(--line);transition:all 0.12s}
-  .delete-btn:hover{background:#fef2f2;color:var(--rose);border-color:#fecaca}
-  
-  @media (max-width:1024px){.summary-cards{grid-template-columns:repeat(2,1fr)}.form-grid{grid-template-columns:1fr}}
+  @media (max-width:1024px){.summary-cards{grid-template-columns:repeat(2,1fr)}}
   @media (max-width:768px){
     .sidebar{width:60px;padding:14px 6px}
     .sidebar .brand-text,.sidebar .nav-section-title,.sidebar .nav-item span{display:none}
@@ -185,7 +209,7 @@
     .topbar{padding:10px 14px}
     .summary-cards{grid-template-columns:1fr}
     .hero h1{font-size:22px}
-    .modal{padding:20px}
+    .hero-content{flex-direction:column}
   }
 </style>
 <!-- ═══ RLS LIBRARIES (Phase 3) ═══ -->
@@ -196,27 +220,29 @@
 </head>
 <body>
 
+<!-- LOGIN -->
 <div class="login-bg" id="loginScreen">
   <div class="login-card">
-    <div class="login-logo">💰</div>
-    <h1>Payments</h1>
+    <div class="login-logo">⚠</div>
+    <h1>Outstanding Report</h1>
     <p class="sub">Admin / Owner / Accounts access</p>
     <div class="field-group">
       <label>Phone Number</label>
       <input type="tel" id="loginPhone" class="login-input mono" placeholder="10-digit phone" maxlength="10">
     </div>
-    <button class="login-btn" onclick="doLogin()" id="loginBtn">View Payments →</button>
+    <button class="login-btn" onclick="doLogin()" id="loginBtn">View Outstanding →</button>
     <div class="err-banner" id="loginErr"></div>
   </div>
 </div>
 
+<!-- APP -->
 <div class="app" id="mainApp">
   <aside class="sidebar">
     <div class="brand">
-      <div class="brand-logo">💰</div>
+      <div class="brand-logo">⚠</div>
       <div class="brand-text">
         <div class="name">Reports</div>
-        <div class="sub">v1.0 · Payments</div>
+        <div class="sub">v1.0 · Outstanding</div>
       </div>
     </div>
     <div class="nav-section">
@@ -226,7 +252,7 @@
         <span>Daily Report</span>
       </a>
       <a class="nav-item" href="report-team.html">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
         <span>Team Wise</span>
       </a>
       <a class="nav-item" href="report-campaign.html">
@@ -236,14 +262,14 @@
     </div>
     <div class="nav-section">
       <div class="nav-section-title">Finance</div>
-      <div class="nav-item active">
+      <a class="nav-item" href="payments.html">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
         <span>Payments</span>
-      </div>
-      <a class="nav-item" href="outstanding.html">
+      </a>
+      <div class="nav-item active">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         <span>Outstanding</span>
-      </a>
+      </div>
     </div>
     <div class="nav-section">
       <div class="nav-section-title">Back</div>
@@ -256,10 +282,10 @@
   
   <main class="main">
     <header class="topbar">
-      <div class="breadcrumb"><span>Finance</span><span class="sep">/</span><span class="current">Payments</span></div>
+      <div class="breadcrumb"><span>Reports</span><span class="sep">/</span><span class="current">Outstanding</span></div>
       <div class="top-actions">
-        <button class="ab-btn" onclick="exportCSV()">📥 Export CSV</button>
-        <button class="ab-btn primary" onclick="openNewPayment()">+ Record Payment</button>
+        <button class="filter-btn" onclick="loadData()" style="border:1px solid var(--line);padding:7px 12px;border-radius:8px;font-weight:700;font-size:12px;background:var(--paper);">🔄 Refresh</button>
+        <button class="filter-btn" onclick="exportCSV()" style="border:1px solid var(--line);padding:7px 12px;border-radius:8px;font-weight:700;font-size:12px;background:var(--paper);">📥 Export CSV</button>
         <div class="user-chip">
           <div class="avatar" id="userAvatar">?</div>
           <span class="name" id="userName">—</span>
@@ -271,62 +297,93 @@
       <section class="hero">
         <div class="hero-content">
           <div>
-            <div class="hero-eyebrow"><span class="pulse"></span>PAYMENT HISTORY</div>
-            <h1>Track every <span class="accent">rupee</span> paid out</h1>
-            <p class="hero-sub">Complete payment ledger to team members. Record new payments, filter by date or method.</p>
+            <div class="hero-eyebrow"><span class="pulse"></span>OUTSTANDING TRACKER</div>
+            <h1>Who do we <span class="accent">owe</span> and how much?</h1>
+            <p class="hero-sub">Real-time outstanding amounts. Earned from execution work − Already paid out = Pending.</p>
           </div>
-          <div class="hero-stat">
-            <div class="l">Total Paid</div>
-            <div class="v" id="heroTotal">—</div>
+          <div class="hero-stats">
+            <div class="hero-stat">
+              <div class="l">Total Outstanding</div>
+              <div class="v warn" id="heroOutstanding">—</div>
+            </div>
+            <div class="hero-stat">
+              <div class="l">Members</div>
+              <div class="v" id="heroMembers">—</div>
+            </div>
           </div>
         </div>
       </section>
       
       <div class="summary-cards">
         <div class="summary-card">
-          <div class="label">Total Payments</div>
-          <div class="value blue" id="sumCount">—</div>
-          <div class="delta" id="sumCountSub">transactions</div>
+          <div class="label">Total Earned</div>
+          <div class="value gold" id="totalEarned">₹0</div>
+          <div class="delta" id="totalEarnedSub">All time</div>
         </div>
         <div class="summary-card">
-          <div class="label">Total Amount</div>
-          <div class="value gold" id="sumAmount">—</div>
-          <div class="delta" id="sumAmountSub">paid out</div>
+          <div class="label">Total Paid</div>
+          <div class="value green" id="totalPaid">₹0</div>
+          <div class="delta" id="totalPaidSub">All time</div>
         </div>
         <div class="summary-card">
-          <div class="label">Members Paid</div>
-          <div class="value violet" id="sumMembers">—</div>
-          <div class="delta" id="sumMembersSub">unique members</div>
+          <div class="label">Outstanding</div>
+          <div class="value red" id="totalPending">₹0</div>
+          <div class="delta" id="totalPendingSub">Pending payout</div>
         </div>
         <div class="summary-card">
-          <div class="label">This Month</div>
-          <div class="value mint" id="sumMonth">—</div>
-          <div class="delta" id="sumMonthSub">—</div>
+          <div class="label">Last Payment</div>
+          <div class="value" id="lastPayment">—</div>
+          <div class="delta" id="lastPaymentSub">—</div>
         </div>
       </div>
       
+      <div class="filter-bar" style="margin-bottom:10px;flex-wrap:wrap;">
+        <label>📅 Date:</label>
+        <button class="filter-btn date-btn active" data-range="all" onclick="setDateRange(this)">All Time</button>
+        <button class="filter-btn date-btn" data-range="today" onclick="setDateRange(this)">Today</button>
+        <button class="filter-btn date-btn" data-range="yesterday" onclick="setDateRange(this)">Yesterday</button>
+        <button class="filter-btn date-btn" data-range="week" onclick="setDateRange(this)">Last 7 Days</button>
+        <button class="filter-btn date-btn" data-range="15days" onclick="setDateRange(this)">Last 15 Days</button>
+        <button class="filter-btn date-btn" data-range="month" onclick="setDateRange(this)">This Month</button>
+        <button class="filter-btn date-btn" data-range="custom" onclick="setDateRange(this)">Custom</button>
+        <div id="customDateBox" style="display:none;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input type="date" id="dateFrom" onchange="applyCustomDate()" style="padding:6px 10px;border:1px solid var(--line);border-radius:7px;font-size:12px;">
+          <span style="color:var(--text-mid);font-size:12px;">to</span>
+          <input type="date" id="dateTo" onchange="applyCustomDate()" style="padding:6px 10px;border:1px solid var(--line);border-radius:7px;font-size:12px;">
+          <span style="color:var(--text-mid);font-size:11px;">(ek hi date ke liye dono same rakho)</span>
+        </div>
+      </div>
+
       <div class="filter-bar">
-        <label>Filter:</label>
-        <select id="filterMode" onchange="renderTable()">
-          <option value="all">All Methods</option>
-          <option value="cash">Cash</option>
-          <option value="upi">UPI</option>
-          <option value="bank_transfer">Bank Transfer</option>
-          <option value="cheque">Cheque</option>
-          <option value="other">Other</option>
-        </select>
-        <select id="filterCampaign" onchange="renderTable()" style="max-width:210px;"><option value="">All Campaigns</option></select>
-        <input type="date" id="filterFrom" onchange="renderTable()" placeholder="From">
-        <span style="color:var(--text-mid);font-size:12px;">to</span>
-        <input type="date" id="filterTo" onchange="renderTable()" placeholder="To">
-        <input type="text" id="filterMember" placeholder="🔍 Search member name/phone..." style="flex:1;min-width:200px;" oninput="renderTable()">
-        <button class="ab-btn" onclick="clearFilters()">Clear</button>
+        <label>🏢 Dept:</label>
+        <button class="filter-btn dept-btn active" data-dept="all" onclick="setDept(this)">All Departments</button>
+        <button class="filter-btn dept-btn" data-dept="execution" onclick="setDept(this)">🚗 Execution</button>
+        <button class="filter-btn dept-btn" data-dept="stitching" onclick="setDept(this)">🧵 Stitching</button>
+      </div>
+
+      <div class="filter-bar">
+        <label>Status:</label>
+        <button class="filter-btn active" data-filter="all" onclick="setFilter(this)">All Members</button>
+        <button class="filter-btn" data-filter="pending" onclick="setFilter(this)">Unpaid (Pending)</button>
+        <button class="filter-btn" data-filter="critical" onclick="setFilter(this)">Critical (>₹10k)</button>
+        <button class="filter-btn" data-filter="settled" onclick="setFilter(this)">Paid (Settled)</button>
+        
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+          <label>Sort:</label>
+          <select id="sortBy" onchange="renderRows()" style="cursor:pointer;">
+            <option value="pending_desc">Outstanding (High → Low)</option>
+            <option value="pending_asc">Outstanding (Low → High)</option>
+            <option value="earned_desc">Earned (High → Low)</option>
+            <option value="name_asc">Name (A → Z)</option>
+          </select>
+        </div>
       </div>
       
       <div class="table-card">
-        <div class="table-header">
-          <h2>All Payments</h2>
-          <span class="count" id="rowCount">—</span>
+        <div class="table-header" style="flex-wrap:wrap;gap:12px;">
+          <h2>Member-wise Outstanding</h2>
+          <input type="text" id="memberSearch" oninput="renderRows()" placeholder="🔍 Member naam ya phone search..." style="flex:1;min-width:200px;max-width:340px;padding:8px 14px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">
+          <span class="count" id="rowCount">— members</span>
         </div>
         <div id="tableBody">
           <div class="loading"><div class="spinner"></div><div style="margin-top:14px;font-weight:600;">Loading...</div></div>
@@ -336,48 +393,42 @@
   </main>
 </div>
 
-<!-- NEW PAYMENT MODAL -->
-<div class="modal" id="paymentModal">
-  <div class="modal-content">
-    <div class="modal-head">
-      <h2 id="payModalTitle">💰 Record New Payment</h2>
-      <button class="modal-close" onclick="closeModal()">✕</button>
-    </div>
-    
-    <div class="form-grid full">
-      <div class="form-field">
-        <label>Member <span class="req">*</span></label>
-        <input type="text" id="newMember" class="form-input" placeholder="Type member name or phone..." oninput="searchMembers(this.value)" autocomplete="off">
-        <div class="member-search-results" id="memberResults"></div>
-        <div id="selectedMember" style="margin-top:6px;display:none;padding:8px 10px;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.3);border-radius:8px;font-size:12px;font-weight:600;color:#047857;"></div>
-      </div>
-    </div>
-    
-    <div class="form-grid full">
-      <div class="form-field">
-        <label>Campaign <span style="font-weight:500;color:var(--text-mid);text-transform:none;">(optional)</span></label>
-        <input type="text" id="newCampaign" class="form-input" list="campaignDatalist" placeholder="Type or select campaign..." autocomplete="off">
-        <datalist id="campaignDatalist"></datalist>
-      </div>
-    </div>
+<div class="toast" id="toast"></div>
 
-    <div class="form-grid">
-      <div class="form-field">
-        <label>Amount (₹) <span class="req">*</span></label>
-        <input type="number" id="newAmount" class="form-input mono" placeholder="0" min="1" step="0.01">
-        <div id="suggestedAmt" style="margin-top:4px;font-size:11px;color:var(--text-mid);"></div>
-      </div>
-      <div class="form-field">
-        <label>Payment Date <span class="req">*</span></label>
-        <input type="date" id="newDate" class="form-input">
+<!-- PAY MODAL -->
+<div class="pay-modal" id="payModal">
+  <div class="pay-modal-content">
+    <div class="pay-modal-head">
+      <h2>💰 Record Payment</h2>
+      <button class="pay-modal-close" onclick="closePayModal()">✕</button>
+    </div>
+    
+    <div class="pay-recipient">
+      <div class="label">Pay To</div>
+      <div class="name" id="payRecipientName">—</div>
+      <div class="phone" id="payRecipientPhone">—</div>
+      <div class="outstanding">
+        <div class="l">Outstanding</div>
+        <div class="v" id="payOutstandingAmt">—</div>
       </div>
     </div>
     
-    <div class="form-grid">
-      <div class="form-field">
-        <label>Payment Mode <span class="req">*</span></label>
-        <div class="select-wrap">
-          <select id="newMode" class="form-input">
+    <div class="pay-form-grid">
+      <div class="pay-form-field">
+        <label>Amount (₹) <span class="req">*</span></label>
+        <input type="number" id="payAmount" class="pay-form-input mono" placeholder="0" min="1" step="0.01">
+      </div>
+      <div class="pay-form-field">
+        <label>Date <span class="req">*</span></label>
+        <input type="date" id="payDate" class="pay-form-input">
+      </div>
+    </div>
+    
+    <div class="pay-form-grid">
+      <div class="pay-form-field">
+        <label>Mode <span class="req">*</span></label>
+        <div class="pay-select-wrap">
+          <select id="payMode" class="pay-form-input">
             <option value="upi">UPI</option>
             <option value="cash">Cash</option>
             <option value="bank_transfer">Bank Transfer</option>
@@ -386,49 +437,64 @@
           </select>
         </div>
       </div>
-      <div class="form-field">
-        <label>Reference (txn ID/cheque no.)</label>
-        <input type="text" id="newRef" class="form-input mono" placeholder="Optional">
+      <div class="pay-form-field">
+        <label>Reference</label>
+        <input type="text" id="payRef" class="pay-form-input mono" placeholder="txn ID / cheque no.">
       </div>
     </div>
     
-    <div class="form-grid full">
-      <div class="form-field">
-        <label>For Period (e.g., March 2026, Week 12)</label>
-        <input type="text" id="newPeriod" class="form-input" placeholder="Optional">
-      </div>
-      <div class="form-field">
+    <div class="pay-form-grid full">
+      <div class="pay-form-field">
         <label>Notes</label>
-        <textarea id="newNotes" class="form-input" placeholder="Any additional notes..."></textarea>
-      </div>
-      <div class="form-field" style="grid-column:1/-1;">
-        <label>📎 Receipt Upload (HIGHLY RECOMMENDED for history)</label>
-        <input type="file" id="newReceipt" class="form-input" accept="image/*,application/pdf" style="padding:8px 12px;">
-        <div style="font-size:10.5px;color:#475569;margin-top:4px;">📸 Payment screenshot / UPI confirmation / receipt photo · JPG/PNG/PDF · Max 5 MB</div>
-        <div id="newReceiptPreview" style="display:none;margin-top:8px;padding:8px 12px;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.3);border-radius:8px;font-size:12px;font-weight:600;color:#047857;"></div>
+        <textarea id="payNotes" class="pay-form-input" placeholder="Optional..."></textarea>
       </div>
     </div>
     
-    <div class="modal-actions">
-      <button class="ab-btn" onclick="closeModal()">Cancel</button>
-      <button class="ab-btn primary" onclick="savePayment()" id="savePayBtn">💾 Save Payment</button>
+    <div class="pay-form-grid full">
+      <div class="pay-form-field">
+        <label>📎 Receipt Upload (HIGHLY RECOMMENDED for history)</label>
+        <input type="file" id="payReceipt" class="pay-form-input" accept="image/*,application/pdf" style="padding:8px 12px;">
+        <div style="font-size:10.5px;color:#475569;margin-top:4px;">📸 Payment screenshot / UPI confirmation / receipt photo · JPG/PNG/PDF · Max 5 MB</div>
+        <div id="payReceiptPreview" class="pay-receipt-preview"></div>
+      </div>
+    </div>
+    
+    <div class="pay-modal-actions">
+      <button class="pay-btn" onclick="closePayModal()">Cancel</button>
+      <button class="pay-btn primary" onclick="submitPayment()" id="payModalSaveBtn">💾 Save Payment</button>
     </div>
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
-
 <script>
 "use strict";
-const CONFIG = { url: 'https://fpbktcgtspqsqpaytslv.supabase.co', key: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j' };
-const state = { admin: null, payments: [], members: [], earnings: {}, campaigns: [], selectedMember: null, editId: null };
 
+const CONFIG = {
+  url: 'https://fpbktcgtspqsqpaytslv.supabase.co',
+  key: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j'
+};
+
+const state = {
+  admin: null,
+  members: [],   // From trial_team_members
+  earnings: [],  // From execution_daily_log
+  payments: [],  // From execution_payments
+  stitchEarnings: [],  // From prajapati_stitching_log
+  stitchPayments: [],  // From prajapati_stitching_payments
+  rows: [],      // Computed
+  filter: 'all',
+  dept: 'all',          // all|execution|stitching
+  dateRange: 'all',     // all|today|yesterday|week|15days|month|custom
+  dateFrom: null,       // YYYY-MM-DD (IST)
+  dateTo: null
+};
+
+// ─── UTILS ───
 function esc(s) { if (s == null) return ''; return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function inr(n) { if (!n || isNaN(n)) return '₹0'; return '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 }); }
 function inrShort(n) { if (!n || isNaN(n)) return '₹0'; const num = Number(n); if (num >= 100000) return '₹' + (num/100000).toFixed(2) + 'L'; if (num >= 1000) return '₹' + (num/1000).toFixed(1) + 'k'; return '₹' + num.toLocaleString('en-IN', { maximumFractionDigits: 0 }); }
 function getInitials(name) { if (!name) return '?'; return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase(); }
 function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
-function todayStr() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
 
 function showToast(msg, type) {
   try {
@@ -453,53 +519,57 @@ async function api(path, options) {
   try { return JSON.parse(txt); } catch { return txt; }
 }
 
-// Paginated fetch — Supabase ~1000-row cap bypass (offset loop)
-async function apiAll(path, pageSize) {
-  pageSize = pageSize || 1000;
-  var base = path.replace(/([?&])limit=\d+/gi,'$1').replace(/([?&])offset=\d+/gi,'$1').replace(/([?&])&+/g,'$1').replace(/[?&]$/,'');
-  if (/[?&]order=/.test(base)) { if (!/[?&]order=[^&]*\bid\b/.test(base)) base = base.replace(/([?&]order=[^&]*)/,'$1,id.asc'); }
-  else { base += (base.indexOf('?')===-1?'?':'&') + 'order=id.asc'; }
-  var sep = base.indexOf('?')===-1?'?':'&', all=[], offset=0;
-  for(;;){ var b = await api(base+sep+'limit='+pageSize+'&offset='+offset); if(!b||!b.length) break; all=all.concat(b); if(b.length<pageSize) break; offset+=pageSize; }
-  return all;
-}
-
+// ─── LOGIN ───
 async function doLogin() {
   const phone = document.getElementById('loginPhone').value.trim();
   const errEl = document.getElementById('loginErr');
   const btn = document.getElementById('loginBtn');
   errEl.classList.remove('show');
   if (phone.length !== 10) { errEl.textContent = '10 digit phone daalo'; errEl.classList.add('show'); return; }
-  btn.disabled = true; btn.innerHTML = 'Checking...';
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner sm" style="border-color:rgba(255,255,255,0.3);border-top-color:white;"></span> Checking...';
   try {
     const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
-    if (!members || members.length === 0) { errEl.textContent = 'Number registered nahi'; errEl.classList.add('show'); btn.disabled = false; btn.innerHTML = 'View Payments →'; return; }
+    if (!members || members.length === 0) {
+      errEl.textContent = 'Number registered nahi';
+      errEl.classList.add('show');
+      btn.disabled = false; btn.innerHTML = 'View Outstanding →';
+      return;
+    }
     const m = members[0];
-    if (!['admin','owner','accounts'].includes((m.role||'').toLowerCase())) {
+    const role = (m.role || '').toLowerCase();
+    if (!['admin', 'owner', 'accounts', 'accountant'].includes(role)) {
       errEl.textContent = 'Sirf Admin/Owner/Accounts ke liye';
-      errEl.classList.add('show'); btn.disabled = false; btn.innerHTML = 'View Payments →'; return;
+      errEl.classList.add('show');
+      btn.disabled = false; btn.innerHTML = 'View Outstanding →';
+      return;
     }
     state.admin = m;
     localStorage.setItem('prajapati_admin_phone', phone);
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('mainApp').classList.add('active');
     initApp();
-  } catch (err) { errEl.textContent = 'Error: ' + err.message; errEl.classList.add('show'); btn.disabled = false; btn.innerHTML = 'View Payments →'; }
+  } catch (err) {
+    errEl.textContent = 'Error: ' + err.message;
+    errEl.classList.add('show');
+    btn.disabled = false; btn.innerHTML = 'View Outstanding →';
+  }
 }
 
 async function autoLogin() {
   const phone = localStorage.getItem('prajapati_admin_phone');
-  if (!phone) return;
+  if (!phone) return false;
   try {
     const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
-    if (!members || members.length === 0) return;
+    if (!members || members.length === 0) return false;
     const m = members[0];
-    if (!['admin','owner','accounts'].includes((m.role||'').toLowerCase())) return;
+    if (!['admin', 'owner', 'accounts', 'accountant'].includes((m.role || '').toLowerCase())) return false;
     state.admin = m;
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('mainApp').classList.add('active');
     initApp();
-  } catch (e) {}
+    return true;
+  } catch (e) { return false; }
 }
 
 function initApp() {
@@ -508,112 +578,277 @@ function initApp() {
   loadData();
 }
 
+// ─── DATA LOAD ───
 async function loadData() {
-  document.getElementById('tableBody').innerHTML = '<div class="loading"><div class="spinner"></div><div style="margin-top:14px;font-weight:600;">Loading...</div></div>';
+  document.getElementById('tableBody').innerHTML = '<div class="loading"><div class="spinner"></div><div style="margin-top:14px;font-weight:600;">Loading outstanding...</div></div>';
   
   try {
-    const [payments, members, earnings, campaigns] = await Promise.all([
-      apiAll('/rest/v1/execution_payments?select=*&order=payment_date.desc,created_at.desc'),
-      api('/rest/v1/trial_team_members?active=eq.true&select=phone,name,role'),
-      apiAll('/rest/v1/execution_daily_log?select=member_phone,total_amount'),
-      api('/rest/v1/trial_campaigns?select=key,name&order=name.asc').catch(function(){ return []; })
-    ]);
-    
-    state.payments = payments || [];
+    // Load all team members
+    const members = await api('/rest/v1/trial_team_members?active=eq.true&select=phone,name,role&order=name.asc');
     state.members = members || [];
-    state.campaigns = campaigns || [];
     
-    // Compute earnings per member for "outstanding" suggestion
-    state.earnings = {};
-    (earnings || []).forEach(e => {
-      state.earnings[e.member_phone] = (state.earnings[e.member_phone] || 0) + (parseFloat(e.total_amount) || 0);
-    });
+    // Load all earnings (aggregated by member)
+    const earnings = await api('/rest/v1/execution_daily_log?select=member_phone,member_name,total_amount,log_date&order=log_date.desc');
+    state.earnings = earnings || [];
     
-    populateCampaignControls();
-    renderTable();
+    // Load all payments
+    const payments = await api('/rest/v1/execution_payments?select=member_phone,amount,payment_date&order=payment_date.desc');
+    state.payments = payments || [];
+
+    // ─── STITCHING department data ───
+    // Earnings: prajapati_stitching_log (master_phone, master_name, total_amount, log_date)
+    const stitchEarn = await api('/rest/v1/prajapati_stitching_log?select=master_phone,master_name,total_amount,quantity,rate_per_piece,log_date&order=log_date.desc&limit=20000').catch(() => []);
+    state.stitchEarnings = stitchEarn || [];
+    // Payments: prajapati_stitching_payments (master_phone, master_name, amount, payment_date)
+    const stitchPay = await api('/rest/v1/prajapati_stitching_payments?deleted_at=is.null&select=master_phone,master_name,amount,payment_date&order=payment_date.desc&limit=20000').catch(() => []);
+    state.stitchPayments = stitchPay || [];
+    
+    computeRows();
+    renderRows();
     updateSummary();
   } catch (err) {
     console.error('Load error:', err);
     document.getElementById('tableBody').innerHTML = `
       <div class="empty-state">
         <div class="icon">⚠️</div>
-        <div class="title">Cannot load payments</div>
+        <div class="title">Cannot load data</div>
         <div class="desc">${esc(err.message)}</div>
-      </div>`;
+      </div>
+    `;
+    showToast('Load failed: ' + err.message, 'error');
   }
 }
 
-function getFilteredPayments() {
-  let rows = [...state.payments];
-  const mode = document.getElementById('filterMode').value;
-  const from = document.getElementById('filterFrom').value;
-  const to = document.getElementById('filterTo').value;
-  const member = document.getElementById('filterMember').value.trim().toLowerCase();
-  const camp = document.getElementById('filterCampaign') ? document.getElementById('filterCampaign').value : '';
+function computeRows() {
+  const useDate = state.dateRange !== 'all';
+
+  // helper: ek department ke earnings+payments se rows banao
+  function buildDeptRows(earnings, payments, deptLabel, phoneKey, nameKey) {
+    const fEarn = useDate ? earnings.filter(e => dateInRange(e.log_date)) : earnings;
+    const fPay  = useDate ? payments.filter(p => dateInRange(p.payment_date)) : payments;
+
+    const earnMap = {};
+    fEarn.forEach(e => {
+      const phone = e[phoneKey] || 'unknown';
+      if (!earnMap[phone]) earnMap[phone] = { phone, name: e[nameKey], earned: 0, entries: 0, lastWork: null };
+      earnMap[phone].earned += parseFloat(e.total_amount) || (parseFloat(e.quantity||0) * parseFloat(e.rate_per_piece||0)) || 0;
+      earnMap[phone].entries++;
+      if (!earnMap[phone].lastWork || e.log_date > earnMap[phone].lastWork) earnMap[phone].lastWork = e.log_date;
+    });
+
+    const payMap = {};
+    fPay.forEach(p => {
+      const phone = p[phoneKey] || 'unknown';
+      if (!payMap[phone]) payMap[phone] = { paid: 0, lastPaid: null, payments: 0 };
+      payMap[phone].paid += parseFloat(p.amount) || 0;
+      payMap[phone].payments++;
+      if (!payMap[phone].lastPaid || p.payment_date > payMap[phone].lastPaid) payMap[phone].lastPaid = p.payment_date;
+    });
+
+    const allPhones = new Set([...Object.keys(earnMap), ...Object.keys(payMap)]);
+    const out = [];
+    allPhones.forEach(phone => {
+      const earn = earnMap[phone] || { earned: 0, entries: 0, lastWork: null };
+      const pay = payMap[phone] || { paid: 0, lastPaid: null, payments: 0 };
+      const member = state.members.find(m => m.phone === phone);
+      out.push({
+        phone,
+        dept: deptLabel,
+        name: earn.name || (member ? member.name : 'Unknown'),
+        role: member ? member.role : deptLabel,
+        earned: earn.earned,
+        paid: pay.paid,
+        pending: earn.earned - pay.paid,
+        entries: earn.entries,
+        payments: pay.payments,
+        lastWork: earn.lastWork,
+        lastPaid: pay.lastPaid
+      });
+    });
+    return out;
+  }
+
+  const execRows = buildDeptRows(state.earnings, state.payments, 'Execution', 'member_phone', 'member_name');
+  const stitchRows = buildDeptRows(state.stitchEarnings, state.stitchPayments, 'Stitching', 'master_phone', 'master_name');
+
+  state.rows = [...execRows, ...stitchRows];
+}
+
+// ─── DATE FILTERING (IST) ───
+function istTodayStr() {
+  // aaj ki date IST mein YYYY-MM-DD
+  const now = new Date();
+  const ist = new Date(now.getTime() + (5.5 * 60 * 60 * 1000) - (now.getTimezoneOffset() * 60 * 1000));
+  return ist.toISOString().slice(0, 10);
+}
+function istDateNDaysAgo(n) {
+  const now = new Date();
+  const ist = new Date(now.getTime() + (5.5 * 60 * 60 * 1000) - (now.getTimezoneOffset() * 60 * 1000));
+  ist.setDate(ist.getDate() - n);
+  return ist.toISOString().slice(0, 10);
+}
+function istMonthStart() {
+  const now = new Date();
+  const ist = new Date(now.getTime() + (5.5 * 60 * 60 * 1000) - (now.getTimezoneOffset() * 60 * 1000));
+  return ist.toISOString().slice(0, 8) + '01';
+}
+
+// active range ke from/to (YYYY-MM-DD) — null = no limit
+function getActiveDateBounds() {
+  const r = state.dateRange;
+  if (r === 'all') return { from: null, to: null };
+  if (r === 'today') { const t = istTodayStr(); return { from: t, to: t }; }
+  if (r === 'yesterday') { const y = istDateNDaysAgo(1); return { from: y, to: y }; }
+  if (r === 'week') return { from: istDateNDaysAgo(6), to: istTodayStr() };
+  if (r === '15days') return { from: istDateNDaysAgo(14), to: istTodayStr() };
+  if (r === 'month') return { from: istMonthStart(), to: istTodayStr() };
+  if (r === 'custom') return { from: state.dateFrom || null, to: state.dateTo || null };
+  return { from: null, to: null };
+}
+
+// kisi date (YYYY-MM-DD ya ISO) ko bounds ke andar check
+function dateInRange(dateStr) {
+  if (!dateStr) return false;
+  const d = String(dateStr).slice(0, 10);
+  const b = getActiveDateBounds();
+  if (b.from && d < b.from) return false;
+  if (b.to && d > b.to) return false;
+  return true;
+}
+
+function setDateRange(btn) {
+  document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.dateRange = btn.dataset.range;
+  document.getElementById('customDateBox').style.display = (state.dateRange === 'custom') ? 'flex' : 'none';
+  if (state.dateRange !== 'custom') {
+    computeRows(); renderRows(); updateSummary();
+  }
+}
+
+function applyCustomDate() {
+  state.dateFrom = document.getElementById('dateFrom').value || null;
+  state.dateTo = document.getElementById('dateTo').value || null;
+  // agar sirf ek date di hai to dono same maan lo (single date)
+  if (state.dateFrom && !state.dateTo) state.dateTo = state.dateFrom;
+  if (state.dateTo && !state.dateFrom) state.dateFrom = state.dateTo;
+  computeRows(); renderRows(); updateSummary();
+}
+
+function setDept(btn) {
+  document.querySelectorAll('.dept-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.dept = btn.dataset.dept;
+  renderRows();
+  updateSummary();
+}
+
+function setFilter(btn) {
+  document.querySelectorAll('.filter-btn[data-filter]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.filter = btn.dataset.filter;
+  renderRows();
+}
+
+function getFilteredRows() {
+  let rows = [...state.rows];
+
+  // department filter (Execution / Stitching / All)
+  if (state.dept === 'execution') rows = rows.filter(r => r.dept === 'Execution');
+  else if (state.dept === 'stitching') rows = rows.filter(r => r.dept === 'Stitching');
+
+  if (state.filter === 'pending') rows = rows.filter(r => r.pending > 0);
+  else if (state.filter === 'critical') rows = rows.filter(r => r.pending > 10000);
+  else if (state.filter === 'settled') rows = rows.filter(r => r.pending <= 0 && r.earned > 0);
+
+  // member search (naam ya phone)
+  const searchEl = document.getElementById('memberSearch');
+  const q = searchEl ? searchEl.value.trim().toLowerCase() : '';
+  if (q) {
+    rows = rows.filter(r =>
+      (r.name && r.name.toLowerCase().includes(q)) ||
+      (r.phone && String(r.phone).includes(q))
+    );
+  }
   
-  if (mode !== 'all') rows = rows.filter(r => r.payment_mode === mode);
-  if (camp) rows = rows.filter(r => (r.campaign_name || '') === camp);
-  if (from) rows = rows.filter(r => r.payment_date >= from);
-  if (to) rows = rows.filter(r => r.payment_date <= to);
-  if (member) rows = rows.filter(r => (r.member_name || '').toLowerCase().includes(member) || (r.member_phone || '').includes(member));
+  const sortBy = document.getElementById('sortBy').value;
+  if (sortBy === 'pending_desc') rows.sort((a, b) => b.pending - a.pending);
+  else if (sortBy === 'pending_asc') rows.sort((a, b) => a.pending - b.pending);
+  else if (sortBy === 'earned_desc') rows.sort((a, b) => b.earned - a.earned);
+  else if (sortBy === 'name_asc') rows.sort((a, b) => a.name.localeCompare(b.name));
   
   return rows;
 }
 
-function clearFilters() {
-  document.getElementById('filterMode').value = 'all';
-  document.getElementById('filterFrom').value = '';
-  document.getElementById('filterTo').value = '';
-  document.getElementById('filterMember').value = '';
-  if (document.getElementById('filterCampaign')) document.getElementById('filterCampaign').value = '';
-  renderTable();
-}
-
-function renderTable() {
-  const rows = getFilteredPayments();
-  setText('rowCount', rows.length + ' payment' + (rows.length !== 1 ? 's' : ''));
+function renderRows() {
+  const rows = getFilteredRows();
+  setText('rowCount', rows.length + ' member' + (rows.length !== 1 ? 's' : ''));
   
   if (rows.length === 0) {
     document.getElementById('tableBody').innerHTML = `
       <div class="empty-state">
         <div class="icon">📭</div>
-        <div class="title">No payments found</div>
-        <div class="desc">Try adjusting filters or record a new payment.</div>
-      </div>`;
+        <div class="title">No members in this view</div>
+        <div class="desc">Switch filters above or check if data is imported.</div>
+      </div>
+    `;
     return;
   }
   
-  let html = '<div class="table-scroll"><table><thead><tr>';
-  html += '<th>Date</th><th>Member</th><th>Campaign</th><th class="num">Amount</th><th>Mode</th><th>Reference</th><th>Period</th><th>Notes</th><th>Receipt</th><th></th></tr></thead><tbody>';
+  // Find max pending for bar calculation
+  const maxPending = Math.max(...state.rows.map(r => Math.abs(r.pending)), 1);
   
-  rows.forEach(p => {
-    const receiptBtn = p.receipt_storage_path 
-      ? '<button class="delete-btn" style="background:rgba(52,211,153,0.1);color:#047857;border-color:rgba(52,211,153,0.3);" onclick="viewReceipt(\'' + esc(p.receipt_storage_path) + '\')">📎 View</button>'
-      : '<span style="color:#CBD5E1;font-size:11px;">—</span>';
+  let html = `
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Member</th>
+            <th class="num">Entries</th>
+            <th class="num">Earned</th>
+            <th class="num">Paid</th>
+            <th class="num">Outstanding</th>
+            <th class="num">Last Work</th>
+            <th class="num">Last Paid</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+  
+  rows.forEach(r => {
+    const barPct = Math.min(100, Math.abs(r.pending) / maxPending * 100);
+    const pendingClass = r.pending > 0 ? 'red' : r.pending < 0 ? 'green' : '';
+    const pendingLabel = r.pending > 0 ? inr(r.pending) : r.pending < 0 ? inr(Math.abs(r.pending)) + ' OVER' : '₹0';
+    
     html += `
       <tr>
-        <td><strong>${p.payment_date}</strong></td>
         <td>
           <div class="member-cell">
-            <div class="avatar">${getInitials(p.member_name)}</div>
+            <div class="avatar">${getInitials(r.name)}</div>
             <div class="info">
-              <div class="name">${esc(p.member_name)}</div>
-              <div class="phone">${esc(p.member_phone)}</div>
+              <div class="name">${esc(r.name)} <span style="font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:5px;${r.dept==='Stitching'?'background:#ede9fe;color:#6d28d9;':'background:#dbeafe;color:#1d4ed8;'}vertical-align:middle;">${r.dept==='Stitching'?'🧵 STITCH':'🚗 EXEC'}</span></div>
+              <div class="phone">${esc(r.phone)}</div>
             </div>
           </div>
         </td>
-        <td style="font-size:12px;color:var(--text-mid);max-width:160px;">${esc(p.campaign_name || '—')}</td>
-        <td class="num gold">${inr(p.amount)}</td>
-        <td><span class="mode-pill ${esc(p.payment_mode)}">${esc(p.payment_mode)}</span></td>
-        <td><span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;">${esc(p.reference_number || '—')}</span></td>
-        <td>${esc(p.for_period || '—')}</td>
-        <td style="max-width:200px;font-size:12px;color:var(--text-mid);">${esc(p.notes || '—')}</td>
-        <td>${receiptBtn}</td>
-        <td style="white-space:nowrap;">
-          <button class="delete-btn" style="background:rgba(99,102,241,0.1);color:#4338ca;border-color:rgba(99,102,241,0.3);" onclick="openEditPayment('${p.id}')">✏ Edit</button>
-          <button class="delete-btn" onclick="deletePayment('${p.id}', '${esc(p.member_name)}', ${p.amount})">🗑 Delete</button>
+        <td class="num">${r.entries}</td>
+        <td class="num gold">${inr(r.earned)}</td>
+        <td class="num green">${inr(r.paid)}</td>
+        <td class="num">
+          <div class="${pendingClass} big" style="font-weight:800;${r.pending > 0 ? 'color:var(--rose)' : r.pending < 0 ? 'color:var(--mint)' : ''}">${pendingLabel}</div>
+          ${r.pending > 0 ? `<div class="amt-bar"><div class="amt-bar-fill" style="width:${barPct}%;"></div></div>` : ''}
         </td>
-      </tr>`;
+        <td class="num">${r.lastWork ? new Date(r.lastWork).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) : '—'}</td>
+        <td class="num">${r.lastPaid ? new Date(r.lastPaid).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) : '—'}</td>
+        <td>
+          <div class="row-actions">
+            ${r.pending > 0 ? `<button class="row-btn pay" onclick="payNow('${esc(r.phone)}', '${esc(r.name)}', ${r.pending})">💰 Pay</button>` : ''}
+            <button class="row-btn" onclick="viewHistory('${esc(r.phone)}', '${esc(r.name)}')">📋 History</button>
+          </div>
+        </td>
+      </tr>
+    `;
   });
   
   html += '</tbody></table></div>';
@@ -621,178 +856,90 @@ function renderTable() {
 }
 
 function updateSummary() {
-  const total = state.payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
-  const uniqueMembers = new Set(state.payments.map(p => p.member_phone)).size;
-  
-  // This month
-  const now = new Date();
-  const monthStart = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-01';
-  const monthPayments = state.payments.filter(p => p.payment_date >= monthStart);
-  const monthTotal = monthPayments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
-  
-  setText('heroTotal', inrShort(total));
-  setText('sumCount', state.payments.length);
-  setText('sumCountSub', state.payments.length + ' total');
-  setText('sumAmount', inrShort(total));
-  setText('sumAmountSub', 'all time');
-  setText('sumMembers', uniqueMembers);
-  setText('sumMembersSub', 'paid out');
-  setText('sumMonth', inrShort(monthTotal));
-  setText('sumMonthSub', monthPayments.length + ' transactions');
-}
+  // dept filter respect karo (search/status ko nahi — woh table-level)
+  let sr = [...state.rows];
+  if (state.dept === 'execution') sr = sr.filter(r => r.dept === 'Execution');
+  else if (state.dept === 'stitching') sr = sr.filter(r => r.dept === 'Stitching');
 
-// ─── CAMPAIGN CONTROLS ───
-function populateCampaignControls() {
-  const names = {};
-  (state.campaigns || []).forEach(c => { const n = (c.name || '').trim(); if (n) names[n] = true; });
-  (state.payments || []).forEach(p => { const n = (p.campaign_name || '').trim(); if (n) names[n] = true; });
-  const sorted = Object.keys(names).sort((a,b) => a.localeCompare(b));
-  const dl = document.getElementById('campaignDatalist');
-  if (dl) dl.innerHTML = sorted.map(n => '<option value="' + esc(n) + '"></option>').join('');
-  const fc = document.getElementById('filterCampaign');
-  if (fc) { const cur = fc.value; fc.innerHTML = '<option value="">All Campaigns</option>' + sorted.map(n => '<option value="' + esc(n) + '">' + esc(n) + '</option>').join(''); fc.value = cur; }
-}
-
-// ─── EDIT PAYMENT ───
-function openEditPayment(id) {
-  const p = state.payments.find(x => String(x.id) === String(id));
-  if (!p) { showToast('Payment not found', 'error'); return; }
-  openNewPayment();
-  state.editId = id;
-  document.getElementById('payModalTitle').textContent = '✏️ Edit Payment';
-  document.getElementById('savePayBtn').innerHTML = '💾 Update Payment';
-  state.selectedMember = { phone: p.member_phone, name: p.member_name };
-  document.getElementById('newMember').value = (p.member_name || '') + ' (' + (p.member_phone || '') + ')';
-  const sel = document.getElementById('selectedMember');
-  sel.textContent = '✓ Selected: ' + (p.member_name || '') + ' (' + (p.member_phone || '') + ')';
-  sel.style.display = 'block';
-  document.getElementById('memberResults').classList.remove('show');
-  document.getElementById('newAmount').value = p.amount;
-  document.getElementById('newDate').value = p.payment_date;
-  document.getElementById('newMode').value = p.payment_mode || 'upi';
-  document.getElementById('newRef').value = p.reference_number || '';
-  document.getElementById('newPeriod').value = p.for_period || '';
-  document.getElementById('newNotes').value = p.notes || '';
-  document.getElementById('newCampaign').value = p.campaign_name || '';
-  if (p.receipt_storage_path) {
-    const rp = document.getElementById('newReceiptPreview');
-    rp.style.display = 'block';
-    rp.textContent = '📎 Existing receipt attached — naya upload karoge to replace ho jaayega';
+  const totalEarned = sr.reduce((s, r) => s + r.earned, 0);
+  const totalPaid = sr.reduce((s, r) => s + r.paid, 0);
+  const totalPending = totalEarned - totalPaid;
+  const membersWithPending = sr.filter(r => r.pending > 0).length;
+  
+  setText('heroOutstanding', inrShort(totalPending));
+  setText('heroMembers', membersWithPending + '/' + sr.length);
+  // date range + dept label hero-sub mein dikhao
+  var rangeLabels = { all:'All time', today:'Today', yesterday:'Yesterday', week:'Last 7 days', '15days':'Last 15 days', month:'This month', custom:'Custom' };
+  var rLabel = rangeLabels[state.dateRange] || 'All time';
+  if (state.dateRange === 'custom' && state.dateFrom) {
+    rLabel = (state.dateFrom === state.dateTo) ? state.dateFrom : (state.dateFrom + ' → ' + state.dateTo);
   }
-  document.getElementById('paymentModal').classList.add('active');
-}
-
-// ─── NEW PAYMENT MODAL ───
-function openNewPayment() {
-  state.selectedMember = null;
-  state.editId = null;
-  document.getElementById('payModalTitle').textContent = '💰 Record New Payment';
-  document.getElementById('newCampaign').value = '';
-  var _sb = document.getElementById('savePayBtn'); _sb.disabled = false; _sb.innerHTML = '💾 Save Payment';
-  document.getElementById('newMember').value = '';
-  document.getElementById('newAmount').value = '';
-  document.getElementById('newDate').value = todayStr();
-  document.getElementById('newMode').value = 'upi';
-  document.getElementById('newRef').value = '';
-  document.getElementById('newPeriod').value = '';
-  document.getElementById('newNotes').value = '';
-  document.getElementById('newReceipt').value = '';
-  document.getElementById('newReceiptPreview').style.display = 'none';
-  document.getElementById('selectedMember').style.display = 'none';
-  document.getElementById('suggestedAmt').textContent = '';
-  document.getElementById('memberResults').classList.remove('show');
-  document.getElementById('paymentModal').classList.add('active');
-  setTimeout(() => document.getElementById('newMember').focus(), 100);
-}
-
-function closeModal() {
-  document.getElementById('paymentModal').classList.remove('active');
-}
-
-function searchMembers(q) {
-  const results = document.getElementById('memberResults');
-  state.selectedMember = null;
-  document.getElementById('selectedMember').style.display = 'none';
-  document.getElementById('suggestedAmt').textContent = '';
+  var deptLabel = state.dept === 'all' ? 'All depts' : (state.dept === 'execution' ? 'Execution' : 'Stitching');
+  var heroSub = document.querySelector('.hero-sub');
+  if (heroSub) heroSub.textContent = '📅 ' + rLabel + ' · 🏢 ' + deptLabel + ' · Earned − Paid = Pending.';
   
-  if (!q || q.trim().length < 1) {
-    results.classList.remove('show');
-    return;
-  }
+  setText('totalEarned', inr(totalEarned));
+  setText('totalEarnedSub', sr.reduce((s, r) => s + r.entries, 0).toLocaleString('en-IN') + ' entries');
+  setText('totalPaid', inr(totalPaid));
+  setText('totalPaidSub', sr.reduce((s, r) => s + r.payments, 0) + ' payments');
+  setText('totalPending', inr(totalPending));
+  setText('totalPendingSub', membersWithPending + ' members pending');
   
-  q = q.toLowerCase().trim();
-  
-  // Search in known members + recent payment members
-  const allMembers = [...state.members];
-  state.payments.forEach(p => {
-    if (!allMembers.find(m => m.phone === p.member_phone)) {
-      allMembers.push({ phone: p.member_phone, name: p.member_name, role: 'unknown' });
-    }
-  });
-  
-  const filtered = allMembers.filter(m => 
-    (m.name || '').toLowerCase().includes(q) || (m.phone || '').includes(q)
-  ).slice(0, 8);
-  
-  if (filtered.length === 0) {
-    results.innerHTML = '<div style="padding:12px;text-align:center;font-size:12px;color:var(--text-mid);">No matching members</div>';
-    results.classList.add('show');
-    return;
-  }
-  
-  results.innerHTML = filtered.map(m => {
-    const earned = state.earnings[m.phone] || 0;
-    const paid = state.payments.filter(p => p.member_phone === m.phone).reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
-    const pending = earned - paid;
-    return `
-      <div class="member-result" onclick="selectMember('${esc(m.phone)}', '${esc(m.name)}', ${pending})">
-        <div class="avatar">${getInitials(m.name)}</div>
-        <div class="info">
-          <div class="name">${esc(m.name)}</div>
-          <div class="phone">${esc(m.phone)}</div>
-        </div>
-        ${pending > 0 ? `<div class="pending">${inr(pending)} pending</div>` : ''}
-      </div>
-    `;
-  }).join('');
-  results.classList.add('show');
-}
-
-function selectMember(phone, name, pending) {
-  state.selectedMember = { phone, name };
-  document.getElementById('newMember').value = name;
-  document.getElementById('memberResults').classList.remove('show');
-  document.getElementById('selectedMember').textContent = `✓ Selected: ${name} (${phone})`;
-  document.getElementById('selectedMember').style.display = 'block';
-  
-  if (pending > 0) {
-    document.getElementById('suggestedAmt').innerHTML = `💡 Outstanding: ${inr(pending)} · <a href="#" onclick="document.getElementById('newAmount').value=${pending};document.getElementById('suggestedAmt').innerHTML='✓ Used suggested amount';return false;" style="color:var(--gold-deep);font-weight:700;">Use this</a>`;
+  // Last payment overall
+  const lastPay = state.payments[0];
+  if (lastPay) {
+    setText('lastPayment', inr(lastPay.amount));
+    setText('lastPaymentSub', new Date(lastPay.payment_date).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}));
+  } else {
+    setText('lastPayment', '—');
+    setText('lastPaymentSub', 'No payments yet');
   }
 }
 
-async function savePayment() {
-  if (!state.selectedMember) { showToast('Member select karo', 'error'); return; }
+// Pay modal state
+const payState = { phone: null, name: null, suggested: 0 };
+
+function payNow(phone, name, suggested) {
+  payState.phone = phone;
+  payState.name = name;
+  payState.suggested = suggested;
   
-  const amt = parseFloat(document.getElementById('newAmount').value);
+  // Populate modal
+  document.getElementById('payRecipientName').textContent = name;
+  document.getElementById('payRecipientPhone').textContent = phone;
+  document.getElementById('payOutstandingAmt').textContent = inr(suggested);
+  document.getElementById('payAmount').value = suggested;
+  document.getElementById('payDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('payMode').value = 'upi';
+  document.getElementById('payRef').value = '';
+  document.getElementById('payNotes').value = '';
+  document.getElementById('payReceipt').value = '';
+  document.getElementById('payReceiptPreview').style.display = 'none';
+  
+  document.getElementById('payModal').classList.add('active');
+}
+
+function closePayModal() {
+  document.getElementById('payModal').classList.remove('active');
+}
+
+async function submitPayment() {
+  const amt = parseFloat(document.getElementById('payAmount').value);
   if (!amt || amt <= 0) { showToast('Valid amount daalo', 'error'); return; }
   
-  const date = document.getElementById('newDate').value;
-  if (!date) { showToast('Date daalo', 'error'); return; }
+  const date = document.getElementById('payDate').value;
+  const mode = document.getElementById('payMode').value;
+  const ref = document.getElementById('payRef').value.trim();
+  const notes = document.getElementById('payNotes').value.trim();
   
-  const mode = document.getElementById('newMode').value;
-  const ref = document.getElementById('newRef').value.trim();
-  const period = document.getElementById('newPeriod').value.trim();
-  const notes = document.getElementById('newNotes').value.trim();
-  const campaign = document.getElementById('newCampaign').value.trim();
-  
-  const btn = document.getElementById('savePayBtn');
+  const btn = document.getElementById('payModalSaveBtn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner sm" style="border-color:rgba(255,255,255,0.3);border-top-color:white;"></span> Saving...';
   
   // Step 1: Upload receipt if provided
   let receiptPath = null;
   let receiptName = null;
-  const receiptFile = document.getElementById('newReceipt').files[0];
+  const receiptFile = document.getElementById('payReceipt').files[0];
   
   if (receiptFile) {
     if (receiptFile.size > 5 * 1024 * 1024) {
@@ -804,7 +951,7 @@ async function savePayment() {
     try {
       btn.innerHTML = '<span class="spinner sm" style="border-color:rgba(255,255,255,0.3);border-top-color:white;"></span> Uploading receipt...';
       const ext = receiptFile.name.split('.').pop();
-      const fileName = 'exec_' + state.selectedMember.phone + '_' + Date.now() + '.' + ext;
+      const fileName = 'exec_' + payState.phone + '_' + Date.now() + '.' + ext;
       const filePath = 'execution/' + fileName;
       
       const uploadRes = await fetch(CONFIG.url + '/storage/v1/object/payment-receipts/' + filePath, {
@@ -834,88 +981,155 @@ async function savePayment() {
     }
   }
   
-  // Step 2: Save payment
+  // Step 2: Save payment record
   btn.innerHTML = '<span class="spinner sm" style="border-color:rgba(255,255,255,0.3);border-top-color:white;"></span> Saving payment...';
   
-  const payload = {
-    payment_date: date,
-    member_phone: state.selectedMember.phone,
-    member_name: state.selectedMember.name,
-    amount: amt,
-    payment_mode: mode,
-    reference_number: ref || null,
-    for_period: period || null,
-    notes: notes || null,
-    campaign_name: campaign || null
-  };
-  // receipt fields sirf tab set karo jab naya upload hua (edit mein purana preserve rahe)
-  if (receiptPath) { payload.receipt_storage_path = receiptPath; payload.receipt_file_name = receiptName; }
-
   try {
-    if (state.editId) {
-      await api('/rest/v1/execution_payments?id=eq.' + state.editId, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-        body: JSON.stringify(payload)
+    await api('/rest/v1/execution_payments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        payment_date: date,
+        member_phone: payState.phone,
+        member_name: payState.name,
+        amount: amt,
+        payment_mode: mode,
+        reference_number: ref || null,
+        notes: notes || null,
+        receipt_storage_path: receiptPath,
+        receipt_file_name: receiptName,
+        recorded_by: state.admin.phone,
+        created_by: state.admin.phone
+      })
+    });
+    showToast('✅ Paid ' + inr(amt) + ' to ' + payState.name + (receiptPath ? ' (with receipt)' : ''), 'success');
+    closePayModal();
+    loadData();
+  } catch (err) {
+    showToast('Payment failed: ' + err.message, 'error');
+    btn.disabled = false; btn.innerHTML = '💾 Save Payment';
+  }
+}
+
+async function viewHistory(phone, name) {
+  try {
+    const earnings = await api(`/rest/v1/execution_daily_log?member_phone=eq.${encodeURIComponent(phone)}&select=log_date,work_name,location,quantity,rate_per_unit,total_amount&order=log_date.desc&limit=20`);
+    const payments = await api(`/rest/v1/execution_payments?member_phone=eq.${encodeURIComponent(phone)}&select=payment_date,amount,payment_mode,notes,reference_number,receipt_storage_path,receipt_file_name&order=payment_date.desc&limit=20`);
+    
+    let html = '<div style="background:white;border-radius:18px;padding:24px;max-width:760px;width:100%;max-height:85vh;overflow-y:auto;">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid #E8EAF4;">';
+    html += '<div><div style="font-size:18px;font-weight:800;color:#0F172A;">📋 ' + name + '</div>';
+    html += '<div style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:#475569;margin-top:2px;">' + phone + '</div></div>';
+    html += '<button onclick="closeHistoryModal()" style="width:30px;height:30px;border-radius:8px;background:#F0F2F8;color:#475569;border:none;font-size:16px;font-weight:700;cursor:pointer;">✕</button>';
+    html += '</div>';
+    
+    // PAYMENTS SECTION (with receipts!)
+    html += '<div style="margin-bottom:20px;">';
+    html += '<div style="font-size:13px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;display:flex;align-items:center;gap:6px;">💰 Payment History <span style="font-family:\'JetBrains Mono\',monospace;background:#F0F2F8;padding:2px 8px;border-radius:6px;font-size:11px;color:#475569;">' + (payments?.length || 0) + '</span></div>';
+    
+    if (payments && payments.length > 0) {
+      html += '<div style="border:1px solid #E8EAF4;border-radius:10px;overflow:hidden;">';
+      html += '<table style="width:100%;border-collapse:collapse;">';
+      html += '<thead><tr style="background:#FAFBFF;"><th style="padding:8px 10px;text-align:left;font-size:10.5px;font-weight:700;color:#475569;text-transform:uppercase;border-bottom:1px solid #E8EAF4;">Date</th><th style="padding:8px 10px;text-align:right;font-size:10.5px;font-weight:700;color:#475569;text-transform:uppercase;border-bottom:1px solid #E8EAF4;">Amount</th><th style="padding:8px 10px;text-align:left;font-size:10.5px;font-weight:700;color:#475569;text-transform:uppercase;border-bottom:1px solid #E8EAF4;">Mode</th><th style="padding:8px 10px;text-align:left;font-size:10.5px;font-weight:700;color:#475569;text-transform:uppercase;border-bottom:1px solid #E8EAF4;">Note / Ref</th><th style="padding:8px 10px;text-align:center;font-size:10.5px;font-weight:700;color:#475569;text-transform:uppercase;border-bottom:1px solid #E8EAF4;">Receipt</th></tr></thead><tbody>';
+      payments.forEach(p => {
+        const receiptBtn = p.receipt_storage_path 
+          ? '<button onclick="viewReceipt(\'' + p.receipt_storage_path + '\')" style="padding:4px 10px;border-radius:6px;background:rgba(52,211,153,0.1);color:#047857;border:1px solid rgba(52,211,153,0.3);font-size:11px;font-weight:700;cursor:pointer;">📎 View</button>'
+          : '<span style="color:#CBD5E1;font-size:11px;">—</span>';
+        html += '<tr style="border-bottom:1px solid #F0F2F8;">';
+        html += '<td style="padding:9px 10px;font-size:12.5px;font-weight:600;">' + p.payment_date + '</td>';
+        html += '<td style="padding:9px 10px;font-family:\'JetBrains Mono\',monospace;font-weight:800;text-align:right;color:#047857;">' + inr(p.amount) + '</td>';
+        html += '<td style="padding:9px 10px;font-size:11px;font-weight:700;text-transform:uppercase;color:#475569;">' + (p.payment_mode || '—') + '</td>';
+        html += '<td style="padding:9px 10px;font-size:11.5px;color:#475569;max-width:200px;">' + (p.notes || p.reference_number || '—') + '</td>';
+        html += '<td style="padding:9px 10px;text-align:center;">' + receiptBtn + '</td>';
+        html += '</tr>';
       });
-      showToast('✅ Payment updated — ' + inr(amt) + ' · ' + state.selectedMember.name, 'success');
+      html += '</tbody></table></div>';
     } else {
-      payload.recorded_by = state.admin.phone;
-      payload.created_by = state.admin.phone;
-      await api('/rest/v1/execution_payments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-        body: JSON.stringify(payload)
-      });
-      showToast('✅ Paid ' + inr(amt) + ' to ' + state.selectedMember.name + (receiptPath ? ' (with receipt)' : ''), 'success');
+      html += '<div style="padding:20px;text-align:center;color:#475569;font-size:13px;background:#FAFBFF;border-radius:10px;">No payments yet</div>';
     }
-    // ⭐ FIX: button hamesha reset karo (warna agli save disabled reh jaati thi)
-    state.editId = null;
-    btn.disabled = false;
-    btn.innerHTML = '💾 Save Payment';
-    closeModal();
-    await loadData();
+    html += '</div>';
+    
+    // EARNINGS SECTION
+    html += '<div>';
+    html += '<div style="font-size:13px;font-weight:800;color:#0F172A;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;display:flex;align-items:center;gap:6px;">💼 Last 20 Earnings <span style="font-family:\'JetBrains Mono\',monospace;background:#F0F2F8;padding:2px 8px;border-radius:6px;font-size:11px;color:#475569;">' + (earnings?.length || 0) + '</span></div>';
+    
+    if (earnings && earnings.length > 0) {
+      html += '<div style="border:1px solid #E8EAF4;border-radius:10px;overflow:hidden;">';
+      html += '<table style="width:100%;border-collapse:collapse;">';
+      html += '<thead><tr style="background:#FAFBFF;"><th style="padding:8px 10px;text-align:left;font-size:10.5px;font-weight:700;color:#475569;text-transform:uppercase;">Date</th><th style="padding:8px 10px;text-align:left;font-size:10.5px;font-weight:700;color:#475569;text-transform:uppercase;">Work</th><th style="padding:8px 10px;text-align:right;font-size:10.5px;font-weight:700;color:#475569;text-transform:uppercase;">Qty × Rate</th><th style="padding:8px 10px;text-align:right;font-size:10.5px;font-weight:700;color:#475569;text-transform:uppercase;">Total</th></tr></thead><tbody>';
+      earnings.forEach(e => {
+        html += '<tr style="border-bottom:1px solid #F0F2F8;">';
+        html += '<td style="padding:9px 10px;font-size:12.5px;font-weight:600;">' + e.log_date + '</td>';
+        html += '<td style="padding:9px 10px;font-size:12px;">' + (e.work_name || '—') + (e.location ? '<br><span style="font-size:10.5px;color:#475569;">' + e.location + '</span>' : '') + '</td>';
+        html += '<td style="padding:9px 10px;font-family:\'JetBrains Mono\',monospace;font-size:11.5px;text-align:right;color:#475569;">' + e.quantity + ' × ₹' + e.rate_per_unit + '</td>';
+        html += '<td style="padding:9px 10px;font-family:\'JetBrains Mono\',monospace;font-weight:800;text-align:right;color:#B8860B;">' + inr(e.total_amount) + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+    } else {
+      html += '<div style="padding:20px;text-align:center;color:#475569;font-size:13px;background:#FAFBFF;border-radius:10px;">No work entries yet</div>';
+    }
+    html += '</div>';
+    html += '</div>';
+    
+    // Show modal overlay
+    let overlay = document.getElementById('historyModalOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'historyModalOverlay';
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(5,8,24,0.6);backdrop-filter:blur(8px);display:flex;align-items:flex-start;justify-content:center;z-index:300;padding:40px 20px;overflow-y:auto;';
+      overlay.addEventListener('click', e => { if (e.target === overlay) closeHistoryModal(); });
+      document.body.appendChild(overlay);
+    }
+    overlay.innerHTML = html;
+    overlay.style.display = 'flex';
   } catch (err) {
-    showToast('Save failed: ' + err.message, 'error');
-    btn.disabled = false;
-    btn.innerHTML = state.editId ? '💾 Update Payment' : '💾 Save Payment';
+    showToast('History fetch failed: ' + err.message, 'error');
   }
 }
 
-async function deletePayment(id, name, amount) {
-  if (!confirm(`Delete payment of ${inr(amount)} to ${name}?\n\nThis action cannot be undone.`)) return;
-  
-  try {
-    await api('/rest/v1/execution_payments?id=eq.' + id, { method: 'DELETE' });
-    showToast('🗑 Payment deleted', 'success');
-    await loadData();
-  } catch (err) {
-    showToast('Delete failed: ' + err.message, 'error');
-  }
+function closeHistoryModal() {
+  const overlay = document.getElementById('historyModalOverlay');
+  if (overlay) overlay.style.display = 'none';
 }
-
-function exportCSV() {
-  const rows = getFilteredPayments();
-  if (rows.length === 0) { showToast('Nothing to export', 'error'); return; }
-  const csv = [['Date','Member','Phone','Campaign','Amount','Mode','Reference','Period','Notes'].join(',')];
-  rows.forEach(p => {
-    csv.push([p.payment_date, `"${p.member_name||''}"`, p.member_phone, `"${(p.campaign_name||'').replace(/"/g,'""')}"`, p.amount, p.payment_mode, `"${p.reference_number||''}"`, `"${p.for_period||''}"`, `"${(p.notes||'').replace(/"/g,'""')}"`].join(','));
-  });
-  const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `payments_${todayStr()}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-  showToast('✓ CSV downloaded', 'success');
-}
-
-console.log('%c💰 Payments v1.0', 'background:#F5B83D;color:#050818;padding:6px 12px;border-radius:6px;font-weight:bold;font-size:13px;');
 
 function viewReceipt(path) {
   const url = CONFIG.url + '/storage/v1/object/public/payment-receipts/' + path;
   window.open(url, '_blank');
 }
+
+function exportCSV() {
+  const rows = getFilteredRows();
+  if (rows.length === 0) { showToast('Nothing to export', 'error'); return; }
+  
+  const csv = [
+    ['Member', 'Phone', 'Entries', 'Earned', 'Paid', 'Outstanding', 'Last Work', 'Last Paid'].join(',')
+  ];
+  rows.forEach(r => {
+    csv.push([
+      `"${r.name}"`,
+      r.phone,
+      r.entries,
+      r.earned,
+      r.paid,
+      r.pending,
+      r.lastWork || '',
+      r.lastPaid || ''
+    ].join(','));
+  });
+  
+  const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `outstanding_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✓ CSV downloaded', 'success');
+}
+
+// INIT
+console.log('%c⚠️ Outstanding Report v1.0', 'background:#FF5470;color:white;padding:6px 12px;border-radius:6px;font-weight:bold;font-size:13px;');
 
 document.addEventListener('DOMContentLoaded', () => {
   autoLogin();
@@ -923,11 +1137,11 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('loginPhone').addEventListener('input', e => { e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10); });
   
   // Receipt preview
-  const receiptInput = document.getElementById('newReceipt');
+  const receiptInput = document.getElementById('payReceipt');
   if (receiptInput) {
     receiptInput.addEventListener('change', e => {
       const file = e.target.files[0];
-      const preview = document.getElementById('newReceiptPreview');
+      const preview = document.getElementById('payReceiptPreview');
       if (file) {
         const sizeMB = (file.size / 1024 / 1024).toFixed(2);
         preview.innerHTML = '✓ ' + file.name + ' (' + sizeMB + ' MB)';
@@ -938,20 +1152,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
   
-  // Close modal on background click
-  document.getElementById('paymentModal').addEventListener('click', e => {
-    if (e.target.id === 'paymentModal') closeModal();
-  });
-  // Close on Escape
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && document.getElementById('paymentModal').classList.contains('active')) closeModal();
+  // Close modal on backdrop click
+  document.getElementById('payModal').addEventListener('click', e => {
+    if (e.target.id === 'payModal') closePayModal();
   });
   
-  // Hide search dropdown on outside click
-  document.addEventListener('click', e => {
-    if (!e.target.closest('#newMember') && !e.target.closest('#memberResults')) {
-      document.getElementById('memberResults').classList.remove('show');
-    }
+  // Escape to close
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closePayModal();
   });
 });
 </script>
