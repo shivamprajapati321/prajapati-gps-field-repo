@@ -2361,8 +2361,10 @@ function isStandalone(){
 function isAndroid(){ return /android/i.test(navigator.userAgent); }
 function isChrome(){ return /chrome|crios/i.test(navigator.userAgent) && !/edg|opr/i.test(navigator.userAgent); }
 
-// ⭐ v15.4 FIX: SW registration uses /sw-field.js (NOT /sw.js) and tight scope
-if ('serviceWorker' in navigator) {
+// ⭐ FIELD-V2 FIX: SW registration field-v2.html mein handle hoti hai (sw-field-v2.js, scope /field-v2.html).
+// Yeh purana field-1 block (sw-field.js, scope /field.html) DISABLE — warna field-v2 ka SW
+// unregister hokar field-1 ka SW lag jaata tha (dono mix). Ab dono bilkul alag.
+if (false && 'serviceWorker' in navigator) {
   window.addEventListener('load', function(){
     // First — clean up any wrong SW (admin SW that may have been wrongly installed)
     navigator.serviceWorker.getRegistrations().then(function(regs){
