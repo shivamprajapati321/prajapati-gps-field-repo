@@ -698,6 +698,47 @@ document.addEventListener('visibilitychange', function(){
   }
 });
 
+// ════════════════════════════════════════════════════════════════════
+// ONE-TIME ALL PERMISSIONS — pehli baar app khulne pe camera+GPS EK SAATH maange
+// taaki baar-baar "allow" na poochhe. localStorage flag se sirf first time.
+// ════════════════════════════════════════════════════════════════════
+function requestAllPermissions(){
+  // already maang chuke? (first install/open ke baad skip)
+  if (localStorage.getItem('pf_perms_asked_v2') === '1') return;
+
+  // GPS permission state check — agar pehle se granted hai toh GPS dubara mat maango
+  function askGps(){
+    return new Promise(function(resolve){
+      if (!navigator.geolocation){ resolve(); return; }
+      navigator.geolocation.getCurrentPosition(
+        function(){ resolve(); },
+        function(){ resolve(); },   // denied/timeout — phir bhi aage badho
+        { enableHighAccuracy:false, timeout:8000, maximumAge:60000 }
+      );
+    });
+  }
+
+  // Camera permission — ek halka getUserMedia, turant band (sirf permission lene ke liye)
+  function askCamera(){
+    return new Promise(function(resolve){
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ resolve(); return; }
+      navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' }, audio:false })
+        .then(function(stream){
+          // permission mil gaya — stream turant band (camera band ho jaye)
+          try { stream.getTracks().forEach(function(t){ t.stop(); }); } catch(e){}
+          resolve();
+        })
+        .catch(function(){ resolve(); });  // denied — aage badho
+    });
+  }
+
+  // dono ek ke baad ek (browser ek time ek hi prompt dikhata hai, par lagatar aayenge)
+  askGps().then(askCamera).then(function(){
+    localStorage.setItem('pf_perms_asked_v2', '1');
+    console.log('[Field-v2] All permissions requested (one-time)');
+  });
+}
+
 function enterApp(){
   showScreen('screen-home');
   if (!$('app-header')){
@@ -710,6 +751,7 @@ function enterApp(){
     if (subEl) subEl.textContent = state.member.name;
   }
   touchActivity();
+  requestAllPermissions();   // ⭐ pehli baar — camera+GPS ek saath maango
   loadAssignment();
   processQueue();
   startHomeAutoRefresh();
