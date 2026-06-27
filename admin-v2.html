@@ -5449,7 +5449,7 @@ function loadActionCenter() {
   var istStart = new Date(today + 'T00:00:00+05:30').toISOString();
   Promise.all([
     api('/rest/v1/trial_team_members?select=phone,role,active&active=eq.true&role=eq.field'),
-    api('/rest/v1/trial_photos?select=member_phone&captured_at=gte.' + istStart + '&deleted_at=is.null&limit=2000')
+    apiAll('/rest/v1/trial_photos?select=member_phone&captured_at=gte.' + istStart + '&deleted_at=is.null')
   ]).then(function(res){
     var fieldMembers = res[0] || [];
     var todayPhotos = res[1] || [];
@@ -5515,7 +5515,7 @@ function load7DayChart() {
     days.push({ label: ist.toLocaleDateString('en-IN', { weekday: 'short' }).charAt(0), date: ist.toISOString().slice(0,10), count: 0 });
   }
   var since = new Date(days[0].date + 'T00:00:00+05:30').toISOString();
-  api('/rest/v1/trial_photos?select=captured_at,campaign_key&captured_at=gte.' + since + '&deleted_at=is.null&limit=10000')
+  apiAll('/rest/v1/trial_photos?select=captured_at,campaign_key&captured_at=gte.' + since + '&deleted_at=is.null')
     .then(function(photos){
       photos = (photos || []).filter(function(p){ return dashInScope(p.campaign_key); });
       photos.forEach(function(p){
@@ -5543,7 +5543,7 @@ function load7DayChart() {
 function loadCityCoverage() {
   var R = window.dashDate;
   var b = dashUtcBounds(R.from, R.to);
-  api('/rest/v1/trial_photos?select=city,campaign_key&captured_at=gte.' + b.start + '&captured_at=lte.' + b.end + '&deleted_at=is.null&limit=20000')
+  apiAll('/rest/v1/trial_photos?select=city,campaign_key&captured_at=gte.' + b.start + '&captured_at=lte.' + b.end + '&deleted_at=is.null')
     .then(function(photos){
       photos = (photos || []).filter(function(p){ return dashInScope(p.campaign_key); });
       var byCity = {};
@@ -5676,7 +5676,7 @@ function loadCampDetail(cid) {
   var target = Number(c.target_vehicles) || Number(c.total_quantity) || 0;
 
   Promise.all([
-    api('/rest/v1/trial_photos?select=vehicle_number,mode&campaign_key=eq.' + encodeURIComponent(key) + '&deleted_at=is.null&limit=20000').catch(function(){ return []; }),
+    apiAll('/rest/v1/trial_photos?select=vehicle_number,mode&campaign_key=eq.' + encodeURIComponent(key) + '&deleted_at=is.null').catch(function(){ return []; }),
     api('/rest/v1/prajapati_stitching_log?select=*&limit=20000').catch(function(){ return []; }),
     api('/rest/v1/trial_work_logs?select=*&limit=20000').catch(function(){ return []; }),
     api('/rest/v1/execution_daily_log?select=*&limit=20000').catch(function(){ return []; })
@@ -5840,7 +5840,7 @@ function openCampaignDetail(campId, campKey) {
   var target = Number(camp.target_vehicles) || Number(camp.total_quantity) || Number(camp.target_count) || 0;
 
   Promise.all([
-    api('/rest/v1/trial_photos?select=vehicle_number,mode,city&campaign_key=eq.' + encodeURIComponent(campKey) + '&deleted_at=is.null&limit=20000').catch(function(){ return []; }),
+    apiAll('/rest/v1/trial_photos?select=vehicle_number,mode,city&campaign_key=eq.' + encodeURIComponent(campKey) + '&deleted_at=is.null').catch(function(){ return []; }),
     api('/rest/v1/trial_campaign_designs?select=*&campaign_id=eq.' + encodeURIComponent(campId)).catch(function(){ return []; }),
     api('/rest/v1/prajapati_stitching_log?select=*&limit=20000').catch(function(){ return []; }),
     api('/rest/v1/trial_work_logs?select=*&limit=20000').catch(function(){ return []; }),
@@ -6174,7 +6174,7 @@ function loadDashStats() {
   var compareOn = $('dashCompare') && $('dashCompare').checked;
 
   // ── Main range: one photo fetch → photos, vehicles, hood, back ──
-  api('/rest/v1/trial_photos?select=vehicle_number,mode,id,campaign_key&captured_at=gte.' + b.start + '&captured_at=lte.' + b.end + '&deleted_at=is.null&limit=20000')
+  apiAll('/rest/v1/trial_photos?select=vehicle_number,mode,id,campaign_key&captured_at=gte.' + b.start + '&captured_at=lte.' + b.end + '&deleted_at=is.null')
     .then(function(photos){
       photos = (photos || []).filter(function(p){ return dashInScope(p.campaign_key); });
       var photoCount = photos.length;
@@ -6199,7 +6199,7 @@ function loadDashStats() {
       if (compareOn) {
         var prev = dashComparePrev(R.from, R.to);
         var pb = dashUtcBounds(prev.from, prev.to);
-        api('/rest/v1/trial_photos?select=vehicle_number,mode,campaign_key&captured_at=gte.' + pb.start + '&captured_at=lte.' + pb.end + '&deleted_at=is.null&limit=20000')
+        apiAll('/rest/v1/trial_photos?select=vehicle_number,mode,campaign_key&captured_at=gte.' + pb.start + '&captured_at=lte.' + pb.end + '&deleted_at=is.null')
           .then(function(pp){
             pp = (pp || []).filter(function(p){ return dashInScope(p.campaign_key); });
             var pV = new Set(), pHood = new Set(), pBack = new Set();
@@ -6374,7 +6374,7 @@ function loadTopPerformers() {
 
   if (mode === 'field') {
     // Field work: trial_photos grouped by member, count = unique vehicles
-    api('/rest/v1/trial_photos?select=member_phone,member_name,campaign_key,vehicle_number&captured_at=gte.' + b.start + '&captured_at=lte.' + b.end + '&deleted_at=is.null&limit=20000')
+    apiAll('/rest/v1/trial_photos?select=member_phone,member_name,campaign_key,vehicle_number&captured_at=gte.' + b.start + '&captured_at=lte.' + b.end + '&deleted_at=is.null')
       .then(function(photos){
         photos = (photos || []).filter(function(p){ return dashInScope(p.campaign_key); });
         var byM = {};
@@ -9919,10 +9919,9 @@ function fetchGlobalPhotoStats() {
   // Unique-vehicle counts: PostgREST can't COUNT(DISTINCT), so pull only the
   // tiny columns we need across the WHOLE filtered set and dedupe client-side.
   // ~20k rows × 3 short fields ≈ light + fast.
-  var liteUrl = CONFIG.supabaseUrl + '/rest/v1/trial_photos?select=vehicle_number,verified_plate,mode' + baseF + '&limit=100000';
-  fetch(liteUrl, {
-    headers: { apikey: CONFIG.supabaseKey, Authorization: 'Bearer ' + CONFIG.supabaseKey }
-  }).then(function(r){ return r.ok ? r.json() : []; }).then(function(rows){
+  // ⭐ apiAll: full filtered set (paginated) — 1000-cap se "total vehicles" galat aa raha tha
+  var litePath = '/rest/v1/trial_photos?select=vehicle_number,verified_plate,mode' + baseF;
+  apiAll(litePath).then(function(rows){
     if (myToken !== _globalStatsToken) return;
     rows = rows || [];
     var all = new Set(), hood = new Set(), back = new Set();
@@ -10448,7 +10447,7 @@ function loadClientLinks() {
     // ⭐ Fetch photo stats per campaign — ONE efficient query.
     // Pulls recent photos (campaign_key + captured_at), aggregates client-side.
     (function fetchPhotoStats() {
-      api('/rest/v1/trial_photos?select=campaign_key,captured_at&deleted_at=is.null&order=captured_at.desc&limit=20000')
+      apiAll('/rest/v1/trial_photos?select=campaign_key,captured_at&deleted_at=is.null&order=captured_at.desc')
         .then(function(photos){
           var stats = {};
           (photos || []).forEach(function(p){
@@ -15068,9 +15067,9 @@ function inferMediaType(hood, back) {
       if (member) qs += '&member_phone=eq.' + encodeURIComponent(member);
       if (city) qs += '&city=eq.' + encodeURIComponent(city);
       
-      var photos = await window.api(qs);
+      var photos = await window.apiAll(qs);
       photos = photos || [];
-      
+
       // Unique verified plates
       var platesSet = {};
       photos.forEach(function(p) {
