@@ -6,19 +6,19 @@
 // AUTO-UPDATE: naya version deploy hote hi app khud update (no reinstall).
 // ════════════════════════════════════════════════════════════════════
 
-const VERSION = 'field-v2.0.4-20260623';
-const CACHE_NAME = 'prajapati-field-v2-' + VERSION;
+const VERSION = 'mars-gps-1.0.0-20260627';
+const CACHE_NAME = 'mars-gps-' + VERSION;
 
 const FIELD_FILES = [
   '/field-v2.html',
   '/app-v2.js',
   '/manifest-field-v2.json',
-  '/icon-field-192.png',
-  '/icon-field-512.png',
-  '/icon-field-maskable-192.png',
-  '/icon-field-maskable-512.png',
-  '/icon-field-apple-180.png',
-  '/favicon-field-32.png'
+  '/icons/mars-gps-192.png',
+  '/icons/mars-gps-512.png',
+  '/icons/mars-gps-maskable-192.png',
+  '/icons/mars-gps-maskable-512.png',
+  '/icons/mars-gps-apple-180.png',
+  '/icons/mars-gps-favicon-32.png'
 ];
 
 const ADMIN_FILES = [
@@ -54,7 +54,7 @@ self.addEventListener('activate', function(event) {
     caches.keys().then(function(keys) {
       return Promise.all(keys.map(function(key) {
         // sirf apne purane v2 caches delete karo
-        if (key.indexOf('prajapati-field-v2-') === 0 && key !== CACHE_NAME) {
+        if (key.indexOf('mars-gps-') === 0 && key !== CACHE_NAME) {
           return caches.delete(key);
         }
       }));

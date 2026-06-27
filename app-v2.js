@@ -474,7 +474,7 @@ window.copyDiagnostics = function(){
   if (navigator.permissions){
     navigator.permissions.query({ name: 'geolocation' }).then(function(result){
       diag.permissionState = result.state;
-      var text = '🔧 Prajapati GPS Diagnostics\n' +
+      var text = '🔧 MARS GPS Diagnostics\n' +
                  '────────────────────────────\n' +
                  Object.keys(diag).map(function(k){ return k + ': ' + diag[k]; }).join('\n') +
                  '\n────────────────────────────\n' +
@@ -744,7 +744,7 @@ function enterApp(){
   if (!$('app-header')){
     var hdr = document.createElement('div');
     hdr.id = 'app-header'; hdr.className = 'header';
-    hdr.innerHTML = '<div class="h-l"><div class="h-logo">P</div><div><h1>PRAJAPATI GPS</h1><div class="sub">'+escapeHtml(state.member.name)+'</div></div></div><button class="lo-btn" onclick="logout(false)">Logout</button>';
+    hdr.innerHTML = '<div class="h-l"><div class="h-logo">M</div><div><h1>MARS GPS</h1><div class="sub">'+escapeHtml(state.member.name)+'</div></div></div><button class="lo-btn" onclick="logout(false)">Logout</button>';
     $('screen-home').insertBefore(hdr, $('home-content'));
   } else {
     var subEl = $('app-header').querySelector('.sub');
