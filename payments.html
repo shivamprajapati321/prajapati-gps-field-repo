@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -493,13 +492,31 @@ async function loadData() {
   document.getElementById('tableBody').innerHTML = '<div class="loading"><div class="spinner"></div><div style="margin-top:14px;font-weight:600;">Loading...</div></div>';
   
   try {
-    const [payments, members, earnings] = await Promise.all([
+    const [payments, members, earnings, stitchPay, stitchMasters] = await Promise.all([
       api('/rest/v1/execution_payments?select=*&order=payment_date.desc,created_at.desc'),
       api('/rest/v1/trial_team_members?active=eq.true&select=phone,name,role'),
-      api('/rest/v1/execution_daily_log?select=member_phone,total_amount')
+      api('/rest/v1/execution_daily_log?select=member_phone,total_amount'),
+      api('/rest/v1/prajapati_stitching_payments?deleted_at=is.null&select=*&order=payment_date.desc&limit=20000').catch(() => []),
+      api('/rest/v1/prajapati_stitching_masters?select=id,name,phone').catch(() => [])
     ]);
     
-    state.payments = payments || [];
+    // execution payments — dept tag
+    const execPays = (payments || []).map(p => Object.assign({}, p, { _dept: 'Execution' }));
+
+    // stitching payments — normalize (master_id→name/phone, dept tag)
+    const masters = stitchMasters || [];
+    const stitchPays = (stitchPay || []).map(p => {
+      const m = masters.find(x => String(x.id) === String(p.master_id));
+      return Object.assign({}, p, {
+        _dept: 'Stitching',
+        member_name: p.master_name || (m ? m.name : 'Master'),
+        member_phone: (m && m.phone) ? m.phone : ('Master #' + (p.master_id || '?')),
+        payment_mode: p.payment_mode || 'cash'
+      });
+    });
+
+    // merge + sort by date desc
+    state.payments = [...execPays, ...stitchPays].sort((a, b) => String(b.payment_date||'').localeCompare(String(a.payment_date||'')));
     state.members = members || [];
     
     // Compute earnings per member for "outstanding" suggestion
@@ -572,7 +589,7 @@ function renderTable() {
           <div class="member-cell">
             <div class="avatar">${getInitials(p.member_name)}</div>
             <div class="info">
-              <div class="name">${esc(p.member_name)}</div>
+              <div class="name">${esc(p.member_name)} <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:5px;${p._dept==='Stitching'?'background:#ede9fe;color:#6d28d9;':'background:#dbeafe;color:#1d4ed8;'}">${p._dept==='Stitching'?'🧵':'🚗'}</span></div>
               <div class="phone">${esc(p.member_phone)}</div>
             </div>
           </div>
@@ -583,7 +600,7 @@ function renderTable() {
         <td>${esc(p.for_period || '—')}</td>
         <td style="max-width:200px;font-size:12px;color:var(--text-mid);">${esc(p.notes || '—')}</td>
         <td>${receiptBtn}</td>
-        <td><button class="delete-btn" onclick="deletePayment('${p.id}', '${esc(p.member_name)}', ${p.amount})">🗑 Delete</button></td>
+        <td><button class="delete-btn" onclick="deletePayment('${p.id}', '${esc(p.member_name)}', ${p.amount}, '${p._dept}')">🗑 Delete</button></td>
       </tr>`;
   });
   
@@ -792,11 +809,13 @@ async function savePayment() {
   }
 }
 
-async function deletePayment(id, name, amount) {
+async function deletePayment(id, name, amount, dept) {
   if (!confirm(`Delete payment of ${inr(amount)} to ${name}?\n\nThis action cannot be undone.`)) return;
   
   try {
-    await api('/rest/v1/execution_payments?id=eq.' + id, { method: 'DELETE' });
+    // department ke hisaab se sahi table
+    var table = (dept === 'Stitching') ? 'prajapati_stitching_payments' : 'execution_payments';
+    await api('/rest/v1/' + table + '?id=eq.' + id, { method: 'DELETE' });
     showToast('🗑 Payment deleted', 'success');
     await loadData();
   } catch (err) {
