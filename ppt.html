@@ -845,6 +845,33 @@ function api(path, options) {
   });
 }
 
+
+// ═══ apiAll() — paginated fetch (Supabase ~1000-row gateway cap bypass) ═══
+// PPT load ke liye: 1000-1000 ke batch mein loop karke POORA data laata hai.
+async function apiAll(path, pageSize) {
+  pageSize = pageSize || 1000;
+  var base = path
+    .replace(/([?&])limit=\d+/gi, '$1')
+    .replace(/([?&])offset=\d+/gi, '$1')
+    .replace(/([?&])&+/g, '$1')
+    .replace(/[?&]$/, '');
+  if (/[?&]order=/.test(base)) {
+    if (!/[?&]order=[^&]*\bid\b/.test(base)) base = base.replace(/([?&]order=[^&]*)/, '$1,id.asc');
+  } else {
+    base += (base.indexOf('?') === -1 ? '?' : '&') + 'order=id.asc';
+  }
+  var sep = base.indexOf('?') === -1 ? '?' : '&';
+  var all = [], offset = 0;
+  for (;;) {
+    var batch = await api(base + sep + 'limit=' + pageSize + '&offset=' + offset);
+    if (!batch || !batch.length) break;
+    all = all.concat(batch);
+    if (batch.length < pageSize) break;
+    offset += pageSize;
+  }
+  return all;
+}
+
 function istDateStr(d) {
   d = d || new Date();
   const istOffset = 5.5 * 60 * 60 * 1000;
@@ -1062,7 +1089,7 @@ async function onCampaignsChanged() {
   // Load distinct cities + members across all selected campaigns
   try {
     var inList = '(' + keys.map(function(k){ return '"' + k + '"'; }).join(',') + ')';
-    var photos = await api('/rest/v1/trial_photos?campaign_key=in.' + encodeURIComponent(inList) + '&select=city,member_name,member_phone&limit=20000');
+    var photos = await apiAll('/rest/v1/trial_photos?campaign_key=in.' + encodeURIComponent(inList) + '&select=city,member_name,member_phone');
     var cities = {}, members = {};
     (photos || []).forEach(function(p){
       if (p.city) cities[p.city] = true;
@@ -1142,7 +1169,7 @@ async function loadVehicles() {
       url += '&mode=in.' + encodeURIComponent(modeIn);
     }
 
-    let photos = await api(url);
+    let photos = await apiAll(url);
 
     // ─── Client-side Team Member filter (multi — matches phone OR name) ───
     if (memberVals.length > 0 && photos && photos.length) {
