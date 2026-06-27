@@ -373,8 +373,9 @@
       </div>
       
       <div class="table-card">
-        <div class="table-header">
+        <div class="table-header" style="flex-wrap:wrap;gap:12px;">
           <h2>Member-wise Outstanding</h2>
+          <input type="text" id="memberSearch" oninput="renderRows()" placeholder="🔍 Member naam ya phone search..." style="flex:1;min-width:200px;max-width:340px;padding:8px 14px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">
           <span class="count" id="rowCount">— members</span>
         </div>
         <div id="tableBody">
@@ -732,6 +733,16 @@ function getFilteredRows() {
   if (state.filter === 'pending') rows = rows.filter(r => r.pending > 0);
   else if (state.filter === 'critical') rows = rows.filter(r => r.pending > 10000);
   else if (state.filter === 'settled') rows = rows.filter(r => r.pending <= 0 && r.earned > 0);
+
+  // member search (naam ya phone)
+  const searchEl = document.getElementById('memberSearch');
+  const q = searchEl ? searchEl.value.trim().toLowerCase() : '';
+  if (q) {
+    rows = rows.filter(r =>
+      (r.name && r.name.toLowerCase().includes(q)) ||
+      (r.phone && String(r.phone).includes(q))
+    );
+  }
   
   const sortBy = document.getElementById('sortBy').value;
   if (sortBy === 'pending_desc') rows.sort((a, b) => b.pending - a.pending);
