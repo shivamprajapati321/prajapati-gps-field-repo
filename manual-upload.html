@@ -259,6 +259,23 @@ function todayStr(){var n=new Date();var i=new Date(n.getTime()+5.5*3600*1000);r
 
 var state={admin:null,campaigns:[],members:[],photos:[]};
 
+// ───── OCR QUEUE (throttle) — unlimited photos bina browser hang ─────
+// Problem: har photo pe Tesseract ek saath chalta tha → 5+ photos pe browser hang
+// Fix: max 2 OCR ek time, baaki queue mein. Sab photos process honge, smooth.
+var ocrQueue=[], ocrActive=0, OCR_CONCURRENCY=2;
+function enqueueOCR(p){
+  ocrQueue.push(p);
+  pumpOCR();
+}
+function pumpOCR(){
+  while(ocrActive<OCR_CONCURRENCY && ocrQueue.length){
+    var p=ocrQueue.shift();
+    ocrActive++;
+    runOCR(p).then(function(){ ocrActive--; pumpOCR(); })
+             .catch(function(){ ocrActive--; pumpOCR(); });
+  }
+}
+
 // ───── LOGIN ─────
 $('loginPhone').addEventListener('input',function(){this.value=this.value.replace(/\D/g,'');});
 $('loginPhone').addEventListener('keypress',function(e){if(e.key==='Enter')login();});
@@ -341,7 +358,7 @@ function handleFiles(files){
     var p={id:id,file:f,dataUrl:null,lat:null,lng:null,city:'',address:'',ocrDone:false,ocrText:''};
     state.photos.push(p);
     var rd=new FileReader();
-    rd.onload=function(e){p.dataUrl=e.target.result;renderReview();runOCR(p);};
+    rd.onload=function(e){p.dataUrl=e.target.result;renderReview();enqueueOCR(p);};
     rd.readAsDataURL(f);
   });
   $('reviewStep').classList.remove('hide');
@@ -384,9 +401,9 @@ function parseGPS(txt){
 }
 
 function runOCR(p){
-  if(!p.dataUrl)return;
+  if(!p.dataUrl)return Promise.resolve();
   p.ocrText='';p.ocrDone=false;renderReview();
-  cropBottom(p.dataUrl).then(function(crop){
+  return cropBottom(p.dataUrl).then(function(crop){
     return Tesseract.recognize(crop,'eng');
   }).then(function(res){
     var txt=res.data.text||'';
@@ -438,7 +455,7 @@ function nominatimReverse(p){
     }).catch(function(){});
 }
 
-function rerunOCR(){state.photos.forEach(runOCR);}
+function rerunOCR(){state.photos.forEach(enqueueOCR);}
 
 // ───── RENDER review cards ─────
 function renderReview(){
@@ -575,7 +592,9 @@ function uploadOne(p,idx,b){
       city:p.city||null,
       address:p.address||null,
       latitude:p.lat?parseFloat(p.lat):null,
-      longitude:p.lng?parseFloat(p.lng):null
+      longitude:p.lng?parseFloat(p.lng):null,
+      is_verified:null,      // verification ke liye PENDING (verifier portal mein aayega)
+      rejected:false         // rejected nahi (restore-able state)
     };
     return fetch(CONFIG.supabaseUrl+'/rest/v1/trial_photos',{method:'POST',headers:{apikey:CONFIG.supabaseKey,Authorization:'Bearer '+CONFIG.supabaseKey,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify(row)}).then(function(r){
       if(r.ok)return true;
