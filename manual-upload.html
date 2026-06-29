@@ -209,11 +209,28 @@ label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;lett
       <div class="step-num">2</div>
       <div><div class="step-title">Add photos</div><div class="step-desc">Drag-drop ya click — JPG/PNG, GPS-stamped</div></div>
     </div>
+    <!-- BEFORE section — sirf campaign ka before_photo ON ho tab dikhe -->
+    <div id="beforeSection" style="display:none;margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:700;color:#B45309;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+        <i class="ti ti-camera-up"></i> BEFORE Photos (khaali vehicle — kaam shuru hone se pehle)
+      </div>
+      <div class="dropzone" id="dzBefore" style="border-color:#F59E0B;background:#FFFBEB;" onclick="document.getElementById('fileInputBefore').click()">
+        <i class="ti ti-photo-up lead" style="color:#F59E0B"></i>
+        <h4>Before photos add karo</h4>
+        <p>1 before per vehicle · multiple ek saath</p>
+        <input type="file" id="fileInputBefore" accept="image/*" multiple class="hide" onchange="handleFiles(this.files, true)">
+      </div>
+    </div>
+
+    <!-- AFTER section (default — branding lagne ke baad) -->
+    <div id="afterLabel" style="display:none;font-size:13px;font-weight:700;color:#15803D;margin-bottom:8px;align-items:center;gap:6px;">
+      <i class="ti ti-camera-check"></i> AFTER Photos (branding lag gayi)
+    </div>
     <div class="dropzone" id="dz" onclick="document.getElementById('fileInput').click()">
       <i class="ti ti-photo-up lead"></i>
       <h4>Click to choose photos</h4>
       <p>ya yahan drag-drop karo · multiple photos ek saath</p>
-      <input type="file" id="fileInput" accept="image/*" multiple class="hide" onchange="handleFiles(this.files)">
+      <input type="file" id="fileInput" accept="image/*" multiple class="hide" onchange="handleFiles(this.files, false)">
     </div>
     <div class="notes">
       <i class="ti ti-info-circle"></i> Photo add karte hi GPS box (Lat/Long/city) <strong>automatically OCR se padha jayega</strong>. Har photo ke neeche detail dikhegi — galat ho to wahin theek kar do. Lat/Long se city auto-confirm hogi.
@@ -319,7 +336,7 @@ document.addEventListener('DOMContentLoaded',function(){
 // ───── LOAD campaigns + members ─────
 function loadDropdownData(){
   api('/rest/v1/trial_campaigns?select=*&active=eq.true&order=name.asc').then(function(c){
-    state.campaigns=(c||[]).map(function(x){return{key:x.key||x.campaign_key||x.id,name:x.name||x.campaign_name||x.key};});
+    state.campaigns=(c||[]).map(function(x){return{key:x.key||x.campaign_key||x.id,name:x.name||x.campaign_name||x.key,before_photo:!!x.before_photo};});
   });
   api('/rest/v1/trial_team_members?select=*&active=eq.true&order=name.asc').then(function(m){
     state.members=(m||[]).map(function(x){return{phone:x.phone||x.member_phone,name:x.name||x.member_name,role:x.role};}).filter(function(x){return x.phone;});
@@ -341,21 +358,37 @@ function setupDD(searchId,ddId,getList,onPick){
   inp.addEventListener('input',render);inp.addEventListener('focus',render);
   document.addEventListener('click',function(e){if(e.target!==inp&&!dd.contains(e.target))dd.classList.remove('open');});
 }
-setupDD('campSearch','campDD',function(){return state.campaigns.map(function(c){return{value:c.key,label:c.name};});},function(v){$('campKey').value=v;});
+setupDD('campSearch','campDD',function(){return state.campaigns.map(function(c){return{value:c.key,label:c.name};});},function(v){
+  $('campKey').value=v;
+  // selected campaign ka before_photo flag check → Before section dikhao/chupao
+  var camp=state.campaigns.find(function(c){return c.key===v;});
+  state.beforeOn = camp ? !!camp.before_photo : false;
+  var bs=$('beforeSection');
+  if(bs) bs.style.display = state.beforeOn ? 'block' : 'none';
+  var al=$('afterLabel');
+  if(al) al.style.display = state.beforeOn ? 'flex' : 'none';
+});
 setupDD('memSearch','memDD',function(){return state.members.map(function(m){return{value:m.phone,label:m.name+' ('+m.phone+')'};});},function(v){var m=state.members.find(function(x){return x.phone===v;});$('memPhone').value=v;$('memName').value=m?m.name:'';});
 
 // ───── FILE HANDLING ─────
 var dz=$('dz');
 ['dragenter','dragover'].forEach(function(ev){dz.addEventListener(ev,function(e){e.preventDefault();dz.classList.add('drag');});});
 ['dragleave','drop'].forEach(function(ev){dz.addEventListener(ev,function(e){e.preventDefault();dz.classList.remove('drag');});});
-dz.addEventListener('drop',function(e){if(e.dataTransfer.files.length)handleFiles(e.dataTransfer.files);});
+dz.addEventListener('drop',function(e){if(e.dataTransfer.files.length)handleFiles(e.dataTransfer.files, false);});
+// Before dropzone bhi drag-drop support kare
+var dzB=$('dzBefore');
+if(dzB){
+  ['dragenter','dragover'].forEach(function(ev){dzB.addEventListener(ev,function(e){e.preventDefault();dzB.classList.add('drag');});});
+  ['dragleave','drop'].forEach(function(ev){dzB.addEventListener(ev,function(e){e.preventDefault();dzB.classList.remove('drag');});});
+  dzB.addEventListener('drop',function(e){if(e.dataTransfer.files.length)handleFiles(e.dataTransfer.files, true);});
+}
 
-function handleFiles(files){
+function handleFiles(files, isBefore){
   var arr=Array.prototype.slice.call(files).filter(function(f){return f.type.indexOf('image')===0;});
   if(!arr.length){toast('Koi image nahi mili','error');return;}
   arr.forEach(function(f){
     var id='ph_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
-    var p={id:id,file:f,dataUrl:null,lat:null,lng:null,city:'',address:'',ocrDone:false,ocrText:''};
+    var p={id:id,file:f,dataUrl:null,lat:null,lng:null,city:'',address:'',ocrDone:false,ocrText:'',isBefore:!!isBefore};
     state.photos.push(p);
     var rd=new FileReader();
     rd.onload=function(e){p.dataUrl=e.target.result;renderReview();enqueueOCR(p);};
@@ -364,6 +397,7 @@ function handleFiles(files){
   $('reviewStep').classList.remove('hide');
   $('summaryBar').classList.remove('hide');
   $('fileInput').value='';
+  var fb=$('fileInputBefore'); if(fb) fb.value='';
 }
 
 // ───── OCR (Tesseract on bottom GPS box) ─────
@@ -464,10 +498,11 @@ function renderReview(){
   grid.innerHTML=state.photos.map(function(p){
     var ready=p.lat&&p.lng;
     var badge=!p.ocrDone?'<span class="pcard-badge badge-ocr">⏳ Reading…</span>':(ready?'<span class="pcard-badge badge-ready">✓ Ready</span>':'<span class="pcard-badge badge-pend">Need location</span>');
+    var typeBadge=p.isBefore?'<span class="pcard-badge" style="left:8px;right:auto;background:#F59E0B;color:#fff;">BEFORE</span>':'';
     return '<div class="pcard'+(p.ocrDone&&!ready?' err':'')+'">'+
       '<div class="pcard-img">'+
         '<button class="pcard-remove" onclick="removePhoto(\''+p.id+'\')">×</button>'+
-        badge+
+        badge+ typeBadge+
         (p.dataUrl?'<img src="'+p.dataUrl+'">':'<div class="spinner"></div>')+
       '</div>'+
       '<div class="pcard-body">'+
@@ -555,7 +590,9 @@ function dataUrlToBlob(dataUrl){
 function uploadOne(p,idx,b){
   var vehicle=(p.vehicle||'').toUpperCase().replace(/\s+/g,'')||('MANUAL-'+p.id.slice(-6));
   var side=b.mode==='back_panel'?'back':'front';
-  var path=cleanName(b.memName)+'/'+cleanName(vehicle)+'/'+side+'-'+cleanName(vehicle)+'-'+p.id.slice(-5)+'.jpg';
+  // before photo → path mein '0-before' prefix (field-v2 jaisa, report auto-count karega)
+  var prefix=p.isBefore?'0-before-':'';
+  var path=cleanName(b.memName)+'/'+cleanName(vehicle)+'/'+prefix+side+'-'+cleanName(vehicle)+'-'+p.id.slice(-5)+'.jpg';
   var blob=dataUrlToBlob(p.dataUrl);
 
   // STEP 1: upload to storage (try upsert, fallback to plain)
@@ -594,7 +631,8 @@ function uploadOne(p,idx,b){
       latitude:p.lat?parseFloat(p.lat):null,
       longitude:p.lng?parseFloat(p.lng):null,
       is_verified:null,      // verification ke liye PENDING (verifier portal mein aayega)
-      rejected:false         // rejected nahi (restore-able state)
+      rejected:false,        // rejected nahi (restore-able state)
+      photo_type:p.isBefore?'before':'after'   // before/after — report counting + clarity
     };
     return fetch(CONFIG.supabaseUrl+'/rest/v1/trial_photos',{method:'POST',headers:{apikey:CONFIG.supabaseKey,Authorization:'Bearer '+CONFIG.supabaseKey,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify(row)}).then(function(r){
       if(r.ok)return true;
