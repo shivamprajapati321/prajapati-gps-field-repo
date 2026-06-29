@@ -390,14 +390,43 @@ function handleFiles(files, isBefore){
     var id='ph_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
     var p={id:id,file:f,dataUrl:null,lat:null,lng:null,city:'',address:'',ocrDone:false,ocrText:'',isBefore:!!isBefore};
     state.photos.push(p);
-    var rd=new FileReader();
-    rd.onload=function(e){p.dataUrl=e.target.result;renderReview();enqueueOCR(p);};
-    rd.readAsDataURL(f);
+    // MEMORY FIX: image resize karke store (full-res nahi → Out of Memory crash bachega)
+    // Max 1600px — display + OCR + upload ke liye kaafi, par memory 80% kam
+    resizeImage(f, 1600, 0.82, function(resizedDataUrl){
+      p.dataUrl=resizedDataUrl;
+      renderReview();
+      enqueueOCR(p);
+    });
   });
   $('reviewStep').classList.remove('hide');
   $('summaryBar').classList.remove('hide');
   $('fileInput').value='';
   var fb=$('fileInputBefore'); if(fb) fb.value='';
+}
+
+// Image resize — bड़i photo ko chhoti karo (memory bachao, OOM crash roko)
+function resizeImage(file, maxDim, quality, cb){
+  var rd=new FileReader();
+  rd.onload=function(e){
+    var img=new Image();
+    img.onload=function(){
+      var w=img.width, h=img.height;
+      if(w>maxDim || h>maxDim){
+        if(w>h){ h=Math.round(h*maxDim/w); w=maxDim; }
+        else { w=Math.round(w*maxDim/h); h=maxDim; }
+      }
+      var c=document.createElement('canvas');
+      c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      // JPEG (compressed) — PNG se 5-10x chhota
+      cb(c.toDataURL('image/jpeg', quality));
+      // memory free
+      c.width=0; c.height=0; img.src='';
+    };
+    img.onerror=function(){ cb(e.target.result); };  // fail to original
+    img.src=e.target.result;
+  };
+  rd.readAsDataURL(file);
 }
 
 // ───── OCR (Tesseract on bottom GPS box) ─────
@@ -414,7 +443,8 @@ function cropBottom(dataUrl){
       var d=ctx.getImageData(0,0,c.width,c.height);var px=d.data;
       for(var i=0;i<px.length;i+=4){var g=0.3*px[i]+0.59*px[i+1]+0.11*px[i+2];g=g>140?255:(g<90?0:g);px[i]=px[i+1]=px[i+2]=g;}
       ctx.putImageData(d,0,0);
-      resolve(c.toDataURL('image/png'));
+      resolve(c.toDataURL('image/jpeg', 0.85));  // JPEG (PNG se 5-10x chhota)
+      c.width=0; c.height=0; img.src='';  // memory free
     };
     img.src=dataUrl;
   });
@@ -434,26 +464,46 @@ function parseGPS(txt){
   return out;
 }
 
+// Single Tesseract worker reuse (har photo pe naya = memory leak → OOM)
+var _ocrWorker=null, _ocrWorkerReady=null;
+function getOCRWorker(){
+  if(_ocrWorkerReady) return _ocrWorkerReady;
+  _ocrWorkerReady = (async function(){
+    var w = await Tesseract.createWorker('eng');
+    _ocrWorker = w;
+    return w;
+  })();
+  return _ocrWorkerReady;
+}
+
 function runOCR(p){
   if(!p.dataUrl)return Promise.resolve();
+  if(typeof Tesseract==='undefined'){
+    p.ocrDone=true;p.ocrText='Tesseract load nahi hua (internet/CDN check)';renderReview();
+    return Promise.resolve();
+  }
   p.ocrText='';p.ocrDone=false;renderReview();
   return cropBottom(p.dataUrl).then(function(crop){
-    return Tesseract.recognize(crop,'eng');
+    return getOCRWorker().then(function(worker){
+      return worker.recognize(crop);
+    });
   }).then(function(res){
-    var txt=res.data.text||'';
+    var txt=(res&&res.data&&res.data.text)||'';
     p.ocrText=txt;
     var g=parseGPS(txt);
     if(g.lat&&g.lng){p.lat=g.lat;p.lng=g.lng;}
     if(g.city)p.city=g.city;
     if(g.address)p.address=g.address;
     p.ocrDone=true;
-    // If we have lat/lng but city looks junk, reverse-geocode for a clean city
     if(p.lat&&p.lng&&(!p.city||p.city.length<3||/[^A-Za-z .]/.test(p.city))){
       reverseGeocode(p);
     }
     renderReview();
   }).catch(function(e){
-    p.ocrDone=true;p.ocrText='OCR failed';renderReview();
+    p.ocrDone=true;
+    p.ocrText='OCR error: '+((e&&e.message)||e||'unknown');
+    console.error('[OCR fail]',p.id,e);
+    renderReview();
   });
 }
 
@@ -514,6 +564,7 @@ function renderReview(){
         '<div class="pcard-row"><label>City</label><input value="'+esc(p.city||'')+'" placeholder="City" oninput="setField(\''+p.id+'\',\'city\',this.value)"></div>'+
         '<div class="pcard-row"><label>Address</label><input value="'+esc(p.address||'')+'" placeholder="Address" oninput="setField(\''+p.id+'\',\'address\',this.value)"></div>'+
         (p.ocrDone&&!ready?'<div class="ocr-status" style="color:var(--warn)">⚠️ GPS auto-read nahi hua — Lat/Long manually daalo</div>':'')+
+        (p.ocrText&&p.ocrText.indexOf('OCR error')===0?'<div class="ocr-status" style="color:var(--err);font-size:11px">'+esc(p.ocrText)+'</div>':'')+
       '</div>'+
     '</div>';
   }).join('');
