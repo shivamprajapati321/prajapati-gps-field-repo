@@ -193,6 +193,23 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .callout.info{background:var(--info-bg);color:#1d4ed8}
 
 /* MOBILE */
+/* MEDIA CARDS + DATE ROWS (reports) */
+.media-card{background:#fafbfe;border:1px solid var(--rule);border-radius:12px;padding:14px}
+.media-icon{font-size:20px;margin-bottom:6px}
+.media-label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;font-weight:600;font-family:'JetBrains Mono',monospace}
+.media-val{font-size:24px;font-weight:800;color:var(--navy);margin-top:2px}
+.date-row{border:1px solid var(--rule);border-radius:12px;margin-bottom:8px;overflow:hidden;cursor:pointer;transition:border-color .15s}
+.date-row:hover{border-color:var(--teal)}
+.date-row-head{display:flex;align-items:center;justify-content:space-between;padding:13px 15px}
+.date-main{font-weight:700;font-size:15px;color:var(--navy)}
+.date-day{font-size:11px;color:var(--text-mute);margin-left:8px;text-transform:uppercase}
+.date-qty{font-weight:700;color:var(--teal);font-size:14px}
+.date-arrow{color:var(--text-mute);font-size:14px}
+.date-detail{padding:0 15px 13px;border-top:1px solid var(--rule)}
+.detail-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;font-size:13px;border-bottom:1px dashed var(--rule)}
+.detail-row:last-child{border-bottom:none}
+.detail-row strong{color:var(--navy)}
+
 @media(max-width:680px){
   .page-title{font-size:23px}
   .dash-value{font-size:24px}
@@ -660,18 +677,21 @@ async function loadOperatorData() {
   // missing a file link by fetching the design row directly by design_id. ──
   await enrichJobFiles(state.jobs);
 
+  // ── CAMPAIGN MERGE: same campaign ke multiple cards → 1 card (total qty + files) ──
+  // "Collector NA Plots" 3 baar nahi dikhega — ek card, total units, saari files
+  state.jobs = mergeByCampaign(state.jobs);
+
   // ── ONLY-WITH-FILE GATE (operator) ──
-  // Operator ko job tabhi dikhe jab printing file attach + resolve ho chuki ho.
-  // Bina file ke (sample/draft/abhi tak design pending) jobs Active list mein
-  // dikhne hi nahi chahiye — kyunki bina file ke print nahi ho sakta.
+  // Bina design file ke job operator ko mat dikhao (design abhi ready nahi).
   state.jobs = state.jobs.filter(jobHasPrintFile);
 
   // Completed jobs (last 30 days)
   const completedJobs = await api(`/rest/v1/v_operator_completed_jobs?operator_id=eq.${state.user.id}&stage=eq.printing&select=*`);
   state.completedJobs = dedupeJobs(completedJobs || []);
   
-  // Reports: date-wise breakdown last 14 days
-  const dateWise = await api(`/rest/v1/trial_work_logs?operator_id=eq.${state.user.id}&stage=eq.printing&log_date=gte.${nDaysAgo(14)}&select=log_date,qty_done,design_id,campaign_id&order=log_date.desc`);
+  // Reports: date-wise breakdown last 30 days + raw logs (date-click detail + media-wise)
+  const dateWise = await api(`/rest/v1/trial_work_logs?operator_id=eq.${state.user.id}&stage=eq.printing&log_date=gte.${nDaysAgo(30)}&select=log_date,qty_done,design_id,campaign_id,mode,campaign_name,design_name&order=log_date.desc`);
+  state.reports.rawLogs = dateWise || [];
   state.reports.dateWise = aggregateByDate(dateWise || []);
 }
 
@@ -793,14 +813,12 @@ function renderCompletedTab() {
               ${job.location_city ? `<span class="tag location">📍 ${escapeHtml(job.location_city)}</span>` : ''}
             </div>
           </div>
-          <div class="job-actions">
-            ${renderJobFiles(job, false)}
-          </div>
+          <span class="tag" style="background:var(--green-soft);color:#15803d">✓ Done</span>
         </div>
         
         <div class="progress-wrap">
           <div class="progress-fill-bar"><span class="progress-fill" style="width:100%"></span></div>
-          <div class="progress-text">${(job.quantity_done || 0).toLocaleString('en-IN')} / ${(job.quantity_assigned || 0).toLocaleString('en-IN')} · ✓ Done</div>
+          <div class="progress-text">${(job.quantity_done || 0).toLocaleString('en-IN')} units done</div>
         </div>
         </div>
       </div>
@@ -834,7 +852,7 @@ function renderJobsTab() {
             <div class="job-title">${job.job_type_icon || '🖨️'} ${escapeHtml(job.campaign_name || job.design_name || 'Printing Job')}</div>
             <div class="job-meta">
               ${job.design_name && job.design_name !== job.campaign_name && !/^(design job|job|design)$/i.test((job.design_name||'').trim()) ? `<span>🎨 ${escapeHtml(job.design_name)}</span>` : ''}
-              ${job.location_name ? `<span>📍 ${escapeHtml(job.location_name)}</span>` : (job.location_city ? `<span>📍 ${escapeHtml(job.location_city)}</span>` : '')}
+              ${job._count && job._count > 1 ? `<span>📍 ${job._count} locations</span>` : (job.location_name ? `<span>📍 ${escapeHtml(job.location_name)}</span>` : (job.location_city ? `<span>📍 ${escapeHtml(job.location_city)}</span>` : ''))}
               ${dueTxt ? `<span>📅 ${dueTxt}</span>` : ''}
             </div>
           </div>
@@ -858,72 +876,126 @@ function renderJobsTab() {
 
 function renderReportsTab() {
   const p = state.progress;
-  const week = state.reports.dateWise.filter(d => d.log_date >= nDaysAgo(7));
+  const logs = state.reports.rawLogs || [];
+
+  // ── MEDIA-WISE total (hood vs back panel) ──
+  let hoodQty = 0, backQty = 0, otherQty = 0;
+  logs.forEach(l => {
+    const m = String(l.mode || '').toLowerCase();
+    if (m.indexOf('back') !== -1) backQty += (l.qty_done || 0);
+    else if (m.indexOf('hood') !== -1) hoodQty += (l.qty_done || 0);
+    else otherQty += (l.qty_done || 0);
+  });
+  const totalAll = hoodQty + backQty + otherQty;
+
+  // date-wise aggregate (already sorted desc)
+  const dates = state.reports.dateWise || [];
+  const week = dates.filter(d => d.log_date >= nDaysAgo(7));
   const totalWeek = week.reduce((s, d) => s + d.qty_done, 0);
-  const avgDaily = week.length ? Math.round(totalWeek / week.length) : 0;
-  
+
   return `
     <div class="dash-grid">
-      <div class="dash-card">
-        <div class="dash-label">📈 This Month</div>
-        <div class="dash-value">${(p.month_qty || 0).toLocaleString('en-IN')}</div>
-        <div class="dash-meta">units this month</div>
-      </div>
-      <div class="dash-card success">
-        <div class="dash-label">🎯 Active Jobs</div>
-        <div class="dash-value">${p.active_assignments || 0}</div>
-        <div class="dash-meta">in progress</div>
-      </div>
       <div class="dash-card highlight">
-        <div class="dash-label">✅ Completed</div>
-        <div class="dash-value">${p.completed_assignments || 0}</div>
-        <div class="dash-meta">jobs finished</div>
+        <div class="dash-label">📈 This Month</div>
+        <div class="dash-value">${(p.month_qty || totalAll || 0).toLocaleString('en-IN')}</div>
+        <div class="dash-meta">units total</div>
       </div>
       <div class="dash-card info">
-        <div class="dash-label">📊 Avg Daily</div>
-        <div class="dash-value">${avgDaily.toLocaleString('en-IN')}</div>
-        <div class="dash-meta">last 7 days</div>
+        <div class="dash-label">📊 Last 7 Days</div>
+        <div class="dash-value">${totalWeek.toLocaleString('en-IN')}</div>
+        <div class="dash-meta">units</div>
+      </div>
+      <div class="dash-card success">
+        <div class="dash-label">✅ Completed Jobs</div>
+        <div class="dash-value">${p.completed_assignments || 0}</div>
+        <div class="dash-meta">finished</div>
       </div>
     </div>
-    
+
     <div class="section">
       <div class="section-head">
-        <div class="section-title">Last 7 Days · <em>Daily Breakdown</em></div>
+        <div class="section-title">Media-wise <em>Total</em></div>
+        <div class="section-meta">Last 30 days</div>
       </div>
-      <div class="section-body flush">
-        ${week.length ? `
-          <table class="report-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Day</th>
-                <th class="num">Units</th>
-                <th class="num">Jobs</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${week.map(d => {
-                const date = new Date(d.log_date);
-                return `
-                  <tr>
-                    <td>${date.toLocaleDateString('en-IN', { day:'2-digit', month:'short' })}</td>
-                    <td>${date.toLocaleDateString('en-IN', { weekday:'long' })}</td>
-                    <td class="num">${d.qty_done.toLocaleString('en-IN')}</td>
-                    <td class="num">${d.job_count}</td>
-                  </tr>
-                `;
-              }).join('')}
-              <tr style="background:var(--gold-soft);font-weight:700">
-                <td colspan="2"><strong>TOTAL</strong></td>
-                <td class="num"><strong>${totalWeek.toLocaleString('en-IN')}</strong></td>
-                <td class="num"><strong>—</strong></td>
-              </tr>
-            </tbody>
-          </table>
-        ` : '<div class="empty">No work logged in last 7 days</div>'}
+      <div class="section-body">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px">
+          <div class="media-card" style="border-left:4px solid var(--info)">
+            <div class="media-icon">🚗</div>
+            <div class="media-label">Hood</div>
+            <div class="media-val">${hoodQty.toLocaleString('en-IN')}</div>
+          </div>
+          <div class="media-card" style="border-left:4px solid var(--gold)">
+            <div class="media-icon">🔲</div>
+            <div class="media-label">Back Panel</div>
+            <div class="media-val">${backQty.toLocaleString('en-IN')}</div>
+          </div>
+          ${otherQty ? `
+          <div class="media-card" style="border-left:4px solid var(--text-mute)">
+            <div class="media-icon">📦</div>
+            <div class="media-label">Other</div>
+            <div class="media-val">${otherQty.toLocaleString('en-IN')}</div>
+          </div>` : ''}
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">Date-wise <em>Work</em></div>
+        <div class="section-meta">Date pe click → detail</div>
+      </div>
+      <div class="section-body">
+        ${dates.length ? dates.map(d => {
+          const dt = new Date(d.log_date);
+          const dayName = dt.toLocaleDateString('en-IN', { weekday:'short' });
+          const dateStr = dt.toLocaleDateString('en-IN', { day:'2-digit', month:'short' });
+          return `
+            <div class="date-row" onclick="toggleDateDetail('${d.log_date}')">
+              <div class="date-row-head">
+                <div>
+                  <span class="date-main">${dateStr}</span>
+                  <span class="date-day">${dayName}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px">
+                  <span class="date-qty">${d.qty_done.toLocaleString('en-IN')} units</span>
+                  <span class="date-arrow" id="arrow-${d.log_date}">▾</span>
+                </div>
+              </div>
+              <div class="date-detail" id="detail-${d.log_date}" style="display:none"></div>
+            </div>
+          `;
+        }).join('') : '<div class="empty"><div class="empty-icon">📊</div>Abhi koi kaam log nahi hua</div>'}
       </div>
     </div>
   `;
+}
+
+// Date pe click → us din ka detail (campaign + media wise breakdown)
+function toggleDateDetail(date) {
+  const box = document.getElementById('detail-' + date);
+  const arrow = document.getElementById('arrow-' + date);
+  if (!box) return;
+  if (box.style.display === 'block') {
+    box.style.display = 'none';
+    if (arrow) arrow.textContent = '▾';
+    return;
+  }
+  // us date ke logs nikalo + campaign/media wise group
+  const logs = (state.reports.rawLogs || []).filter(l => l.log_date === date);
+  const groups = {};
+  logs.forEach(l => {
+    const camp = l.campaign_name || l.design_name || 'Job';
+    const m = String(l.mode || '').toLowerCase();
+    const media = m.indexOf('back') !== -1 ? '🔲 Back Panel' : (m.indexOf('hood') !== -1 ? '🚗 Hood' : '📦 Other');
+    const key = camp + ' · ' + media;
+    groups[key] = (groups[key] || 0) + (l.qty_done || 0);
+  });
+  const rows = Object.keys(groups).map(k =>
+    `<div class="detail-row"><span>${escapeHtml(k)}</span><strong>${groups[k].toLocaleString('en-IN')}</strong></div>`
+  ).join('');
+  box.innerHTML = rows || '<div class="detail-row"><span>Koi detail nahi</span></div>';
+  box.style.display = 'block';
+  if (arrow) arrow.textContent = '▴';
 }
 
 function renderHistoryTab() {
@@ -1415,6 +1487,49 @@ async function saveReassignment() {
 // same assignment more than once (joins/multiple cities), which makes the SAME
 // campaign+design appear several times. We collapse to one row per assignment.
 // Fallback key (design_id + campaign_id) handles rows with no assignment_id.
+// Same campaign ke multiple jobs ko 1 card mein merge (qty add, files combine)
+// Operator ke liye: "Collector NA Plots" 3 baar nahi, ek card total qty ke saath
+function mergeByCampaign(jobs) {
+  if (!Array.isArray(jobs)) return [];
+  var groups = {};
+  var order = [];
+  jobs.forEach(function(j) {
+    var key = String(j.campaign_id || j.campaign_key || j.campaign_name || j.assignment_id || '');
+    if (!groups[key]) {
+      groups[key] = Object.assign({}, j, {
+        quantity_assigned: 0,
+        quantity_done: 0,
+        today_qty: 0,
+        _mergedFiles: [],
+        _assignmentIds: [],
+        _count: 0
+      });
+      order.push(key);
+    }
+    var g = groups[key];
+    g.quantity_assigned += (j.quantity_assigned || 0);
+    g.quantity_done += (j.quantity_done || 0);
+    g.today_qty += (j.today_qty || 0);
+    g._count++;
+    if (j.assignment_id) g._assignmentIds.push(j.assignment_id);
+    if (j.is_urgent) g.is_urgent = true;
+    if (Array.isArray(j.design_files)) {
+      j.design_files.forEach(function(f){ if (f && f.url) g._mergedFiles.push(f); });
+    }
+    if (j.drive_url) g._mergedFiles.push({ url: j.drive_url, name: j.design_file_name || j.design_name || 'Design' });
+    if (j.supabase_file_url) g._mergedFiles.push({ url: j.supabase_file_url, name: j.design_file_name || j.design_name || 'Design' });
+  });
+  return order.map(function(k) {
+    var g = groups[k];
+    var seen = {}, uniq = [];
+    g._mergedFiles.forEach(function(f){ if (f.url && !seen[f.url]) { seen[f.url] = 1; uniq.push(f); } });
+    g.design_files = uniq;
+    g.progress_pct = g.quantity_assigned ? Math.round((g.quantity_done / g.quantity_assigned) * 100) : 0;
+    g.assignment_id = g._assignmentIds[0] || g.assignment_id;
+    return g;
+  });
+}
+
 function dedupeJobs(jobs) {
   if (!Array.isArray(jobs)) return [];
   var seen = {};
