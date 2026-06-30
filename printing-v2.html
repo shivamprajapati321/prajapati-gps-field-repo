@@ -689,10 +689,13 @@ async function loadOperatorData() {
   const completedJobs = await api(`/rest/v1/v_operator_completed_jobs?operator_id=eq.${state.user.id}&stage=eq.printing&select=*`);
   state.completedJobs = dedupeJobs(completedJobs || []);
   
-  // Reports: date-wise breakdown last 30 days + raw logs (date-click detail + media-wise)
-  const dateWise = await api(`/rest/v1/trial_work_logs?operator_id=eq.${state.user.id}&stage=eq.printing&log_date=gte.${nDaysAgo(30)}&select=log_date,qty_done,design_id,campaign_id,mode,campaign_name,design_name&order=log_date.desc`);
+  // Reports: date-wise breakdown last 30 days + raw logs (date-click detail)
+  // NOTE: trial_work_logs mein sirf yeh columns hai (mode/campaign_name nahi)
+  const dateWise = await api(`/rest/v1/trial_work_logs?operator_id=eq.${state.user.id}&stage=eq.printing&log_date=gte.${nDaysAgo(30)}&select=log_date,qty_done,design_id,campaign_id&order=log_date.desc`);
   state.reports.rawLogs = dateWise || [];
   state.reports.dateWise = aggregateByDate(dateWise || []);
+  // media (hood/back) + campaign naam jobs/designs se resolve karo (work_logs mein nahi hai)
+  enrichReportLogs(state.reports.rawLogs);
 }
 
 function renderOperatorView() {
@@ -881,7 +884,7 @@ function renderReportsTab() {
   // ── MEDIA-WISE total (hood vs back panel) ──
   let hoodQty = 0, backQty = 0, otherQty = 0;
   logs.forEach(l => {
-    const m = String(l.mode || '').toLowerCase();
+    const m = String(l._mode || '').toLowerCase();
     if (m.indexOf('back') !== -1) backQty += (l.qty_done || 0);
     else if (m.indexOf('hood') !== -1) hoodQty += (l.qty_done || 0);
     else otherQty += (l.qty_done || 0);
@@ -984,8 +987,8 @@ function toggleDateDetail(date) {
   const logs = (state.reports.rawLogs || []).filter(l => l.log_date === date);
   const groups = {};
   logs.forEach(l => {
-    const camp = l.campaign_name || l.design_name || 'Job';
-    const m = String(l.mode || '').toLowerCase();
+    const camp = l._campaign || 'Job';
+    const m = String(l._mode || '').toLowerCase();
     const media = m.indexOf('back') !== -1 ? '🔲 Back Panel' : (m.indexOf('hood') !== -1 ? '🚗 Hood' : '📦 Other');
     const key = camp + ' · ' + media;
     groups[key] = (groups[key] || 0) + (l.qty_done || 0);
@@ -1567,6 +1570,25 @@ function nDaysAgo(n) {
   const d = new Date();
   d.setDate(d.getDate() - n);
   return d.toISOString().slice(0, 10);
+}
+
+// work_logs mein mode/campaign_name nahi — jobs+completed se resolve karo
+function enrichReportLogs(logs) {
+  if (!Array.isArray(logs)) return;
+  // design_id / campaign_id → {mode, campaign_name} lookup banao
+  var byDesign = {}, byCampaign = {};
+  var allJobs = (state.jobs || []).concat(state.completedJobs || []);
+  allJobs.forEach(function(j) {
+    var info = { mode: j.mode || j.job_type || '', campaign_name: j.campaign_name || j.design_name || '' };
+    if (j.design_id) byDesign[String(j.design_id)] = info;
+    if (j.campaign_id) byCampaign[String(j.campaign_id)] = info;
+    if (j.campaign_key) byCampaign[String(j.campaign_key)] = info;
+  });
+  logs.forEach(function(l) {
+    var info = byDesign[String(l.design_id)] || byCampaign[String(l.campaign_id)] || {};
+    l._mode = info.mode || '';
+    l._campaign = info.campaign_name || 'Printing Job';
+  });
 }
 
 function aggregateByDate(logs) {
