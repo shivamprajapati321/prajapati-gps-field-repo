@@ -145,6 +145,21 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
 @keyframes spin{to{transform:rotate(360deg)}}
 
+/* BULK UPLOAD — clean collapsible dropdown */
+.bulk-wrap{margin-bottom:16px}
+.bulk-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;padding:13px 16px;background:var(--card);border:1px solid var(--border);border-radius:12px;cursor:pointer;font-family:inherit;font-size:13.5px;color:var(--text);transition:border-color .15s}
+.bulk-toggle:hover{border-color:var(--gold)}
+.bulk-toggle b{color:var(--navy)}
+.bulk-arrow{color:var(--text-mute);font-size:14px}
+.bulk-panel{margin-top:8px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;box-shadow:0 8px 24px rgba(11,25,87,.08)}
+.bulk-search{width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:9px;font-family:inherit;font-size:13px;margin-bottom:10px}
+.bulk-search:focus{outline:none;border-color:var(--teal)}
+.bulk-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;max-height:320px;overflow-y:auto}
+.bulk-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 13px;background:#fafbfe;border:1px solid var(--border);border-radius:9px;cursor:pointer;font-family:inherit;text-align:left;transition:all .12s}
+.bulk-item:hover{border-color:var(--gold);background:var(--gold-soft)}
+.bi-name{font-size:13px;font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bi-count{font-size:10.5px;color:var(--text-mute);white-space:nowrap;font-family:'JetBrains Mono',monospace}
+
 @media(max-width:680px){
   .page-title{font-size:23px}
   .stat-value{font-size:22px}
@@ -612,14 +627,26 @@ function renderContent() {
   var bulkBarHtml = '';
   var multiCamps = Object.keys(campGroups);
   if (multiCamps.length) {
-    bulkBarHtml = '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:14px;">' +
-      '<div style="font-size:12px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;"><i style="font-style:normal;">📚</i> Bulk Upload (saare designs ek saath)</div>' +
-      '<div style="display:flex;flex-wrap:wrap;gap:8px;">' +
-      multiCamps.map(function(cid){
-        var g = campGroups[cid];
-        return '<button class="btn btn-purple sm" onclick="openBulkModal(\'' + cid + '\')" style="font-size:12px;">📚 ' + escapeHtml(g.name) + ' (' + g.count + ')</button>';
-      }).join('') +
-      '</div></div>';
+    // clean collapsible dropdown — button dabao toh searchable list khule (screen na bhare)
+    var totalCamps = multiCamps.length;
+    var itemsHtml = multiCamps.map(function(cid){
+      var g = campGroups[cid];
+      return '<button class="bulk-item" data-name="' + escapeHtml(g.name).toLowerCase() + '" onclick="openBulkModal(\'' + cid + '\')">' +
+        '<span class="bi-name">' + escapeHtml(g.name) + '</span>' +
+        '<span class="bi-count">' + g.count + ' design' + (g.count>1?'s':'') + '</span>' +
+      '</button>';
+    }).join('');
+    bulkBarHtml =
+      '<div class="bulk-wrap">' +
+        '<button class="bulk-toggle" onclick="toggleBulkPanel()">' +
+          '<span>📚 <b>Bulk Upload</b> — ' + totalCamps + ' campaigns ek saath</span>' +
+          '<span class="bulk-arrow" id="bulkArrow">▾</span>' +
+        '</button>' +
+        '<div class="bulk-panel" id="bulkPanel" style="display:none">' +
+          '<input class="bulk-search" id="bulkSearch" placeholder="🔍 Campaign search karo…" oninput="filterBulkItems(this.value)">' +
+          '<div class="bulk-list" id="bulkList">' + itemsHtml + '</div>' +
+        '</div>' +
+      '</div>';
   }
 
   if (!list.length) {
@@ -1174,6 +1201,26 @@ async function saveUpload() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// Bulk panel toggle (collapsible — screen na bhare)
+window.toggleBulkPanel = function(){
+  var panel = document.getElementById('bulkPanel');
+  var arrow = document.getElementById('bulkArrow');
+  if (!panel) return;
+  var open = panel.style.display === 'block';
+  panel.style.display = open ? 'none' : 'block';
+  if (arrow) arrow.textContent = open ? '▾' : '▴';
+  if (!open){ var s = document.getElementById('bulkSearch'); if (s) setTimeout(function(){ s.focus(); }, 50); }
+};
+// Bulk list search filter
+window.filterBulkItems = function(q){
+  q = (q||'').toLowerCase().trim();
+  var items = document.querySelectorAll('#bulkList .bulk-item');
+  items.forEach(function(it){
+    var name = it.getAttribute('data-name') || '';
+    it.style.display = (!q || name.indexOf(q) !== -1) ? 'flex' : 'none';
+  });
+};
+
 // BULK UPLOAD — ek campaign ke saare designs ek saath
 // ═══════════════════════════════════════════════════════════════
 function openBulkModal(campaignId) {
