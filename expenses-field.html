@@ -109,6 +109,25 @@ select.inp{background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='
 .empty{text-align:center;padding:50px 20px;color:var(--mu)}
 .empty .ei{font-size:42px;margin-bottom:12px;opacity:.5}
 .version-badge{position:fixed;bottom:78px;right:10px;background:var(--p);color:#fff;font-size:9px;padding:3px 8px;border-radius:8px;opacity:.6;z-index:55;font-family:monospace}
+/* Advance tab */
+.adv-total-box{background:linear-gradient(135deg,var(--gd),#e0a800);border-radius:16px;padding:20px;text-align:center;margin-bottom:18px;box-shadow:0 4px 16px rgba(245,184,0,.25)}
+.atb-label{font-size:11px;font-weight:700;color:var(--pd);text-transform:uppercase;letter-spacing:.05em;opacity:.85}
+.atb-amount{font-size:34px;font-weight:800;color:var(--pd);font-family:'JetBrains Mono',monospace;line-height:1.1;margin:4px 0}
+.atb-meta{font-size:12px;color:var(--pd);opacity:.7}
+.card{background:#fff;border:1px solid var(--ln);border-radius:14px;padding:16px;margin-bottom:12px}
+.card-title{font-size:14px;font-weight:700;color:var(--p);margin-bottom:12px}
+.lbl{display:block;font-size:11px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.04em;margin:10px 0 5px}
+.adv-item{background:#fff;border:1px solid var(--ln);border-radius:12px;padding:13px;margin-bottom:9px}
+.adv-item-top{display:flex;justify-content:space-between;align-items:center}
+.adv-item-amt{font-size:17px;font-weight:800;color:var(--p);font-family:'JetBrains Mono',monospace}
+.adv-item-date{font-size:11px;color:var(--mu);margin-top:2px}
+.adv-item-reason{font-size:12px;color:#555;margin-top:5px}
+.adv-pill{padding:4px 11px;border-radius:999px;font-size:10.5px;font-weight:700}
+.adv-pill.pending{background:#fef3c7;color:#b45309}
+.adv-pill.approved{background:#dbeafe;color:#1d4ed8}
+.adv-pill.paid{background:#dcfce7;color:#15803d}
+.adv-pill.rejected{background:#fee2e2;color:#991b1b}
+
 </style>
 </head>
 <body>
@@ -182,6 +201,27 @@ select.inp{background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='
   <div id="histList"><div class="empty"><div class="ei">📋</div>Loading…</div></div>
 </div>
 
+<!-- TAB: ADVANCE -->
+<div id="screen-advance" class="scr">
+  <div class="adv-total-box">
+    <div class="atb-label">Is month ka advance</div>
+    <div class="atb-amount" id="advMonthTotal">₹0</div>
+    <div class="atb-meta" id="advMonthMeta">—</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">💰 Naya Advance Request</div>
+    <label class="lbl">Amount (₹)</label>
+    <input id="advAmount" class="inp" type="number" inputmode="numeric" placeholder="Kitna advance chahiye" min="1">
+    <label class="lbl">Reason</label>
+    <textarea id="advReason" class="inp" rows="2" placeholder="Kyun chahiye (short)"></textarea>
+    <button class="btn btn-gold" id="advSubmitBtn" onclick="submitAdvance()" style="width:100%;margin-top:12px">📤 Request Advance</button>
+  </div>
+
+  <div class="hist-title" style="margin-top:20px">Meri advance requests</div>
+  <div id="advList"><div class="empty"><div class="ei">💰</div>Loading…</div></div>
+</div>
+
 <!-- TAB: SETTINGS -->
 <div id="screen-settings" class="scr">
   <div class="priv-note">🔒 Yeh details sirf admin dekh sakta hai — payment ke liye. Ek baar bharo, future mein edit kar sakte ho.</div>
@@ -239,6 +279,7 @@ select.inp{background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='
 <!-- TAB BAR -->
 <div class="tabbar" id="tabbar" style="display:none">
   <button class="tb active" id="tab-add" onclick="switchTab('add')"><span class="ic">➕</span>Add</button>
+  <button class="tb" id="tab-advance" onclick="switchTab('advance')"><span class="ic">💰</span>Advance</button>
   <button class="tb" id="tab-history" onclick="switchTab('history')"><span class="ic">📋</span>History</button>
   <button class="tb" id="tab-settings" onclick="switchTab('settings')"><span class="ic">⚙️</span>Settings</button>
 </div>
@@ -318,6 +359,6 @@ window.addEventListener('load', function(){
   }, 800);
 });
 </script>
-<script src="/expenses-field.js?v=1.0.10-2026-06-23"></script>
+<script src="/expenses-field.js?v=1.1.0-2026-07-01"></script>
 </body>
 </html>
