@@ -152,11 +152,12 @@ function enterApp(){
 // ════════ TABS ════════
 function switchTab(tab){
   state.currentTab = tab;
-  ['add','history','settings'].forEach(function(t){
+  ['add','advance','history','settings'].forEach(function(t){
     $('screen-'+t).className = 'scr' + (t===tab?' active':'');
     $('tab-'+t).className = 'tb' + (t===tab?' active':'');
   });
   if (tab==='history') loadHistory();
+  if (tab==='advance') loadAdvances();
 }
 
 // ════════ ASSIGNED CAMPAIGNS ════════
@@ -276,6 +277,73 @@ function submitExpense(){
 }
 
 // ════════ HISTORY ════════
+// ════════ ADVANCE ════════
+function currentMonthKey(){
+  var d = new Date(new Date().getTime()+5.5*3600*1000);
+  return d.toISOString().slice(0,7); // 'YYYY-MM'
+}
+function submitAdvance(){
+  var amt = +$('advAmount').value || 0;
+  if (amt <= 0) return toast('Amount daalo','error');
+  var reason = $('advReason').value.trim();
+  var btn = $('advSubmitBtn');
+  btn.disabled = true; btn.textContent = '⏳ Requesting…';
+  var payload = {
+    member_phone: state.member.phone,
+    member_name: state.member.name || state.member.phone,
+    amount: amt,
+    reason: reason || null,
+    request_month: currentMonthKey(),
+    status: 'pending',
+    source: 'field'
+  };
+  api('/prajapati_advances', { method:'POST', body:payload, prefer:'return=minimal' })
+    .then(function(){
+      toast('✅ Advance request bhej diya','success');
+      $('advAmount').value=''; $('advReason').value='';
+      btn.disabled=false; btn.textContent='📤 Request Advance';
+      loadAdvances();
+    })
+    .catch(function(e){
+      btn.disabled=false; btn.textContent='📤 Request Advance';
+      toast('Failed: '+e.message,'error');
+    });
+}
+function loadAdvances(){
+  $('advList').innerHTML = '<div class="empty"><div class="ei">⏳</div>Loading…</div>';
+  api('/prajapati_advances?member_phone=eq.'+encodeURIComponent(state.member.phone)+'&select=*&order=requested_at.desc&limit=200')
+    .then(function(rows){
+      rows = rows || [];
+      // is month ka total (approved + paid + pending sab count — jo liya/maanga)
+      var mk = currentMonthKey();
+      var monthRows = rows.filter(function(r){ return r.request_month === mk; });
+      // "liya hua" = approved + paid (actually diya gaya). Pending bhi dikha do alag.
+      var takenTotal = monthRows.filter(function(r){ return r.status==='approved'||r.status==='paid'; })
+        .reduce(function(s,r){ return s + (Number(r.amount)||0); }, 0);
+      var pendingCount = monthRows.filter(function(r){ return r.status==='pending'; }).length;
+      $('advMonthTotal').textContent = '₹' + takenTotal.toLocaleString('en-IN');
+      var monthName = new Date(mk+'-01').toLocaleDateString('en-IN',{month:'short',year:'numeric'});
+      $('advMonthMeta').textContent = monthName + ' · ' + monthRows.length + ' request' + (monthRows.length===1?'':'s') + (pendingCount?(' · '+pendingCount+' pending'):'');
+
+      if (!rows.length){ $('advList').innerHTML = '<div class="empty"><div class="ei">💰</div>Abhi koi advance request nahi</div>'; return; }
+      $('advList').innerHTML = rows.map(function(r){
+        var d = new Date(r.requested_at||Date.now()).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+        var st = String(r.status||'pending');
+        return '<div class="adv-item">'+
+          '<div class="adv-item-top">'+
+            '<div><div class="adv-item-amt">₹'+(Number(r.amount)||0).toLocaleString('en-IN')+'</div>'+
+            '<div class="adv-item-date">📅 '+d+'</div></div>'+
+            '<span class="adv-pill '+st+'">'+st.charAt(0).toUpperCase()+st.slice(1)+'</span>'+
+          '</div>'+
+          (r.reason ? '<div class="adv-item-reason">💬 '+esc(r.reason)+'</div>' : '')+
+          '</div>';
+      }).join('');
+    })
+    .catch(function(e){
+      $('advList').innerHTML = '<div class="empty">Failed: '+esc(e.message)+'</div>';
+    });
+}
+
 function loadHistory(){
   $('histList').innerHTML = '<div class="empty"><div class="ei">⏳</div>Loading…</div>';
   api('/prajapati_expenses?team_member_phone=eq.'+encodeURIComponent(state.member.phone)+'&source=eq.field&select=*&order=expense_date.desc&limit=200')
