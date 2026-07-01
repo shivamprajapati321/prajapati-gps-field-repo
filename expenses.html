@@ -1455,11 +1455,31 @@ async function saveEditExpense(){
   }
 }
 
-// ════ PDF-A: professional expense slip ════
-function expenseSlipPDF(id){
+// ════ PDF-A: professional expense slip (with work quantity + location) ════
+async function expenseSlipPDF(id){
   var e = state.expenses.find(function(x){ return String(x.id)===String(id); });
   if(!e){ toast('Not found'); return; }
   if(typeof window.jspdf==='undefined'){ toast('PDF lib loading…'); return; }
+
+  // ⭐ Us din us member ka WORK QUANTITY nikaalo (campaign expense ke liye)
+  var workQty = null, workLabel = '';
+  try {
+    if (e.expense_type === 'campaign' && e.team_member_phone && e.expense_date) {
+      // pehle execution_daily_log (direct quantity), fir photos count fallback
+      var dlog = await api('/execution_daily_log?member_phone=eq.'+encodeURIComponent(e.team_member_phone)+'&log_date=eq.'+e.expense_date+(e.campaign_key?'&campaign_key=eq.'+encodeURIComponent(e.campaign_key):'')+'&select=quantity,work_name&limit=5000').catch(function(){return null;});
+      if (dlog && dlog.length){
+        workQty = dlog.reduce(function(s,r){ return s + (Number(r.quantity)||0); }, 0);
+        workLabel = 'units';
+      } else {
+        // fallback: trial_photos count us din
+        var startUTC = new Date(e.expense_date+'T00:00:00+05:30').toISOString();
+        var endUTC = new Date(e.expense_date+'T23:59:59+05:30').toISOString();
+        var ph = await api('/trial_photos?member_phone=eq.'+encodeURIComponent(e.team_member_phone)+(e.campaign_key?'&campaign_key=eq.'+encodeURIComponent(e.campaign_key):'')+'&captured_at=gte.'+startUTC+'&captured_at=lte.'+endUTC+'&rejected=eq.false&deleted_at=is.null&select=id&limit=50000').catch(function(){return null;});
+        if (ph){ workQty = ph.length; workLabel = 'photos'; }
+      }
+    }
+  } catch(qErr){ console.warn('workQty lookup failed:', qErr); }
+
   var jsPDF = window.jspdf.jsPDF;
   var doc = new jsPDF({unit:'pt',format:'a5'});
   var W = doc.internal.pageSize.getWidth();
@@ -1484,6 +1504,8 @@ function expenseSlipPDF(id){
   info('Campaign', getWork(e.campaign_name)||'-');
   info('Member', e.team_member_name||'-');
   if(e.location) info('Location', e.location);
+  // ⭐ WORK QUANTITY row (us din ka kaam)
+  if(workQty != null && workQty > 0) info('Work Done', workQty + ' ' + workLabel);
   y+=4;
   // Table header
   doc.setFillColor(243,244,248); doc.rect(M,y,W-2*M,22,'F');
