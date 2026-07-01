@@ -359,6 +359,7 @@
         <button class="filter-btn dept-btn active" data-dept="all" onclick="setDept(this)">All Departments</button>
         <button class="filter-btn dept-btn" data-dept="execution" onclick="setDept(this)">🚗 Execution</button>
         <button class="filter-btn dept-btn" data-dept="stitching" onclick="setDept(this)">🧵 Stitching</button>
+        <button class="filter-btn dept-btn" data-dept="delivery" onclick="setDept(this)">🚚 Delivery</button>
       </div>
 
       <div class="filter-bar">
@@ -602,7 +603,15 @@ async function loadData() {
     // Payments: prajapati_stitching_payments (master_phone, master_name, amount, payment_date)
     const stitchPay = await api('/rest/v1/prajapati_stitching_payments?deleted_at=is.null&select=master_phone,master_name,amount,payment_date&order=payment_date.desc&limit=20000').catch(() => []);
     state.stitchPayments = stitchPay || [];
-    
+
+    // ─── DELIVERY department data (vendor freight) ───
+    // Dispatches → vendor "earnings" (jitna freight bill hua vendor ko)
+    const dispatches = await api('/rest/v1/prajapati_dispatches?select=vendor_id,vendor_name,total_freight,dispatch_date,status&order=dispatch_date.desc&limit=20000').catch(() => []);
+    state.deliveryDispatches = (dispatches || []).filter(function(d){ return String(d.status||'').toLowerCase() !== 'cancelled'; });
+    // Vendor payments (Prajapati-paid only reduces our outstanding)
+    const vendorPay = await api('/rest/v1/prajapati_vendor_payments?select=vendor_id,vendor_name,amount,payment_date,paid_by&order=payment_date.desc&limit=20000').catch(() => []);
+    state.deliveryPayments = (vendorPay || []).filter(function(p){ return (p.paid_by || 'prajapati') === 'prajapati'; });
+
     computeRows();
     renderRows();
     updateSummary();
@@ -671,7 +680,17 @@ function computeRows() {
   const execRows = buildDeptRows(state.earnings, state.payments, 'Execution', 'member_phone', 'member_name');
   const stitchRows = buildDeptRows(state.stitchEarnings, state.stitchPayments, 'Stitching', 'master_phone', 'master_name');
 
-  state.rows = [...execRows, ...stitchRows];
+  // ─── DELIVERY vendor rows ───
+  // Dispatches ko buildDeptRows shape mein map: vendor = "member", freight = earning
+  var delivEarn = (state.deliveryDispatches || []).map(function(d){
+    return { vendor_key: d.vendor_id || d.vendor_name || 'unknown', vendor_name: d.vendor_name || 'Unknown', total_amount: d.total_freight || 0, log_date: d.dispatch_date };
+  });
+  var delivPay = (state.deliveryPayments || []).map(function(p){
+    return { vendor_key: p.vendor_id || p.vendor_name || 'unknown', vendor_name: p.vendor_name || 'Unknown', amount: p.amount || 0, payment_date: p.payment_date };
+  });
+  var delivRows = buildDeptRows(delivEarn, delivPay, 'Delivery', 'vendor_key', 'vendor_name');
+
+  state.rows = [...execRows, ...stitchRows, ...delivRows];
 }
 
 // ─── DATE FILTERING (IST) ───
@@ -756,6 +775,7 @@ function getFilteredRows() {
   // department filter (Execution / Stitching / All)
   if (state.dept === 'execution') rows = rows.filter(r => r.dept === 'Execution');
   else if (state.dept === 'stitching') rows = rows.filter(r => r.dept === 'Stitching');
+  else if (state.dept === 'delivery') rows = rows.filter(r => r.dept === 'Delivery');
 
   if (state.filter === 'pending') rows = rows.filter(r => r.pending > 0);
   else if (state.filter === 'critical') rows = rows.filter(r => r.pending > 10000);
@@ -827,7 +847,7 @@ function renderRows() {
           <div class="member-cell">
             <div class="avatar">${getInitials(r.name)}</div>
             <div class="info">
-              <div class="name">${esc(r.name)} <span style="font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:5px;${r.dept==='Stitching'?'background:#ede9fe;color:#6d28d9;':'background:#dbeafe;color:#1d4ed8;'}vertical-align:middle;">${r.dept==='Stitching'?'🧵 STITCH':'🚗 EXEC'}</span></div>
+              <div class="name">${esc(r.name)} <span style="font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:5px;${r.dept==='Stitching'?'background:#ede9fe;color:#6d28d9;':r.dept==='Delivery'?'background:#ccfbf1;color:#0e9c9a;':'background:#dbeafe;color:#1d4ed8;'}vertical-align:middle;">${r.dept==='Stitching'?'🧵 STITCH':r.dept==='Delivery'?'🚚 DELIVERY':'🚗 EXEC'}</span></div>
               <div class="phone">${esc(r.phone)}</div>
             </div>
           </div>
@@ -843,8 +863,10 @@ function renderRows() {
         <td class="num">${r.lastPaid ? new Date(r.lastPaid).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) : '—'}</td>
         <td>
           <div class="row-actions">
-            ${r.pending > 0 ? `<button class="row-btn pay" onclick="payNow('${esc(r.phone)}', '${esc(r.name)}', ${r.pending})">💰 Pay</button>` : ''}
-            <button class="row-btn" onclick="viewHistory('${esc(r.phone)}', '${esc(r.name)}')">📋 History</button>
+            ${r.pending > 0 ? (r.dept === 'Delivery'
+              ? `<a class="row-btn pay" href="/delivery.html" style="text-decoration:none">💸 Pay in Delivery</a>`
+              : `<button class="row-btn pay" onclick="payNow('${esc(r.phone)}', '${esc(r.name)}', ${r.pending})">💰 Pay</button>`) : ''}
+            ${r.dept !== 'Delivery' ? `<button class="row-btn" onclick="viewHistory('${esc(r.phone)}', '${esc(r.name)}')">📋 History</button>` : ''}
           </div>
         </td>
       </tr>
@@ -860,6 +882,7 @@ function updateSummary() {
   let sr = [...state.rows];
   if (state.dept === 'execution') sr = sr.filter(r => r.dept === 'Execution');
   else if (state.dept === 'stitching') sr = sr.filter(r => r.dept === 'Stitching');
+  else if (state.dept === 'delivery') sr = sr.filter(r => r.dept === 'Delivery');
 
   const totalEarned = sr.reduce((s, r) => s + r.earned, 0);
   const totalPaid = sr.reduce((s, r) => s + r.paid, 0);
@@ -874,7 +897,7 @@ function updateSummary() {
   if (state.dateRange === 'custom' && state.dateFrom) {
     rLabel = (state.dateFrom === state.dateTo) ? state.dateFrom : (state.dateFrom + ' → ' + state.dateTo);
   }
-  var deptLabel = state.dept === 'all' ? 'All depts' : (state.dept === 'execution' ? 'Execution' : 'Stitching');
+  var deptLabel = state.dept === 'all' ? 'All depts' : (state.dept === 'execution' ? 'Execution' : state.dept === 'stitching' ? 'Stitching' : 'Delivery');
   var heroSub = document.querySelector('.hero-sub');
   if (heroSub) heroSub.textContent = '📅 ' + rLabel + ' · 🏢 ' + deptLabel + ' · Earned − Paid = Pending.';
   
