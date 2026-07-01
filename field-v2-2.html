@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>MARS GPS</title>
+
+<!-- PWA: MARS GPS — ISOLATED from admin + field-1 -->
+<link rel="manifest" href="/manifest-field-v2.json">
+<meta name="application-name" content="MARS GPS">
+<meta name="apple-mobile-web-app-title" content="MARS GPS">
+<meta name="description" content="MARS GPS — GPS-stamped vehicle branding photo capture. Fast, reliable.">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/mars-gps-apple-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/mars-gps-favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/mars-gps-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/icons/mars-gps-512.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0B1957">
+<link rel="preconnect" href="https://fpbktcgtspqsqpaytslv.supabase.co" crossorigin>
+<link rel="preconnect" href="https://api.platerecognizer.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--p:#1a2980;--pd:#0f1c5e;--bg:#f4f6f9;--ln:#e8e8ee;--mu:#666;--ok:#10b981;--dn:#ef4444;--wn:#f59e0b;--gd:#f5b800}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+html,body{font-family:'Poppins',sans-serif;background:var(--bg);color:#222;min-height:100vh;min-height:100dvh;overscroll-behavior:none}
+button,input{font-family:inherit}input{font-size:16px}
+.header{background:var(--p);color:#fff;padding:14px 18px;padding-top:max(14px,env(safe-area-inset-top));position:sticky;top:0;z-index:50;box-shadow:0 2px 10px rgba(0,0,0,.1);display:flex;justify-content:space-between;align-items:center}
+.h-l{display:flex;align-items:center;gap:10px}
+.h-logo{width:32px;height:32px;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--p);font-weight:700;font-size:16px}
+.header h1{font-size:14px;font-weight:600;letter-spacing:.5px}
+.header .sub{font-size:10px;opacity:.85;margin-top:1px}
+.lo-btn{background:rgba(255,255,255,.15);color:#fff;border:none;padding:5px 12px;border-radius:14px;font-size:11px;cursor:pointer}
+.scr{display:none;padding:16px;padding-bottom:120px}
+.scr.active{display:block}
+@media(min-width:640px){.scr{max-width:520px;margin:0 auto}}
+.card{background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;border:1px solid var(--ln)}
+.card h3{font-size:15px;font-weight:600;color:var(--p);margin-bottom:6px}
+.card .sub{font-size:12px;color:var(--mu);margin-bottom:12px}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;background:var(--p);color:#fff;font-weight:600;border-radius:10px;font-size:14px;border:none;cursor:pointer}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn:hover:not(:disabled){background:var(--pd)}
+.btn-g{background:transparent;border:1px solid #dde;color:var(--p)}
+.btn-g:hover:not(:disabled){background:#f0f2f7}
+.btn-w{background:var(--wn)}
+.btn-sm{padding:8px 14px;font-size:12px;width:auto}
+.field{margin-bottom:12px}
+.field label{font-size:11px;font-weight:600;color:var(--p);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;display:block}
+.field input{width:100%;padding:11px 13px;font-size:15px;border:1px solid #dde;border-radius:8px;outline:none}
+.field input:focus{border-color:var(--p)}
+.splash{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;justify-content:center;padding:32px;background:linear-gradient(180deg,var(--p) 0%,#0f1c5e 100%);color:#fff}
+.splash .brand-logo{background:#fff;padding:14px 22px;border-radius:12px;margin:0 auto 28px;width:fit-content;max-width:280px;box-shadow:0 6px 24px rgba(0,0,0,.25)}
+.splash .brand-logo img{display:block;width:100%;height:auto;max-width:220px}
+.splash h1{font-size:28px;font-weight:700;line-height:1.15;margin-bottom:6px;text-align:center}
+.splash p.lead{opacity:.85;font-size:14px;margin-bottom:32px;text-align:center;letter-spacing:.5px}
+.splash .field input{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:#fff}
+.splash .field input::placeholder{color:rgba(255,255,255,.6)}
+.splash .field input:focus{border-color:#fff;background:rgba(255,255,255,.15)}
+.splash .field label{color:rgba(255,255,255,.7)}
+.splash .btn{background:#fff;color:var(--p)}
+.gps-modal{position:fixed;inset:0;background:rgba(11,25,87,.96);z-index:9999;display:none;flex-direction:column;padding:24px;padding-top:max(24px,env(safe-area-inset-top));overflow-y:auto;color:#fff}
+.gps-modal.show{display:flex}
+.gps-modal .icon-wrap{margin:20px auto 24px;width:88px;height:88px;background:rgba(245,184,0,.15);border:2px solid rgba(245,184,0,.4);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:42px}
+.gps-modal h2{font-size:22px;font-weight:700;text-align:center;margin-bottom:8px;color:#fff}
+.gps-modal .sub{text-align:center;font-size:14px;color:rgba(255,255,255,.85);line-height:1.5;margin-bottom:28px;padding:0 12px}
+.gps-modal .steps{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:18px;margin-bottom:18px}
+.gps-modal .step{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+.gps-modal .step:last-child{border-bottom:none}
+.gps-modal .step-num{background:#f5b800;color:#0B1957;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
+.gps-modal .step-txt{font-size:14px;line-height:1.45;flex:1;padding-top:3px}
+.gps-modal .actions{display:flex;flex-direction:column;gap:10px;margin-top:20px}
+.gps-modal .actions .btn{padding:14px;border-radius:10px;font-weight:600;font-size:14px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.gps-modal .btn-retry{background:#f5b800;color:#0B1957}
+.gps-modal .btn-call{background:#10b981;color:#fff}
+.gps-modal .btn-skip{background:transparent;color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.25)}
+.gps-modal .why-box{background:rgba(38,208,206,.12);border:1px solid rgba(38,208,206,.35);border-radius:10px;padding:12px;margin-bottom:18px;font-size:13px;color:rgba(255,255,255,.92);line-height:1.5}
+.gps-modal .why-box strong{color:#26d0ce;display:block;margin-bottom:4px}
+.gps-modal .browser-hint{background:rgba(255,255,255,.06);border-radius:8px;padding:10px 14px;font-size:12px;color:rgba(255,255,255,.65);text-align:center;margin-top:14px}
+.gps-modal.allowing .step-active{background:rgba(245,184,0,.1);margin:0 -8px;padding:10px 8px;border-radius:6px}
+.gps-status-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;font-size:11px;font-weight:600}
+.gps-status-pill.ok{background:rgba(16,185,129,.15);color:#10b981}
+.gps-status-pill.warn{background:rgba(245,158,11,.15);color:#f59e0b}
+.gps-status-pill.err{background:rgba(239,68,68,.15);color:#ef4444}
+.onboard-screen{position:fixed;inset:0;background:linear-gradient(180deg,#0B1957 0%,#0f1c5e 100%);z-index:9998;display:none;flex-direction:column;color:#fff;padding:28px;overflow-y:auto}
+.onboard-screen.show{display:flex}
+.onboard-screen .icon-big{margin:30px auto 24px;width:120px;height:120px;background:rgba(245,184,0,.15);border:3px solid #f5b800;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:60px}
+.onboard-screen h2{font-size:24px;font-weight:700;text-align:center;margin-bottom:10px}
+.onboard-screen .lead-txt{font-size:15px;color:rgba(255,255,255,.85);text-align:center;line-height:1.6;margin-bottom:24px;padding:0 8px}
+.onboard-screen .perks{display:flex;flex-direction:column;gap:14px;margin-bottom:32px}
+.onboard-screen .perk{display:flex;gap:14px;align-items:center;background:rgba(255,255,255,.06);padding:14px;border-radius:12px}
+.onboard-screen .perk-icon{font-size:24px;flex-shrink:0}
+.onboard-screen .perk-txt{font-size:13px;line-height:1.5;color:rgba(255,255,255,.9)}
+.onboard-screen .actions{margin-top:auto;padding-top:20px}
+.hero{background:linear-gradient(135deg,var(--p) 0%,#26a 100%);color:#fff;padding:18px;border-radius:14px;margin-bottom:14px;position:relative;overflow:hidden}
+.hero::before{content:"";position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.1)}
+.hero .lbl{font-size:10px;opacity:.85;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px}
+.hero h2{font-size:20px;font-weight:700;margin-bottom:4px}
+.hero .meta{font-size:12px;opacity:.85}
+.hero .progress{display:flex;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.2)}
+.hero .progress div{font-size:11px;opacity:.85;text-align:center;flex:1}
+.hero .progress strong{display:block;font-size:20px;font-weight:700;margin-bottom:2px}
+.sbar{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;background:#fff;border:1px solid var(--ln);border-radius:10px;margin-bottom:12px;font-size:12px}
+.sbar .l{display:flex;align-items:center;gap:6px;color:var(--p);font-weight:600}
+.sbar .l .num{background:var(--p);color:#fff;padding:2px 11px;border-radius:99px;font-weight:700;font-size:13px}
+.sbar .r{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mu)}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot.online{background:var(--ok)}.dot.offline{background:var(--dn)}
+.dot.uploading{background:var(--wn);animation:pulse 1s infinite}.dot.idle{background:var(--ok)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.grid.single{grid-template-columns:1fr;max-width:280px;margin:0 auto 16px}
+.slot{aspect-ratio:1/1;background:#fff;border:2px dashed var(--ln);border-radius:12px;display:flex;flex-direction:column;justify-content:center;align-items:center;color:var(--mu);font-size:12px;font-weight:500;cursor:pointer;position:relative;overflow:hidden}
+.slot:active{transform:scale(.98)}
+.slot.done{border-style:solid;border-color:var(--ok);cursor:default}
+.slot.locked{cursor:not-allowed;opacity:.85}
+.slot.next{border-color:var(--p);background:#eef0f9;border-style:solid;animation:pulseNext 1.6s infinite}
+@keyframes pulseNext{0%,100%{box-shadow:0 0 0 0 rgba(26,41,128,.3)}50%{box-shadow:0 0 0 6px rgba(26,41,128,0)}}
+.slot img{width:100%;height:100%;object-fit:cover;border-radius:10px}
+.slot .badge{position:absolute;top:6px;left:6px;background:rgba(26,41,128,.92);color:var(--gd);padding:3px 8px;border-radius:4px;font-size:10px;font-weight:700;z-index:2;letter-spacing:.5px}
+.slot .check{position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;background:var(--ok);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px;z-index:2}
+.gps{display:flex;align-items:center;gap:8px;padding:9px 13px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.3);border-radius:8px;font-size:11px;color:var(--ok);margin-bottom:12px}
+.gps.warn{background:rgba(255,77,79,.08);border-color:rgba(255,77,79,.3);color:var(--dn)}
+.gps .live{width:7px;height:7px;background:var(--ok);border-radius:50%;animation:lp 1.5s infinite;flex-shrink:0}
+.gps.warn .live{background:var(--dn)}
+@keyframes lp{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.ocr{display:flex;align-items:center;gap:8px;padding:9px 13px;border-radius:8px;font-size:12px;font-weight:600;margin-bottom:12px}
+.ocr.detect{background:rgba(245,184,0,.12);border:1px solid var(--gd);color:#a06000}
+.ocr.success{background:rgba(16,185,129,.1);border:1px solid var(--ok);color:#0d9968}
+.ocr.fail{background:rgba(239,68,68,.08);border:1px solid var(--dn);color:#a02020}
+.ocr .sm{width:11px;height:11px;border:2px solid #f0e0a0;border-top-color:var(--wn);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
+.ocr .pl{font-family:'JetBrains Mono',monospace;font-weight:700;letter-spacing:1px}
+.vrow{display:block;padding:11px 0;border-bottom:1px solid var(--ln)}
+.vrow:last-child{border-bottom:none}
+.vrow .vi{flex:1;min-width:0}
+.vrow .num{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;color:var(--p)}
+.vrow .det{font-size:10px;color:#888;margin-top:2px}
+.vrow .va{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.vdetail{margin-top:10px;padding:10px;background:#f7f9fc;border-radius:8px}
+.vdetail-info{font-size:12px;color:var(--p);font-weight:600;margin-bottom:8px}
+.vthumbs{display:flex;gap:6px;flex-wrap:wrap}
+.vthumb{width:52px;height:52px;object-fit:cover;border-radius:6px;border:1px solid var(--ln);cursor:pointer}
+.ve-photobadge{background:#eafcff;color:#0891b2;font-weight:700;font-size:13px;padding:8px 14px;border-radius:8px;text-align:center;margin-bottom:14px}
+.action-bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--ln);padding:14px 16px;padding-bottom:max(14px,env(safe-area-inset-bottom));z-index:60;display:flex;gap:8px}
+.action-bar .btn{flex:1}
+@media(min-width:640px){.action-bar{max-width:520px;margin:0 auto;left:50%;transform:translateX(-50%)}}
+.toast{position:fixed;top:80px;left:50%;transform:translateX(-50%);background:var(--p);color:#fff;padding:12px 22px;border-radius:99px;font-size:13px;font-weight:600;z-index:300;opacity:0;transition:.25s;pointer-events:none;max-width:90vw;text-align:center;box-shadow:0 4px 18px rgba(0,0,0,.18)}
+.toast.show{opacity:1}.toast.success{background:var(--ok)}.toast.error{background:var(--dn)}.toast.warn{background:var(--wn)}
+.overlay{position:fixed;inset:0;background:rgba(26,41,128,.85);display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;z-index:400}
+.overlay.show{display:flex}
+.overlay .ring{width:42px;height:42px;border:3px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.overlay p{color:#fff;font-size:13px;font-weight:500;text-align:center;padding:0 20px}
+.cam-input{display:none}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+.pill.complete{background:#dcfce7;color:#0d9968}.pill.partial{background:#fef3c7;color:#a06000}
+.flash{position:fixed;inset:0;background:rgba(16,185,129,.95);display:none;align-items:center;justify-content:center;flex-direction:column;z-index:500;color:#fff;text-align:center;padding:32px}
+.flash.show{display:flex;animation:fi .35s ease-out}
+@keyframes fi{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+.flash .bc{width:80px;height:80px;border-radius:50%;background:#fff;color:var(--ok);display:flex;align-items:center;justify-content:center;font-size:48px;font-weight:700;margin-bottom:18px}
+.flash h2{font-size:24px;font-weight:700;margin-bottom:8px}
+.flash .pl{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;letter-spacing:2px;background:rgba(255,255,255,.18);padding:7px 22px;border-radius:8px;margin-bottom:12px}
+.flash .meta{font-size:13px;opacity:.92;margin-bottom:6px}
+.flash .nx{font-size:11px;opacity:.85;margin-top:6px}
+.cam-modal{position:fixed;inset:0;background:#000;z-index:600;display:none;flex-direction:column}
+.cam-modal.show{display:flex}
+.cam-feed{flex:1;width:100%;height:100%;object-fit:contain;background:#000;transform-origin:center center}
+.cam-top{position:absolute;top:0;left:0;right:0;padding:14px 16px;padding-top:max(14px,env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:center;background:linear-gradient(180deg,rgba(0,0,0,.6) 0%,transparent 100%);z-index:2;color:#fff}
+.cam-cancel{background:rgba(0,0,0,.5);color:#fff;border:1px solid rgba(255,255,255,.3);width:36px;height:36px;border-radius:50%;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.cam-slot{font-size:13px;font-weight:600;background:rgba(0,0,0,.55);padding:6px 14px;border-radius:99px;letter-spacing:.4px}
+.cam-gps{font-size:11px;font-weight:600;background:rgba(16,185,129,.9);padding:5px 11px;border-radius:99px;display:flex;align-items:center;gap:5px}
+.cam-gps.warn{background:rgba(245,158,11,.9)}
+.cam-gps.err{background:rgba(239,68,68,.9)}
+.cam-gps .live-d{width:6px;height:6px;background:#fff;border-radius:50%;animation:lp 1.5s infinite}
+.cam-stamp{position:absolute;left:0;right:0;bottom:108px;height:18%;min-height:110px;background:rgba(10,14,26,.85);padding:10px 12px;display:flex;gap:10px;color:#fff;z-index:2}
+.cam-stamp .map{aspect-ratio:1/1;height:100%;background:#7AA070;border-radius:3px;position:relative;flex-shrink:0;overflow:hidden}
+.cam-stamp .map::before,.cam-stamp .map::after{content:"";position:absolute;background:#D8D4C0}
+.cam-stamp .map::before{top:40%;left:0;right:0;height:6%}
+.cam-stamp .map::after{top:0;left:45%;bottom:0;width:4%}
+.cam-stamp .pin{width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-top:18px solid #DB4437;position:absolute;left:50%;top:35%;transform:translateX(-50%);background:none}
+.cam-stamp .pin::after{content:"";position:absolute;top:-22px;left:-7px;width:14px;height:14px;border-radius:50%;background:#DB4437;border:3px solid #DB4437}
+.cam-stamp .pin::before{content:"";position:absolute;top:-15px;left:-3px;width:6px;height:6px;border-radius:50%;background:#fff;z-index:2}
+.cam-stamp .glabel{position:absolute;left:4px;bottom:3px;font-size:9px;font-weight:700;color:#fff;letter-spacing:.5px;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.cam-stamp .info{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.cam-stamp .city{font-size:14px;font-weight:700;letter-spacing:.2px;display:flex;align-items:center;gap:6px}
+.cam-stamp .flag{display:inline-block;width:14px;height:9px;background:linear-gradient(180deg,#FF9933 33%,#fff 33% 66%,#138808 66%);border-radius:1px;flex-shrink:0}
+.cam-stamp .addr{font-size:10px;line-height:1.3;opacity:.95;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cam-stamp .latlng{font-size:10px;font-weight:500;font-family:'JetBrains Mono',monospace;opacity:.95}
+.cam-stamp .dt{font-size:9.5px;opacity:.85}
+.cam-shutter{position:absolute;left:50%;bottom:24px;bottom:max(24px,env(safe-area-inset-bottom));transform:translateX(-50%);width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.18);border:3px solid rgba(255,255,255,.85);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:3;transition:.15s}
+.cam-shutter:active{transform:translateX(-50%) scale(.92)}
+.cam-shutter::after{content:"";width:56px;height:56px;border-radius:50%;background:#fff;transition:.15s}
+.cam-shutter:disabled{opacity:.4;cursor:not-allowed}
+.cam-shutter:disabled::after{background:#bbb}
+.cam-zoom-indicator{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.65);color:#fff;font-size:20px;font-weight:700;padding:8px 16px;border-radius:99px;z-index:5;opacity:0;pointer-events:none;transition:opacity .2s}
+.cam-zoom-indicator.show{opacity:1}
+.cam-flash-btn{position:absolute;right:18px;bottom:42px;bottom:max(42px,calc(env(safe-area-inset-bottom) + 18px));width:52px;height:52px;border-radius:50%;background:rgba(0,0,0,.55);border:2px solid rgba(255,255,255,.6);cursor:pointer;display:none;align-items:center;justify-content:center;z-index:4;font-size:24px;transition:.15s;color:#fff}
+.cam-flash-btn:active{transform:scale(.9)}
+.cam-flash-btn.on{background:rgba(255,214,10,.95);border-color:#fff;color:#000}
+.cam-flash-btn.on.auto::after{content:"AUTO";position:absolute;bottom:-16px;left:50%;transform:translateX(-50%);font-size:8px;font-weight:700;color:#FFD60A;letter-spacing:.5px}
+.install-bar{position:fixed;left:12px;right:12px;bottom:16px;background:#fff;border:2px solid var(--p);border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.2);padding:12px 14px;display:none;align-items:center;gap:12px;z-index:200}
+.install-bar.show{display:flex}
+.install-bar .ib-icon{width:42px;height:42px;background:var(--p);color:#fff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;font-weight:700}
+.install-bar .ib-text{flex:1;min-width:0}
+.install-bar .ib-title{font-size:13px;font-weight:700;color:var(--p);margin-bottom:1px}
+.install-bar .ib-sub{font-size:11px;color:var(--mu);line-height:1.3}
+.install-bar .ib-actions{display:flex;gap:6px;flex-shrink:0}
+.install-bar .ib-btn{padding:8px 14px;font-size:12px;font-weight:700;border-radius:8px;border:none;cursor:pointer;font-family:inherit}
+.install-bar .ib-btn.primary{background:var(--p);color:#fff}
+.install-bar .ib-btn.secondary{background:transparent;color:var(--mu);font-size:20px;padding:6px 8px}
+.version-badge{position:fixed;bottom:6px;right:8px;background:rgba(26,41,128,0.85);color:#fff;padding:3px 8px;border-radius:6px;font-size:9px;font-weight:700;z-index:50;font-family:'JetBrains Mono',monospace;pointer-events:none}
+
+/* v2: VEHICLE ENTRY SCREEN — mobile-first PWA polish */
+/* screen-entry par .scr ka default padding hata do (ve-wrap apna deta hai) */
+#screen-entry{padding:0 !important}
+#screen-entry.active{display:flex !important;flex-direction:column}
+.ve-wrap{padding:20px 18px 120px;max-width:520px;margin:0 auto;width:100%}
+.ve-title{font-size:23px;font-weight:800;color:var(--p);letter-spacing:-.4px;line-height:1.15}
+.ve-sub{font-size:13px;color:var(--mu);margin:4px 0 22px;font-weight:500;line-height:1.4}
+.ve-field{margin-bottom:18px}
+.ve-field label{display:block;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--p);margin-bottom:9px;opacity:.75}
+.ve-inp{width:100%;padding:16px 16px;font-size:16px;font-weight:600;border:2px solid var(--ln,#e8e8ee);border-radius:14px;background:#fff;font-family:inherit;color:var(--p);transition:.18s;-webkit-appearance:none;box-shadow:0 1px 2px rgba(16,24,64,.04)}
+.ve-inp:focus{outline:none;border-color:var(--gd,#f5b800);box-shadow:0 0 0 4px rgba(245,184,0,.14)}
+.ve-inp::placeholder{color:#bcc2d2;font-weight:500}
+.ve-mono{font-family:'JetBrains Mono',monospace;letter-spacing:1.5px;font-weight:700;text-transform:uppercase}
+.ve-hint{font-size:11px;color:#9aa2b8;font-weight:600;margin-top:7px;padding-left:2px}
+.ve-dup{background:#fdecec;border:1.5px solid #f3b6b6;border-radius:14px;padding:14px;margin-top:10px;animation:veShake .4s}
+@keyframes veShake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}}
+.ve-dup-head{font-size:14px;color:#dc2626;font-weight:800;margin-bottom:6px;line-height:1.3}
+.ve-dup-body{font-size:12px;color:#a23b3b;font-weight:600;line-height:1.5}
+.ve-dup-pics{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.ve-dup-pic{flex:1;min-width:64px;height:66px;border-radius:10px;background-size:cover;background-position:center;background-color:#f5a623;position:relative;overflow:hidden;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.14);text-decoration:none}
+.ve-dup-pic span{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);color:#fff;font-size:8px;text-align:center;padding:2px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+/* Footer action bar — bulletproof fixed at bottom, button ALWAYS visible */
+.ve-actions{display:flex;gap:10px;position:fixed;left:0;right:0;bottom:0;
+  padding:14px 18px calc(16px + env(safe-area-inset-bottom));
+  background:#fff;border-top:1px solid var(--ln);box-sizing:border-box;z-index:90}
+@media(min-width:640px){.ve-actions{max-width:520px;left:50%;transform:translateX(-50%)}}
+.ve-actions .btn{width:auto;flex:1 1 0;min-width:0;padding:16px 12px;font-size:15px;font-weight:700;white-space:nowrap;border-radius:12px}
+.ve-actions .btn-g{flex:0 0 auto;width:auto;padding:16px 18px;background:#fff;color:var(--p);border:2px solid var(--ln)}
+.ve-actions .btn:disabled{background:#dde1ea;color:#a8aec0;box-shadow:none}
+.ve-actions .btn-primary,.ve-actions #ve-next{box-shadow:0 4px 14px rgba(26,41,128,.3)}
+.cap-veh{background:var(--p);color:#fff;padding:11px 14px;font-size:13px;font-weight:700;text-align:center;font-family:'JetBrains Mono',monospace;letter-spacing:.5px;line-height:1.3}
+</style>
+</head>
+<body>
+<section class="splash" id="screen-login">
+<div class="brand-logo" style="background:transparent;box-shadow:none;padding:0;"><img src="/icons/mars-gps-512.png" alt="MARS GPS" loading="eager" style="width:120px;height:120px;border-radius:24px;"></div>
+<h1>MARS GPS</h1>
+<p class="lead">Fast, Reliable</p>
+<div class="field"><label>Mobile Number</label><input id="inp-mobile" type="tel" inputmode="numeric" maxlength="10" placeholder="9876543210" autocomplete="tel"></div>
+<button class="btn" id="btn-login">Login →</button>
+<p style="text-align:center;color:rgba(255,255,255,.55);font-size:11px;margin-top:18px">Sirf admin-registered numbers login kar sakte hain.</p>
+</section>
+<div id="screen-home" class="scr"><div id="home-content"></div></div>
+
+<!-- v2: VEHICLE ENTRY SCREEN (owner name + contact + number + duplicate) -->
+<div id="screen-entry" class="scr"><div id="entry-content"></div></div>
+
+<div id="screen-capture" class="scr">
+<div id="capture-vehicle" class="cap-veh" style="display:none"></div>
+<div id="gps-strip" class="gps warn"><div class="live"></div><span>Getting GPS lock…</span></div>
+<div class="sbar"><div class="l"><span class="num" id="session-count">0</span><span>vehicles aaj</span></div><div class="r" id="session-status" style="display:none"></div></div>
+<div id="ocr-banner" class="ocr" style="display:none"></div>
+<div id="photo-grid-wrap"></div>
+<input type="file" accept="image/*" capture="environment" class="cam-input" id="cam-input">
+</div>
+<div class="action-bar" id="capture-actions" style="display:none">
+<button class="btn btn-g" onclick="endSession()">← End Session</button>
+</div>
+<div class="toast" id="toast"></div>
+<div class="overlay" id="overlay"><div class="ring"></div><p id="overlay-text">Working…</p></div>
+<div class="flash" id="flash"><div class="bc">✓</div><h2 id="flash-title">Vehicle Saved!</h2><div class="pl" id="flash-plate">—</div><div class="meta" id="flash-meta"></div><div class="nx">Ready for next vehicle…</div></div>
+
+<!-- Layer 5: Onboarding Screen (first-time setup) -->
+<div class="onboard-screen" id="onboard-screen">
+  <div class="icon-big">📍</div>
+  <h2 id="onboard-title">Welcome!</h2>
+  <p class="lead-txt">Photos ke saath GPS location chahiye — taaki client verify kar sake ki vehicle correct location pe tha.</p>
+  
+  <div class="perks">
+    <div class="perk"><span class="perk-icon">📸</span><span class="perk-txt">Har photo me automatic GPS stamp lagega</span></div>
+    <div class="perk"><span class="perk-icon">🛡️</span><span class="perk-txt">Client trust badega — verified work</span></div>
+    <div class="perk"><span class="perk-icon">⚡</span><span class="perk-txt">Sirf ek baar permission — phir kabhi nahi puchega</span></div>
+  </div>
+  
+  <div class="actions">
+    <button class="btn btn-retry" id="onboard-allow-btn" onclick="onboardingAllowGps()" style="background:#f5b800;color:#0B1957;font-weight:700">
+      📍 GPS Permission Allow Karo
+    </button>
+    <button class="btn btn-skip" onclick="onboardingSkip()" style="background:transparent;color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.2);margin-top:10px">
+      Skip (later allow karunga)
+    </button>
+  </div>
+</div>
+
+<!-- Layer 2: GPS Permission Setup Modal (when denied) -->
+<div class="gps-modal" id="gps-setup-modal">
+  <div class="icon-wrap">📍</div>
+  <h2 id="gps-modal-title">GPS Permission Chahiye</h2>
+  <p class="sub" id="gps-modal-subtitle">Vehicle photos ke saath location stamp ke liye GPS chahiye. Permission allow karna padega.</p>
+  
+  <div class="why-box">
+    <strong>📋 Kyun zaroori hai?</strong>
+    Client ko prove karna padega ki photo correct location se hai. GPS ke bina photo accept nahi hogi.
+  </div>
+  
+  <div class="steps" id="gps-modal-steps">
+    <div class="step">
+      <span class="step-num">1</span>
+      <span class="step-txt">Niche <strong>"GPS Allow Karo"</strong> button daba</span>
+    </div>
+    <div class="step">
+      <span class="step-num">2</span>
+      <span class="step-txt">Phone pe permission popup aayega → <strong>"Allow"</strong> daba</span>
+    </div>
+    <div class="step">
+      <span class="step-num">3</span>
+      <span class="step-txt">Agar popup nahi aaya → niche <strong>"Block Hai? Yahan Fix Karo"</strong> dekho</span>
+    </div>
+  </div>
+  
+  <div class="actions">
+    <button class="btn btn-retry" id="gps-allow-btn" onclick="forceRequestGpsPermission()" style="background:#26d0ce;color:#0B1957;font-weight:700;font-size:15px;padding:14px;">📍 GPS Allow Karo</button>
+    <button class="btn btn-skip" onclick="showBlockedRecovery()" style="background:rgba(255,184,0,0.15);color:#ffb800;border:1px solid #ffb800;">🚨 Block Hai? Yahan Fix Karo</button>
+    <button class="btn btn-skip" onclick="tryManualFallback()" id="gps-manual-btn">⚙️ Manual GPS Use Karo</button>
+    <a class="btn btn-call" href="tel:9922138138" style="text-decoration:none">📞 Admin Ko Call Karo (9922138138)</a>
+  </div>
+  
+  <div class="browser-hint" id="gps-modal-hint">
+    Step-by-step instructions ke liye upar "Block Hai?" button daba
+  </div>
+</div>
+
+<!-- ⭐ NEW: Blocked Recovery Modal (Layer 6) — when permission is permanently denied -->
+<div class="gps-modal" id="gps-blocked-modal" style="display:none">
+  <div class="icon-wrap" style="background:rgba(220,38,38,0.15);">🚨</div>
+  <h2 style="color:#ff6b6b">GPS Block Hai</h2>
+  <p class="sub">Permission permanently block hai. 3 tareeke hain fix karne ke — koi bhi try karo:</p>
+  
+  <div class="why-box" style="background:rgba(245,184,0,0.1);border-color:rgba(245,184,0,0.4);">
+    <strong>⚠️ Yeh kyun hua?</strong>
+    Kabhi galti se "Block" daba diya tha. Ab phone ko bolna padega "Allow" karne ke liye.
+  </div>
+  
+  <div class="steps">
+    <div class="step" style="background:rgba(38,208,206,0.08);border-left:3px solid #26d0ce;padding-left:10px;">
+      <span class="step-num" style="background:#26d0ce;color:#0B1957">A</span>
+      <span class="step-txt"><strong>Chrome Menu Method (Best)</strong><br>
+      1️⃣ Chrome ke top-right me <strong>⋮ 3-dots</strong> tap karo<br>
+      2️⃣ <strong>Settings</strong> tap karo<br>
+      3️⃣ <strong>Site Settings</strong> tap karo<br>
+      4️⃣ <strong>Location</strong> tap karo<br>
+      5️⃣ "Blocked" section me <strong>prajapati-gps-field-repo.vercel.app</strong> dhundo<br>
+      6️⃣ Site pe tap karke <strong>Allow</strong> karo<br>
+      7️⃣ Wapas aake "GPS Allow Karo" daba
+      </span>
+    </div>
+    
+    <div class="step" style="background:rgba(245,184,0,0.08);border-left:3px solid #ffb800;padding-left:10px;margin-top:10px;">
+      <span class="step-num" style="background:#ffb800;color:#0B1957">B</span>
+      <span class="step-txt"><strong>Phone Settings Method</strong><br>
+      1️⃣ Phone <strong>Settings</strong> kholo (gear icon)<br>
+      2️⃣ <strong>Apps</strong> ya <strong>App Management</strong><br>
+      3️⃣ <strong>Chrome</strong> dhundo → tap<br>
+      4️⃣ <strong>Permissions</strong> → <strong>Location</strong><br>
+      5️⃣ <strong>"Allow only while using"</strong> select<br>
+      6️⃣ Chrome restart → URL fresh me kholo
+      </span>
+    </div>
+    
+    <div class="step" style="background:rgba(220,38,38,0.08);border-left:3px solid #ff6b6b;padding-left:10px;margin-top:10px;">
+      <span class="step-num" style="background:#ff6b6b;color:#fff">C</span>
+      <span class="step-txt"><strong>Nuclear Reset (Last Resort)</strong><br>
+      Niche button daba ke saari site data clear hogi → fresh prompt aayega
+      </span>
+    </div>
+  </div>
+  
+  <div class="actions">
+    <button class="btn btn-retry" onclick="hideBlockedRecovery()" style="background:#26d0ce;color:#0B1957;font-weight:700;">✅ Fix Kar Liya — Phir Try Karo</button>
+    <button class="btn btn-skip" onclick="nuclearReset()" style="background:rgba(220,38,38,0.2);color:#ff6b6b;border:1px solid #ff6b6b;font-weight:600;">💥 Nuclear Reset (Clear All & Reload)</button>
+    <button class="btn btn-skip" onclick="copyDiagnostics()" style="font-size:12px;">📋 Diagnostics Copy Karo (Admin ko bhejne ke liye)</button>
+    <button class="btn btn-skip" onclick="hideBlockedRecovery()" style="background:transparent;color:#888;">← Wapas</button>
+  </div>
+  
+  <div class="browser-hint">
+    🆘 Phir bhi nahi ho raha? Admin ko call karo: <a href="tel:9922138138" style="color:#26d0ce;">9922138138</a>
+  </div>
+</div>
+
+<!-- PWA Install Bar -->
+<div class="install-bar" id="install-bar">
+<div class="ib-icon">P</div>
+<div class="ib-text"><div class="ib-title">📲 Install App</div><div class="ib-sub" id="install-sub">Home screen pe add karo — app jaisa khulega</div></div>
+<div class="ib-actions"><button class="ib-btn secondary" onclick="dismissInstall()">×</button><button class="ib-btn primary" id="install-btn" onclick="triggerInstall()">Install</button></div>
+</div>
+
+<!-- Camera modal -->
+<div class="cam-modal" id="cam-modal">
+<video class="cam-feed" id="cam-feed" autoplay playsinline muted></video>
+<div class="cam-top">
+<button class="cam-cancel" onclick="closeInAppCamera()">✕</button>
+<span class="cam-slot" id="cam-slot-label">—</span>
+<span class="cam-gps warn" id="cam-gps-chip"><span class="live-d"></span><span id="cam-gps-txt">Locating…</span></span>
+</div>
+<div class="cam-stamp" id="cam-stamp">
+<div class="map">
+<div class="pin"></div>
+<div class="glabel">Google</div>
+</div>
+<div class="info">
+<div class="city" id="cam-stamp-city">— <span class="flag"></span></div>
+<div class="addr" id="cam-stamp-addr">Getting address…</div>
+<div class="latlng" id="cam-stamp-latlng">Lat — Long —</div>
+<div class="dt" id="cam-stamp-dt">—</div>
+</div>
+</div>
+<button class="cam-shutter" id="cam-shutter" onclick="captureFromInAppCamera()" disabled aria-label="Capture"></button>
+<button class="cam-flash-btn" id="cam-flash-btn" onclick="toggleFlash()" aria-label="Flash toggle">⚡</button>
+<div class="cam-zoom-indicator" id="cam-zoom-indicator">1.0x</div>
+</div>
+
+<div class="version-badge">v2.0.3</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     CRITICAL: FIELD-ONLY SW REGISTRATION
+     Unregisters any admin SW that may have wrongly installed,
+     then registers field SW with tight scope.
+     Runs BEFORE app.js so this wins control.
+     ═══════════════════════════════════════════════════════════════ -->
+<script>
+(function(){
+  if (!('serviceWorker' in navigator)) return;
+
+  // v2: field-v2 apna ALAG SW use karta hai (sw-field-v2.js, scope /field-v2.html)
+  // taaki live field.html ke SW se koi conflict na ho.
+  // STEP 1: Cleanup any SW that is NOT our v2 SW (within this scope)
+  navigator.serviceWorker.getRegistrations().then(function(regs){
+    var promises = regs.map(function(reg){
+      var url = (reg.active && reg.active.scriptURL) || '';
+      // sirf field-v2 scope ke galat SW hatao; live field.html ka SW mat chhedo
+      if (url && url.indexOf('/sw-field-v2.js') === -1 && (reg.scope||'').indexOf('field-v2') !== -1) {
+        console.log('[Field PWA v2] Unregistering wrong SW:', url);
+        return reg.unregister();
+      }
+      return Promise.resolve();
+    });
+    return Promise.all(promises);
+  }).then(function(){
+    // STEP 2: Register v2 field SW with tight scope
+    return navigator.serviceWorker.register('/sw-field-v2.js', { scope: '/field-v2.html' });
+  }).then(function(reg){
+    console.log('[Field PWA v2] ✅ Registered v2.0.0 (field-v2 only)');
+    window._fieldSWReg = reg;
+
+    // Auto-update every 15 sec — naya version deploy hote hi app khud update
+    setInterval(function(){ reg.update().catch(function(){}); }, 15000);
+
+    // Naya SW install hote hi AUTOMATIC update — koi banner nahi, worker ko kuch
+    // dikhega nahi. Naya version turant activate + silent reload.
+    reg.addEventListener('updatefound', function(){
+      var nw = reg.installing;
+      if (!nw) return;
+      nw.addEventListener('statechange', function(){
+        if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+          // turant naya SW lo (skipWaiting) → controllerchange → silent reload
+          if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          else if (nw) nw.postMessage({ type: 'SKIP_WAITING' });
+        }
+      });
+    });
+  }).catch(function(err){
+    console.warn('[Field PWA] SW setup failed:', err);
+  });
+  
+  // Reload when SW takes control (fresh content)
+  var refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', function(){
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
+  
+  // Apply update (button handler)
+  window.applyUpdate = function(){
+    if (window._fieldSWReg && window._fieldSWReg.waiting) {
+      window._fieldSWReg.waiting.postMessage({ type: 'SKIP_WAITING' });
+    } else {
+      window.location.reload();
+    }
+  };
+  
+  // ── INSTALL PROMPT ──────────────────────────────────────────
+  var deferredPrompt = null;
+  var isStandalone = window.matchMedia('(display-mode: standalone)').matches 
+                  || window.navigator.standalone === true;
+  
+  // Hide install bar if already installed
+  if (isStandalone) {
+    console.log('[Field PWA] Running as installed app');
+    return;
+  }
+  
+  // Capture install prompt event
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault();
+    deferredPrompt = e;
+    
+    // Show install bar after 3 seconds (gentler than 5)
+    var dismissed = localStorage.getItem('pwa_field_install_dismissed');
+    var dismissedRecently = dismissed && (Date.now() - parseInt(dismissed)) < 7*24*60*60*1000;
+    if (!dismissedRecently) {
+      setTimeout(function(){
+        var bar = document.getElementById('install-bar');
+        if (bar) bar.classList.add('show');
+      }, 3000);
+    }
+  });
+  
+  // Trigger install (button handler)
+  window.triggerInstall = function(){
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(function(choice){
+        console.log('[Field PWA] User choice:', choice.outcome);
+        if (choice.outcome === 'accepted') {
+          var bar = document.getElementById('install-bar');
+          if (bar) bar.classList.remove('show');
+        }
+        deferredPrompt = null;
+      });
+    } else if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+      alert('iOS Safari me:\n1. Share button daba (square + up arrow)\n2. "Add to Home Screen" select karo\n3. "Add" daba');
+    } else {
+      alert('Browser menu se "Install app" / "Add to Home Screen" use karo');
+    }
+  };
+  
+  // Dismiss install bar (button handler)
+  window.dismissInstall = function(){
+    var bar = document.getElementById('install-bar');
+    if (bar) bar.classList.remove('show');
+    localStorage.setItem('pwa_field_install_dismissed', Date.now().toString());
+  };
+  
+  // Track successful install
+  window.addEventListener('appinstalled', function(){
+    console.log('[Field PWA] ✅ App installed');
+    var bar = document.getElementById('install-bar');
+    if (bar) bar.classList.remove('show');
+    deferredPrompt = null;
+  });
+})();
+</script>
+
+<script src="/app-v2.js?v=2.2.0-2026-07-01"></script>
+</body>
+</html>
