@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght,ital@9..144,300..900,0..1&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
 :root{
@@ -583,14 +584,17 @@ input,select,textarea{font-family:inherit;outline:none}
         <div class="section">
           <div class="section-head">
             <div class="section-title">💰 Client Payment History</div>
-            <button class="btn btn-success sm" onclick="markOutstandingPaid()">✅ Mark Outstanding Paid</button>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-secondary sm" onclick="exportPaymentsExcel()">📊 Export Excel</button>
+            </div>
           </div>
+          <div id="paymentSummary" style="padding:10px 4px 14px;font-size:14px;font-weight:600"></div>
           <div style="overflow-x:auto">
             <table class="tbl">
               <thead><tr>
-                <th>Campaign</th><th>Vendor / Location</th><th>Qty</th><th>Bundle</th><th>Total</th><th>Paid By</th><th>Status</th><th>Date</th>
+                <th>Campaign</th><th>Vendor / Location</th><th>Qty</th><th>Bundle</th><th>Total</th><th>Paid By</th><th>Status</th><th>Date</th><th>Action</th>
               </tr></thead>
-              <tbody id="paymentBody"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
+              <tbody id="paymentBody"><tr><td colspan="9" class="empty">Loading…</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -654,7 +658,9 @@ input,select,textarea{font-family:inherit;outline:none}
         <div class="section">
           <div class="section-head">
             <div class="section-title">📊 Date Range</div>
-            <div class="pill-row">
+            <button class="btn btn-secondary sm" onclick="exportReportExcel()">📊 Export Excel</button>
+          </div>
+          <div class="pill-row" style="padding-top:10px">
               <button class="pill period active" data-period="today" onclick="setReportPeriod('today')">Today</button>
               <button class="pill period" data-period="yesterday" onclick="setReportPeriod('yesterday')">Yesterday</button>
               <button class="pill period" data-period="7days" onclick="setReportPeriod('7days')">Week</button>
@@ -723,6 +729,17 @@ input,select,textarea{font-family:inherit;outline:none}
                 <tbody id="paymentStatusBody"></tbody>
               </table>
             </div>
+          </div>
+        </div>
+
+        <!-- Date-wise breakdown (full width) -->
+        <div class="section">
+          <div class="section-head"><div class="section-title">📅 Date-wise Breakdown</div><span class="page-sub" style="margin:0">Har din ka dispatch, qty, freight, paid/pending</span></div>
+          <div style="overflow-x:auto">
+            <table class="tbl">
+              <thead><tr><th>Date</th><th>Dispatches</th><th>Qty</th><th>Bundles</th><th>Freight</th><th>Paid</th><th>Pending</th></tr></thead>
+              <tbody id="dateReportBody"><tr><td colspan="7" class="empty">Select date range</td></tr></tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -2363,21 +2380,66 @@ function renderProgress() {
 function renderPayments() {
   const dispatches = state.dispatches.filter(d => normStatus(d.status) !== 'cancelled');
   if (!dispatches.length) {
-    document.getElementById('paymentBody').innerHTML = '<tr><td colspan="8" class="empty">No payment records</td></tr>';
+    document.getElementById('paymentBody').innerHTML = '<tr><td colspan="9" class="empty">No payment records</td></tr>';
     return;
   }
-  document.getElementById('paymentBody').innerHTML = dispatches.map(d => `
-    <tr>
-      <td><div class="name">${escapeHtml(getWorkName(d.campaign_name) || 'Direct')}</div></td>
-      <td>${escapeHtml(d.vendor_name || '—')} / ${escapeHtml(d.recipient_city || '—')}</td>
-      <td>${d.quantity_pcs || 0}</td>
-      <td>${d.total_bundles || 0}</td>
-      <td><strong>${fmtINR(d.total_freight)}</strong></td>
-      <td>${escapeHtml(d.paid_by || 'prajapati')}</td>
-      <td><span class="tag ${(d.payment_status || 'paid') === 'paid' ? 'success' : 'warn'}">${(d.payment_status || 'paid').toUpperCase()}</span></td>
-      <td>${d.dispatch_date || '—'}</td>
-    </tr>
-  `).join('');
+  // Summary: total received vs pending
+  var received = dispatches.filter(function(d){ return (d.payment_status||'paid')==='paid'; }).reduce(function(s,d){ return s+(d.total_freight||0); },0);
+  var pending = dispatches.filter(function(d){ return (d.payment_status||'paid')!=='paid'; }).reduce(function(s,d){ return s+(d.total_freight||0); },0);
+  var sumEl = document.getElementById('paymentSummary');
+  if (sumEl) sumEl.innerHTML =
+    '<span style="color:var(--success)">✅ Received: <b>'+fmtINR(received)+'</b></span>'+
+    '<span style="margin-left:18px;color:var(--warn)">⏳ Pending: <b>'+fmtINR(pending)+'</b></span>';
+
+  document.getElementById('paymentBody').innerHTML = dispatches.map(function(d){
+    var isPaid = (d.payment_status || 'paid') === 'paid';
+    var action = isPaid
+      ? '<button class="btn btn-secondary sm" onclick="markClientPayment(\''+d.id+'\',\'unpaid\')" title="Mark as unpaid">↩️ Unpaid</button>'
+      : '<button class="cc-next-btn" onclick="markClientPayment(\''+d.id+'\',\'paid\')">✅ Mark Paid</button>';
+    return '<tr>'+
+      '<td><div class="name">'+escapeHtml(getWorkName(d.campaign_name) || 'Direct')+'</div></td>'+
+      '<td>'+escapeHtml(d.vendor_name || '—')+' / '+escapeHtml(d.recipient_city || '—')+'</td>'+
+      '<td>'+(d.quantity_pcs || 0)+'</td>'+
+      '<td>'+(d.total_bundles || 0)+'</td>'+
+      '<td><strong>'+fmtINR(d.total_freight)+'</strong></td>'+
+      '<td>'+escapeHtml(d.paid_by || 'prajapati')+'</td>'+
+      '<td><span class="tag '+(isPaid ? 'success' : 'warn')+'">'+(isPaid?'PAID':'UNPAID')+'</span>'+(isPaid&&d.payment_received_date?'<div style="font-size:10px;color:var(--text-dim)">'+d.payment_received_date+'</div>':'')+'</td>'+
+      '<td>'+(d.dispatch_date || '—')+'</td>'+
+      '<td>'+action+'</td>'+
+    '</tr>';
+  }).join('');
+}
+
+// Client payment mark paid/unpaid (individual dispatch)
+async function markClientPayment(id, status){
+  var d = state.dispatches.find(function(x){ return String(x.id)===String(id); });
+  if (!d) return;
+  try {
+    var payload = { payment_status: status, updated_at: new Date().toISOString() };
+    if (status === 'paid') payload.payment_received_date = new Date().toISOString().slice(0,10);
+    else payload.payment_received_date = null;
+    await api('/rest/v1/prajapati_dispatches?id=eq.'+id, {
+      method:'PATCH',
+      headers:{ apikey:SUPABASE_KEY, Authorization:'Bearer '+SUPABASE_KEY, 'Content-Type':'application/json', Prefer:'return=minimal' },
+      body: JSON.stringify(payload)
+    });
+    // local update + re-render
+    d.payment_status = status;
+    d.payment_received_date = payload.payment_received_date;
+    renderPayments();
+    renderDashboard();
+  } catch(e){
+    // fallback without payment_received_date (column may not exist)
+    try {
+      await api('/rest/v1/prajapati_dispatches?id=eq.'+id, {
+        method:'PATCH',
+        headers:{ apikey:SUPABASE_KEY, Authorization:'Bearer '+SUPABASE_KEY, 'Content-Type':'application/json', Prefer:'return=minimal' },
+        body: JSON.stringify({ payment_status: status })
+      });
+      d.payment_status = status;
+      renderPayments(); renderDashboard();
+    } catch(e2){ alert('Update failed: '+e2.message); }
+  }
 }
 
 function markOutstandingPaid() {
@@ -2789,9 +2851,109 @@ function loadReports() {
   document.getElementById('paymentStatusBody').innerHTML = Object.entries(byPay).map(([p, s]) => `
     <tr><td><strong>${escapeHtml(p)}</strong></td><td>${s.disp}</td><td>${fmt(s.qty)}</td><td><strong>${fmtINR(s.value)}</strong></td><td>${fmtINR(s.outstanding)}</td></tr>
   `).join('') + `<tr style="background:var(--paper);font-weight:700"><td>TOTAL</td><td>${totalDisp}</td><td>${fmt(totalQty)}</td><td>${fmtINR(totalValue)}</td><td>${fmtINR(outstanding)}</td></tr>`;
-  
+
+  // ── Date-wise breakdown ──
+  var byDate = {};
+  filtered.forEach(function(d){
+    var dt = d.dispatch_date || '—';
+    if (!byDate[dt]) byDate[dt] = { disp:0, qty:0, bundles:0, freight:0, paid:0, pending:0 };
+    byDate[dt].disp++;
+    byDate[dt].qty += (d.quantity_pcs||0);
+    byDate[dt].bundles += (d.total_bundles||0);
+    byDate[dt].freight += (d.total_freight||0);
+    if ((d.payment_status||'paid')==='paid') byDate[dt].paid += (d.total_freight||0);
+    else byDate[dt].pending += (d.total_freight||0);
+  });
+  var dateKeys = Object.keys(byDate).sort().reverse(); // latest first
+  var dateBody = document.getElementById('dateReportBody');
+  if (dateBody){
+    dateBody.innerHTML = dateKeys.length ? dateKeys.map(function(dt){
+      var s = byDate[dt];
+      return '<tr><td><strong>'+dt+'</strong></td><td>'+s.disp+'</td><td>'+fmt(s.qty)+'</td><td>'+s.bundles+'</td>'+
+        '<td><strong>'+fmtINR(s.freight)+'</strong></td>'+
+        '<td style="color:var(--success)">'+fmtINR(s.paid)+'</td>'+
+        '<td style="color:var(--warn)">'+fmtINR(s.pending)+'</td></tr>';
+    }).join('') + '<tr style="background:var(--paper);font-weight:700"><td>TOTAL</td><td>'+totalDisp+'</td><td>'+fmt(totalQty)+'</td><td>'+filtered.reduce(function(a,d){return a+(d.total_bundles||0);},0)+'</td><td>'+fmtINR(totalValue)+'</td><td>'+fmtINR(totalValue-outstanding)+'</td><td>'+fmtINR(outstanding)+'</td></tr>'
+      : '<tr><td colspan="7" class="empty">Is period mein koi dispatch nahi</td></tr>';
+  }
+  // store for excel export
+  state._reportFiltered = filtered;
+  state._reportRange = { from: fromD, to: toD };
+
   // Charts
   renderReportCharts(byVendor, byLoc, byPay);
+}
+
+// ═══════ EXCEL EXPORT ═══════
+function exportReportExcel(){
+  if (typeof XLSX === 'undefined'){ alert('Excel library load ho rahi, thoda ruko'); return; }
+  var rows = state._reportFiltered || [];
+  if (!rows.length){ alert('Is period mein koi data nahi. Date range select karo.'); return; }
+  var range = state._reportRange || {};
+  var wb = XLSX.utils.book_new();
+
+  // Sheet 1: All dispatches
+  var data = rows.map(function(d){
+    return {
+      'Date': d.dispatch_date || '',
+      'Work/Campaign': getWorkName(d.campaign_name) || '',
+      'Recipient': d.recipient_name || '',
+      'City': d.recipient_city || '',
+      'Vendor': d.vendor_name || '',
+      'LR/Tracking': d.tracking_number || '',
+      'Qty': d.quantity_pcs || 0,
+      'Bundles': d.total_bundles || 0,
+      'Rate/Bundle': d.rate_per_bundle || 0,
+      'Freight': d.total_freight || 0,
+      'Status': normStatus(d.status),
+      'Payment': d.payment_status || 'paid',
+      'Expected Delivery': d.expected_delivery_date || ''
+    };
+  });
+  var ws1 = XLSX.utils.json_to_sheet(data);
+  ws1['!cols'] = [{wch:11},{wch:22},{wch:16},{wch:12},{wch:16},{wch:14},{wch:7},{wch:8},{wch:10},{wch:10},{wch:14},{wch:9},{wch:15}];
+  XLSX.utils.book_append_sheet(wb, ws1, 'Dispatches');
+
+  // Sheet 2: Date-wise summary
+  var byDate = {};
+  rows.forEach(function(d){
+    var dt = d.dispatch_date || '—';
+    if (!byDate[dt]) byDate[dt] = { Date:dt, Dispatches:0, Qty:0, Bundles:0, Freight:0, Paid:0, Pending:0 };
+    byDate[dt].Dispatches++; byDate[dt].Qty += (d.quantity_pcs||0);
+    byDate[dt].Bundles += (d.total_bundles||0); byDate[dt].Freight += (d.total_freight||0);
+    if ((d.payment_status||'paid')==='paid') byDate[dt].Paid += (d.total_freight||0);
+    else byDate[dt].Pending += (d.total_freight||0);
+  });
+  var ws2 = XLSX.utils.json_to_sheet(Object.values(byDate).sort(function(a,b){ return b.Date.localeCompare(a.Date); }));
+  ws2['!cols'] = [{wch:12},{wch:11},{wch:9},{wch:9},{wch:11},{wch:11},{wch:11}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Date-wise');
+
+  var fname = 'Delivery_Report_'+(range.from||'')+'_to_'+(range.to||'')+'.xlsx';
+  XLSX.writeFile(wb, fname);
+}
+function exportPaymentsExcel(){
+  if (typeof XLSX === 'undefined'){ alert('Excel library load ho rahi, thoda ruko'); return; }
+  var rows = state.dispatches.filter(function(d){ return normStatus(d.status) !== 'cancelled'; });
+  if (!rows.length){ alert('Koi payment record nahi'); return; }
+  var data = rows.map(function(d){
+    return {
+      'Campaign': getWorkName(d.campaign_name) || 'Direct',
+      'Vendor': d.vendor_name || '',
+      'City': d.recipient_city || '',
+      'Qty': d.quantity_pcs || 0,
+      'Bundles': d.total_bundles || 0,
+      'Freight': d.total_freight || 0,
+      'Paid By': d.paid_by || 'prajapati',
+      'Status': (d.payment_status || 'paid'),
+      'Paid Date': d.payment_received_date || '',
+      'Dispatch Date': d.dispatch_date || ''
+    };
+  });
+  var wb = XLSX.utils.book_new();
+  var ws = XLSX.utils.json_to_sheet(data);
+  ws['!cols'] = [{wch:22},{wch:16},{wch:12},{wch:7},{wch:8},{wch:10},{wch:12},{wch:9},{wch:12},{wch:13}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Client Payments');
+  XLSX.writeFile(wb, 'Client_Payments_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
 
 // ── Chart.js renderers ──
