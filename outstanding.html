@@ -598,10 +598,19 @@ async function loadData() {
 
     // ─── STITCHING department data ───
     // Earnings: prajapati_stitching_log (master_phone, master_name, total_amount, log_date)
-    const stitchEarn = await api('/rest/v1/prajapati_stitching_log?select=master_phone,master_name,total_amount,quantity,rate_per_piece,log_date&order=log_date.desc&limit=20000').catch(() => []);
+    let stitchEarn = await api('/rest/v1/prajapati_stitching_log?select=master_id,master_name,total_amount,quantity,rate_per_piece,log_date&order=log_date.desc&limit=20000').catch(() => null);
+    if (stitchEarn === null) {
+      // specific select failed (column missing?) → try select=*
+      stitchEarn = await api('/rest/v1/prajapati_stitching_log?select=*&order=log_date.desc&limit=20000').catch(() => []);
+    }
     state.stitchEarnings = stitchEarn || [];
-    // Payments: prajapati_stitching_payments (master_phone, master_name, amount, payment_date)
-    const stitchPay = await api('/rest/v1/prajapati_stitching_payments?deleted_at=is.null&select=master_phone,master_name,amount,payment_date&order=payment_date.desc&limit=20000').catch(() => []);
+    // Payments: prajapati_stitching_payments
+    let stitchPay = await api('/rest/v1/prajapati_stitching_payments?select=master_id,master_name,amount,payment_date,payment_type&order=payment_date.desc&limit=20000').catch(() => null);
+    if (stitchPay === null) {
+      stitchPay = await api('/rest/v1/prajapati_stitching_payments?select=*&order=payment_date.desc&limit=20000').catch(() => []);
+    }
+    // exclude soft-deleted if column exists
+    stitchPay = (stitchPay || []).filter(function(p){ return !p.deleted_at; });
     state.stitchPayments = stitchPay || [];
 
     // ─── DELIVERY department data (vendor freight) ───
@@ -678,7 +687,7 @@ function computeRows() {
   }
 
   const execRows = buildDeptRows(state.earnings, state.payments, 'Execution', 'member_phone', 'member_name');
-  const stitchRows = buildDeptRows(state.stitchEarnings, state.stitchPayments, 'Stitching', 'master_phone', 'master_name');
+  const stitchRows = buildDeptRows(state.stitchEarnings, state.stitchPayments, 'Stitching', 'master_id', 'master_name');
 
   // ─── DELIVERY vendor rows ───
   // Dispatches ko buildDeptRows shape mein map: vendor = "member", freight = earning
