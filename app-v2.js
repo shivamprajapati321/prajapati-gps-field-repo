@@ -6,7 +6,7 @@
 //        + Strong PWA install + Aggressive auto-update
 // ═════════════════════════════════════════════════════════════════
 
-var APP_VERSION = 'v2.2.0';
+var APP_VERSION = 'v2.2.2';
 var BUILD_DATE = '2026-07-01';
 
 var CONFIG = {
@@ -927,16 +927,13 @@ function loadTodayPhotos(){
   var date = todayStr();
   var startUTC = new Date(date + 'T00:00:00+05:30').toISOString();
   var endUTC = new Date(date + 'T23:59:59+05:30').toISOString();
-  return api('/rest/v1/trial_photos?member_phone=eq.'+state.member.phone+'&campaign_key=eq.'+state.campaign.key+'&captured_at=gte.'+startUTC+'&captured_at=lte.'+endUTC+'&rejected=eq.false&deleted_at=is.null&select=vehicle_number,owner_name,contact_number,mode,photo_type,photo_number,public_url,captured_at&order=captured_at.desc&limit=5000')
+  return api('/rest/v1/trial_photos?member_phone=eq.'+state.member.phone+'&campaign_key=eq.'+state.campaign.key+'&captured_at=gte.'+startUTC+'&captured_at=lte.'+endUTC+'&rejected=eq.false&deleted_at=is.null&select=vehicle_number,mode,photo_type,photo_number,public_url,captured_at&order=captured_at.desc&limit=5000')
     .then(function(rows){
       state.todayPhotos = rows || [];
       var byVeh = {};
       state.todayPhotos.forEach(function(p){
         var k = p.vehicle_number || ('UNK_' + (p.captured_at||'').slice(0,16));
-        if (!byVeh[k]){ byVeh[k] = { key: k, vehicle_number: p.vehicle_number || '', owner_name: p.owner_name || '', contact_number: p.contact_number || '', photos: [], firstAt: p.captured_at }; }
-        // owner/contact — pehli non-empty value rakho
-        if (!byVeh[k].owner_name && p.owner_name) byVeh[k].owner_name = p.owner_name;
-        if (!byVeh[k].contact_number && p.contact_number) byVeh[k].contact_number = p.contact_number;
+        if (!byVeh[k]){ byVeh[k] = { key: k, vehicle_number: p.vehicle_number || '', photos: [], firstAt: p.captured_at }; }
         byVeh[k].photos.push(p);
       });
       state.todayVehicles = Object.values(byVeh);
@@ -1019,7 +1016,7 @@ function renderHome(){
     var bd = v.photos.filter(function(p){return p.mode==='back_panel';}).length;
     return hd >= needH && bd >= needB;
   }).length;
-  html += '<div class="hero"><div class="lbl">Today\'s Campaign</div><h2>'+escapeHtml(c.name)+'</h2><div class="meta">'+escapeHtml(c.client_name||'-')+(c.default_city?' · '+escapeHtml(c.default_city):'')+'</div><div class="progress"><div><strong>'+completeCount+'</strong>Complete</div><div><strong>'+vehCount+'</strong>Started</div><div><strong>'+(c.target_count||'∞')+'</strong>Target</div></div></div>';
+  html += '<div class="hero"><div class="lbl">Today\'s Campaign</div><h2>'+escapeHtml(c.name)+'</h2><div class="meta">'+(c.default_city?escapeHtml(c.default_city):'')+'</div><div class="progress"><div><strong>'+completeCount+'</strong>Complete</div><div><strong>'+vehCount+'</strong>Started</div><div><strong>'+(c.target_count||'∞')+'</strong>Target</div></div></div>';
   var modeLine = '';
   var bf = !!c.before_photo;
   if (hT > 0 && bT > 0) modeLine = bf ? '6 photos (Hood: 1 before+3 after, Back: 1 before+1 final)' : '4 photos per rickshaw (3 hood + 1 back panel)';
@@ -1042,9 +1039,8 @@ function renderHome(){
       if (hT > 0) details += 'Hood '+hd+'/'+hT;
       if (bT > 0) details += (details?' · ':'')+'Back '+bd+'/'+bT;
       var label = v.vehicle_number || '— (plate not detected)';
-      var detailLines = '';
-      if (v.owner_name) detailLines += '👤 '+escapeHtml(v.owner_name)+'  ';
-      if (v.contact_number) detailLines += '📞 '+escapeHtml(v.contact_number);
+      // 🔒 PRIVACY: field app list mein party ka name/contact NAHI dikhega.
+      //    Worker submit ke waqt bharta hai, par list mein sirf vehicle + photos + count.
       var photoThumbs = (v.photos||[]).filter(function(p){return p.public_url;}).slice(0,6).map(function(p){
         return '<img src="'+p.public_url+'" class="vthumb" onclick="event.stopPropagation();window.open(\''+p.public_url+'\',\'_blank\')">';
       }).join('');
@@ -1055,8 +1051,7 @@ function renderHome(){
           '<div class="va"><span class="pill '+statusCls+'">'+statusTxt+'</span>'+actionBtn+'</div>'+
         '</div>'+
         '<div class="vdetail" id="'+expandId+'" style="display:none">'+
-          (detailLines ? '<div class="vdetail-info">'+detailLines+'</div>' : '<div class="vdetail-info" style="color:var(--mu)">Details pending</div>')+
-          (photoThumbs ? '<div class="vthumbs">'+photoThumbs+'</div>' : '')+
+          (photoThumbs ? '<div class="vthumbs">'+photoThumbs+'</div>' : '<div class="vdetail-info" style="color:var(--mu)">Photos loading…</div>')+
         '</div>'+
       '</div>';
     }).join('');
@@ -1439,43 +1434,8 @@ window.backToCamera = function(){
   enterCaptureScreen();
 };
 
-function enterEntryScreen(){
-  var f = adminFlags();
-  var html = '';
-  html += '<div class="ve-wrap">';
-  html += '<div class="ve-title">Vehicle details</div>';
-  html += '<div class="ve-sub">Sab manual · verifier baad mein confirm karega</div>';
-
-  if (f.reqName){
-    html += '<div class="ve-field"><label>👤 Vehicle Owner Name</label>'+
-            '<input id="ve-name" class="ve-inp" placeholder="Owner ka naam" autocomplete="off" oninput="veOnInput()"></div>';
-  }
-  if (f.reqContact){
-    html += '<div class="ve-field"><label>📞 Owner Contact</label>'+
-            '<input id="ve-contact" class="ve-inp" inputmode="numeric" maxlength="10" placeholder="10 digit number" autocomplete="off" oninput="veCleanContact(this);veOnInput()">'+
-            '<div class="ve-hint" id="ve-contact-hint">10 digit lock</div></div>';
-  }
-  if (f.reqNumber){
-    html += '<div class="ve-field"><label>🛺 Vehicle Number</label>'+
-            '<input id="ve-num" class="ve-inp ve-mono" maxlength="14" placeholder="MH12AU1234" autocomplete="off" oninput="veCleanNum(this);veOnInput()">'+
-            '<div class="ve-hint" id="ve-num-hint">Space hatega + UPPERCASE · koi length limit nahi</div></div>';
-  }
-
-  // duplicate alert placeholder
-  html += '<div class="ve-dup" id="ve-dup" style="display:none"></div>';
-
-  html += '<div class="ve-actions">';
-  html += '<button class="btn btn-g" onclick="cancelEntry()">← Back</button>';
-  html += '<button class="btn btn-primary" id="ve-next" onclick="entryNext()" disabled>📸 Take Photos →</button>';
-  html += '</div>';
-  html += '</div>';
-
-  var box = $('entry-content');
-  if (box){ box.innerHTML = html; }
-  showScreen('screen-entry');
-  // focus first field
-  setTimeout(function(){ var el = $('ve-name') || $('ve-contact') || $('ve-num'); if (el) el.focus(); }, 100);
-}
+// NOTE: purana enterEntryScreen (details-first) HATA diya — ab photos-first flow.
+// Details ke liye enterDetailsScreen use hota hai (photos ke BAAD).
 
 window.cancelEntry = function(){
   showScreen('screen-home');
@@ -1551,12 +1511,7 @@ function loadDuplicatePhotos(num){
     }).catch(function(){});
 }
 
-window.entryNext = function(){
-  state.ownerName = $('ve-name') ? $('ve-name').value.trim() : '';
-  state.contactNumber = $('ve-contact') ? $('ve-contact').value.trim() : '';
-  state.vehicleNumber = $('ve-num') ? cleanVehicleNumber($('ve-num').value) : '';
-  enterCaptureScreen();
-};
+// NOTE: purana entryNext (details-first ka button handler) HATA diya — photos-first flow.
 
 // Adhura vehicle wapas resume karo
 window.resumeVehicle = function(){
@@ -2634,14 +2589,23 @@ function saveToGallery(blob, key){
 }
 
 function queuePhotoWhenReady(key){
-  // v2: OCR removed — queue immediately
+  // photos-first flow: full_entry mode mein details PHOTOS KE BAAD aate hai.
+  // Isliye capture pe abhi queue mat karo (owner/contact khali hai) —
+  // finishVehicleSession (details submit ke baad) saari photos queue karega.
+  // photo_only mode: koi details nahi → turant queue theek.
+  if (workerEntryMode() === 'full_entry'){
+    return;  // defer — finishVehicleSession will queue with details
+  }
   queuePhoto(key);
 }
 
 function finishVehicleSession(){
   loader(true, 'Saving vehicle…');
+  // ⭐ Ab details bhar chuke — saari photos ko owner/contact ke saath queue karo.
+  //    (photos-first flow: capture ke time details khali the, isliye yahan queue.)
   Object.keys(state.photos).forEach(function(k){
-    if (!state.photos[k]._queued) queuePhoto(k);
+    // re-queue with latest details (metadata owner/contact ab bhara hai)
+    queuePhoto(k);
   });
   var plate = state.vehicleNumber || '— (review)';
   var vehicleKey = state.vehicleNumber || ('v-' + state.sessionId);
@@ -2664,10 +2628,10 @@ function finishVehicleSession(){
   $('flash').classList.add('show');
   setTimeout(function(){
     $('flash').classList.remove('show');
-    // v2: next vehicle — full_entry → entry screen, photo_only → seedha camera
+    // ⭐ NAYA FLOW: next vehicle bhi PHOTOS PEHLE → seedha camera (dono mode).
+    //    Details baad mein aayenge (afterPhotosComplete se). Purana entry-screen NAHI.
     resetSession(false);
-    if (workerEntryMode() === 'full_entry'){ enterEntryScreen(); }
-    else { enterCaptureScreen(); }
+    enterCaptureScreen();
     processQueue();
   }, 1800);
 }
