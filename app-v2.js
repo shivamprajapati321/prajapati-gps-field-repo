@@ -6,8 +6,8 @@
 //        + Strong PWA install + Aggressive auto-update
 // ═════════════════════════════════════════════════════════════════
 
-var APP_VERSION = 'v2.0.3';
-var BUILD_DATE = '2026-06-22';
+var APP_VERSION = 'v2.2.0';
+var BUILD_DATE = '2026-07-01';
 
 var CONFIG = {
   supabaseUrl: 'https://fpbktcgtspqsqpaytslv.supabase.co',
@@ -37,6 +37,11 @@ function showScreen(id){
   if (el.classList.contains('splash')) el.style.display='flex';
   else { el.style.display='block'; el.classList.add('active'); }
   window.scrollTo(0,0);
+  // realtime se assignment badla tha jab home pe nahi the → ab reload
+  if (id === 'screen-home' && state && state._assignmentDirty){
+    state._assignmentDirty = false;
+    if (typeof loadAssignment === 'function') loadAssignment();
+  }
 }
 function toast(msg, type){
   var t = $('toast'); t.textContent = msg;
@@ -69,6 +74,46 @@ function persistSessionCaptures(){
     localStorage.setItem('pf_session_captures_date', todayStr());
   } catch(e){}
 }
+
+// ── RESUME STATE: beech mein band ho (lock/close/app kill) → wapas resume ──
+// In-progress vehicle ka snapshot save: kaunse photo slots bhare, details, screen.
+function persistResumeState(screen){
+  try {
+    // kaunse slots ki photo li (captured ya server)
+    var doneKeys = [];
+    state.slots.forEach(function(s){
+      if (state.photos[s.key] || state.serverPhotoUrls[s.key]) doneKeys.push(s.key);
+    });
+    var snap = {
+      date: todayStr(),
+      sessionId: state.sessionId,
+      screen: screen || 'capture',
+      vehicleNumber: state.vehicleNumber || '',
+      ownerName: state.ownerName || '',
+      contactNumber: state.contactNumber || '',
+      doneKeys: doneKeys,
+      serverPhotoUrls: state.serverPhotoUrls || {},
+      at: Date.now()
+    };
+    localStorage.setItem('pf_resume_state', JSON.stringify(snap));
+  } catch(e){}
+}
+function clearResumeState(){
+  try { localStorage.removeItem('pf_resume_state'); } catch(e){}
+}
+function getResumeState(){
+  try {
+    var raw = localStorage.getItem('pf_resume_state');
+    if (!raw) return null;
+    var snap = JSON.parse(raw);
+    // sirf aaj ka + 6 ghante ke andar ka resume valid
+    if (snap.date !== todayStr()) { clearResumeState(); return null; }
+    if (Date.now() - (snap.at||0) > 6*3600*1000) { clearResumeState(); return null; }
+    if (!snap.doneKeys || !snap.doneKeys.length) return null;  // koi photo hi nahi li
+    return snap;
+  } catch(e){ return null; }
+}
+
 function loadSessionCaptures(){
   try {
     var savedDate = localStorage.getItem('pf_session_captures_date');
@@ -192,19 +237,27 @@ function processQueue(){
   queueRunning = true;
   updateSessionStatus();
   return idb.getPending().then(function(items){
-    var chain = Promise.resolve();
-    items.forEach(function(item){
-      chain = chain.then(function(){
-        return uploadQueueItem(item)
-          .then(function(){ return idb.remove(item.id); })
-          .then(function(){ updateSessionStatus(); })
-          .catch(function(err){
-            console.error('Queue item '+item.id+' failed:', err);
-            return idb.update(item.id, { status:'failed', attempts:(item.attempts||0)+1, lastError:String(err) });
-          });
-      });
-    });
-    return chain;
+    // ⚡ SPEED: 3 photos ek saath upload (parallel) — sequential se ~3x fast.
+    var CONCURRENCY = 3;
+    var idx = 0;
+    function uploadOne(item){
+      return uploadQueueItem(item)
+        .then(function(){ return idb.remove(item.id); })
+        .then(function(){ updateSessionStatus(); })
+        .catch(function(err){
+          console.error('Queue item '+item.id+' failed:', err);
+          return idb.update(item.id, { status:'failed', attempts:(item.attempts||0)+1, lastError:String(err) });
+        });
+    }
+    function worker(){
+      if (idx >= items.length) return Promise.resolve();
+      var item = items[idx++];
+      return uploadOne(item).then(worker);   // ek khatam → agla lo
+    }
+    // CONCURRENCY workers ek saath chalao
+    var workers = [];
+    for (var w = 0; w < Math.min(CONCURRENCY, items.length); w++) workers.push(worker());
+    return Promise.all(workers);
   }).then(function(){ queueRunning = false; updateSessionStatus(); }).catch(function(){ queueRunning = false; updateSessionStatus(); });
 }
 
@@ -677,6 +730,7 @@ function logout(skipConfirm){
   if (!skipConfirm && !confirm('Logout?')) return;
   clearSessionStorage();
   if (typeof stopHomeAutoRefresh === 'function') stopHomeAutoRefresh();
+  if (typeof stopRealtimeAssignments === 'function') stopRealtimeAssignments();
   state = { member:null, campaign:null, assignment:null, memberOverride:null, todayPhotos:[], todayVehicles:[], todayCount:0, slots:[], photos:{}, vehicleNumber:'', ownerName:'', contactNumber:'', sessionId:'', resumeMode:false, serverPhotoUrls:{}, sessionCaptures:[], gps:{} };
   showScreen('screen-login');
   $('inp-mobile').value = '';
@@ -694,7 +748,13 @@ document.addEventListener('visibilitychange', function(){
     if (isSessionExpired()){
       toast('Session expired','warn');
       setTimeout(function(){ logout(true); }, 1200);
-    } else { touchActivity(); }
+    } else {
+      touchActivity();
+      // app wapas foreground → realtime reconnect (agar toota tha) + fresh assignment
+      if (!_rtSocket || _rtSocket.readyState !== 1){ startRealtimeAssignments(); }
+      if ($('screen-home') && $('screen-home').classList.contains('active')){ loadAssignment(); }
+      processQueue();  // pending photos resume upload
+    }
   }
 });
 
@@ -755,6 +815,80 @@ function enterApp(){
   loadAssignment();
   processQueue();
   startHomeAutoRefresh();
+  startRealtimeAssignments();   // ⚡ admin assign kare → turant update (bina refresh)
+}
+
+// ═════════════════════════════════════════════════════════════════
+// REALTIME: admin campaign assign kare → team ko turant dikhe
+// Supabase Realtime WebSocket se trial_daily_assignments pe listen.
+// ═════════════════════════════════════════════════════════════════
+var _rtSocket = null;
+var _rtRef = 1;
+var _rtHeartbeat = null;
+var _rtReconnectTimer = null;
+function startRealtimeAssignments(){
+  if (!state.member || !state.member.phone) return;
+  stopRealtimeAssignments();
+  try {
+    var wsUrl = CONFIG.supabaseUrl.replace('https://','wss://') + '/realtime/v1/websocket?apikey=' + CONFIG.supabaseKey + '&vsn=1.0.0';
+    _rtSocket = new WebSocket(wsUrl);
+
+    _rtSocket.onopen = function(){
+      // subscribe to postgres changes on trial_daily_assignments for THIS member
+      var joinMsg = {
+        topic: 'realtime:public:trial_daily_assignments',
+        event: 'phx_join',
+        payload: {
+          config: {
+            postgres_changes: [
+              { event: '*', schema: 'public', table: 'trial_daily_assignments', filter: 'member_phone=eq.' + state.member.phone }
+            ]
+          }
+        },
+        ref: String(_rtRef++)
+      };
+      _rtSocket.send(JSON.stringify(joinMsg));
+      // heartbeat har 25s (connection alive rakhne ke liye)
+      _rtHeartbeat = setInterval(function(){
+        if (_rtSocket && _rtSocket.readyState === 1){
+          _rtSocket.send(JSON.stringify({ topic:'phoenix', event:'heartbeat', payload:{}, ref:String(_rtRef++) }));
+        }
+      }, 25000);
+    };
+
+    _rtSocket.onmessage = function(e){
+      try {
+        var msg = JSON.parse(e.data);
+        // postgres change aaya → assignment reload
+        if (msg.event === 'postgres_changes' || (msg.payload && msg.payload.data && msg.payload.data.table === 'trial_daily_assignments')){
+          console.log('[Realtime] Assignment change → reloading');
+          if ($('screen-home') && $('screen-home').classList.contains('active')){
+            loadAssignment();
+          } else {
+            // home pe nahi hai → flag rakho, home aane pe reload
+            state._assignmentDirty = true;
+          }
+          toast('📋 Campaign update aaya','ok');
+        }
+      } catch(err){}
+    };
+
+    _rtSocket.onclose = function(){
+      // auto-reconnect after 5s
+      if (_rtReconnectTimer) clearTimeout(_rtReconnectTimer);
+      _rtReconnectTimer = setTimeout(function(){
+        if (state.member) startRealtimeAssignments();
+      }, 5000);
+    };
+    _rtSocket.onerror = function(){ /* onclose handle karega */ };
+  } catch(err){
+    console.warn('[Realtime] setup failed (auto-refresh fallback active):', err);
+  }
+}
+function stopRealtimeAssignments(){
+  if (_rtHeartbeat){ clearInterval(_rtHeartbeat); _rtHeartbeat = null; }
+  if (_rtReconnectTimer){ clearTimeout(_rtReconnectTimer); _rtReconnectTimer = null; }
+  if (_rtSocket){ try { _rtSocket.close(); } catch(e){} _rtSocket = null; }
 }
 
 function loadAssignment(){
@@ -793,13 +927,16 @@ function loadTodayPhotos(){
   var date = todayStr();
   var startUTC = new Date(date + 'T00:00:00+05:30').toISOString();
   var endUTC = new Date(date + 'T23:59:59+05:30').toISOString();
-  return api('/rest/v1/trial_photos?member_phone=eq.'+state.member.phone+'&campaign_key=eq.'+state.campaign.key+'&captured_at=gte.'+startUTC+'&captured_at=lte.'+endUTC+'&rejected=eq.false&deleted_at=is.null&select=*&order=captured_at.desc')
+  return api('/rest/v1/trial_photos?member_phone=eq.'+state.member.phone+'&campaign_key=eq.'+state.campaign.key+'&captured_at=gte.'+startUTC+'&captured_at=lte.'+endUTC+'&rejected=eq.false&deleted_at=is.null&select=vehicle_number,owner_name,contact_number,mode,photo_type,photo_number,public_url,captured_at&order=captured_at.desc&limit=5000')
     .then(function(rows){
       state.todayPhotos = rows || [];
       var byVeh = {};
       state.todayPhotos.forEach(function(p){
         var k = p.vehicle_number || ('UNK_' + (p.captured_at||'').slice(0,16));
-        if (!byVeh[k]){ byVeh[k] = { key: k, vehicle_number: p.vehicle_number || '', photos: [], firstAt: p.captured_at }; }
+        if (!byVeh[k]){ byVeh[k] = { key: k, vehicle_number: p.vehicle_number || '', owner_name: p.owner_name || '', contact_number: p.contact_number || '', photos: [], firstAt: p.captured_at }; }
+        // owner/contact — pehli non-empty value rakho
+        if (!byVeh[k].owner_name && p.owner_name) byVeh[k].owner_name = p.owner_name;
+        if (!byVeh[k].contact_number && p.contact_number) byVeh[k].contact_number = p.contact_number;
         byVeh[k].photos.push(p);
       });
       state.todayVehicles = Object.values(byVeh);
@@ -848,6 +985,21 @@ function renderHome(){
   var c = state.campaign;
   var hT = c.hood_photo_count || 0;
   var bT = c.back_panel_photo_count || 0;
+
+  // ── RESUME BANNER: beech mein chhoda vehicle → wapas ──
+  var resume = getResumeState();
+  if (resume){
+    var doneN = resume.doneKeys.length;
+    var vlabel = resume.vehicleNumber ? escapeHtml(resume.vehicleNumber) : 'Vehicle (details pending)';
+    html += '<div class="card" style="border-color:var(--ac);background:#eafcff">'+
+      '<h3 style="color:#0891b2">⏸️ Adhura vehicle</h3>'+
+      '<div class="sub">'+vlabel+' · '+doneN+' photos li thi · beech mein ruk gaya</div>'+
+      '<div style="display:flex;gap:8px;margin-top:10px">'+
+      '<button class="btn" onclick="resumeVehicle()" style="flex:1">▶️ Resume karo</button>'+
+      '<button class="btn btn-g" onclick="discardResume()" style="flex:0 0 auto;padding:10px 14px">🗑️</button>'+
+      '</div></div>';
+  }
+
   var ecH = expectedCounts();   // before-aware: completion check ke liye
   var needH = ecH.hood, needB = ecH.back;
   var serverKeys = {};
@@ -890,7 +1042,23 @@ function renderHome(){
       if (hT > 0) details += 'Hood '+hd+'/'+hT;
       if (bT > 0) details += (details?' · ':'')+'Back '+bd+'/'+bT;
       var label = v.vehicle_number || '— (plate not detected)';
-      return '<div class="vrow"><div class="vi"><div class="num">'+escapeHtml(label)+'</div><div class="det">'+time+' · '+details+'</div></div><div class="va"><span class="pill '+statusCls+'">'+statusTxt+'</span>'+actionBtn+'</div></div>';
+      var detailLines = '';
+      if (v.owner_name) detailLines += '👤 '+escapeHtml(v.owner_name)+'  ';
+      if (v.contact_number) detailLines += '📞 '+escapeHtml(v.contact_number);
+      var photoThumbs = (v.photos||[]).filter(function(p){return p.public_url;}).slice(0,6).map(function(p){
+        return '<img src="'+p.public_url+'" class="vthumb" onclick="event.stopPropagation();window.open(\''+p.public_url+'\',\'_blank\')">';
+      }).join('');
+      var expandId = 'vd-'+escapeHtml(v.key).replace(/[^a-zA-Z0-9]/g,'');
+      return '<div class="vrow" onclick="toggleVehicleDetail(\''+expandId+'\')" style="cursor:pointer">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;width:100%">'+
+          '<div class="vi"><div class="num">'+escapeHtml(label)+'</div><div class="det">'+time+' · '+details+'</div></div>'+
+          '<div class="va"><span class="pill '+statusCls+'">'+statusTxt+'</span>'+actionBtn+'</div>'+
+        '</div>'+
+        '<div class="vdetail" id="'+expandId+'" style="display:none">'+
+          (detailLines ? '<div class="vdetail-info">'+detailLines+'</div>' : '<div class="vdetail-info" style="color:var(--mu)">Details pending</div>')+
+          (photoThumbs ? '<div class="vthumbs">'+photoThumbs+'</div>' : '')+
+        '</div>'+
+      '</div>';
     }).join('');
   }
   html += '</div>';
@@ -1024,8 +1192,14 @@ function ensureFreshGps(){
   return new Promise(function(resolve){
     if (isManualMode()){ resolve(true); return; }
     if (!navigator.geolocation){ resolve(false); return; }
+    // ⚡ SPEED: agar watchPosition se GPS already recent hai (≤8 sec purana),
+    // dobara wait mat karo — turant use karo. Har photo pe 5s bachta hai.
+    var last = state.gps._timestamp || 0;
+    if (state.gps.lat != null && (Date.now() - last) < 8000){
+      resolve(true); return;
+    }
     var done = false;
-    var timer = setTimeout(function(){ if (!done){ done = true; resolve(state.gps.lat != null); } }, 6000);
+    var timer = setTimeout(function(){ if (!done){ done = true; resolve(state.gps.lat != null); } }, 4000);
     navigator.geolocation.getCurrentPosition(function(pos){
       if (done) return; done = true; clearTimeout(timer);
       setGpsFromPosition(pos);
@@ -1033,7 +1207,7 @@ function ensureFreshGps(){
     }, function(){
       if (done) return; done = true; clearTimeout(timer);
       resolve(state.gps.lat != null);
-    }, { enableHighAccuracy:true, maximumAge:0, timeout:5500 });
+    }, { enableHighAccuracy:true, maximumAge:4000, timeout:4000 });
   });
 }
 
@@ -1156,12 +1330,12 @@ function buildSlotList(){
 
 window.startCapture = function(){
   if (!state.campaign) return toast('No campaign assigned','error');
-  // v2: photo_only worker (ANPAD) → seedha camera (koi typing nahi, jaisa abhi).
-  //     full_entry worker → pehle vehicle-entry screen.
+  // v2 NAYA FLOW: PHOTOS PEHLE (dono mode) → saari photo complete → phir details.
+  //   full_entry: photos ke baad name/contact/vehicle maangega.
+  //   photo_only: photos ke baad seedha submit (details nahi).
   var afterSetup = function(){
     resetSession(false);
-    if (workerEntryMode() === 'full_entry'){ enterEntryScreen(); }
-    else { enterCaptureScreen(); }   // photo_only — straight to camera
+    enterCaptureScreen();   // hamesha seedha camera — photos pehle
   };
   if (fsApiSupported()){
     idb.getConfig('photo_dir_handle').then(function(existing){
@@ -1199,6 +1373,71 @@ function cleanVehicleNumber(raw){
   // SIRF space hatao + uppercase. Koi format/length control NAHI.
   return String(raw || '').toUpperCase().replace(/\s+/g, '');
 }
+
+// NAYA: Details screen — photos ke BAAD dikhta (name/contact/vehicle) → submit
+function enterDetailsScreen(){
+  var f = adminFlags();
+  var html = '';
+  html += '<div class="ve-wrap">';
+  html += '<div class="ve-title">✅ Photos ho gayi — ab details</div>';
+  html += '<div class="ve-sub">Vehicle ki details bharo, phir submit · verifier baad mein confirm karega</div>';
+
+  // photo count badge (kitni photos li)
+  var pc = Object.keys(state.photos).length + Object.keys(state.serverPhotoUrls).length;
+  html += '<div class="ve-photobadge">📸 '+pc+' photos ready</div>';
+
+  if (f.reqName){
+    html += '<div class="ve-field"><label>👤 Vehicle Owner Name</label>'+
+            '<input id="ve-name" class="ve-inp" placeholder="Owner ka naam" autocomplete="off" value="'+escapeHtml(state.ownerName||'')+'" oninput="veOnInput()"></div>';
+  }
+  if (f.reqContact){
+    html += '<div class="ve-field"><label>📞 Owner Contact</label>'+
+            '<input id="ve-contact" class="ve-inp" inputmode="numeric" maxlength="10" placeholder="10 digit number" autocomplete="off" value="'+escapeHtml(state.contactNumber||'')+'" oninput="veCleanContact(this);veOnInput()">'+
+            '<div class="ve-hint" id="ve-contact-hint">10 digit lock</div></div>';
+  }
+  if (f.reqNumber){
+    html += '<div class="ve-field"><label>🛺 Vehicle Number</label>'+
+            '<input id="ve-num" class="ve-inp ve-mono" maxlength="14" placeholder="MH12AU1234" autocomplete="off" value="'+escapeHtml(state.vehicleNumber||'')+'" oninput="veCleanNum(this);veOnInput()">'+
+            '<div class="ve-hint" id="ve-num-hint">Space hatega + UPPERCASE</div></div>';
+  }
+
+  html += '<div class="ve-dup" id="ve-dup" style="display:none"></div>';
+
+  html += '<div class="ve-actions">';
+  html += '<button class="btn btn-g" onclick="backToCamera()">← Photos</button>';
+  html += '<button class="btn btn-primary" id="ve-next" onclick="detailsSubmit()" disabled>✅ Submit Vehicle</button>';
+  html += '</div>';
+  html += '</div>';
+
+  var box = $('entry-content');
+  if (box){ box.innerHTML = html; }
+  showScreen('screen-entry');
+  // persist resume state — details screen tak pahunche
+  persistResumeState('details');
+  setTimeout(function(){
+    veOnInput();  // agar values already hai (resume) toh button enable
+    var el = $('ve-name') || $('ve-contact') || $('ve-num'); if (el) el.focus();
+  }, 100);
+}
+
+// Details submit — validate → save vehicle
+window.detailsSubmit = function(){
+  state.ownerName = $('ve-name') ? $('ve-name').value.trim() : '';
+  state.contactNumber = $('ve-contact') ? $('ve-contact').value.trim() : '';
+  state.vehicleNumber = $('ve-num') ? cleanVehicleNumber($('ve-num').value) : '';
+  // details required — validate
+  var f = adminFlags();
+  if (f.reqName && !state.ownerName) return toast('Owner name chahiye','error');
+  if (f.reqContact && (!state.contactNumber || state.contactNumber.length !== 10)) return toast('10 digit contact chahiye','error');
+  if (f.reqNumber && !state.vehicleNumber) return toast('Vehicle number chahiye','error');
+  clearResumeState();
+  finishVehicleSession();
+};
+
+// Photos pe wapas (details se back)
+window.backToCamera = function(){
+  enterCaptureScreen();
+};
 
 function enterEntryScreen(){
   var f = adminFlags();
@@ -1317,6 +1556,43 @@ window.entryNext = function(){
   state.contactNumber = $('ve-contact') ? $('ve-contact').value.trim() : '';
   state.vehicleNumber = $('ve-num') ? cleanVehicleNumber($('ve-num').value) : '';
   enterCaptureScreen();
+};
+
+// Adhura vehicle wapas resume karo
+window.resumeVehicle = function(){
+  var snap = getResumeState();
+  if (!snap) { toast('Resume data nahi mila','error'); renderHome(); return; }
+  var go = function(){
+    resetSession(true);
+    state.sessionId = snap.sessionId || state.sessionId;
+    state.vehicleNumber = snap.vehicleNumber || '';
+    state.ownerName = snap.ownerName || '';
+    state.contactNumber = snap.contactNumber || '';
+    state.serverPhotoUrls = snap.serverPhotoUrls || {};
+    var allFilled = state.slots.every(function(s){ return state.serverPhotoUrls[s.key]; });
+    if (snap.screen === 'details' && allFilled){ enterDetailsScreen(); }
+    else { enterCaptureScreen(); }
+    processQueue();
+  };
+  if (fsApiSupported()){
+    idb.getConfig('photo_dir_handle').then(function(existing){
+      if (existing){ ensurePhotoFolder().then(go).catch(go); } else { go(); }
+    }).catch(go);
+  } else { go(); }
+};
+
+window.discardResume = function(){
+  if (!confirm('Adhura vehicle discard karein? Jo photos li thi woh server pe rahengi par yeh session hata denge.')) return;
+  clearResumeState();
+  renderHome();
+  toast('Discard ho gaya','ok');
+};
+
+// List mein vehicle pe click → details + photos expand/collapse
+window.toggleVehicleDetail = function(id){
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.style.display = (el.style.display === 'block') ? 'none' : 'block';
 };
 
 window.continueVehicle = function(key){
@@ -1874,9 +2150,19 @@ function processCapturedFile(file){
     saveToGallery(stamped.blob, key);
     // v2: OCR removed — vehicle number already entered on entry screen
     queuePhotoWhenReady(key);
+    persistResumeState('capture');   // har photo ke baad resume snapshot save
     var allFilled = state.slots.every(function(s){ return state.photos[s.key] || state.serverPhotoUrls[s.key]; });
-    if (allFilled){ setTimeout(finishVehicleSession, 600); }
+    if (allFilled){ setTimeout(afterPhotosComplete, 600); }
   }).catch(function(err){ loader(false); console.error(err); toast('Stamp error','error'); });
+}
+
+// NAYA FLOW: saari photos ho gayi → ab details maango (full_entry) ya seedha save (photo_only)
+function afterPhotosComplete(){
+  if (workerEntryMode() === 'full_entry'){
+    enterDetailsScreen();   // photos complete — ab name/contact/vehicle
+  } else {
+    finishVehicleSession(); // photo_only — seedha save
+  }
 }
 
 window.endSession = function(){
@@ -2370,6 +2656,7 @@ function finishVehicleSession(){
   });
   state.todayCount += 1;
   persistSessionCaptures();
+  clearResumeState();   // vehicle complete — resume snapshot clear
   touchActivity();
   loader(false);
   $('flash-plate').textContent = plate;
