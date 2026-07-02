@@ -10286,14 +10286,48 @@ function confirmMove() {
 function bulkDeletePhotos() {
   var ids = p4state.selectedIds.slice();
   if (ids.length === 0) return;
-  if (!confirm(ids.length + ' photos delete karein? (Soft delete — recover ho sakti hain)')) return;
+
+  // Selected photos ka detail — kaunse vehicles, kitni photos
+  var selectedPhotos = (p4state.filteredPhotos || []).filter(function(p){ return ids.indexOf(p.id) > -1; });
+  var byVehicle = {};
+  selectedPhotos.forEach(function(p){
+    var v = p.vehicle_number || 'unknown';
+    byVehicle[v] = (byVehicle[v] || 0) + 1;
+  });
+  var vehicleList = Object.keys(byVehicle);
+
+  // GUARD: agar kisi vehicle ki SAARI photos delete ho rahi hai (poora vehicle gayab),
+  // extra warning — yeh accidental data loss ka main cause tha.
+  var fullVehicleWipes = [];
+  vehicleList.forEach(function(v){
+    var totalLive = (p4state.filteredPhotos || []).filter(function(p){ return p.vehicle_number === v; }).length;
+    if (byVehicle[v] >= totalLive && totalLive > 0) fullVehicleWipes.push(v);
+  });
+
+  var msg = ids.length + ' photos delete karein?\n\n';
+  msg += 'Vehicles: ' + vehicleList.slice(0, 8).join(', ') + (vehicleList.length > 8 ? ' +' + (vehicleList.length-8) + ' more' : '') + '\n';
+  if (fullVehicleWipes.length > 0) {
+    msg += '\n⚠️ WARNING: In ' + fullVehicleWipes.length + ' vehicle(s) ki SAARI photos delete ho jayengi (poora vehicle gayab):\n';
+    msg += fullVehicleWipes.slice(0, 10).join(', ') + '\n';
+    msg += '\nPakka? Yeh photos recover ho sakti hain par confirm karo.';
+  } else {
+    msg += '\n(Soft delete — recover ho sakti hain)';
+  }
+  if (!confirm(msg)) return;
+
+  // Double-confirm agar poora vehicle wipe ho raha
+  if (fullVehicleWipes.length > 0) {
+    if (!confirm('DOUBLE CHECK: ' + fullVehicleWipes.length + ' vehicle(s) ki saari photos ja rahi hai. Continue?')) return;
+  }
+
   var idFilter = 'id=in.(' + ids.map(encodeURIComponent).join(',') + ')';
+  var who = (state.admin && (state.admin.name || state.admin.phone)) || 'admin';
   api('/rest/v1/trial_photos?' + idFilter, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-    body: { deleted_at: new Date().toISOString() }
+    body: { deleted_at: new Date().toISOString(), deleted_by: who, deleted_reason: 'bulk delete (Photos Browser)' }
   }).then(function() {
-    showToast('🗑️ ' + ids.length + ' photos deleted.', 'success');
+    showToast('🗑️ ' + ids.length + ' photos deleted by ' + who + '. Recover ho sakti hain.', 'success');
     clearPhotoSelection(); loadPhotos();
   }).catch(function(err) { showToast('Delete fail: ' + (err.message || '?'), 'error'); });
 }
