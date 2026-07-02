@@ -233,6 +233,7 @@ a{color:inherit;text-decoration:none}
 
 <script src="/lib/access-guard.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <script>
 AccessGuard.protect({
@@ -673,65 +674,198 @@ async function lockPlan() {
   if (jt.requires_stitching) stagesNeeded.push({ key: 'stitching', name: 'Stitching' });
   if (jt.requires_field_execution) stagesNeeded.push({ key: 'field_execution', name: 'Field Execution' });
   if (jt.requires_delivery) stagesNeeded.push({ key: 'delivery', name: 'Delivery' });
-  
+
   for (const s of stagesNeeded) {
     if (!assignments[s.key]?.member_id) {
-      alert(`Please assign ${s.name} team member`);
+      epToast('⚠️ ' + s.name + ' team member assign karo', 'error');
       return;
     }
   }
-  
-  if (!confirm(`Lock this plan?\n\n${stagesNeeded.length} team assignment(s) will be created and ${document.getElementById('notifyToggle').classList.contains('on') ? 'WhatsApp notifications sent' : 'no notifications sent'}.`)) return;
-  
+
+  // ⚠️ confirm() iframe (openInTab embed) mein block hota hai — inline modal use karo
+  const willNotify = document.getElementById('notifyToggle').classList.contains('on');
+  const msg = stagesNeeded.length + ' team assignment(s) create honge' + (willNotify ? ' + WhatsApp notifications jayengi.' : '. (Koi notification nahi)');
+  epConfirm('Plan Lock Karein?', msg, async function() {
+    await doLockPlan(stagesNeeded, willNotify);
+  });
+}
+
+async function doLockPlan(stagesNeeded, willNotify) {
   const btn = document.getElementById('lockBtn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spin"></span> Locking…';
-  
   try {
-    // Insert/update assignments
     for (const s of stagesNeeded) {
       const a = assignments[s.key];
       const payload = {
-        campaign_id: currentCampaign.id,
-        stage: s.key,
-        assigned_to: a.member_id,
-        assigned_by: user.id,
-        due_date: a.due_date || null,
-        status: 'pending',
+        campaign_id: currentCampaign.id, stage: s.key, assigned_to: a.member_id,
+        assigned_by: user.id, due_date: a.due_date || null, status: 'pending',
         quantity_assigned: currentCampaign.total_quantity || 0
       };
-      
       if (a.existing_id) {
-        await db.from('trial_campaign_assignments')
-          .update(payload).eq('id', a.existing_id);
+        const r = await db.from('trial_campaign_assignments').update(payload).eq('id', a.existing_id);
+        if (r.error) throw r.error;
       } else {
-        await db.from('trial_campaign_assignments').insert(payload);
+        const r = await db.from('trial_campaign_assignments').insert(payload);
+        if (r.error) throw r.error;
       }
     }
-    
-    // Lock campaign
-    await db.from('trial_campaigns')
+    const rc = await db.from('trial_campaigns')
       .update({ status: 'plan_locked', updated_at: new Date().toISOString() })
       .eq('id', currentCampaign.id);
-    
-    // WhatsApp notification (placeholder - integrate with Wati edge function)
-    if (document.getElementById('notifyToggle').classList.contains('on')) {
-      console.log('Would send WhatsApp to:', stagesNeeded.map(s => assignments[s.key]?.member?.phone));
-    }
-    
-    alert('✅ Plan locked successfully!');
-    showList();
-    await loadCampaigns();
+    if (rc.error) throw rc.error;
+    epToast('✅ Plan lock ho gaya!', 'success');
+    setTimeout(function(){ showList(); loadCampaigns(); }, 1000);
   } catch(e) {
-    alert('❌ Failed: ' + (e.message || e));
+    console.error('Lock failed:', e);
+    epToast('❌ Fail: ' + (e.message || e), 'error');
     btn.disabled = false;
     btn.innerHTML = '🔒 Approve & Lock Plan';
   }
 }
 
+// ═══ Job Cards PDF — printable card per stage (iframe-safe, real PDF) ═══
 function generateJobCards() {
-  alert('Job Card PDF generation coming next phase. Will create printable cards per stage with QR codes.');
+  if (!currentCampaign) { epToast('Campaign load nahi hua', 'error'); return; }
+  var jsPDFCtor = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+  if (!jsPDFCtor) { epToast('PDF library load nahi hui — refresh karo', 'error'); return; }
+
+  var jt = currentCampaign.job_type || {};
+  var stages = [];
+  if (jt.requires_printing) stages.push({ key:'printing', name:'PRINTING', icon:'🖨️' });
+  if (jt.requires_stitching) stages.push({ key:'stitching', name:'STITCHING', icon:'🧵' });
+  if (jt.requires_field_execution) stages.push({ key:'field_execution', name:'FIELD EXECUTION', icon:'📍' });
+  if (jt.requires_delivery) stages.push({ key:'delivery', name:'DELIVERY', icon:'🚚' });
+
+  if (stages.length === 0) { epToast('Koi stage nahi mila', 'error'); return; }
+
+  var doc = new jsPDFCtor({ unit:'mm', format:'a4' });
+  var navy = [11,25,87], gold = [184,155,78], teal = [38,208,206], gray = [90,97,120];
+
+  stages.forEach(function(stage, idx) {
+    if (idx > 0) doc.addPage();
+    var a = assignments[stage.key] || {};
+    var mem = a.member || {};
+
+    // Header band
+    doc.setFillColor(navy[0],navy[1],navy[2]); doc.rect(0,0,210,32,'F');
+    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(20);
+    doc.text('JOB CARD', 15, 15);
+    doc.setFontSize(11); doc.setFont('helvetica','normal');
+    doc.text(stage.name + ' STAGE', 15, 24);
+    doc.setTextColor(gold[0],gold[1],gold[2]); doc.setFontSize(9);
+    doc.text('Prajapati Advertising', 150, 15);
+    doc.setTextColor(255,255,255); doc.setFontSize(8);
+    doc.text('Card ' + (idx+1) + '/' + stages.length, 150, 22);
+
+    var y = 44;
+    // Campaign
+    doc.setTextColor(gray[0],gray[1],gray[2]); doc.setFontSize(9); doc.setFont('helvetica','bold');
+    doc.text('CAMPAIGN', 15, y);
+    doc.setTextColor(navy[0],navy[1],navy[2]); doc.setFontSize(15);
+    doc.text(String(currentCampaign.name || '—'), 15, y+8);
+    y += 20;
+
+    // Assigned to
+    doc.setDrawColor(230,230,235); doc.setFillColor(247,248,252);
+    doc.roundedRect(15, y, 180, 26, 2, 2, 'FD');
+    doc.setTextColor(gray[0],gray[1],gray[2]); doc.setFontSize(8); doc.setFont('helvetica','bold');
+    doc.text('ASSIGNED TO', 20, y+7);
+    doc.setTextColor(navy[0],navy[1],navy[2]); doc.setFontSize(13);
+    doc.text(String(mem.name || 'Not assigned'), 20, y+16);
+    doc.setTextColor(gray[0],gray[1],gray[2]); doc.setFontSize(9); doc.setFont('helvetica','normal');
+    doc.text(String(mem.phone || ''), 20, y+22);
+    // Due date (right)
+    doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(gray[0],gray[1],gray[2]);
+    doc.text('DUE DATE', 150, y+7);
+    doc.setTextColor(184,155,78); doc.setFontSize(12);
+    doc.text(String(a.due_date || '—'), 150, y+16);
+    y += 34;
+
+    // Qty + value
+    doc.setTextColor(gray[0],gray[1],gray[2]); doc.setFontSize(8); doc.setFont('helvetica','bold');
+    doc.text('QUANTITY', 20, y);
+    doc.text('CLIENT', 110, y);
+    doc.setTextColor(navy[0],navy[1],navy[2]); doc.setFontSize(14); doc.setFont('helvetica','bold');
+    doc.text(String(currentCampaign.total_quantity || 0) + ' units', 20, y+8);
+    doc.setFontSize(11);
+    doc.text(String(currentCampaign.client_name || '—'), 110, y+8);
+    y += 20;
+
+    // Designs table header
+    doc.setFillColor(navy[0],navy[1],navy[2]); doc.rect(15, y, 180, 8, 'F');
+    doc.setTextColor(255,255,255); doc.setFontSize(8); doc.setFont('helvetica','bold');
+    doc.text('DESIGN', 20, y+5.5); doc.text('LOCATION', 90, y+5.5); doc.text('QTY', 175, y+5.5);
+    y += 8;
+
+    // Design rows
+    var designs = (typeof currentDesigns !== 'undefined' && currentDesigns) ? currentDesigns : (currentCampaign._designs || []);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    if (designs.length === 0) {
+      doc.setTextColor(gray[0],gray[1],gray[2]);
+      doc.text('(designs loading...)', 20, y+6); y += 10;
+    } else {
+      designs.forEach(function(d, i) {
+        if (i % 2 === 0) { doc.setFillColor(247,248,252); doc.rect(15, y, 180, 8, 'F'); }
+        doc.setTextColor(navy[0],navy[1],navy[2]);
+        doc.text(String(d.design_name || '—').substring(0,32), 20, y+5.5);
+        doc.setTextColor(gray[0],gray[1],gray[2]);
+        doc.text(String(d.location_name || d.location_city || '—').substring(0,30), 90, y+5.5);
+        doc.setTextColor(navy[0],navy[1],navy[2]); doc.setFont('helvetica','bold');
+        doc.text(String(d.quantity || 0), 175, y+5.5);
+        doc.setFont('helvetica','normal');
+        y += 8;
+      });
+    }
+
+    // Footer
+    doc.setDrawColor(230,230,235); doc.line(15, 275, 195, 275);
+    doc.setTextColor(gray[0],gray[1],gray[2]); doc.setFontSize(7); doc.setFont('helvetica','normal');
+    doc.text('Generated: ' + new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata'}), 15, 282);
+    doc.text('Prajapati Advertising · GPS Field Ops', 130, 282);
+  });
+
+  var fname = 'JobCards_' + String(currentCampaign.name || 'campaign').replace(/[^a-z0-9]/gi,'_') + '.pdf';
+  doc.save(fname);
+  epToast('📄 Job Cards PDF ready!', 'success');
 }
+
+// ═══ Iframe-safe helpers (alert/confirm iframe mein block hote hai) ═══
+function epToast(msg, type) {
+  var t = document.getElementById('epToast');
+  if (!t) {
+    t = document.createElement('div'); t.id = 'epToast';
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;padding:13px 22px;border-radius:10px;font-size:14px;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,0.25);opacity:0;transition:opacity 0.2s;font-family:inherit;max-width:90%';
+    document.body.appendChild(t);
+  }
+  t.style.background = type === 'error' ? '#dc2626' : (type === 'success' ? '#0B1957' : '#334155');
+  t.style.color = '#fff';
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(function(){ t.style.opacity = '0'; }, 3200);
+}
+
+function epConfirm(title, message, onConfirm) {
+  var existing = document.getElementById('epConfirmModal');
+  if (existing) existing.remove();
+  var m = document.createElement('div');
+  m.id = 'epConfirmModal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(11,25,87,0.45);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
+  m.innerHTML =
+    '<div style="background:#fff;border-radius:16px;max-width:420px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.3);font-family:inherit">' +
+      '<div style="font-size:18px;font-weight:700;color:#0B1957;margin-bottom:8px">' + title + '</div>' +
+      '<div style="font-size:13.5px;color:#5a6178;line-height:1.5;margin-bottom:20px">' + message + '</div>' +
+      '<div style="display:flex;gap:10px;justify-content:flex-end">' +
+        '<button type="button" id="epCancelBtn" style="padding:10px 18px;border:1.5px solid #e2e6f0;background:#fff;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;color:#5a6178">Cancel</button>' +
+        '<button type="button" id="epOkBtn" style="padding:10px 22px;border:none;background:#B89B4E;color:#fff;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">🔒 Lock Plan</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(m);
+  document.getElementById('epCancelBtn').onclick = function(){ m.remove(); };
+  document.getElementById('epOkBtn').onclick = function(){ m.remove(); onConfirm(); };
+}
+
 
 function showList() {
   document.getElementById('listView').style.display = 'block';
