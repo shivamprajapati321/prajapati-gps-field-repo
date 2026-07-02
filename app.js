@@ -6,7 +6,7 @@
 //        + Strong PWA install + Aggressive auto-update
 // ═════════════════════════════════════════════════════════════════
 
-var APP_VERSION = 'v15.5.3';
+var APP_VERSION = 'v15.5.4';
 var BUILD_DATE = '2026-05-17';
 
 var CONFIG = {
@@ -221,7 +221,24 @@ function uploadQueueItem(item){
     if (!r.ok) return r.text().then(function(t){ throw new Error('Storage '+r.status+': '+t); });
     var publicUrl = CONFIG.supabaseUrl + '/storage/v1/object/public/' + CONFIG.storageBucket + '/' + pathSegs;
     var dbRow = Object.assign({}, item.metadata.dbRow, { public_url: publicUrl });
-    return api('/rest/v1/trial_photos', { method:'POST', headers:{ 'Prefer':'return=minimal' }, body: dbRow });
+    // ⚠️ IDEMPOTENT via DB unique index (uq_trial_photos_storage_live).
+    //    Offline queue retry ho sakta hai → same photo dobara insert.
+    //    Normal insert (unique path) = save. Duplicate (retry) = DB 409/23505 dega,
+    //    jise neeche catch success maan leta hai → queue se hatega, naya row nahi banta.
+    //    NOTE: on_conflict use NAHI karte — partial index PostgREST on_conflict support
+    //    nahi karta (400 deta), jisse normal insert bhi fail ho jaata. Plain insert + catch safe hai.
+    return api('/rest/v1/trial_photos', {
+      method:'POST',
+      headers:{ 'Prefer':'return=minimal' },
+      body: dbRow
+    }).catch(function(err){
+      // Duplicate (unique index violation) → already saved, success maano (queue se hata do).
+      var m = String(err && err.message || '');
+      if (m.indexOf('409') > -1 || m.indexOf('23505') > -1 || m.indexOf('duplicate key') > -1 || m.indexOf('uq_trial_photos_storage_live') > -1) {
+        return null; // photo pehle se saved hai — retry ignore
+      }
+      throw err; // asli error (network/storage) — queue retry karega
+    });
   });
 }
 

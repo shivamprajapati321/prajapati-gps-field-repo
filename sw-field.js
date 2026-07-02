@@ -5,7 +5,7 @@
 // All other URLs pass through to network without interception.
 // ════════════════════════════════════════════════════════════════════
 
-const VERSION = 'field-v15.5.3-gallery-20260617';
+const VERSION = 'field-v15.5.4-dedup-20260702';
 const CACHE_NAME = 'prajapati-field-' + VERSION;
 
 const FIELD_FILES = [
