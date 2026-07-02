@@ -7016,13 +7016,21 @@ function renderCampaigns() {
     Promise.all([
       api('/rest/v1/trial_campaign_cities?campaign_key=eq.' + encodeURIComponent(c.key) + '&select=id'),
       apiAll('/rest/v1/trial_photos?campaign_key=eq.' + encodeURIComponent(c.key) + '&select=vehicle_number'),
-      api('/rest/v1/trial_campaign_designs?campaign_id=eq.' + encodeURIComponent(c.id) + '&select=quantity')
+      api('/rest/v1/trial_campaign_designs?campaign_id=eq.' + encodeURIComponent(c.id) + '&select=quantity,design_name,location_name,location_address,location_lat,location_lng')
     ]).then(function(results) {
       var citiesCount = (results[0] || []).length;
       var photos = results[1] || [];
       var designs = results[2] || [];
       // Order (vehicles) = designs ki total quantity (SAHI)
-      var orderQty = designs.reduce(function(s, d){ return s + (Number(d.quantity) || 0); }, 0);
+      // ⭐ DEDUPE: same design+location ki duplicate rows count na ho (double bug fix)
+      //    Launch page bhi yahi karta hai — max quantity rakho per unique location
+      var _dedupeMap = {};
+      (designs || []).forEach(function(d){
+        var k = (d.design_name||'') + '|' + (d.location_name||'') + '|' + (d.location_address||'') + '|' + (d.location_lat||'') + '|' + (d.location_lng||'');
+        var q = Number(d.quantity) || 0;
+        if (_dedupeMap[k] === undefined || q > _dedupeMap[k]) _dedupeMap[k] = q;
+      });
+      var orderQty = Object.keys(_dedupeMap).reduce(function(s, k){ return s + _dedupeMap[k]; }, 0);
       var setTarget = Number(c.target_count || 0);
       // Photos per vehicle = hood + back (Hood=3, Back=1, Both=4)
       var photosPerVeh = (Number(c.hood_photo_count || 0) + Number(c.back_panel_photo_count || 0)) || 1;
