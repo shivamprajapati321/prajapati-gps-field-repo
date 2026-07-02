@@ -1379,6 +1379,9 @@ async function showExpenseDetail(id){
   } else {
     html += r('Category', e.internal_category);
   }
+  // ════ US DIN KA KAAM — expense date pe worker ne kya kaam kiya (photos se auto) ════
+  // Container pehle daalo, data async aane pe fill karenge (modal turant khule)
+  html += '<div id="edWorkSection" style="margin-top:10px"></div>';
   // category breakdown
   html += '<div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin:12px 0 4px">Breakdown</div>';
   if(+e.food_amount) html += r('🍱 Food', fmt(e.food_amount));
@@ -1438,6 +1441,65 @@ async function showExpenseDetail(id){
 
   body.innerHTML = html;
   modal.classList.add('show');
+
+  // ════ Work data async load — expense date pe worker ka actual kaam (photos se) ════
+  (async function loadWorkForExpense(){
+    var sec = document.getElementById('edWorkSection');
+    if(!sec) return;
+    var phone = e.team_member_phone || '';
+    var dt = e.expense_date;
+    if(!phone || !dt){ return; }
+    try {
+      // IST date → UTC range (DB UTC store karta)
+      var startUTC = new Date(dt + 'T00:00:00+05:30').toISOString();
+      var endUTC = new Date(dt + 'T23:59:59+05:30').toISOString();
+      var rows = await api('/trial_photos?member_phone=eq.'+encodeURIComponent(phone)+
+        '&captured_at=gte.'+encodeURIComponent(startUTC)+'&captured_at=lte.'+encodeURIComponent(endUTC)+
+        '&deleted_at=is.null&select=vehicle_number,mode,city,campaign_key,campaign_name&limit=50000');
+      if(!rows || !rows.length){
+        sec.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--text-dim,#8890a8);text-transform:uppercase;margin:12px 0 4px">Us Din Ka Kaam</div>'+
+          '<div style="font-size:12.5px;color:var(--text-dim,#8890a8);padding:6px 0">Is date pe koi photo/kaam record nahi mila</div>';
+        return;
+      }
+      // Group by campaign + mode → unique vehicles + cities
+      var groups = {};
+      rows.forEach(function(p){
+        var camp = p.campaign_name || p.campaign_key || 'Unknown';
+        var key = camp + '||' + (p.mode||'');
+        if(!groups[key]) groups[key] = { camp: camp, mode: p.mode||'', vehicles: {}, cities: {} };
+        if(p.vehicle_number) groups[key].vehicles[p.vehicle_number] = true;
+        if(p.city && p.city.trim()) groups[key].cities[p.city.trim()] = true;
+      });
+      var modeLabel = { hood:'🛺 Auto Hood', back_panel:'🔲 Auto Back', back:'🔲 Auto Back' };
+      var out = '<div style="font-size:11px;font-weight:700;color:var(--text-dim,#8890a8);text-transform:uppercase;margin:12px 0 4px">Us Din Ka Kaam</div>';
+      out += '<div style="background:#f7f8fc;border-radius:10px;padding:10px 12px;border:1px solid #eef0f6">';
+      Object.keys(groups).forEach(function(k){
+        var g = groups[k];
+        var vCount = Object.keys(g.vehicles).length;
+        var cityStr = Object.keys(g.cities).join(', ');
+        var mLabel = modeLabel[g.mode] || (g.mode ? ('📷 '+g.mode) : '📷 Photos');
+        out += '<div style="padding:5px 0;border-bottom:1px solid #eef0f6">';
+        out += '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">';
+        out += '<span style="font-weight:700;color:var(--navy,#0B1957);font-size:13px">'+esc(getWork ? getWork(g.camp) : g.camp)+'</span>';
+        out += '<span style="font-weight:800;color:var(--navy,#0B1957);font-family:JetBrains Mono,monospace;font-size:14px;white-space:nowrap">'+vCount+' veh</span>';
+        out += '</div>';
+        out += '<div style="font-size:12px;color:var(--text-dim,#8890a8);margin-top:2px">'+mLabel+(cityStr ? ' · 📍 '+esc(cityStr) : '')+'</div>';
+        out += '</div>';
+      });
+      // Total across groups
+      var allVeh = {};
+      rows.forEach(function(p){ if(p.vehicle_number) allVeh[p.vehicle_number]=true; });
+      out += '<div style="display:flex;justify-content:space-between;padding:7px 0 2px;margin-top:2px">';
+      out += '<span style="font-weight:700;color:var(--navy,#0B1957);font-size:12.5px">Total Vehicles</span>';
+      out += '<span style="font-weight:800;color:#15803d;font-family:JetBrains Mono,monospace;font-size:14px">'+Object.keys(allVeh).length+'</span>';
+      out += '</div>';
+      out += '</div>';
+      sec.innerHTML = out;
+    } catch(err){
+      console.warn('work data load fail:', err);
+      sec.innerHTML = ''; // fail ho to chup-chaap hide (expense detail baaki theek rahe)
+    }
+  })();
   var _dlBtn = document.getElementById('dlScannerBtn');
   if(_dlBtn && _scannerDl) _dlBtn.onclick = function(){ downloadScannerJpg(_scannerDl.url, _scannerDl.name); };
 }
