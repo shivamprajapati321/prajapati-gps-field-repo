@@ -336,7 +336,7 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--txt);min-
     </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeDeleteModal()">Cancel</button>
-      <button class="btn-confirm delete" onclick="confirmDelete()">🗑️ Delete Permanently</button>
+      <button class="btn-confirm delete" onclick="confirmDelete()">🗑️ Delete</button>
     </div>
   </div>
 </div>
@@ -880,7 +880,7 @@ function renderVehicleCard(v, idx) {
     verifiedInfoHtml = '<div class="vc-verified-info" style="background:#fef2f2;border-color:#fecaca">' +
       '<div><div class="field-label">Rejected Reason</div><div class="field-value" style="color:var(--err)">' + escHtml(v.photos[0].rejection_reason || '—') + '</div></div>' +
       '<button onclick="restoreVehicle(' + idx + ')" style="margin-left:auto;background:#dcfce7;color:#15803d;border:1px solid #86efac;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;" title="Reject hata ke wapas pending mein laao">♻️ Restore</button>' +
-      '<button onclick="openDeleteModal(' + idx + ')" style="background:var(--err);color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;">🗑️ Delete Permanently</button>' +
+      '<button onclick="openDeleteModal(' + idx + ')" style="background:var(--err);color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;">🗑️ Delete</button>' +
     '</div>';
   }
   
@@ -1274,18 +1274,14 @@ async function confirmDelete() {
       }
     });
     
-    // Step 2: Try to delete from storage via Edge Function (if exists)
-    try {
-      var storagePaths = v.photos.map(function(p){ return p.storage_path; }).filter(Boolean);
-      await fetch(CONFIG.supabaseUrl + '/functions/v1/delete-vehicle-photos', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + CONFIG.supabaseKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paths: storagePaths, bucket: CONFIG.storageBucket })
-      });
-    } catch(e) { console.warn('Edge fn delete failed (will retry later):', e); }
-    
+    // Step 2: Storage se file DELETE nahi karte — sirf soft-delete (DB flag).
+    // ⚠️ Pehle yaha edge function se storage se PERMANENT delete hota tha,
+    //    jisse galti se delete hui photos wapas nahi aa sakti thi (files gayab).
+    //    Ab file storage mein bachi rahegi → recover ho sakti hai (deleted_at=NULL).
+    //    Storage cleanup zaroori ho to alag se (verified-old photos ke liye) karein.
+
     closeDeleteModal();
-    toast('🗑️ Deleted permanently', 'success');
+    toast('🗑️ Deleted (recover ho sakti hai)', 'success');
     // Remove from local state and reload
     state.allPhotos = state.allPhotos.filter(function(p){ return photoIds.indexOf(p.id) === -1; });
     renderVehicles();
