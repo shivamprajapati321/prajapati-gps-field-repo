@@ -7016,11 +7016,18 @@ function renderCampaigns() {
     Promise.all([
       api('/rest/v1/trial_campaign_cities?campaign_key=eq.' + encodeURIComponent(c.key) + '&select=id'),
       apiAll('/rest/v1/trial_photos?campaign_key=eq.' + encodeURIComponent(c.key) + '&select=vehicle_number'),
-      api('/rest/v1/trial_campaign_designs?campaign_id=eq.' + encodeURIComponent(c.id) + '&select=quantity,design_name,location_name,location_address,location_lat,location_lng')
+      api('/rest/v1/trial_campaign_designs?campaign_id=eq.' + encodeURIComponent(c.id) + '&select=quantity,design_name,location_name,location_city,location_address,location_lat,location_lng')
     ]).then(function(results) {
-      var citiesCount = (results[0] || []).length;
       var photos = results[1] || [];
       var designs = results[2] || [];
+      // CITIES = designs ki unique cities (Launch Campaign se aayi locations).
+      // Fallback: agar designs mein city nahi to purani trial_campaign_cities count.
+      var _citySet = {};
+      (designs || []).forEach(function(d){
+        var city = (d.location_city || d.location_name || '').trim();
+        if (city) _citySet[city.toLowerCase()] = true;
+      });
+      var citiesCount = Object.keys(_citySet).length || (results[0] || []).length;
       // Order (vehicles) = designs ki total quantity (SAHI)
       // ⭐ DEDUPE: same design+location ki duplicate rows count na ho (double bug fix)
       //    Launch page bhi yahi karta hai — max quantity rakho per unique location
@@ -7285,7 +7292,7 @@ function openCampaignForm(id) {
     $('customFields').style.display = mode === 'custom' ? 'block' : 'none';
     
     // Load existing cities + overrides
-    loadCampaignCities(c.key);
+    loadCampaignCities(c.key, c.id);
     loadCampaignOverrides(c.key);
   } else {
     $('campaignModalTitle').textContent = 'New Campaign';
@@ -7321,15 +7328,37 @@ function selectBrandingMode(el) {
   $('customFields').style.display = el.dataset.mode === 'custom' ? 'block' : 'none';
 }
 
-function loadCampaignCities(campaignKey) {
-  api('/rest/v1/trial_campaign_cities?campaign_key=eq.' + encodeURIComponent(campaignKey) + '&order=city.asc')
-    .then(function(cities) {
-      p2state.campaignCities = cities || [];
-      renderCampaignCities();
-    }).catch(function() {
+function loadCampaignCities(campaignKey, campaignId) {
+  // Pehle purani cities table, phir designs se locations (Launch Campaign wali)
+  Promise.all([
+    api('/rest/v1/trial_campaign_cities?campaign_key=eq.' + encodeURIComponent(campaignKey) + '&order=city.asc').catch(function(){ return []; }),
+    api('/rest/v1/trial_campaign_designs?campaign_id=eq.' + encodeURIComponent(campaignId || campaignKey) + '&select=location_name,location_city,location_state,location_address,location_lat,location_lng,quantity').catch(function(){ return []; })
+  ]).then(function(res){
+    var cities = res[0] || [];
+    var designs = res[1] || [];
+
+    if (cities.length > 0) {
+      // purani cities table mein data hai — wahi dikhao
+      p2state.campaignCities = cities;
+    } else if (designs.length > 0) {
+      // Launch Campaign se aayi locations — designs se unique location nikaalo
+      var byLoc = {};
+      designs.forEach(function(d){
+        var city = (d.location_city || d.location_name || '').trim();
+        if (!city) return;
+        var k = city.toLowerCase();
+        if (!byLoc[k]) byLoc[k] = { city: city, state: d.location_state || 'Maharashtra', target_quantity: 0, _fromDesign: true };
+        byLoc[k].target_quantity += (Number(d.quantity) || 0);
+      });
+      p2state.campaignCities = Object.values(byLoc);
+    } else {
       p2state.campaignCities = [];
-      renderCampaignCities();
-    });
+    }
+    renderCampaignCities();
+  }).catch(function() {
+    p2state.campaignCities = [];
+    renderCampaignCities();
+  });
 }
 
 function renderCampaignCities() {
