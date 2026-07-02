@@ -478,12 +478,36 @@ button,input{font-family:inherit}input{font-size:16px}
     console.warn('[Field PWA] SW setup failed:', err);
   });
   
-  // Reload when SW takes control (fresh content)
+  // Reload when SW takes control — PAR sirf jab SAFE ho (kaam gumne se bachao).
+  // CTO fix: agar worker photo capture / vehicle entry kar raha, ya upload chal raha,
+  // ya unsaved photos hai → reload DEFER karo. Warna live kaam / photo gum ho jayega.
   var refreshing = false;
-  navigator.serviceWorker.addEventListener('controllerchange', function(){
+  function isSafeToReload(){
+    try {
+      // Camera/capture ya entry screen active? → NOT safe (kaam chal raha)
+      var cap = document.getElementById('screen-capture');
+      var ent = document.getElementById('screen-entry');
+      if (cap && cap.classList.contains('active')) return false;
+      if (ent && ent.classList.contains('active')) return false;
+      // Upload chal raha? → NOT safe
+      if (typeof queueRunning !== 'undefined' && queueRunning) return false;
+      // Unsaved photos memory mein? → NOT safe
+      if (typeof state !== 'undefined' && state.photos && Object.keys(state.photos).length > 0) return false;
+      return true;
+    } catch(e){ return false; } // doubt ho to reload mat karo (safe side)
+  }
+  function tryReloadWhenSafe(){
     if (refreshing) return;
-    refreshing = true;
-    window.location.reload();
+    if (isSafeToReload()){
+      refreshing = true;
+      window.location.reload();
+    } else {
+      // abhi safe nahi — 8 sec baad phir check karo (kaam khatam hone ka wait)
+      setTimeout(tryReloadWhenSafe, 8000);
+    }
+  }
+  navigator.serviceWorker.addEventListener('controllerchange', function(){
+    tryReloadWhenSafe();
   });
   
   // Apply update (button handler)
@@ -558,6 +582,6 @@ button,input{font-family:inherit}input{font-size:16px}
 })();
 </script>
 
-<script src="/app-v2.js?v=2.2.2-2026-07-01"></script>
+<script src="/app-v2.js?v=2.2.3-2026-07-02"></script>
 </body>
 </html>

@@ -6,7 +6,7 @@
 // AUTO-UPDATE: naya version deploy hote hi app khud update (no reinstall).
 // ════════════════════════════════════════════════════════════════════
 
-const VERSION = 'mars-gps-2.2.2-20260701';
+const VERSION = 'mars-gps-2.2.3-20260702';
 const CACHE_NAME = 'mars-gps-' + VERSION;
 
 const FIELD_FILES = [
