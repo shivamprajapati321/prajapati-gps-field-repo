@@ -830,49 +830,89 @@ function selectClient(c) {
   updateActionBar();
 }
 
-async function addNewClient() {
-  const name = prompt('Client name?');
-  if (!name || !name.trim()) return;
-  const phone = prompt('Client phone? (optional)') || '';
-  const city = prompt('Client city? (optional)') || '';
+function addNewClient() {
+  // prompt() iframe (openInTab embed) mein browser block kar deta hai —
+  // isliye inline modal (iframe-safe). Pehle prompt tha jo silently fail hota.
+  var modal = document.getElementById('newClientModal');
+  if (!modal) { modal = buildNewClientModal(); document.body.appendChild(modal); }
+  document.getElementById('ncName').value = '';
+  document.getElementById('ncPhone').value = '';
+  document.getElementById('ncCity').value = '';
+  document.getElementById('ncError').textContent = '';
+  modal.style.display = 'flex';
+  setTimeout(function(){ document.getElementById('ncName').focus(); }, 50);
+}
 
-  // Insert payload — created_by add karte hain (RLS ke liye zaroori ho sakta)
-  var payload = { name: name.trim(), phone: phone.trim(), city: city.trim() };
+function buildNewClientModal() {
+  var m = document.createElement('div');
+  m.id = 'newClientModal';
+  m.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(11,25,87,0.45);z-index:99999;align-items:center;justify-content:center;padding:20px';
+  m.innerHTML =
+    '<div style="background:#fff;border-radius:16px;max-width:420px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.3);font-family:inherit">' +
+      '<div style="font-family:\'Fraunces\',serif;font-size:19px;font-weight:700;color:#0B1957;margin-bottom:4px">Naya Client Add Karo</div>' +
+      '<div style="font-size:12px;color:#8890a8;margin-bottom:18px">Client database mein save hoga</div>' +
+      '<label style="display:block;font-size:11px;font-weight:700;color:#0B1957;letter-spacing:0.04em;margin-bottom:5px">CLIENT NAME *</label>' +
+      '<input id="ncName" type="text" placeholder="e.g. Amit Wable" style="width:100%;padding:11px 13px;border:1.5px solid #e2e6f0;border-radius:9px;font-size:14px;font-family:inherit;margin-bottom:14px;box-sizing:border-box" />' +
+      '<label style="display:block;font-size:11px;font-weight:700;color:#0B1957;letter-spacing:0.04em;margin-bottom:5px">PHONE (optional)</label>' +
+      '<input id="ncPhone" type="tel" placeholder="e.g. 9922138138" style="width:100%;padding:11px 13px;border:1.5px solid #e2e6f0;border-radius:9px;font-size:14px;font-family:inherit;margin-bottom:14px;box-sizing:border-box" />' +
+      '<label style="display:block;font-size:11px;font-weight:700;color:#0B1957;letter-spacing:0.04em;margin-bottom:5px">CITY (optional)</label>' +
+      '<input id="ncCity" type="text" placeholder="e.g. Pune" style="width:100%;padding:11px 13px;border:1.5px solid #e2e6f0;border-radius:9px;font-size:14px;font-family:inherit;margin-bottom:8px;box-sizing:border-box" />' +
+      '<div id="ncError" style="color:#dc2626;font-size:12px;min-height:16px;margin-bottom:10px"></div>' +
+      '<div style="display:flex;gap:10px;justify-content:flex-end">' +
+        '<button type="button" onclick="closeNewClientModal()" style="padding:10px 18px;border:1.5px solid #e2e6f0;background:#fff;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;color:#5a6178">Cancel</button>' +
+        '<button type="button" id="ncSaveBtn" onclick="saveNewClient()" style="padding:10px 22px;border:none;background:#0B1957;color:#fff;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Save Client</button>' +
+      '</div>' +
+    '</div>';
+  m.addEventListener('keydown', function(e){ if (e.key === 'Enter') saveNewClient(); if (e.key === 'Escape') closeNewClientModal(); });
+  return m;
+}
+
+function closeNewClientModal() {
+  var m = document.getElementById('newClientModal');
+  if (m) m.style.display = 'none';
+}
+
+async function saveNewClient() {
+  var name = document.getElementById('ncName').value.trim();
+  var phone = document.getElementById('ncPhone').value.trim();
+  var city = document.getElementById('ncCity').value.trim();
+  var errEl = document.getElementById('ncError');
+  var btn = document.getElementById('ncSaveBtn');
+
+  if (!name) { errEl.textContent = 'Client name zaroori hai'; return; }
+
+  btn.disabled = true; btn.textContent = 'Saving…';
+  errEl.textContent = '';
+
+  var payload = { name: name, phone: phone, city: city };
   try { if (user && user.id) payload.created_by = user.id; } catch(e){}
 
   try {
-    const { data, error } = await db.from('trial_clients').insert(payload).select().single();
-    if (error) throw error;
-    // ✅ Successfully DB mein save hua
+    var res = await db.from('trial_clients').insert(payload).select().single();
+    if (res.error) throw res.error;
+    var data = res.data;
     allClients.unshift(data);
     selectClient(data);
     renderClientOptions(allClients);
-    toast && toast('✓ Client "' + data.name + '" add ho gaya', 'success');
+    closeNewClientModal();
+    toast && toast('Client "' + data.name + '" add ho gaya', 'success');
   } catch(e) {
-    console.error('Client insert failed:', e);
-    // created_by ke bina dobara try karo (agar woh column na ho to)
     try {
-      const { data: d2, error: e2 } = await db.from('trial_clients')
-        .insert({ name: name.trim(), phone: phone.trim(), city: city.trim() }).select().single();
-      if (e2) throw e2;
-      allClients.unshift(d2);
-      selectClient(d2);
+      var res2 = await db.from('trial_clients').insert({ name: name, phone: phone, city: city }).select().single();
+      if (res2.error) throw res2.error;
+      allClients.unshift(res2.data);
+      selectClient(res2.data);
       renderClientOptions(allClients);
-      toast && toast('✓ Client "' + d2.name + '" add ho gaya', 'success');
-      return;
+      closeNewClientModal();
+      toast && toast('Client "' + res2.data.name + '" add ho gaya', 'success');
     } catch(e3) {
-      console.error('Retry bhi fail:', e3);
-      // DB save fail — user ko CLEARLY batao (silently temp mat banao)
-      var msg = (e3 && e3.message) ? e3.message : 'Unknown error';
-      alert('⚠️ Client DB mein save nahi hua:\n\n' + msg + '\n\nClient temporarily use ho raha hai is campaign ke liye, par database mein nahi gaya. Admin ko batayein agar baar-baar ho.');
-      // Fallback temp (taaki campaign ban sake), par user ko pata hai
-      const tmpClient = { id: 'tmp_' + Date.now(), name: name.trim(), phone: phone.trim(), city: city.trim(), _temp: true };
-      selectClient(tmpClient);
+      console.error('Client insert failed:', e3);
+      errEl.textContent = 'Save fail: ' + ((e3 && e3.message) ? e3.message : 'Unknown error');
+      btn.disabled = false; btn.textContent = 'Save Client';
     }
   }
 }
 
-function toggleSwitch(el) { el.classList.toggle('on'); }
 
 // Simple toast — submitStatus banner use karke (theme-consistent feedback)
 function toast(msg, type){
