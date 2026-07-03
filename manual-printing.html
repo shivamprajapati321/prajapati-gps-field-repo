@@ -393,7 +393,7 @@ async function saveEntry(){
   var date = $('fDate').value;
   var qty = Number($('fQty').value)||0;
   var rate = Number($('fRate').value)||0;
-  if(!operatorId){ toast('Operator select karo','err'); return; }
+  if(!operatorId || operatorId==='null' || operatorId.length!==36){ toast('Operator select karo','err'); return; }
   if(!date){ toast('Date select karo','err'); return; }
   if(qty<=0){ toast('Quantity daalo','err'); return; }
 
@@ -410,15 +410,27 @@ async function saveEntry(){
   var notes = extras.join(' · ');
 
   try {
-    // Check existing log (same operator+assignment+date) → update, else insert
-    var existing = await api('/trial_work_logs?operator_id=eq.'+encodeURIComponent(operatorId)+'&assignment_id=eq.'+encodeURIComponent(j.assignment_id)+'&log_date=eq.'+date+'&stage=eq.printing&select=id');
-
     var cleanUuid = function(v){ return (v && typeof v==='string' && v!=='null' && v.length===36) ? v : null; };
+    var cId = cleanUuid(j.campaign_id), aId = cleanUuid(j.assignment_id);
+
+    // Check existing log → update, else insert.
+    // assignment_id null (manual campaign entry) ho to us par match mat karo — warna 'null' string UUID column mein jaake 22P02 deta hai.
+    var existQ = '/trial_work_logs?operator_id=eq.'+encodeURIComponent(operatorId)+'&log_date=eq.'+date+'&stage=eq.printing&select=id';
+    if(aId){
+      existQ += '&assignment_id=eq.'+encodeURIComponent(aId);
+    } else if(cId){
+      // bina assignment ke: campaign+operator+date se match, aur sirf woh jinme assignment_id null hai
+      existQ += '&campaign_id=eq.'+encodeURIComponent(cId)+'&assignment_id=is.null';
+    } else {
+      // na assignment na campaign — koi match nahi, seedha insert
+      existQ = null;
+    }
+    var existing = existQ ? await api(existQ) : [];
+
     var payload = {
       operator_id: operatorId, stage:'printing', log_date:date, qty_done:qty,
       notes: notes, updated_at: new Date().toISOString()
     };
-    var cId = cleanUuid(j.campaign_id), aId = cleanUuid(j.assignment_id);
     if(cId) payload.campaign_id = cId;
     if(aId) payload.assignment_id = aId;
     if(state.proofUrl) payload.proof_photo_url = state.proofUrl;
