@@ -54,6 +54,37 @@
   .toast.show{opacity:1}
   .toast.err{background:var(--danger)} .toast.ok{background:var(--green)}
   .form-hidden{opacity:.4;pointer-events:none}
+  /* Tabs */
+  .mp-tabs{display:flex;gap:6px;margin-bottom:16px;border-bottom:2px solid var(--line)}
+  .mp-tab{padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;color:var(--text-dim);border-bottom:2px solid transparent;margin-bottom:-2px}
+  .mp-tab.active{color:var(--navy);border-bottom-color:var(--gold)}
+  /* Report */
+  .presets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .preset{padding:8px 15px;border:1.5px solid var(--line);border-radius:20px;font-size:12.5px;font-weight:600;cursor:pointer;background:#fff;color:var(--text-dim);transition:.12s}
+  .preset:hover{border-color:var(--teal)}
+  .preset.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .filter-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px}
+  @media(max-width:820px){.filter-row{grid-template-columns:1fr 1fr}}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+  @media(max-width:820px){.kpis{grid-template-columns:1fr 1fr}}
+  .kpi{background:var(--card);border-radius:14px;padding:15px;border:1px solid var(--line)}
+  .kpi .k-lbl{font-size:10.5px;color:var(--text-dim);text-transform:uppercase;font-weight:700;letter-spacing:.04em}
+  .kpi .k-val{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:800;color:var(--navy);margin-top:3px}
+  .kpi.gold .k-val{color:var(--gold-deep)} .kpi.green .k-val{color:var(--green)}
+  .dl-bar{display:flex;gap:10px;flex-wrap:wrap}
+  .btn-pdf{background:var(--danger);color:#fff} .btn-jpg{background:var(--teal-deep);color:#fff} .btn-excel{background:var(--green);color:#fff}
+  .rp-subtabs{display:flex;gap:6px;margin-bottom:12px;border-bottom:2px solid var(--line);flex-wrap:wrap}
+  .rp-subtab{padding:8px 14px;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--text-dim);border-bottom:2px solid transparent;margin-bottom:-2px}
+  .rp-subtab.active{color:var(--navy);border-bottom-color:var(--gold)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{text-align:left;padding:9px 11px;background:var(--navy);color:#fff;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;font-weight:700;white-space:nowrap}
+  th:first-child{border-radius:8px 0 0 0}th:last-child{border-radius:0 8px 0 0}
+  td{padding:9px 11px;border-bottom:1px solid var(--line)}
+  tr:nth-child(even) td{background:#fafbfe}
+  .num{font-family:'JetBrains Mono',monospace;text-align:right;font-weight:600;white-space:nowrap}
+  .total-row td{background:var(--gold-soft)!important;font-weight:800;border-top:2px solid var(--gold)}
+  .tag-manual{display:inline-block;font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:20px;background:#fef3c7;color:#b45309}
+  .tag-normal{display:inline-block;font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:20px;background:#e0f2fe;color:#0369a1}
 </style>
 </head>
 <body>
@@ -61,18 +92,33 @@
   <div class="head">
     <span style="font-size:30px">🖨️</span>
     <div>
-      <h1>Manual Printing Entry</h1>
-      <div class="sub">Operator ke behalf entry — jab design/file na bheja gaya ho aur entry pending reh gayi ho</div>
+      <h1>Manual Printing</h1>
+      <div class="sub">Entry (operator ke behalf) + poori printing report with export</div>
     </div>
   </div>
 
+  <!-- TABS -->
+  <div class="mp-tabs">
+    <div class="mp-tab active" data-mptab="entry" onclick="switchMpTab('entry')">✍️ Manual Entry</div>
+    <div class="mp-tab" data-mptab="report" onclick="switchMpTab('report')">📊 Printing Report</div>
+  </div>
+
+  <!-- ══════ ENTRY TAB ══════ -->
+  <div id="mpEntryTab">
   <div class="grid">
     <!-- LEFT: Pending list -->
     <div class="card">
-      <div class="card-title">⏳ Pending Printing Jobs</div>
-      <div class="card-sub">Jinme kaam pending hai — click karke select karo</div>
-      <input class="search-box" id="searchBox" placeholder="🔍 Campaign ya operator search...">
-      <div class="pending-list" id="pendingList"><div class="spinner"></div></div>
+      <div class="card-title">📋 Campaign Select</div>
+      <div class="card-sub">Koi bhi campaign search karo — ya neeche pending list se pick karo</div>
+      <input class="search-box" id="campSearchBox" placeholder="🔍 Koi bhi campaign search (saare 136)..." autocomplete="off">
+      <div id="campSearchResults" style="max-height:180px;overflow-y:auto;margin-bottom:14px"></div>
+
+      <div style="border-top:1px solid var(--line);padding-top:12px">
+        <div class="card-title" style="font-size:14px">⏳ Pending Printing Jobs</div>
+        <div class="card-sub">Jinme kaam pending hai — quick access</div>
+        <input class="search-box" id="searchBox" placeholder="🔍 Pending filter...">
+        <div class="pending-list" id="pendingList"><div class="spinner"></div></div>
+      </div>
     </div>
 
     <!-- RIGHT: Entry form -->
@@ -141,19 +187,69 @@
       </div>
     </div>
   </div>
+  </div><!-- /mpEntryTab -->
+
+  <!-- ══════ REPORT TAB ══════ -->
+  <div id="mpReportTab" style="display:none">
+    <div class="card">
+      <div class="card-title">🗓️ Report Filters</div>
+      <div class="presets" id="rpPresets">
+        <div class="preset active" data-preset="today">Today</div>
+        <div class="preset" data-preset="yesterday">Yesterday</div>
+        <div class="preset" data-preset="week">This Week</div>
+        <div class="preset" data-preset="month">Last 30 Days</div>
+        <div class="preset" data-preset="custom">Custom Range</div>
+      </div>
+      <div class="filter-row">
+        <div><label>From Date</label><input type="date" id="rpFrom"></div>
+        <div><label>To Date</label><input type="date" id="rpTo"></div>
+        <div><label>Campaign</label><select id="rpCampaign"><option value="">All Campaigns</option></select></div>
+        <div><label>Operator</label><select id="rpOperator"><option value="">All Operators</option></select></div>
+      </div>
+      <div style="margin-top:12px"><button class="btn btn-gold" onclick="loadPrintReport()">🔍 Generate Report</button></div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><div class="k-lbl">Total Entries</div><div class="k-val" id="rpEntries">—</div></div>
+      <div class="kpi gold"><div class="k-lbl">Total Qty Printed</div><div class="k-val" id="rpQty">—</div></div>
+      <div class="kpi"><div class="k-lbl">Manual Entries</div><div class="k-val" id="rpManual">—</div></div>
+      <div class="kpi green"><div class="k-lbl">Campaigns</div><div class="k-val" id="rpCamps">—</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">⬇️ Download Report</div>
+      <div class="dl-bar">
+        <button class="btn btn-pdf" onclick="rpDownloadPDF()">📄 PDF</button>
+        <button class="btn btn-jpg" onclick="rpDownloadJPG()">🖼️ JPG</button>
+        <button class="btn btn-excel" onclick="rpDownloadExcel()">📊 Excel</button>
+      </div>
+    </div>
+
+    <div class="card" id="rpReportCard">
+      <div class="rp-subtabs">
+        <div class="rp-subtab active" data-rptab="detail" onclick="switchRpTab('detail')">📋 Detail (entry-wise)</div>
+        <div class="rp-subtab" data-rptab="campaign" onclick="switchRpTab('campaign')">🏷️ Campaign-wise</div>
+        <div class="rp-subtab" data-rptab="operator" onclick="switchRpTab('operator')">👤 Operator-wise</div>
+      </div>
+      <div id="rpBody"><div class="empty">Generate Report dabao</div></div>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script src="/lib/access-guard.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 if (window.AccessGuard && AccessGuard.protect) {
   AccessGuard.protect({ module:'manual-printing', redirectTo:'/login.html', allowedRoles:['owner','admin','manager','ops_manager','operations_manager'] });
 }
 var user = (window.AccessGuard && AccessGuard.getUser) ? AccessGuard.getUser() : { id:null, name:'admin' };
 var CONFIG = { url:'https://fpbktcgtspqsqpaytslv.supabase.co', key:'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j', bucket:'campaign-designs' };
-var state = { jobs:[], operators:[], selected:null, proofUrl:null };
+var state = { jobs:[], operators:[], allCampaigns:[], selected:null, proofUrl:null };
 
 async function api(path, opts){
   opts = opts || {};
@@ -186,6 +282,10 @@ async function init(){
     // Operators (team members)
     var members = await api('/trial_team_members?select=id,name,phone,role&active=eq.true&order=name.asc');
     state.operators = members || [];
+    // Saare campaigns load (search box ke liye — assignment ke bina bhi entry)
+    try {
+      state.allCampaigns = await api('/trial_campaigns?active=eq.true&select=id,name,client_name,rate_per_unit,total_quantity&order=name.asc&limit=2000') || [];
+    } catch(e){ state.allCampaigns = []; }
     var opMap = {};
     (members||[]).forEach(function(m){ opMap[m.id]=m; });
 
@@ -330,9 +430,12 @@ async function saveEntry(){
     }
 
     // Assignment status advance
-    var newDone = (j.done||0) + qty;
-    var newStatus = newDone >= j.qty_assigned ? 'completed' : 'in_progress';
-    try { await api('/trial_campaign_assignments?id=eq.'+j.assignment_id, { method:'PATCH', prefer:'return=minimal', body:{ status:newStatus } }); } catch(e){}
+    // Assignment status advance — sirf jab assignment ho (manual campaign entry mein nahi)
+    if(j.assignment_id){
+      var newDone = (j.done||0) + qty;
+      var newStatus = newDone >= j.qty_assigned ? 'completed' : 'in_progress';
+      try { await api('/trial_campaign_assignments?id=eq.'+j.assignment_id, { method:'PATCH', prefer:'return=minimal', body:{ status:newStatus } }); } catch(e){}
+    }
 
     toast('✅ Entry saved ('+j.operator_name+' ke behalf)','ok');
     resetForm();
@@ -353,6 +456,251 @@ function resetForm(){
 }
 
 $('searchBox').addEventListener('input', renderPending);
+
+// ── Koi bhi campaign search (saare campaigns, assignment ke bina bhi) ──
+$('campSearchBox').addEventListener('input', function(){
+  var q = (this.value||'').trim().toLowerCase();
+  var box = $('campSearchResults');
+  if(!q){ box.innerHTML=''; return; }
+  var matches = (state.allCampaigns||[]).filter(function(c){
+    return (c.name||'').toLowerCase().indexOf(q)>-1 || (c.client_name||'').toLowerCase().indexOf(q)>-1;
+  }).slice(0, 30);
+  if(!matches.length){ box.innerHTML='<div class="empty" style="padding:12px">Koi campaign nahi mila</div>'; return; }
+  box.innerHTML = matches.map(function(c){
+    return '<div class="pending-item" onclick="selectCampaign(\''+c.id+'\')">'+
+      '<div><div class="pi-name">'+esc(c.name)+'</div>'+
+      '<div class="pi-meta">'+esc(c.client_name||'')+(c.total_quantity?' · '+c.total_quantity+' units':'')+'</div></div>'+
+      '<div class="pi-qty">₹'+(Number(c.rate_per_unit)||0)+'/unit</div></div>';
+  }).join('');
+});
+
+function selectCampaign(cid){
+  var c = (state.allCampaigns||[]).find(function(x){ return x.id===cid; });
+  if(!c) return;
+  // Check: is campaign ka pending job already list mein hai? (assignment based) → wahi use karo
+  var existingJob = state.jobs.find(function(j){ return j.campaign_id===cid; });
+  if(existingJob){ selectJob(existingJob.assignment_id); $('campSearchBox').value=''; $('campSearchResults').innerHTML=''; return; }
+
+  // Assignment ke bina — direct campaign entry
+  state.selected = {
+    assignment_id: null, campaign_id: c.id, campaign_name: c.name,
+    client_name: c.client_name||'', rate: c.rate_per_unit||0,
+    operator_id: null, operator_name: '(select karo)', operator_phone:'',
+    qty_assigned: c.total_quantity||0, status:'manual', due_date:null, done:0
+  };
+  $('campSearchBox').value=''; $('campSearchResults').innerHTML='';
+  renderPending();
+  // Fill form
+  $('formSub').textContent = c.name + (c.client_name?' — '+c.client_name:'') + ' · assignment ke bina manual entry';
+  $('behalfName').textContent = 'Operator select karo (koi assignment nahi)';
+  var opSel = $('fOperator');
+  opSel.innerHTML = '<option value="">— Select Operator —</option>' + state.operators.map(function(o){
+    return '<option value="'+o.id+'">'+esc(o.name)+'</option>';
+  }).join('');
+  $('fQty').value = c.total_quantity || '';
+  $('fRate').value = c.rate_per_unit || '';
+  $('fMaterial').value=''; $('fSize').value=''; $('fNotes').value='';
+  state.proofUrl=null; $('proofText').textContent='📷 Tap to upload printing proof photo'; $('proofDrop').classList.remove('has');
+  calcTotal();
+  $('entryForm').classList.remove('form-hidden');
+}
+
+// ════════════════ REPORT TAB ════════════════
+var rpState = { logs:[], computed:null, tab:'detail', from:null, to:null, campMap:{}, opMap:{} };
+
+function switchMpTab(t){
+  document.querySelectorAll('.mp-tab').forEach(function(el){ el.classList.toggle('active', el.getAttribute('data-mptab')===t); });
+  $('mpEntryTab').style.display = t==='entry' ? 'block' : 'none';
+  $('mpReportTab').style.display = t==='report' ? 'block' : 'none';
+  if(t==='report' && !rpState.computed){ initReport(); }
+}
+
+function switchRpTab(t){
+  rpState.tab=t;
+  document.querySelectorAll('.rp-subtab').forEach(function(el){ el.classList.toggle('active', el.getAttribute('data-rptab')===t); });
+  renderRpTab();
+}
+
+async function initReport(){
+  $('rpFrom').value = istToday(); $('rpTo').value = istToday();
+  // Fill campaign + operator dropdowns (reuse loaded data)
+  try {
+    var camps = await api('/trial_campaigns?select=id,name&order=name.asc&limit=2000');
+    var cSel = $('rpCampaign');
+    (camps||[]).forEach(function(c){ rpState.campMap[c.id]=c.name; var o=document.createElement('option'); o.value=c.id; o.textContent=c.name; cSel.appendChild(o); });
+  } catch(e){}
+  var oSel = $('rpOperator');
+  state.operators.forEach(function(o){ rpState.opMap[o.id]=o.name; var op=document.createElement('option'); op.value=o.id; op.textContent=o.name; oSel.appendChild(op); });
+  loadPrintReport();
+}
+
+document.getElementById('rpPresets').addEventListener('click', function(e){
+  var el=e.target.closest('.preset'); if(!el) return;
+  document.querySelectorAll('#rpPresets .preset').forEach(function(p){ p.classList.remove('active'); });
+  el.classList.add('active');
+  var p=el.getAttribute('data-preset'), today=istToday();
+  if(p==='today'){ $('rpFrom').value=today; $('rpTo').value=today; }
+  else if(p==='yesterday'){ var d=new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Kolkata'})); d.setDate(d.getDate()-1); var y=d.toISOString().slice(0,10); $('rpFrom').value=y; $('rpTo').value=y; }
+  else if(p==='week'){ var d2=new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Kolkata'})); d2.setDate(d2.getDate()-6); $('rpFrom').value=d2.toISOString().slice(0,10); $('rpTo').value=today; }
+  else if(p==='month'){ var d3=new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Kolkata'})); d3.setDate(d3.getDate()-29); $('rpFrom').value=d3.toISOString().slice(0,10); $('rpTo').value=today; }
+  if(p!=='custom') loadPrintReport();
+});
+
+async function loadPrintReport(){
+  var from=$('rpFrom').value, to=$('rpTo').value;
+  if(!from||!to){ toast('Date select karo','err'); return; }
+  rpState.from=from; rpState.to=to;
+  var campId=$('rpCampaign').value, opId=$('rpOperator').value;
+  $('rpBody').innerHTML='<div class="spinner"></div>';
+  try {
+    var q = '/trial_work_logs?stage=eq.printing&log_date=gte.'+from+'&log_date=lte.'+to+
+      '&select=log_date,qty_done,campaign_id,operator_id,notes,proof_photo_url&order=log_date.desc&limit=50000';
+    if(campId) q += '&campaign_id=eq.'+encodeURIComponent(campId);
+    if(opId) q += '&operator_id=eq.'+encodeURIComponent(opId);
+    rpState.logs = await api(q) || [];
+    // Ensure campaign names loaded for any missing
+    var missCamps = Array.from(new Set(rpState.logs.map(function(l){return l.campaign_id;}).filter(function(c){ return c && !rpState.campMap[c]; })));
+    if(missCamps.length){
+      var mc = await api('/trial_campaigns?id=in.('+missCamps.join(',')+')&select=id,name');
+      (mc||[]).forEach(function(c){ rpState.campMap[c.id]=c.name; });
+    }
+    computeReport();
+    renderRpKPIs();
+    renderRpTab();
+  } catch(e){ console.error(e); $('rpBody').innerHTML='<div class="empty" style="color:var(--danger)">Load fail: '+esc(e.message)+'</div>'; }
+}
+
+function isManual(notes){ return notes && String(notes).toLowerCase().indexOf('manual entry')>-1; }
+
+function computeReport(){
+  var campAgg={}, opAgg={}, detail=[], manualCount=0, totalQty=0;
+  rpState.logs.forEach(function(l){
+    var qty=Number(l.qty_done)||0; totalQty+=qty;
+    var man=isManual(l.notes); if(man) manualCount++;
+    var campName=rpState.campMap[l.campaign_id]||'—';
+    var opName=rpState.opMap[l.operator_id]||'—';
+    detail.push({ date:l.log_date, campaign:campName, operator:opName, qty:qty, manual:man, hasProof:!!l.proof_photo_url });
+    if(!campAgg[campName]) campAgg[campName]={ name:campName, qty:0, entries:0 };
+    campAgg[campName].qty+=qty; campAgg[campName].entries++;
+    if(!opAgg[opName]) opAgg[opName]={ name:opName, qty:0, entries:0 };
+    opAgg[opName].qty+=qty; opAgg[opName].entries++;
+  });
+  rpState.computed = {
+    detail: detail,
+    campaigns: Object.values(campAgg).sort(function(a,b){return b.qty-a.qty;}),
+    operators: Object.values(opAgg).sort(function(a,b){return b.qty-a.qty;}),
+    totalEntries: rpState.logs.length, totalQty: totalQty, manualCount: manualCount,
+    campCount: Object.keys(campAgg).length
+  };
+}
+
+function renderRpKPIs(){
+  var c=rpState.computed; if(!c) return;
+  $('rpEntries').textContent=c.totalEntries.toLocaleString('en-IN');
+  $('rpQty').textContent=c.totalQty.toLocaleString('en-IN');
+  $('rpManual').textContent=c.manualCount.toLocaleString('en-IN');
+  $('rpCamps').textContent=c.campCount.toLocaleString('en-IN');
+}
+
+function renderRpTab(){
+  var c=rpState.computed;
+  if(!c){ $('rpBody').innerHTML='<div class="empty">Data nahi</div>'; return; }
+  var html='';
+  if(rpState.tab==='detail'){
+    if(!c.detail.length){ $('rpBody').innerHTML='<div class="empty">Is range mein koi printing entry nahi</div>'; return; }
+    html='<table><thead><tr><th>Date</th><th>Campaign</th><th>Operator</th><th>Qty</th><th>Type</th></tr></thead><tbody>';
+    c.detail.forEach(function(r){
+      html+='<tr><td>'+esc(r.date)+'</td><td>'+esc(r.campaign)+'</td><td>'+esc(r.operator)+'</td><td class="num">'+r.qty.toLocaleString('en-IN')+'</td>'+
+        '<td>'+(r.manual?'<span class="tag-manual">MANUAL</span>':'<span class="tag-normal">normal</span>')+(r.hasProof?' 📷':'')+'</td></tr>';
+    });
+    html+='<tr class="total-row"><td colspan="3">TOTAL ('+c.totalEntries+' entries, '+c.manualCount+' manual)</td><td class="num">'+c.totalQty.toLocaleString('en-IN')+'</td><td></td></tr>';
+    html+='</tbody></table>';
+  } else if(rpState.tab==='campaign'){
+    if(!c.campaigns.length){ $('rpBody').innerHTML='<div class="empty">Koi data nahi</div>'; return; }
+    html='<table><thead><tr><th>Campaign</th><th>Entries</th><th>Total Qty</th></tr></thead><tbody>';
+    c.campaigns.forEach(function(r){ html+='<tr><td>'+esc(r.name)+'</td><td class="num">'+r.entries+'</td><td class="num">'+r.qty.toLocaleString('en-IN')+'</td></tr>'; });
+    html+='<tr class="total-row"><td>TOTAL</td><td class="num">'+c.totalEntries+'</td><td class="num">'+c.totalQty.toLocaleString('en-IN')+'</td></tr>';
+    html+='</tbody></table>';
+  } else if(rpState.tab==='operator'){
+    if(!c.operators.length){ $('rpBody').innerHTML='<div class="empty">Koi data nahi</div>'; return; }
+    html='<table><thead><tr><th>Operator</th><th>Entries</th><th>Total Qty</th></tr></thead><tbody>';
+    c.operators.forEach(function(r){ html+='<tr><td>'+esc(r.name)+'</td><td class="num">'+r.entries+'</td><td class="num">'+r.qty.toLocaleString('en-IN')+'</td></tr>'; });
+    html+='<tr class="total-row"><td>TOTAL</td><td class="num">'+c.totalEntries+'</td><td class="num">'+c.totalQty.toLocaleString('en-IN')+'</td></tr>';
+    html+='</tbody></table>';
+  }
+  $('rpBody').innerHTML=html;
+}
+
+function rpRangeLabel(){ return rpState.from===rpState.to ? rpState.from : (rpState.from+'_to_'+rpState.to); }
+
+function rpDownloadExcel(){
+  if(!rpState.computed){ toast('Pehle report generate karo','err'); return; }
+  try {
+    var wb=XLSX.utils.book_new(), c=rpState.computed;
+    var sum=[['PRAJAPATI — PRINTING REPORT'],['Range', rpState.from+' to '+rpState.to],[],
+      ['Total Entries',c.totalEntries],['Total Qty',c.totalQty],['Manual Entries',c.manualCount],['Campaigns',c.campCount]];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sum), 'Summary');
+    var det=[['Date','Campaign','Operator','Qty','Type']];
+    c.detail.forEach(function(r){ det.push([r.date,r.campaign,r.operator,r.qty,r.manual?'MANUAL':'normal']); });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(det), 'Detail');
+    var camp=[['Campaign','Entries','Qty']];
+    c.campaigns.forEach(function(r){ camp.push([r.name,r.entries,r.qty]); });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(camp), 'Campaign-wise');
+    var op=[['Operator','Entries','Qty']];
+    c.operators.forEach(function(r){ op.push([r.name,r.entries,r.qty]); });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(op), 'Operator-wise');
+    XLSX.writeFile(wb,'PrintingReport_'+rpRangeLabel()+'.xlsx');
+    toast('📊 Excel downloaded','ok');
+  } catch(e){ toast('Excel fail','err'); }
+}
+
+function rpDownloadPDF(){
+  if(!rpState.computed){ toast('Pehle report generate karo','err'); return; }
+  var jsPDFCtor=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF;
+  if(!jsPDFCtor){ toast('PDF lib load nahi hui','err'); return; }
+  try {
+    var c=rpState.computed, doc=new jsPDFCtor({unit:'mm',format:'a4'});
+    var navy=[11,25,87], gray=[90,97,120];
+    doc.setFillColor(navy[0],navy[1],navy[2]); doc.rect(0,0,210,24,'F');
+    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(15);
+    doc.text('PRINTING REPORT',15,11);
+    doc.setFontSize(9); doc.setFont('helvetica','normal');
+    doc.text(rpState.from+' to '+rpState.to,15,19);
+    var y=32;
+    doc.setTextColor(gray[0],gray[1],gray[2]); doc.setFontSize(9);
+    doc.text('Entries: '+c.totalEntries+'   Qty: '+c.totalQty+'   Manual: '+c.manualCount+'   Campaigns: '+c.campCount,15,y); y+=9;
+    // Campaign-wise table
+    doc.setTextColor(navy[0],navy[1],navy[2]); doc.setFont('helvetica','bold'); doc.setFontSize(10);
+    doc.text('CAMPAIGN-WISE',15,y); y+=6;
+    doc.setFillColor(navy[0],navy[1],navy[2]); doc.rect(15,y,180,7,'F');
+    doc.setTextColor(255,255,255); doc.setFontSize(8);
+    doc.text('Campaign',18,y+5); doc.text('Entries',135,y+5); doc.text('Qty',170,y+5); y+=7;
+    doc.setFont('helvetica','normal');
+    c.campaigns.forEach(function(r,i){
+      if(y>278){ doc.addPage(); y=20; }
+      if(i%2===0){ doc.setFillColor(247,248,252); doc.rect(15,y,180,6,'F'); }
+      doc.setTextColor(navy[0],navy[1],navy[2]); doc.setFontSize(8);
+      doc.text(String(r.name).substring(0,45),18,y+4); doc.text(String(r.entries),135,y+4); doc.text(String(r.qty),170,y+4); y+=6;
+    });
+    doc.setFillColor(245,239,224); doc.rect(15,y,180,7,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(navy[0],navy[1],navy[2]);
+    doc.text('TOTAL',18,y+5); doc.text(String(c.totalEntries),135,y+5); doc.text(String(c.totalQty),170,y+5);
+    doc.setTextColor(gray[0],gray[1],gray[2]); doc.setFont('helvetica','normal'); doc.setFontSize(7);
+    doc.text('Generated: '+new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'}),15,290);
+    doc.save('PrintingReport_'+rpRangeLabel()+'.pdf');
+    toast('📄 PDF downloaded','ok');
+  } catch(e){ toast('PDF fail','err'); }
+}
+
+function rpDownloadJPG(){
+  if(!rpState.computed){ toast('Pehle report generate karo','err'); return; }
+  if(!window.html2canvas){ toast('Image lib load nahi hui','err'); return; }
+  html2canvas($('rpReportCard'),{scale:2,backgroundColor:'#ffffff'}).then(function(canvas){
+    var a=document.createElement('a'); a.href=canvas.toDataURL('image/jpeg',0.92);
+    a.download='PrintingReport_'+rpRangeLabel()+'.jpg'; a.click(); toast('🖼️ JPG downloaded','ok');
+  }).catch(function(){ toast('JPG fail','err'); });
+}
+
 init();
 </script>
 </body>
