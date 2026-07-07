@@ -1559,7 +1559,10 @@ async function init() {
       return;
     }
     state.campaign = camps[0];
-    if (!state.campaign.active) {
+    // active can be NULL for older campaigns — only an explicit `false` OR a
+    // completed campaign should show as paused/closed. (Known rule: active=null
+    // must NOT hide a live campaign.)
+    if (state.campaign.active === false) {
       showGate('Campaign Paused', 'This campaign is currently paused. Please contact us for more details.', '||');
       return;
     }

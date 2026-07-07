@@ -10755,21 +10755,40 @@ function setClFilter(f) {
 function copyClientLink(idx) {
   var l = p4state.clientLinks[idx];
   var url = getClientUrlBase() + '?c=' + encodeURIComponent(l.campaign_key) + '&t=' + l.token;
-  
-  // Save to DB if not saved yet
-  persistClientLink(l).then(function() {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(url).then(function() {
-        showToast('Link copied!', 'success');
-      });
-    } else {
-      var ta = document.createElement('textarea');
-      ta.value = url;
-      document.body.appendChild(ta);
-      ta.select();
-      try { document.execCommand('copy'); showToast('Link copied!', 'success'); } catch(e) { showToast('Copy failed', 'error'); }
-      ta.remove();
-    }
+
+  // COPY FIRST, synchronously, inside the user click — Safari blocks clipboard
+  // if it runs after an async network call (persist). So we copy immediately,
+  // then save to DB in the background.
+  var copied = false;
+
+  // execCommand path works reliably inside a direct click gesture (Safari-safe)
+  try {
+    var ta = document.createElement('textarea');
+    ta.value = url;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, url.length);
+    copied = document.execCommand('copy');
+    ta.remove();
+  } catch (e) { copied = false; }
+
+  // Modern API as enhancement (also inside the gesture)
+  if (!copied && navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(function () {
+      showToast('Link copied!', 'success');
+    }).catch(function () {
+      showToast('Copy failed — long-press to copy manually', 'error');
+    });
+  } else {
+    showToast(copied ? 'Link copied!' : 'Copy failed — select manually', copied ? 'success' : 'error');
+  }
+
+  // Persist to DB in the background (does NOT block the copy)
+  persistClientLink(l).catch(function (err) {
+    console.error('[ClientLinks] persist after copy failed:', err && err.message);
   });
 }
 
