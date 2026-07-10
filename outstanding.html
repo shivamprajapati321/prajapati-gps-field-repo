@@ -596,6 +596,10 @@ async function loadData() {
     const payments = await api('/rest/v1/execution_payments?select=member_phone,amount,payment_date&order=payment_date.desc');
     state.payments = payments || [];
 
+    // ─── ADVANCES (paid) — member ko diya paisa; execution outstanding se minus (expenses ke Advances se link) ───
+    const advances = await api('/rest/v1/prajapati_advances?select=member_phone,amount,paid_at&status=eq.paid&order=paid_at.desc').catch(() => []);
+    state.advancesAsPayments = (advances || []).map(function(a){ return { member_phone: a.member_phone, amount: a.amount, payment_date: (a.paid_at || '').slice(0,10) }; });
+
     // ─── STITCHING department data ───
     // Earnings: prajapati_stitching_log (master_phone, master_name, total_amount, log_date)
     let stitchEarn = await api('/rest/v1/prajapati_stitching_log?select=master_id,master_name,total_amount,quantity,rate_per_piece,log_date&order=log_date.desc&limit=20000').catch(() => null);
@@ -686,7 +690,7 @@ function computeRows() {
     return out;
   }
 
-  const execRows = buildDeptRows(state.earnings, state.payments, 'Execution', 'member_phone', 'member_name');
+  const execRows = buildDeptRows(state.earnings, (state.payments || []).concat(state.advancesAsPayments || []), 'Execution', 'member_phone', 'member_name');
   const stitchRows = buildDeptRows(state.stitchEarnings, state.stitchPayments, 'Stitching', 'master_id', 'master_name');
 
   // ─── DELIVERY vendor rows ───
