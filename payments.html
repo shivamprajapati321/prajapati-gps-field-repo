@@ -315,6 +315,7 @@
           <option value="cheque">Cheque</option>
           <option value="other">Other</option>
         </select>
+        <select id="filterCampaign" onchange="renderTable()" style="max-width:210px;"><option value="">All Campaigns</option></select>
         <input type="date" id="filterFrom" onchange="renderTable()" placeholder="From">
         <span style="color:var(--text-mid);font-size:12px;">to</span>
         <input type="date" id="filterTo" onchange="renderTable()" placeholder="To">
@@ -339,7 +340,7 @@
 <div class="modal" id="paymentModal">
   <div class="modal-content">
     <div class="modal-head">
-      <h2>💰 Record New Payment</h2>
+      <h2 id="payModalTitle">💰 Record New Payment</h2>
       <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
     
@@ -352,6 +353,14 @@
       </div>
     </div>
     
+    <div class="form-grid full">
+      <div class="form-field">
+        <label>Campaign <span style="font-weight:500;color:var(--text-mid);text-transform:none;">(optional)</span></label>
+        <input type="text" id="newCampaign" class="form-input" list="campaignDatalist" placeholder="Type or select campaign..." autocomplete="off">
+        <datalist id="campaignDatalist"></datalist>
+      </div>
+    </div>
+
     <div class="form-grid">
       <div class="form-field">
         <label>Amount (₹) <span class="req">*</span></label>
@@ -402,6 +411,7 @@
     
     <div class="modal-actions">
       <button class="ab-btn" onclick="closeModal()">Cancel</button>
+      <button class="ab-btn" onclick="savePayment(true)" id="saveNewBtn" style="background:rgba(99,102,241,0.12);color:#4338ca;border-color:rgba(99,102,241,0.3);">💾 Save &amp; Add Another</button>
       <button class="ab-btn primary" onclick="savePayment()" id="savePayBtn">💾 Save Payment</button>
     </div>
   </div>
@@ -412,7 +422,7 @@
 <script>
 "use strict";
 const CONFIG = { url: 'https://fpbktcgtspqsqpaytslv.supabase.co', key: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j' };
-const state = { admin: null, payments: [], members: [], earnings: {}, selectedMember: null };
+const state = { admin: null, payments: [], members: [], earnings: {}, campaigns: [], selectedMember: null, editId: null };
 
 function esc(s) { if (s == null) return ''; return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function inr(n) { if (!n || isNaN(n)) return '₹0'; return '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 }); }
@@ -442,6 +452,17 @@ async function api(path, options) {
   if (!res.ok) throw new Error('API ' + res.status + ': ' + txt);
   if (!txt || txt.trim() === '') return null;
   try { return JSON.parse(txt); } catch { return txt; }
+}
+
+// Paginated fetch — Supabase ~1000-row cap bypass (offset loop)
+async function apiAll(path, pageSize) {
+  pageSize = pageSize || 1000;
+  var base = path.replace(/([?&])limit=\d+/gi,'$1').replace(/([?&])offset=\d+/gi,'$1').replace(/([?&])&+/g,'$1').replace(/[?&]$/,'');
+  if (/[?&]order=/.test(base)) { if (!/[?&]order=[^&]*\bid\b/.test(base)) base = base.replace(/([?&]order=[^&]*)/,'$1,id.asc'); }
+  else { base += (base.indexOf('?')===-1?'?':'&') + 'order=id.asc'; }
+  var sep = base.indexOf('?')===-1?'?':'&', all=[], offset=0;
+  for(;;){ var b = await api(base+sep+'limit='+pageSize+'&offset='+offset); if(!b||!b.length) break; all=all.concat(b); if(b.length<pageSize) break; offset+=pageSize; }
+  return all;
 }
 
 async function doLogin() {
@@ -492,32 +513,16 @@ async function loadData() {
   document.getElementById('tableBody').innerHTML = '<div class="loading"><div class="spinner"></div><div style="margin-top:14px;font-weight:600;">Loading...</div></div>';
   
   try {
-    const [payments, members, earnings, stitchPay, stitchMasters] = await Promise.all([
-      api('/rest/v1/execution_payments?select=*&order=payment_date.desc,created_at.desc'),
+    const [payments, members, earnings, campaigns] = await Promise.all([
+      apiAll('/rest/v1/execution_payments?select=*&order=payment_date.desc,created_at.desc'),
       api('/rest/v1/trial_team_members?active=eq.true&select=phone,name,role'),
-      api('/rest/v1/execution_daily_log?select=member_phone,total_amount'),
-      api('/rest/v1/prajapati_stitching_payments?deleted_at=is.null&select=*&order=payment_date.desc&limit=20000').catch(() => []),
-      api('/rest/v1/prajapati_stitching_masters?select=id,name,phone').catch(() => [])
+      apiAll('/rest/v1/execution_daily_log?select=member_phone,total_amount'),
+      api('/rest/v1/trial_campaigns?select=key,name&order=name.asc').catch(function(){ return []; })
     ]);
     
-    // execution payments — dept tag
-    const execPays = (payments || []).map(p => Object.assign({}, p, { _dept: 'Execution' }));
-
-    // stitching payments — normalize (master_id→name/phone, dept tag)
-    const masters = stitchMasters || [];
-    const stitchPays = (stitchPay || []).map(p => {
-      const m = masters.find(x => String(x.id) === String(p.master_id));
-      return Object.assign({}, p, {
-        _dept: 'Stitching',
-        member_name: p.master_name || (m ? m.name : 'Master'),
-        member_phone: (m && m.phone) ? m.phone : ('Master #' + (p.master_id || '?')),
-        payment_mode: p.payment_mode || 'cash'
-      });
-    });
-
-    // merge + sort by date desc
-    state.payments = [...execPays, ...stitchPays].sort((a, b) => String(b.payment_date||'').localeCompare(String(a.payment_date||'')));
+    state.payments = payments || [];
     state.members = members || [];
+    state.campaigns = campaigns || [];
     
     // Compute earnings per member for "outstanding" suggestion
     state.earnings = {};
@@ -525,6 +530,7 @@ async function loadData() {
       state.earnings[e.member_phone] = (state.earnings[e.member_phone] || 0) + (parseFloat(e.total_amount) || 0);
     });
     
+    populateCampaignControls();
     renderTable();
     updateSummary();
   } catch (err) {
@@ -544,8 +550,10 @@ function getFilteredPayments() {
   const from = document.getElementById('filterFrom').value;
   const to = document.getElementById('filterTo').value;
   const member = document.getElementById('filterMember').value.trim().toLowerCase();
+  const camp = document.getElementById('filterCampaign') ? document.getElementById('filterCampaign').value : '';
   
   if (mode !== 'all') rows = rows.filter(r => r.payment_mode === mode);
+  if (camp) rows = rows.filter(r => (r.campaign_name || '') === camp);
   if (from) rows = rows.filter(r => r.payment_date >= from);
   if (to) rows = rows.filter(r => r.payment_date <= to);
   if (member) rows = rows.filter(r => (r.member_name || '').toLowerCase().includes(member) || (r.member_phone || '').includes(member));
@@ -558,6 +566,7 @@ function clearFilters() {
   document.getElementById('filterFrom').value = '';
   document.getElementById('filterTo').value = '';
   document.getElementById('filterMember').value = '';
+  if (document.getElementById('filterCampaign')) document.getElementById('filterCampaign').value = '';
   renderTable();
 }
 
@@ -576,7 +585,7 @@ function renderTable() {
   }
   
   let html = '<div class="table-scroll"><table><thead><tr>';
-  html += '<th>Date</th><th>Member</th><th class="num">Amount</th><th>Mode</th><th>Reference</th><th>Period</th><th>Notes</th><th>Receipt</th><th></th></tr></thead><tbody>';
+  html += '<th>Date</th><th>Member</th><th>Campaign</th><th class="num">Amount</th><th>Mode</th><th>Reference</th><th>Period</th><th>Notes</th><th>Receipt</th><th></th></tr></thead><tbody>';
   
   rows.forEach(p => {
     const receiptBtn = p.receipt_storage_path 
@@ -589,18 +598,22 @@ function renderTable() {
           <div class="member-cell">
             <div class="avatar">${getInitials(p.member_name)}</div>
             <div class="info">
-              <div class="name">${esc(p.member_name)} <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:5px;${p._dept==='Stitching'?'background:#ede9fe;color:#6d28d9;':'background:#dbeafe;color:#1d4ed8;'}">${p._dept==='Stitching'?'🧵':'🚗'}</span></div>
+              <div class="name">${esc(p.member_name)}</div>
               <div class="phone">${esc(p.member_phone)}</div>
             </div>
           </div>
         </td>
+        <td style="font-size:12px;color:var(--text-mid);max-width:160px;">${esc(p.campaign_name || '—')}</td>
         <td class="num gold">${inr(p.amount)}</td>
         <td><span class="mode-pill ${esc(p.payment_mode)}">${esc(p.payment_mode)}</span></td>
         <td><span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;">${esc(p.reference_number || '—')}</span></td>
         <td>${esc(p.for_period || '—')}</td>
         <td style="max-width:200px;font-size:12px;color:var(--text-mid);">${esc(p.notes || '—')}</td>
         <td>${receiptBtn}</td>
-        <td><button class="delete-btn" onclick="deletePayment('${p.id}', '${esc(p.member_name)}', ${p.amount}, '${p._dept}')">🗑 Delete</button></td>
+        <td style="white-space:nowrap;">
+          <button class="delete-btn" style="background:rgba(99,102,241,0.1);color:#4338ca;border-color:rgba(99,102,241,0.3);" onclick="openEditPayment('${p.id}')">✏ Edit</button>
+          <button class="delete-btn" onclick="deletePayment('${p.id}', '${esc(p.member_name)}', ${p.amount})">🗑 Delete</button>
+        </td>
       </tr>`;
   });
   
@@ -629,9 +642,56 @@ function updateSummary() {
   setText('sumMonthSub', monthPayments.length + ' transactions');
 }
 
+// ─── CAMPAIGN CONTROLS ───
+function populateCampaignControls() {
+  const names = {};
+  (state.campaigns || []).forEach(c => { const n = (c.name || '').trim(); if (n) names[n] = true; });
+  (state.payments || []).forEach(p => { const n = (p.campaign_name || '').trim(); if (n) names[n] = true; });
+  const sorted = Object.keys(names).sort((a,b) => a.localeCompare(b));
+  const dl = document.getElementById('campaignDatalist');
+  if (dl) dl.innerHTML = sorted.map(n => '<option value="' + esc(n) + '"></option>').join('');
+  const fc = document.getElementById('filterCampaign');
+  if (fc) { const cur = fc.value; fc.innerHTML = '<option value="">All Campaigns</option>' + sorted.map(n => '<option value="' + esc(n) + '">' + esc(n) + '</option>').join(''); fc.value = cur; }
+}
+
+// ─── EDIT PAYMENT ───
+function openEditPayment(id) {
+  const p = state.payments.find(x => String(x.id) === String(id));
+  if (!p) { showToast('Payment not found', 'error'); return; }
+  openNewPayment();
+  state.editId = id;
+  document.getElementById('payModalTitle').textContent = '✏️ Edit Payment';
+  document.getElementById('savePayBtn').innerHTML = '💾 Update Payment';
+  if (document.getElementById('saveNewBtn')) document.getElementById('saveNewBtn').style.display = 'none';
+  state.selectedMember = { phone: p.member_phone, name: p.member_name };
+  document.getElementById('newMember').value = (p.member_name || '') + ' (' + (p.member_phone || '') + ')';
+  const sel = document.getElementById('selectedMember');
+  sel.textContent = '✓ Selected: ' + (p.member_name || '') + ' (' + (p.member_phone || '') + ')';
+  sel.style.display = 'block';
+  document.getElementById('memberResults').classList.remove('show');
+  document.getElementById('newAmount').value = p.amount;
+  document.getElementById('newDate').value = p.payment_date;
+  document.getElementById('newMode').value = p.payment_mode || 'upi';
+  document.getElementById('newRef').value = p.reference_number || '';
+  document.getElementById('newPeriod').value = p.for_period || '';
+  document.getElementById('newNotes').value = p.notes || '';
+  document.getElementById('newCampaign').value = p.campaign_name || '';
+  if (p.receipt_storage_path) {
+    const rp = document.getElementById('newReceiptPreview');
+    rp.style.display = 'block';
+    rp.textContent = '📎 Existing receipt attached — naya upload karoge to replace ho jaayega';
+  }
+  document.getElementById('paymentModal').classList.add('active');
+}
+
 // ─── NEW PAYMENT MODAL ───
 function openNewPayment() {
   state.selectedMember = null;
+  state.editId = null;
+  document.getElementById('payModalTitle').textContent = '💰 Record New Payment';
+  document.getElementById('newCampaign').value = '';
+  var _sb = document.getElementById('savePayBtn'); _sb.disabled = false; _sb.innerHTML = '💾 Save Payment';
+  var _snb = document.getElementById('saveNewBtn'); if (_snb) { _snb.style.display = ''; _snb.disabled = false; _snb.innerHTML = '💾 Save & Add Another'; }
   document.getElementById('newMember').value = '';
   document.getElementById('newAmount').value = '';
   document.getElementById('newDate').value = todayStr();
@@ -713,7 +773,7 @@ function selectMember(phone, name, pending) {
   }
 }
 
-async function savePayment() {
+async function savePayment(keepOpen) {
   if (!state.selectedMember) { showToast('Member select karo', 'error'); return; }
   
   const amt = parseFloat(document.getElementById('newAmount').value);
@@ -726,9 +786,16 @@ async function savePayment() {
   const ref = document.getElementById('newRef').value.trim();
   const period = document.getElementById('newPeriod').value.trim();
   const notes = document.getElementById('newNotes').value.trim();
+  const campaign = document.getElementById('newCampaign').value.trim();
   
   const btn = document.getElementById('savePayBtn');
-  btn.disabled = true;
+  const btn2 = document.getElementById('saveNewBtn');
+  const editId = state.editId;
+  const wasEdit = !!editId;
+  const memPhone = state.selectedMember.phone;
+  const memName = state.selectedMember.name;
+  function resetBtns(){ btn.disabled = false; btn.innerHTML = '💾 Save Payment'; if (btn2){ btn2.disabled = false; btn2.innerHTML = '💾 Save & Add Another'; } }
+  btn.disabled = true; if (btn2) btn2.disabled = true;
   btn.innerHTML = '<span class="spinner sm" style="border-color:rgba(255,255,255,0.3);border-top-color:white;"></span> Saving...';
   
   // Step 1: Upload receipt if provided
@@ -739,7 +806,7 @@ async function savePayment() {
   if (receiptFile) {
     if (receiptFile.size > 5 * 1024 * 1024) {
       showToast('Receipt 5MB se chhoti honi chahiye', 'error');
-      btn.disabled = false; btn.innerHTML = '💾 Save Payment';
+      resetBtns();
       return;
     }
     
@@ -770,7 +837,7 @@ async function savePayment() {
       console.error('Receipt upload error:', uploadErr);
       const proceed = confirm('Receipt upload failed: ' + uploadErr.message + '\n\nPayment save kare without receipt?');
       if (!proceed) {
-        btn.disabled = false; btn.innerHTML = '💾 Save Payment';
+        resetBtns();
         return;
       }
     }
@@ -779,43 +846,57 @@ async function savePayment() {
   // Step 2: Save payment
   btn.innerHTML = '<span class="spinner sm" style="border-color:rgba(255,255,255,0.3);border-top-color:white;"></span> Saving payment...';
   
+  const payload = {
+    payment_date: date,
+    member_phone: state.selectedMember.phone,
+    member_name: state.selectedMember.name,
+    amount: amt,
+    payment_mode: mode,
+    reference_number: ref || null,
+    for_period: period || null,
+    notes: notes || null,
+    campaign_name: campaign || null
+  };
+  // receipt fields sirf tab set karo jab naya upload hua (edit mein purana preserve rahe)
+  if (receiptPath) { payload.receipt_storage_path = receiptPath; payload.receipt_file_name = receiptName; }
+
   try {
-    await api('/rest/v1/execution_payments', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-      body: JSON.stringify({
-        payment_date: date,
-        member_phone: state.selectedMember.phone,
-        member_name: state.selectedMember.name,
-        amount: amt,
-        payment_mode: mode,
-        reference_number: ref || null,
-        for_period: period || null,
-        notes: notes || null,
-        receipt_storage_path: receiptPath,
-        receipt_file_name: receiptName,
-        recorded_by: state.admin.phone,
-        created_by: state.admin.phone
-      })
-    });
-    
-    showToast('✅ Paid ' + inr(amt) + ' to ' + state.selectedMember.name + (receiptPath ? ' (with receipt)' : ''), 'success');
-    closeModal();
+    if (wasEdit) {
+      await api('/rest/v1/execution_payments?id=eq.' + editId, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify(payload)
+      });
+    } else {
+      payload.recorded_by = state.admin.phone;
+      payload.created_by = state.admin.phone;
+      await api('/rest/v1/execution_payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify(payload)
+      });
+    }
+    // ⭐ button + state reset (agli save ke liye ready — pehle yahan atak jaata tha)
+    state.editId = null;
+    resetBtns();
     await loadData();
+    // updated outstanding — payment ab outstanding mein reflect hua
+    var _earned = state.earnings[memPhone] || 0;
+    var _paidNow = state.payments.filter(function(p){ return p.member_phone === memPhone; }).reduce(function(s,p){ return s + (parseFloat(p.amount) || 0); }, 0);
+    var _out = _earned - _paidNow; if (_out < 0) _out = 0;
+    showToast('✅ ' + (wasEdit ? 'Updated' : 'Paid ' + inr(amt)) + ' · ' + memName + ' — Outstanding ab ' + inr(_out), 'success');
+    if (keepOpen && !wasEdit) { openNewPayment(); } else { closeModal(); }
   } catch (err) {
     showToast('Save failed: ' + err.message, 'error');
-    btn.disabled = false;
-    btn.innerHTML = '💾 Save Payment';
+    resetBtns();
   }
 }
 
-async function deletePayment(id, name, amount, dept) {
+async function deletePayment(id, name, amount) {
   if (!confirm(`Delete payment of ${inr(amount)} to ${name}?\n\nThis action cannot be undone.`)) return;
   
   try {
-    // department ke hisaab se sahi table
-    var table = (dept === 'Stitching') ? 'prajapati_stitching_payments' : 'execution_payments';
-    await api('/rest/v1/' + table + '?id=eq.' + id, { method: 'DELETE' });
+    await api('/rest/v1/execution_payments?id=eq.' + id, { method: 'DELETE' });
     showToast('🗑 Payment deleted', 'success');
     await loadData();
   } catch (err) {
@@ -826,9 +907,9 @@ async function deletePayment(id, name, amount, dept) {
 function exportCSV() {
   const rows = getFilteredPayments();
   if (rows.length === 0) { showToast('Nothing to export', 'error'); return; }
-  const csv = [['Date','Member','Phone','Amount','Mode','Reference','Period','Notes'].join(',')];
+  const csv = [['Date','Member','Phone','Campaign','Amount','Mode','Reference','Period','Notes'].join(',')];
   rows.forEach(p => {
-    csv.push([p.payment_date, `"${p.member_name||''}"`, p.member_phone, p.amount, p.payment_mode, `"${p.reference_number||''}"`, `"${p.for_period||''}"`, `"${(p.notes||'').replace(/"/g,'""')}"`].join(','));
+    csv.push([p.payment_date, `"${p.member_name||''}"`, p.member_phone, `"${(p.campaign_name||'').replace(/"/g,'""')}"`, p.amount, p.payment_mode, `"${p.reference_number||''}"`, `"${p.for_period||''}"`, `"${(p.notes||'').replace(/"/g,'""')}"`].join(','));
   });
   const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
