@@ -520,6 +520,17 @@ async function api(path, options) {
   try { return JSON.parse(txt); } catch { return txt; }
 }
 
+// Paginated fetch — Supabase ~1000-row gateway cap bypass (execution_daily_log 1000+ rows!)
+async function apiAll(path, pageSize) {
+  pageSize = pageSize || 1000;
+  var base = path.replace(/([?&])limit=\d+/gi,'$1').replace(/([?&])offset=\d+/gi,'$1').replace(/([?&])&+/g,'$1').replace(/[?&]$/,'');
+  if (/[?&]order=/.test(base)) { if (!/[?&]order=[^&]*\bid\b/.test(base)) base = base.replace(/([?&]order=[^&]*)/,'$1,id.asc'); }
+  else { base += (base.indexOf('?')===-1?'?':'&') + 'order=id.asc'; }
+  var sep = base.indexOf('?')===-1?'?':'&', all=[], offset=0;
+  for(;;){ var b = await api(base+sep+'limit='+pageSize+'&offset='+offset); if(!b||!b.length) break; all=all.concat(b); if(b.length<pageSize) break; offset+=pageSize; }
+  return all;
+}
+
 // ─── LOGIN ───
 async function doLogin() {
   const phone = document.getElementById('loginPhone').value.trim();
@@ -589,29 +600,29 @@ async function loadData() {
     state.members = members || [];
     
     // Load all earnings (aggregated by member)
-    const earnings = await api('/rest/v1/execution_daily_log?select=member_phone,member_name,total_amount,log_date&order=log_date.desc');
+    const earnings = await apiAll('/rest/v1/execution_daily_log?select=member_phone,member_name,total_amount,log_date&order=log_date.desc');
     state.earnings = earnings || [];
     
     // Load all payments
-    const payments = await api('/rest/v1/execution_payments?select=member_phone,amount,payment_date&order=payment_date.desc');
+    const payments = await apiAll('/rest/v1/execution_payments?select=member_phone,amount,payment_date&order=payment_date.desc');
     state.payments = payments || [];
 
     // ─── ADVANCES (paid) — member ko diya paisa; execution outstanding se minus (expenses ke Advances se link) ───
-    const advances = await api('/rest/v1/prajapati_advances?select=member_phone,amount,paid_at&status=eq.paid&order=paid_at.desc').catch(() => []);
+    const advances = await apiAll('/rest/v1/prajapati_advances?select=member_phone,amount,paid_at&status=eq.paid&order=paid_at.desc').catch(() => []);
     state.advancesAsPayments = (advances || []).map(function(a){ return { member_phone: a.member_phone, amount: a.amount, payment_date: (a.paid_at || '').slice(0,10) }; });
 
     // ─── STITCHING department data ───
     // Earnings: prajapati_stitching_log (master_phone, master_name, total_amount, log_date)
-    let stitchEarn = await api('/rest/v1/prajapati_stitching_log?select=master_id,master_name,total_amount,quantity,rate_per_piece,log_date&order=log_date.desc&limit=20000').catch(() => null);
+    let stitchEarn = await apiAll('/rest/v1/prajapati_stitching_log?select=master_id,master_name,total_amount,quantity,rate_per_piece,log_date&order=log_date.desc&limit=20000').catch(() => null);
     if (stitchEarn === null) {
       // specific select failed (column missing?) → try select=*
-      stitchEarn = await api('/rest/v1/prajapati_stitching_log?select=*&order=log_date.desc&limit=20000').catch(() => []);
+      stitchEarn = await apiAll('/rest/v1/prajapati_stitching_log?select=*&order=log_date.desc&limit=20000').catch(() => []);
     }
     state.stitchEarnings = stitchEarn || [];
     // Payments: prajapati_stitching_payments
-    let stitchPay = await api('/rest/v1/prajapati_stitching_payments?select=master_id,master_name,amount,payment_date,payment_type&order=payment_date.desc&limit=20000').catch(() => null);
+    let stitchPay = await apiAll('/rest/v1/prajapati_stitching_payments?select=master_id,master_name,amount,payment_date,payment_type&order=payment_date.desc&limit=20000').catch(() => null);
     if (stitchPay === null) {
-      stitchPay = await api('/rest/v1/prajapati_stitching_payments?select=*&order=payment_date.desc&limit=20000').catch(() => []);
+      stitchPay = await apiAll('/rest/v1/prajapati_stitching_payments?select=*&order=payment_date.desc&limit=20000').catch(() => []);
     }
     // exclude soft-deleted if column exists
     stitchPay = (stitchPay || []).filter(function(p){ return !p.deleted_at; });
@@ -619,10 +630,10 @@ async function loadData() {
 
     // ─── DELIVERY department data (vendor freight) ───
     // Dispatches → vendor "earnings" (jitna freight bill hua vendor ko)
-    const dispatches = await api('/rest/v1/prajapati_dispatches?select=vendor_id,vendor_name,total_freight,dispatch_date,status&order=dispatch_date.desc&limit=20000').catch(() => []);
+    const dispatches = await apiAll('/rest/v1/prajapati_dispatches?select=vendor_id,vendor_name,total_freight,dispatch_date,status&order=dispatch_date.desc&limit=20000').catch(() => []);
     state.deliveryDispatches = (dispatches || []).filter(function(d){ return String(d.status||'').toLowerCase() !== 'cancelled'; });
     // Vendor payments (Prajapati-paid only reduces our outstanding)
-    const vendorPay = await api('/rest/v1/prajapati_vendor_payments?select=vendor_id,vendor_name,amount,payment_date,paid_by&order=payment_date.desc&limit=20000').catch(() => []);
+    const vendorPay = await apiAll('/rest/v1/prajapati_vendor_payments?select=vendor_id,vendor_name,amount,payment_date,paid_by&order=payment_date.desc&limit=20000').catch(() => []);
     state.deliveryPayments = (vendorPay || []).filter(function(p){ return (p.paid_by || 'prajapati') === 'prajapati'; });
 
     computeRows();
