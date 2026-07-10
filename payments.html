@@ -422,7 +422,7 @@
 <script>
 "use strict";
 const CONFIG = { url: 'https://fpbktcgtspqsqpaytslv.supabase.co', key: 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j' };
-const state = { admin: null, payments: [], members: [], earnings: {}, campaigns: [], selectedMember: null, editId: null };
+const state = { admin: null, payments: [], members: [], earnings: {}, advances: {}, campaigns: [], selectedMember: null, editId: null };
 
 function esc(s) { if (s == null) return ''; return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function inr(n) { if (!n || isNaN(n)) return '₹0'; return '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 }); }
@@ -513,11 +513,12 @@ async function loadData() {
   document.getElementById('tableBody').innerHTML = '<div class="loading"><div class="spinner"></div><div style="margin-top:14px;font-weight:600;">Loading...</div></div>';
   
   try {
-    const [payments, members, earnings, campaigns] = await Promise.all([
+    const [payments, members, earnings, campaigns, advances] = await Promise.all([
       apiAll('/rest/v1/execution_payments?select=*&order=payment_date.desc,created_at.desc'),
       api('/rest/v1/trial_team_members?active=eq.true&select=phone,name,role'),
       apiAll('/rest/v1/execution_daily_log?select=member_phone,total_amount'),
-      api('/rest/v1/trial_campaigns?select=key,name&order=name.asc').catch(function(){ return []; })
+      api('/rest/v1/trial_campaigns?select=key,name&order=name.asc').catch(function(){ return []; }),
+      apiAll('/rest/v1/prajapati_advances?select=member_phone,amount,status&status=eq.paid').catch(function(){ return []; })
     ]);
     
     state.payments = payments || [];
@@ -528,6 +529,11 @@ async function loadData() {
     state.earnings = {};
     (earnings || []).forEach(e => {
       state.earnings[e.member_phone] = (state.earnings[e.member_phone] || 0) + (parseFloat(e.total_amount) || 0);
+    });
+    // Advances (paid) = member ko diya paisa → outstanding se minus (link with expenses Advances)
+    state.advances = {};
+    (advances || []).forEach(a => {
+      state.advances[a.member_phone] = (state.advances[a.member_phone] || 0) + (parseFloat(a.amount) || 0);
     });
     
     populateCampaignControls();
@@ -746,7 +752,8 @@ function searchMembers(q) {
   results.innerHTML = filtered.map(m => {
     const earned = state.earnings[m.phone] || 0;
     const paid = state.payments.filter(p => p.member_phone === m.phone).reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
-    const pending = earned - paid;
+    const adv = state.advances[m.phone] || 0;
+    const pending = earned - paid - adv;
     return `
       <div class="member-result" onclick="selectMember('${esc(m.phone)}', '${esc(m.name)}', ${pending})">
         <div class="avatar">${getInitials(m.name)}</div>
@@ -883,7 +890,8 @@ async function savePayment(keepOpen) {
     // updated outstanding — payment ab outstanding mein reflect hua
     var _earned = state.earnings[memPhone] || 0;
     var _paidNow = state.payments.filter(function(p){ return p.member_phone === memPhone; }).reduce(function(s,p){ return s + (parseFloat(p.amount) || 0); }, 0);
-    var _out = _earned - _paidNow; if (_out < 0) _out = 0;
+    var _adv = state.advances[memPhone] || 0;
+    var _out = _earned - _paidNow - _adv; if (_out < 0) _out = 0;
     showToast('✅ ' + (wasEdit ? 'Updated' : 'Paid ' + inr(amt)) + ' · ' + memName + ' — Outstanding ab ' + inr(_out), 'success');
     if (keepOpen && !wasEdit) { openNewPayment(); } else { closeModal(); }
   } catch (err) {
