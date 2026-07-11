@@ -2383,8 +2383,9 @@ function renderDispatchRow(d) {
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
           <button class="btn btn-secondary sm" data-act="edit" data-id="${d.id}" onclick="window.openEditDispatch('${d.id}')" title="Edit dispatch">✏️</button>
-          ${d.pdf_url ? `<a href="${d.pdf_url}" target="_blank" class="btn btn-secondary sm">📄 PDF</a>` : `<button class="btn btn-secondary sm" data-act="pdf" data-id="${d.id}" onclick="window.generatePdfFor('${d.id}')">📄 PDF</button>`}
-          <button class="btn btn-wati sm" data-act="wati" data-id="${d.id}" onclick="window.sendDispatchWati('${d.id}')">📲</button>
+          <button class="btn btn-success sm" data-act="download" data-id="${d.id}" onclick="window.downloadChallan('${d.id}', this)" title="Download Challan PDF">⬇️ Challan</button>
+          ${d.pdf_url ? `<a href="${d.pdf_url}" target="_blank" class="btn btn-secondary sm" title="Open saved PDF">📄</a>` : ''}
+          <button class="btn btn-wati sm" data-act="wati" data-id="${d.id}" onclick="window.sendDispatchWati('${d.id}')" title="Send via WhatsApp">📲</button>
           ${st === 'booked' ? `<button class="btn btn-info sm" data-act="status" data-id="${d.id}" data-to="in_transit" onclick="window.updateDispatchStatus('${d.id}','in_transit')">🚛</button>` : ''}
           ${st === 'in_transit' ? `<button class="btn btn-purple sm" data-act="status" data-id="${d.id}" data-to="out_for_delivery" onclick="window.updateDispatchStatus('${d.id}','out_for_delivery')">🛵</button>` : ''}
           ${st === 'out_for_delivery' ? `<button class="btn btn-success sm" data-act="status" data-id="${d.id}" data-to="delivered" onclick="window.updateDispatchStatus('${d.id}','delivered')">✅</button>` : ''}
@@ -2399,6 +2400,25 @@ async function generatePdfFor(id) {
   if (!d) return;
   await generateDispatchPDF(d);
   loadDispatches().then(renderDashboard);
+}
+
+// Dedicated "Download Challan" — always regenerates a fresh PDF and downloads it.
+async function downloadChallan(id, btn) {
+  const d = state.dispatches.find(x => x.id === id);
+  if (!d) { alert('Dispatch nahi mila. Refresh karke dubara try karo.'); return; }
+  const original = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span> …'; }
+  try {
+    await generateDispatchPDF(d);   // download is unconditional inside this fn
+    if (btn) { btn.innerHTML = '✅ Done'; }
+    loadDispatches().then(renderDashboard);
+  } catch (e) {
+    console.error('Challan download failed:', e);
+    if (btn) { btn.innerHTML = '⬇️ Challan'; btn.disabled = false; }
+    alert('Challan download nahi hua. Console (F12) mein error dekho ya internet check karo.');
+    return;
+  }
+  if (btn) { setTimeout(() => { btn.innerHTML = original; btn.disabled = false; }, 1500); }
 }
 
 async function sendDispatchWati(id) {
@@ -3266,6 +3286,7 @@ document.addEventListener('click', (e) => {
   if (act === 'status') updateDispatchStatus(id, btn.dataset.to);
   else if (act === 'wati') sendDispatchWati(id);
   else if (act === 'pdf') generatePdfFor(id);
+  else if (act === 'download') downloadChallan(id, btn);
   else if (act === 'edit') openEditDispatch(id);
 });
 dbg('✅ click delegation attached (fallback mode)');
@@ -3294,6 +3315,7 @@ document.addEventListener('DOMContentLoaded', () => {
 window.updateDispatchStatus = updateDispatchStatus;
 window.sendDispatchWati = sendDispatchWati;
 window.generatePdfFor = generatePdfFor;
+window.downloadChallan = downloadChallan;
 window.openEditDispatch = openEditDispatch;
 window.cancelEditDispatch = cancelEditDispatch;
 window.switchView = switchView;
