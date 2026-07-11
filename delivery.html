@@ -1843,6 +1843,10 @@ async function saveDispatchAndSend() {
 // PDF GENERATION (jsPDF)
 // ═══════════════════════════════════════════════════════════════
 async function generateDispatchPDF(dispatch) {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    alert('PDF library load nahi hui. Internet check karo (jsPDF CDN block ho sakta hai) aur page refresh karo.');
+    throw new Error('jsPDF not loaded');
+  }
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
   
@@ -1960,30 +1964,61 @@ async function generateDispatchPDF(dispatch) {
   
   // Get as blob
   const pdfBlob = doc.output('blob');
-  
-  // Upload to Supabase Storage
+  const fileNameLocal = 'Dispatch_' + (dispatch.id || 'docket').slice(0, 8) + '_' + (dispatch.recipient_name || '').replace(/\s+/g, '_') + '.pdf';
+
+  // ── DOWNLOAD FIRST (unconditional, never blocked by upload) ──
+  // Primary: jsPDF's own save. Fallback: manual blob-URL anchor (works on file:// too).
+  let downloaded = false;
   try {
-    const fileName = 'dispatch-pdf/' + (dispatch.id || Date.now()) + '_' + Date.now() + '.pdf';
-    const uploadRes = await fetch(SUPABASE_URL + '/storage/v1/object/campaign-designs/' + fileName, {
-      method: 'POST',
-      headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/pdf' },
-      body: pdfBlob
-    });
-    if (uploadRes.ok) {
-      const pdfUrl = SUPABASE_URL + '/storage/v1/object/public/campaign-designs/' + fileName;
-      // Update dispatch with PDF url
-      await api('/rest/v1/prajapati_dispatches?id=eq.' + dispatch.id, {
-        method: 'PATCH',
-        headers: { 'Prefer': 'return=minimal' },
-        body: JSON.stringify({ pdf_url: pdfUrl, pdf_generated_at: new Date().toISOString() })
-      });
-      dispatch.pdf_url = pdfUrl;
+    doc.save(fileNameLocal);
+    downloaded = true;
+  } catch (e) {
+    console.warn('doc.save failed, using blob fallback:', e);
+  }
+  if (!downloaded) {
+    try {
+      const url = URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileNameLocal;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      downloaded = true;
+    } catch (e2) {
+      console.error('Blob download fallback also failed:', e2);
+      // Last resort: open PDF in a new tab so user can save manually
+      try {
+        const url2 = URL.createObjectURL(pdfBlob);
+        window.open(url2, '_blank');
+      } catch (e3) { alert('PDF ban gaya lekin download block ho gaya. Browser download permission check karo.'); }
     }
-  } catch (e) { console.warn('PDF upload failed:', e); }
-  
-  // Also download for user
-  doc.save('Dispatch_' + (dispatch.id || 'docket').slice(0, 8) + '_' + (dispatch.recipient_name || '').replace(/\s+/g, '_') + '.pdf');
-  
+  }
+
+  // ── UPLOAD TO SUPABASE (best-effort, background — never blocks download) ──
+  (async () => {
+    try {
+      const fileName = 'dispatch-pdf/' + (dispatch.id || Date.now()) + '_' + Date.now() + '.pdf';
+      const uploadRes = await fetch(SUPABASE_URL + '/storage/v1/object/campaign-designs/' + fileName, {
+        method: 'POST',
+        headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/pdf' },
+        body: pdfBlob
+      });
+      if (uploadRes.ok) {
+        const pdfUrl = SUPABASE_URL + '/storage/v1/object/public/campaign-designs/' + fileName;
+        await api('/rest/v1/prajapati_dispatches?id=eq.' + dispatch.id, {
+          method: 'PATCH',
+          headers: { 'Prefer': 'return=minimal' },
+          body: JSON.stringify({ pdf_url: pdfUrl, pdf_generated_at: new Date().toISOString() })
+        });
+        dispatch.pdf_url = pdfUrl;
+      } else {
+        console.warn('PDF upload HTTP ' + uploadRes.status);
+      }
+    } catch (e) { console.warn('PDF upload failed (download already done):', e); }
+  })();
+
   return pdfBlob;
 }
 
