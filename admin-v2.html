@@ -10331,13 +10331,24 @@ function bulkDeletePhotos() {
   }
 
   var idFilter = 'id=in.(' + ids.map(encodeURIComponent).join(',') + ')';
-  var who = (state.admin && (state.admin.name || state.admin.phone)) || 'admin';
+  var adminName = (state.admin && (state.admin.name || state.admin.phone)) || 'admin';
+  var adminId = (state.admin && (state.admin.id || state.admin.user_id || state.admin.uid)) || null;
+  // deleted_by is a UUID column — only send it when we actually have a UUID,
+  // otherwise Postgres throws 22P02 (invalid input syntax for type uuid).
+  var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  var patchBody = {
+    deleted_at: new Date().toISOString(),
+    deleted_reason: 'bulk delete (Photos Browser) by ' + adminName
+  };
+  if (adminId && UUID_RE.test(String(adminId))) {
+    patchBody.deleted_by = adminId;
+  }
   api('/rest/v1/trial_photos?' + idFilter, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-    body: { deleted_at: new Date().toISOString(), deleted_by: who, deleted_reason: 'bulk delete (Photos Browser)' }
+    body: patchBody
   }).then(function() {
-    showToast('🗑️ ' + ids.length + ' photos deleted by ' + who + '. Recover ho sakti hain.', 'success');
+    showToast('🗑️ ' + ids.length + ' photos deleted by ' + adminName + '. Recover ho sakti hain.', 'success');
     clearPhotoSelection(); loadPhotos();
   }).catch(function(err) { showToast('Delete fail: ' + (err.message || '?'), 'error'); });
 }
