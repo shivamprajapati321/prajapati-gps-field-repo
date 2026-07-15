@@ -497,6 +497,9 @@ async function saveEntry(){
 
 function resetForm(){
   state.selected=null; state.proofUrl=null;
+  state.dealers=[]; state.dealerName='';
+  var df=$('fDealerField'); if(df) df.style.display='none';
+  var di=$('fDealer'); if(di) di.value='';
   $('entryForm').classList.add('form-hidden');
   $('formSub').textContent='Left se pending job select karo';
   var btn=$('saveBtn'); btn.disabled=false; btn.textContent='💾 Save Entry';
@@ -538,6 +541,7 @@ function selectCampaign(cid){
   };
   $('campSearchBox').value=''; $('campSearchResults').innerHTML='';
   renderPending();
+  loadMpDealers(c.id);
   // Fill form
   $('formSub').textContent = c.name + (c.client_name?' — '+c.client_name:'') + ' · assignment ke bina manual entry';
   $('behalfName').textContent = 'Operator select karo (koi assignment nahi)';
