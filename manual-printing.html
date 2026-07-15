@@ -140,6 +140,12 @@
           </div>
         </div>
 
+        <div class="field" id="fDealerField" style="display:none">
+          <label>🏪 Dealer <span style="font-weight:400;opacity:.6">— optional</span></label>
+          <input type="text" id="fDealer" list="mpDealerList" placeholder="Search or select dealer…" autocomplete="off" oninput="onMpDealer(this.value)">
+          <datalist id="mpDealerList"></datalist>
+        </div>
+
         <div class="row2">
           <div class="field">
             <label>Quantity Done *</label>
@@ -249,7 +255,7 @@ if (window.AccessGuard && AccessGuard.protect) {
 }
 var user = (window.AccessGuard && AccessGuard.getUser) ? AccessGuard.getUser() : { id:null, name:'admin' };
 var CONFIG = { url:'https://fpbktcgtspqsqpaytslv.supabase.co', key:'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j', bucket:'campaign-designs' };
-var state = { jobs:[], operators:[], allCampaigns:[], selected:null, proofUrl:null };
+var state = { jobs:[], operators:[], allCampaigns:[], selected:null, proofUrl:null, dealers:[], dealerName:'' };
 
 async function api(path, opts){
   opts = opts || {};
@@ -340,11 +346,40 @@ function renderPending(){
   }).join('');
 }
 
+// ═══ DEALER (optional) ═══════════════════════════════════════
+// Campaign me dealers hon to hi field dikhta hai. Warna purana behaviour.
+async function loadMpDealers(campId){
+  var f = $('fDealerField');
+  state.dealers = []; state.dealerName = '';
+  var inp = $('fDealer'); if(inp) inp.value = '';
+  if(!campId){ if(f) f.style.display='none'; return; }
+  try{
+    var rows = await api('/trial_campaign_designs?campaign_id=eq.'+encodeURIComponent(campId)+'&select=dealer_name,location_name,quantity&order=sort_order');
+    state.dealers = (rows||[]).filter(function(d){ return d.dealer_name; });
+    if(f) f.style.display = state.dealers.length ? 'block' : 'none';
+    var dl = $('mpDealerList');
+    if(dl) dl.innerHTML = state.dealers.map(function(d){
+      return '<option value="'+esc(d.dealer_name)+'">'+esc((d.location_name||'')+' \u00b7 '+(Number(d.quantity)||0)+' pcs')+'</option>';
+    }).join('');
+  }catch(e){ if(f) f.style.display='none'; }
+}
+function onMpDealer(v){
+  var t = String(v||'').trim().toLowerCase();
+  var hit = (state.dealers||[]).find(function(d){ return String(d.dealer_name||'').trim().toLowerCase()===t; });
+  state.dealerName = hit ? hit.dealer_name : (v||'');
+  // dealer chuna to uski planned qty auto-suggest karo (agar qty khaali ho)
+  if(hit){
+    var q = $('fQty');
+    if(q && !q.value) { q.value = Number(hit.quantity)||''; if(typeof calcTotal==='function') calcTotal(); }
+  }
+}
+
 function selectJob(aid){
   var j = state.jobs.find(function(x){ return x.assignment_id===aid; });
   if(!j) return;
   state.selected = j;
   renderPending();
+  loadMpDealers(j.campaign_id);
   // Fill form
   $('formSub').textContent = j.campaign_name + (j.client_name?' — '+j.client_name:'') + ' · '+j.qty_assigned+' units target';
   $('behalfName').textContent = j.operator_name + (j.operator_phone?' ('+j.operator_phone+')':'');
@@ -431,6 +466,7 @@ async function saveEntry(){
       operator_id: operatorId, stage:'printing', log_date:date, qty_done:qty,
       notes: notes, updated_at: new Date().toISOString()
     };
+    if(state.dealerName) payload.dealer_name = state.dealerName;
     if(cId) payload.campaign_id = cId;
     if(aId) payload.assignment_id = aId;
     if(state.proofUrl) payload.proof_photo_url = state.proofUrl;

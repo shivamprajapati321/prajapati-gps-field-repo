@@ -1413,6 +1413,7 @@ const MEDIA_TYPES = [
 
 // State
 const state = {
+  dealersByCampaign: {},   // campaign_key/id -> dealer rows (cache)
   admin: null,
   campaigns: [],
   members: [],
@@ -1782,6 +1783,7 @@ function createEmptyRow() {
   return {
     campaign: '',
     campaignName: '',
+    dealerName: '',
     media: 'auto_hood',
     member: '',
     memberName: '',
@@ -1907,7 +1909,19 @@ function renderRow(r, i) {
             </div>
           </div>
         </div>
-        
+
+        <div class="entry-field" id="dealerField_${i}" style="display:${(state.dealersByCampaign && state.dealersByCampaign[r.campaign] && state.dealersByCampaign[r.campaign].length) ? 'block' : 'none'}">
+          <label>🏪 Dealer <span style="font-weight:400;opacity:.6">— optional</span></label>
+          <input class="row-input" list="dealerList_${i}" value="${esc(r.dealerName || '')}"
+                 placeholder="Search or select dealer…" autocomplete="off"
+                 oninput="onExecDealer(${i}, this.value)">
+          <datalist id="dealerList_${i}">
+            ${((state.dealersByCampaign && state.dealersByCampaign[r.campaign]) || []).map(function(d){
+              return '<option value="' + esc(d.dealer_name) + '">' + esc((d.location_name||'') + ' \u00b7 ' + (Number(d.quantity)||0) + ' pcs') + '</option>';
+            }).join('')}
+          </datalist>
+        </div>
+
         <div class="entry-field">
           <label>👤 Team Member <span class="req">*</span></label>
           <div class="searchable" data-field="member" data-idx="${i}">
@@ -2060,8 +2074,37 @@ function setMedia(idx, mediaKey) {
 function selectCampaign(idx, key, name) {
   state.rows[idx].campaign = key;
   state.rows[idx].campaignName = name;
+  state.rows[idx].dealerName = '';
   closeAllDropdowns();
   renderTable();
+  saveDraftSilent();
+  loadExecDealers(key);
+}
+
+// ═══ DEALER (optional, per row) ══════════════════════════════
+// campaign yahan KEY hai (id nahi) — isliye pehle campaign id nikalo,
+// phir uske dealer rows. Cache karke rakho taaki har render pe fetch na ho.
+async function loadExecDealers(campKey) {
+  if (!campKey) return;
+  if (state.dealersByCampaign[campKey]) { renderTable(); return; }
+  try {
+    const camps = await api('/rest/v1/trial_campaigns?key=eq.' + encodeURIComponent(campKey) + '&select=id');
+    const cid = camps && camps[0] && camps[0].id;
+    if (!cid) { state.dealersByCampaign[campKey] = []; renderTable(); return; }
+    const rows = await api('/rest/v1/trial_campaign_designs?campaign_id=eq.' + encodeURIComponent(cid) + '&select=dealer_name,location_name,quantity&order=sort_order');
+    state.dealersByCampaign[campKey] = (rows || []).filter(d => d.dealer_name);
+  } catch (e) {
+    state.dealersByCampaign[campKey] = [];
+  }
+  renderTable();
+}
+function onExecDealer(idx, value) {
+  const r = state.rows[idx];
+  if (!r) return;
+  const list = state.dealersByCampaign[r.campaign] || [];
+  const t = String(value || '').trim().toLowerCase();
+  const hit = list.find(d => String(d.dealer_name || '').trim().toLowerCase() === t);
+  r.dealerName = hit ? hit.dealer_name : (value || '');
   saveDraftSilent();
 }
 
@@ -2332,6 +2375,7 @@ async function saveAll() {
     rate_per_unit: parseFloat(r.rate),
     total_amount: parseFloat(r.qty) * parseFloat(r.rate),
     source: 'bulk',
+    dealer_name: (r.dealerName && r.dealerName.trim()) ? r.dealerName.trim() : null,
     created_by: state.admin.phone,
     remark: (r.remark && r.remark.trim()) ? r.remark.trim() : null,
     notes: r.locationData && r.locationData.lat ? `lat:${r.locationData.lat},lng:${r.locationData.lng}` : null

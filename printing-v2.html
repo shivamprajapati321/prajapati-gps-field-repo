@@ -298,6 +298,12 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
           <input class="input" type="number" id="logQty" min="0" placeholder="0">
         </div>
       </div>
+
+      <div class="field" id="logDealerField" style="display:none">
+        <div class="label">🏪 Dealer <span style="font-weight:400;opacity:.6">— optional</span></div>
+        <input class="input" type="text" id="logDealer" list="pvDealerList" placeholder="Search or select dealer…" autocomplete="off" oninput="onPvDealer(this.value)">
+        <datalist id="pvDealerList"></datalist>
+      </div>
       
       <div class="row">
         <div class="field">
@@ -383,6 +389,7 @@ const SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
 
 const state = {
+  pvDealers: [], pvDealerName: '',
   user: null,
   mode: null,  // 'manager' or 'operator'
   activeTab: 'jobs',
@@ -1046,6 +1053,35 @@ function renderHistoryTab() {
 // WORK LOG MODAL
 // ═══════════════════════════════════════════════════════════════
 
+// ═══ DEALER (optional) ═══════════════════════════════════════
+// Sirf tab dikhta hai jab campaign me dealers hon — warna purana behaviour.
+async function loadPvDealers(campId) {
+  const f = document.getElementById('logDealerField');
+  state.pvDealers = []; state.pvDealerName = '';
+  const inp = document.getElementById('logDealer');
+  if (inp) inp.value = '';
+  if (!campId) { if (f) f.style.display = 'none'; return; }
+  try {
+    const rows = await api('/rest/v1/trial_campaign_designs?campaign_id=eq.' + encodeURIComponent(campId) + '&select=dealer_name,location_name,quantity&order=sort_order');
+    state.pvDealers = (rows || []).filter(d => d.dealer_name);
+    if (f) f.style.display = state.pvDealers.length ? 'block' : 'none';
+    const dl = document.getElementById('pvDealerList');
+    if (dl) dl.innerHTML = state.pvDealers.map(d =>
+      '<option value="' + escapeHtml(d.dealer_name) + '">' +
+      escapeHtml((d.location_name || '') + ' \u00b7 ' + (Number(d.quantity) || 0) + ' pcs') + '</option>'
+    ).join('');
+  } catch (e) { if (f) f.style.display = 'none'; }
+}
+function onPvDealer(v) {
+  const t = String(v || '').trim().toLowerCase();
+  const hit = (state.pvDealers || []).find(d => String(d.dealer_name || '').trim().toLowerCase() === t);
+  state.pvDealerName = hit ? hit.dealer_name : (v || '');
+  if (hit) {
+    const q = document.getElementById('logQty');
+    if (q && !q.value) q.value = Number(hit.quantity) || '';
+  }
+}
+
 function openLogModal(assignmentId) {
   const job = state.jobs.find(j => j.assignment_id === assignmentId);
   if (!job) return;
@@ -1066,6 +1102,7 @@ function openLogModal(assignmentId) {
   
   document.getElementById('logDate').value = new Date().toISOString().slice(0, 10);
   document.getElementById('logQty').value = job.today_qty || '';
+  loadPvDealers(job.campaign_id);
   document.getElementById('logHours').value = '';
   document.getElementById('logWastage').value = '';
   document.getElementById('logNotes').value = '';
@@ -1165,6 +1202,7 @@ async function saveLog() {
     if (aId) payload.assignment_id = aId;
     
     if (proofPhotoUrl) payload.proof_photo_url = proofPhotoUrl;
+    if (state.pvDealerName) payload.dealer_name = state.pvDealerName;
     
     if (existing && existing.length) {
       // Update existing log
