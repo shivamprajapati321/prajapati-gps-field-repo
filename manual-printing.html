@@ -353,15 +353,33 @@ async function loadMpDealers(campId){
   state.dealers = []; state.dealerName = '';
   var inp = $('fDealer'); if(inp) inp.value = '';
   if(!campId){ if(f) f.style.display='none'; return; }
+  var rows = null;
   try{
-    var rows = await api('/trial_campaign_designs?campaign_id=eq.'+encodeURIComponent(campId)+'&select=dealer_name,location_name,quantity&order=sort_order');
-    state.dealers = (rows||[]).filter(function(d){ return d.dealer_name; });
-    if(f) f.style.display = state.dealers.length ? 'block' : 'none';
-    var dl = $('mpDealerList');
-    if(dl) dl.innerHTML = state.dealers.map(function(d){
-      return '<option value="'+esc(d.dealer_name)+'">'+esc((d.location_name||'')+' \u00b7 '+(Number(d.quantity)||0)+' pcs')+'</option>';
-    }).join('');
-  }catch(e){ if(f) f.style.display='none'; }
+    rows = await api('/trial_campaign_designs?campaign_id=eq.'+encodeURIComponent(campId)+'&select=dealer_name,location_name,quantity&order=sort_order');
+  }catch(e){
+    // CHUPCHAAP hide mat karo — warna user ko lagta hai "select karte hi gayab ho gaya".
+    var msg = String((e && e.message) || '');
+    console.error('[dealer] load failed:', msg);
+    if(/dealer_name|does not exist|PGRST204|42703|schema cache/i.test(msg)){
+      if(f){
+        f.style.display='block';
+        f.innerHTML = '<label>\ud83c\udfea Dealer</label>'+
+          '<div style="font-size:12px;color:#B45309;background:#FEF3C7;border:1px solid #FCD34D;border-radius:6px;padding:8px 10px;line-height:1.5">'+
+          'Dealer column DB me nahi mila \u2014 ye SQL chalao:<br>'+
+          '<code style="font-size:11px">ALTER TABLE trial_campaign_designs ADD COLUMN IF NOT EXISTS dealer_name TEXT;</code><br>'+
+          '<code style="font-size:11px">NOTIFY pgrst, \'reload schema\';</code></div>';
+      }
+      return;
+    }
+    if(f) f.style.display='none';
+    return;
+  }
+  state.dealers = (rows||[]).filter(function(d){ return d.dealer_name; });
+  if(f) f.style.display = state.dealers.length ? 'block' : 'none';
+  var dl = $('mpDealerList');
+  if(dl) dl.innerHTML = state.dealers.map(function(d){
+    return '<option value="'+esc(d.dealer_name)+'">'+esc((d.location_name||'')+' \u00b7 '+(Number(d.quantity)||0)+' pcs')+'</option>';
+  }).join('');
 }
 function onMpDealer(v){
   var t = String(v||'').trim().toLowerCase();
