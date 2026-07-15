@@ -692,6 +692,8 @@ const state = {
   // Daily Entry
   entryDate: new Date().toISOString().slice(0, 10),
   entryCampaignId: '',
+  entryDealerName: '',      // top context: selected dealer (optional)
+  entryDealers: [],         // campaign ke dealers (dropdown source)
   entryDefaultShift: 'regular',
   draftRows: [],
   
@@ -1061,44 +1063,90 @@ function clearEntryCampaign() {
   loadCampaignProgress();
 }
 
+// ═══ DEALER (top context) ════════════════════════════════════
+function onEntryDealerInput(value) {
+  const v = String(value || '').trim().toLowerCase();
+  const hit = (state.entryDealers || []).find(d => String(d.dealer_name || '').trim().toLowerCase() === v);
+  state.entryDealerName = hit ? hit.dealer_name : (value || '');
+  const wrap = document.getElementById('entryDealerWrap');
+  if (wrap) wrap.classList.toggle('has-value', !!state.entryDealerName);
+  loadCampaignProgress();
+}
+function clearEntryDealer() {
+  state.entryDealerName = '';
+  const i = document.getElementById('entryDealerInput');
+  if (i) i.value = '';
+  const wrap = document.getElementById('entryDealerWrap');
+  if (wrap) wrap.classList.remove('has-value');
+  loadCampaignProgress();
+}
+
 // ═══ CAMPAIGN PROGRESS (Target · Done · Baaki) ═══════════════
-// Target = trial_campaign_designs ka SUM(quantity) — dealer rows hi source of truth.
-// Done   = prajapati_stitching_log ka SUM(quantity) is campaign ke liye.
+// Target = trial_campaign_designs SUM(quantity) — dealer rows source of truth.
+// Dealer select ho to us dealer ka apna target/done dikhta hai.
 async function loadCampaignProgress() {
   const box = document.getElementById('campProgressBox');
   if (!box) return;
   const cid = state.entryCampaignId;
-  if (!cid) { box.style.display = 'none'; return; }
+  if (!cid) {
+    box.style.display = 'none';
+    state.entryDealers = []; state.entryDealerName = '';
+    const df = document.getElementById('entryDealerField');
+    if (df) df.style.display = 'none';
+    return;
+  }
   box.style.display = 'block';
   box.innerHTML = '<div class="cp-load">Loading campaign target…</div>';
   try {
     const [designs, logs] = await Promise.all([
-      api('/rest/v1/trial_campaign_designs?campaign_id=eq.' + encodeURIComponent(cid) + '&select=quantity,location_name,dealer_name').catch(() => []),
-      api('/rest/v1/prajapati_stitching_log?campaign_id=eq.' + encodeURIComponent(cid) + '&select=quantity').catch(() => [])
+      api('/rest/v1/trial_campaign_designs?campaign_id=eq.' + encodeURIComponent(cid) + '&select=quantity,location_name,dealer_name&order=sort_order').catch(() => []),
+      api('/rest/v1/prajapati_stitching_log?campaign_id=eq.' + encodeURIComponent(cid) + '&select=quantity,dealer_name').catch(() => [])
     ]);
-    const target = (designs || []).reduce((s, d) => s + (Number(d.quantity) || 0), 0);
-    const done = (logs || []).reduce((s, l) => s + (Number(l.quantity) || 0), 0);
+    // dealer dropdown sirf tab dikhe jab campaign me dealers hon
+    state.entryDealers = (designs || []).filter(d => d.dealer_name);
+    const df = document.getElementById('entryDealerField');
+    if (df) df.style.display = state.entryDealers.length ? 'flex' : 'none';
+    if (!state.entryDealers.length) state.entryDealerName = '';
+
+    const dealer = state.entryDealerName;
+    const scopedDesigns = dealer ? (designs || []).filter(d => d.dealer_name === dealer) : (designs || []);
+    const scopedLogs = dealer ? (logs || []).filter(l => l.dealer_name === dealer) : (logs || []);
+    const target = scopedDesigns.reduce((s, d) => s + (Number(d.quantity) || 0), 0);
+    const done = scopedLogs.reduce((s, l) => s + (Number(l.quantity) || 0), 0);
     const left = Math.max(0, target - done);
     const pct = target > 0 ? Math.min(100, Math.round(done / target * 100)) : 0;
-    // City-wise bundle (dealer rows ko city me group karo)
-    const byCity = {};
-    (designs || []).forEach(d => {
-      const city = (d.location_name || '—').trim();
-      byCity[city] = (byCity[city] || 0) + (Number(d.quantity) || 0);
-    });
-    const cityChips = Object.keys(byCity).map(city =>
-      '<span class="cp-chip">' + escapeHtml(city) + ' <b>' + byCity[city].toLocaleString('en-IN') + '</b></span>'
-    ).join('');
     const barColor = pct >= 100 ? '#1D9E75' : (pct >= 50 ? '#1D9E75' : (pct >= 25 ? '#EF9F27' : '#E24B4A'));
+
+    // chips: dealer select nahi to har dealer ka done/target; dealer hai to city bundles
+    let chips = '';
+    if (state.entryDealers.length && !dealer) {
+      chips = state.entryDealers.map(d => {
+        const dn = d.dealer_name;
+        const dDone = (logs || []).filter(l => l.dealer_name === dn).reduce((s, l) => s + (Number(l.quantity) || 0), 0);
+        const dTgt = Number(d.quantity) || 0;
+        const ok = dDone >= dTgt && dTgt > 0;
+        return '<span class="cp-chip"' + (ok ? ' style="border-color:#9FE1CB;background:#E1F5EE"' : '') + '>' +
+               escapeHtml(dn) + ' <b>' + dDone + '/' + dTgt + '</b></span>';
+      }).join('');
+    } else if (!state.entryDealers.length) {
+      const byCity = {};
+      (designs || []).forEach(d => {
+        const c = (d.location_name || '—').trim();
+        byCity[c] = (byCity[c] || 0) + (Number(d.quantity) || 0);
+      });
+      chips = Object.keys(byCity).map(c => '<span class="cp-chip">' + escapeHtml(c) + ' <b>' + byCity[c].toLocaleString('en-IN') + '</b></span>').join('');
+    }
+    const scopeLbl = dealer ? ('\ud83c\udfea ' + escapeHtml(dealer)) : 'Full campaign';
     box.innerHTML =
       '<div class="cp-row">' +
+        '<div class="cp-stat"><div class="cp-lbl">SCOPE</div><div class="cp-val" style="font-size:13px;padding-top:4px">' + scopeLbl + '</div></div>' +
         '<div class="cp-stat"><div class="cp-lbl">TARGET</div><div class="cp-val">' + target.toLocaleString('en-IN') + '</div></div>' +
         '<div class="cp-stat"><div class="cp-lbl">DONE</div><div class="cp-val" style="color:#1D9E75">' + done.toLocaleString('en-IN') + '</div></div>' +
         '<div class="cp-stat"><div class="cp-lbl">BAAKI</div><div class="cp-val" style="color:' + (left > 0 ? '#D85A30' : '#1D9E75') + '">' + left.toLocaleString('en-IN') + '</div></div>' +
         '<div class="cp-stat"><div class="cp-lbl">PROGRESS</div><div class="cp-val">' + pct + '%</div></div>' +
       '</div>' +
       '<div class="cp-bar"><div class="cp-bar-fill" style="width:' + pct + '%;background:' + barColor + '"></div></div>' +
-      (cityChips ? '<div class="cp-chips">' + cityChips + '</div>' : '');
+      (chips ? '<div class="cp-chips">' + chips + '</div>' : '');
   } catch (e) {
     box.innerHTML = '<div class="cp-load">Progress load nahi hua</div>';
   }
@@ -1791,6 +1839,20 @@ function renderEntryTab() {
                 <div class="combo-clear" onclick="clearEntryCampaign()" title="Clear">×</div>
               </div>
             </div>
+            <div class="field" id="entryDealerField" style="display:${state.entryDealers && state.entryDealers.length ? 'flex' : 'none'}">
+              <div class="flabel">🏪 Dealer <span class="hint">type to search · optional</span></div>
+              <div class="combo-wrap ${state.entryDealerName ? 'has-value' : ''}" id="entryDealerWrap">
+                <input class="input" type="text" id="entryDealerInput"
+                       list="dealers-datalist"
+                       placeholder="Search or select dealer…"
+                       value="${escapeHtml(state.entryDealerName || '')}"
+                       oninput="onEntryDealerInput(this.value)">
+                <div class="combo-clear" onclick="clearEntryDealer()" title="Clear">×</div>
+              </div>
+              <datalist id="dealers-datalist">
+                ${(state.entryDealers || []).map(d => `<option value="${escapeHtml(d.dealer_name)}">${escapeHtml((d.location_name || '') + ' · ' + (Number(d.quantity) || 0) + ' pcs')}</option>`).join('')}
+              </datalist>
+            </div>
             <div class="field">
               <div class="flabel">⏱️ Default Shift for New Rows</div>
               <select class="input" id="entryShift" onchange="state.entryDefaultShift = this.value">
@@ -1936,6 +1998,7 @@ async function saveAllDrafts() {
         master_name: master?.name || '',
         campaign_id: state.entryCampaignId || null,
         campaign_name: campaignName,
+        dealer_name: state.entryDealerName || null,
         shift_type: shiftType,
         quantity: Number(r.quantity),
         rate_per_piece: Number(r.rate_per_piece),

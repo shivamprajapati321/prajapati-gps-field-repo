@@ -1148,6 +1148,8 @@ const state = {
   currentView: 'dashboard',
   recipientType: 'execution_member',
   selectedCampaign: null,
+  selectedDealer: '',        // top context dealer (optional)
+  _dealers: [],
   selectedRecipient: null,
   campaigns: [],
   dispatches: [],
@@ -1373,7 +1375,7 @@ async function loadDeliveryProgress(campId) {
   try {
     const [designs, disp] = await Promise.all([
       api('/rest/v1/trial_campaign_designs?campaign_id=eq.' + encodeURIComponent(campId) + '&select=quantity,location_name,dealer_name,dealer_phone,dealer_address&order=sort_order').catch(() => []),
-      api('/rest/v1/prajapati_dispatches?campaign_id=eq.' + encodeURIComponent(campId) + '&select=quantity_pcs').catch(() => [])
+      api('/rest/v1/prajapati_dispatches?campaign_id=eq.' + encodeURIComponent(campId) + '&select=quantity_pcs,dealer_name').catch(() => [])
     ]);
     state._campDesigns = designs || [];
     const target = (designs || []).reduce((s, d) => s + (Number(d.quantity) || 0), 0);
@@ -1383,11 +1385,26 @@ async function loadDeliveryProgress(campId) {
     const barColor = pct >= 100 ? '#1D9E75' : (pct >= 50 ? '#1D9E75' : (pct >= 25 ? '#EF9F27' : '#E24B4A'));
     // Dealer quick-pick chips (dispatch dealer-wise hota hai)
     const dealers = (designs || []).filter(d => d.dealer_name);
-    const chips = dealers.map((d, i) =>
-      '<button type="button" class="dlr-chip" onclick="pickDealer(' + i + ')">' +
-        '<b>' + escapeHtml(d.dealer_name) + '</b> ' + (Number(d.quantity) || 0) +
-      '</button>'
-    ).join('');
+    state._dealers = dealers;
+    // Dealer dropdown + search (sirf tab jab campaign me dealers hon)
+    const dealerUI = dealers.length ? (
+      '<div class="dcp-lbl" style="margin:10px 0 4px">DEALER &mdash; select karo, recipient auto-fill hoga</div>' +
+      '<div style="display:flex;gap:6px;align-items:center">' +
+        '<input class="input" id="dDealerSearch" list="dDealerList" placeholder="Search or select dealer\u2026" ' +
+          'value="' + escapeHtml(state.selectedDealer || '') + '" oninput="onDealerPick(this.value)" ' +
+          'style="flex:1;height:36px" autocomplete="off">' +
+        '<datalist id="dDealerList">' +
+          dealers.map(function(d){
+            const dSent = (disp || []).filter(function(x){ return x.dealer_name === d.dealer_name; })
+                            .reduce(function(a,x){ return a + (Number(x.quantity_pcs)||0); }, 0);
+            return '<option value="' + escapeHtml(d.dealer_name) + '">' +
+                   escapeHtml((d.location_name||'') + ' \u00b7 ' + (Number(d.quantity)||0) + ' pcs' +
+                   (dSent ? ' \u00b7 sent ' + dSent : '')) + '</option>';
+          }).join('') +
+        '</datalist>' +
+        (state.selectedDealer ? '<button type="button" class="btn btn-secondary sm" onclick="clearDealer()">\u00d7</button>' : '') +
+      '</div>'
+    ) : '';
     box.innerHTML =
       '<div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:7px">' +
         '<div><div class="dcp-lbl">PLANNED</div><div class="dcp-val">' + target.toLocaleString('en-IN') + '</div></div>' +
@@ -1396,24 +1413,32 @@ async function loadDeliveryProgress(campId) {
         '<div><div class="dcp-lbl">PROGRESS</div><div class="dcp-val">' + pct + '%</div></div>' +
       '</div>' +
       '<div style="height:5px;background:#EEF1F7;border-radius:3px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:' + barColor + '"></div></div>' +
-      (chips ? '<div class="dcp-lbl" style="margin:9px 0 5px">DEALER — click to fill recipient</div><div style="display:flex;gap:6px;flex-wrap:wrap">' + chips + '</div>' : '');
+      dealerUI;
   } catch (e) {
     box.innerHTML = '<div style="font-size:12px;color:var(--danger)">Progress load nahi hua</div>';
   }
 }
-// Dealer chip click → recipient auto-fill (name/phone/address/qty)
-function pickDealer(i) {
-  const d = (state._campDesigns || []).filter(x => x.dealer_name)[i];
-  if (!d) return;
-  const set = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
+// Dealer select → recipient auto-fill (name/phone/address/city/qty)
+function onDealerPick(value) {
+  const v = String(value || '').trim().toLowerCase();
+  const d = (state._dealers || []).find(function(x){ return String(x.dealer_name||'').trim().toLowerCase() === v; });
+  if (!d) { state.selectedDealer = value || ''; return; }
+  state.selectedDealer = d.dealer_name;
+  const set = function(id, val){ const el = document.getElementById(id); if (el && val) el.value = val; };
   set('dRecipientName', d.dealer_name);
-  set('dRecipientPhone', (d.dealer_phone || '').split(',')[0].trim());
+  set('dRecipientPhone', String(d.dealer_phone || '').split(',')[0].trim());
   set('dAddress', d.dealer_address);
   set('dCity', d.location_name);
   set('dQuantity', d.quantity);
   const sel = document.getElementById('campaignSelected');
-  if (sel) sel.innerHTML = '\u2713 Campaign: ' + getWorkName((state.selectedCampaign || {}).campaign_name || (state.selectedCampaign || {}).name || '') +
-    '<br><small>\u2728 Dealer auto-filled: ' + d.dealer_name + ' \u00b7 ' + (Number(d.quantity) || 0) + ' pcs</small>';
+  if (sel) sel.innerHTML = '\u2713 Campaign: ' + getWorkName((state.selectedCampaign||{}).campaign_name || (state.selectedCampaign||{}).name || '') +
+    '<br><small>\u2728 Dealer: ' + escapeHtml(d.dealer_name) + ' \u00b7 ' + (Number(d.quantity)||0) + ' pcs auto-filled</small>';
+}
+function clearDealer() {
+  state.selectedDealer = '';
+  const i = document.getElementById('dDealerSearch');
+  if (i) i.value = '';
+  if (state.selectedCampaign) loadDeliveryProgress(state.selectedCampaign.id);
 }
 
 function selectCampaign(campaign) {
@@ -1812,6 +1837,7 @@ async function saveDispatch(sendWatiAfter) {
       execution_member_id: state.selectedRecipient?.id || null,
       campaign_id: state.selectedCampaign?.id || null,
       campaign_name: state.selectedCampaign ? getWorkName(state.selectedCampaign.campaign_name || state.selectedCampaign.name) : null,
+      dealer_name: state.selectedDealer || null,
       vendor_id: vendorId,
       vendor_name: (vendor?.vendor_name || vendor?.name) || null,
       quantity_pcs: qty,
