@@ -363,6 +363,18 @@ input,select,textarea{font-family:inherit}
   .section{box-shadow:none;border:1px solid #ccc;break-inside:avoid}
   @page{margin:1cm;size:A4 landscape}
 }
+
+.cp-box{background:#fff;border:1px solid var(--rule);border-left:4px solid #C9B98A;border-radius:0 10px 10px 0;padding:12px 16px;margin:0 0 14px}
+.cp-load{font-size:12px;color:var(--text-dim)}
+.cp-row{display:flex;gap:22px;flex-wrap:wrap;margin-bottom:8px}
+.cp-stat{min-width:76px}
+.cp-lbl{font-size:9px;letter-spacing:.6px;color:var(--text-dim);font-weight:700}
+.cp-val{font-size:19px;font-weight:800;color:#0B1957;line-height:1.2}
+.cp-bar{height:5px;background:#EEF1F7;border-radius:3px;overflow:hidden}
+.cp-bar-fill{height:100%;transition:width .3s}
+.cp-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.cp-chip{background:#F4F6FC;border:1px solid #DBE0EE;border-radius:20px;padding:3px 10px;font-size:11px;color:#4A5578}
+.cp-chip b{color:#0B1957}
 </style>
 </head>
 <body>
@@ -1037,6 +1049,7 @@ function onEntryCampaignInput(value) {
   state.entryCampaignId = c ? c.id : '';
   const wrap = document.getElementById('entryCampaignWrap');
   if (wrap) wrap.classList.toggle('has-value', !!state.entryCampaignId);
+  loadCampaignProgress();
 }
 
 function clearEntryCampaign() {
@@ -1045,6 +1058,50 @@ function clearEntryCampaign() {
   if (input) input.value = '';
   const wrap = document.getElementById('entryCampaignWrap');
   if (wrap) wrap.classList.remove('has-value');
+  loadCampaignProgress();
+}
+
+// ═══ CAMPAIGN PROGRESS (Target · Done · Baaki) ═══════════════
+// Target = trial_campaign_designs ka SUM(quantity) — dealer rows hi source of truth.
+// Done   = prajapati_stitching_log ka SUM(quantity) is campaign ke liye.
+async function loadCampaignProgress() {
+  const box = document.getElementById('campProgressBox');
+  if (!box) return;
+  const cid = state.entryCampaignId;
+  if (!cid) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  box.innerHTML = '<div class="cp-load">Loading campaign target…</div>';
+  try {
+    const [designs, logs] = await Promise.all([
+      api('/rest/v1/trial_campaign_designs?campaign_id=eq.' + encodeURIComponent(cid) + '&select=quantity,location_name,dealer_name').catch(() => []),
+      api('/rest/v1/prajapati_stitching_log?campaign_id=eq.' + encodeURIComponent(cid) + '&select=quantity').catch(() => [])
+    ]);
+    const target = (designs || []).reduce((s, d) => s + (Number(d.quantity) || 0), 0);
+    const done = (logs || []).reduce((s, l) => s + (Number(l.quantity) || 0), 0);
+    const left = Math.max(0, target - done);
+    const pct = target > 0 ? Math.min(100, Math.round(done / target * 100)) : 0;
+    // City-wise bundle (dealer rows ko city me group karo)
+    const byCity = {};
+    (designs || []).forEach(d => {
+      const city = (d.location_name || '—').trim();
+      byCity[city] = (byCity[city] || 0) + (Number(d.quantity) || 0);
+    });
+    const cityChips = Object.keys(byCity).map(city =>
+      '<span class="cp-chip">' + escapeHtml(city) + ' <b>' + byCity[city].toLocaleString('en-IN') + '</b></span>'
+    ).join('');
+    const barColor = pct >= 100 ? '#1D9E75' : (pct >= 50 ? '#1D9E75' : (pct >= 25 ? '#EF9F27' : '#E24B4A'));
+    box.innerHTML =
+      '<div class="cp-row">' +
+        '<div class="cp-stat"><div class="cp-lbl">TARGET</div><div class="cp-val">' + target.toLocaleString('en-IN') + '</div></div>' +
+        '<div class="cp-stat"><div class="cp-lbl">DONE</div><div class="cp-val" style="color:#1D9E75">' + done.toLocaleString('en-IN') + '</div></div>' +
+        '<div class="cp-stat"><div class="cp-lbl">BAAKI</div><div class="cp-val" style="color:' + (left > 0 ? '#D85A30' : '#1D9E75') + '">' + left.toLocaleString('en-IN') + '</div></div>' +
+        '<div class="cp-stat"><div class="cp-lbl">PROGRESS</div><div class="cp-val">' + pct + '%</div></div>' +
+      '</div>' +
+      '<div class="cp-bar"><div class="cp-bar-fill" style="width:' + pct + '%;background:' + barColor + '"></div></div>' +
+      (cityChips ? '<div class="cp-chips">' + cityChips + '</div>' : '');
+  } catch (e) {
+    box.innerHTML = '<div class="cp-load">Progress load nahi hua</div>';
+  }
 }
 
 // History — Campaign filter handlers
@@ -1672,7 +1729,10 @@ function switchTab(tab) {
 
 function renderTab() {
   const el = document.getElementById('tabContent');
-  if (state.activeTab === 'entry') el.innerHTML = renderEntryTab();
+  if (state.activeTab === 'entry') {
+    el.innerHTML = renderEntryTab();
+    setTimeout(loadCampaignProgress, 0);   // campaign target/done banner
+  }
   else if (state.activeTab === 'history') el.innerHTML = renderHistoryTab();
   else if (state.activeTab === 'performance') el.innerHTML = renderPerformanceTab();
   else if (state.activeTab === 'payments') el.innerHTML = renderPaymentsTab();
@@ -1892,6 +1952,8 @@ async function saveAllDrafts() {
     
     // For OT cash entries, auto-create payment records
     const otCashEntries = (result || []).filter(e => e.shift_type === 'ot_cash');
+    // Save ke baad campaign target/done banner refresh karo
+    setTimeout(loadCampaignProgress, 300);
     if (otCashEntries.length > 0) {
       const cashPayments = otCashEntries.map(e => ({
         master_id: e.master_id,
@@ -1971,6 +2033,7 @@ function renderHistoryTab() {
         </select>
       </div>
       
+      <div id="campProgressBox" class="cp-box" style="display:none"></div>
       <div class="toolbar">
         <div class="view-toggle">
           <div class="vt ${state.histView === 'table' ? 'active' : ''}" onclick="state.histView = 'table'; renderTab()">📋 Entries</div>

@@ -424,6 +424,12 @@ body{background:var(--bg);color:var(--ink);font-size:14px;line-height:1.55}
   .cc-actionrail,.cc-kpis,.cc-two{grid-template-columns:1fr}.page-title{font-size:22px}
 }
 
+
+.dcp-lbl{font-size:9px;letter-spacing:.6px;color:var(--text-3);font-weight:700}
+.dcp-val{font-size:18px;font-weight:800;color:#0B1957;line-height:1.2}
+.dlr-chip{background:#F4F6FC;border:1px solid #DBE0EE;border-radius:20px;padding:4px 11px;font-size:11px;color:#4A5578;cursor:pointer;font-family:inherit}
+.dlr-chip:hover{background:#0B1957;color:#fff;border-color:#0B1957}
+.dlr-chip b{color:inherit}
 </style>
 </head>
 <body>
@@ -569,6 +575,7 @@ body{background:var(--bg);color:var(--ink);font-size:14px;line-height:1.55}
                 <input class="input" id="dCampaignSearch" placeholder="Type campaign name..." oninput="searchCampaigns(this.value)" autocomplete="off">
                 <div id="campaignSearchResults" class="search-results"></div>
                 <div id="campaignSelected" style="display:none;background:var(--success-bg);color:var(--success);padding:6px 10px;border-radius:6px;margin-top:4px;font-size:12px;font-weight:600"></div>
+                <div id="dCampProgress" style="display:none;background:#fff;border:1px solid var(--border);border-left:4px solid #C9B98A;border-radius:0 8px 8px 0;padding:11px 14px;margin-top:8px"></div>
               </div>
               <div class="field" style="margin-bottom:0" id="recipientSearchField">
                 <label class="label">Select Recipient</label>
@@ -1354,6 +1361,61 @@ async function searchCampaigns(query) {
   resultsEl.style.display = 'block';
 }
 
+// ═══ CAMPAIGN PROGRESS + DEALER PICK (Delivery) ═══════════════
+// Target  = trial_campaign_designs SUM(quantity) — dealer rows source of truth
+// Dispatched = prajapati_dispatches SUM(quantity_pcs) for this campaign
+async function loadDeliveryProgress(campId) {
+  const box = document.getElementById('dCampProgress');
+  if (!box) return;
+  if (!campId) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  box.innerHTML = '<div style="font-size:12px;color:var(--text-3)">Loading campaign plan…</div>';
+  try {
+    const [designs, disp] = await Promise.all([
+      api('/rest/v1/trial_campaign_designs?campaign_id=eq.' + encodeURIComponent(campId) + '&select=quantity,location_name,dealer_name,dealer_phone,dealer_address&order=sort_order').catch(() => []),
+      api('/rest/v1/prajapati_dispatches?campaign_id=eq.' + encodeURIComponent(campId) + '&select=quantity_pcs').catch(() => [])
+    ]);
+    state._campDesigns = designs || [];
+    const target = (designs || []).reduce((s, d) => s + (Number(d.quantity) || 0), 0);
+    const sent = (disp || []).reduce((s, d) => s + (Number(d.quantity_pcs) || 0), 0);
+    const left = Math.max(0, target - sent);
+    const pct = target > 0 ? Math.min(100, Math.round(sent / target * 100)) : 0;
+    const barColor = pct >= 100 ? '#1D9E75' : (pct >= 50 ? '#1D9E75' : (pct >= 25 ? '#EF9F27' : '#E24B4A'));
+    // Dealer quick-pick chips (dispatch dealer-wise hota hai)
+    const dealers = (designs || []).filter(d => d.dealer_name);
+    const chips = dealers.map((d, i) =>
+      '<button type="button" class="dlr-chip" onclick="pickDealer(' + i + ')">' +
+        '<b>' + escapeHtml(d.dealer_name) + '</b> ' + (Number(d.quantity) || 0) +
+      '</button>'
+    ).join('');
+    box.innerHTML =
+      '<div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:7px">' +
+        '<div><div class="dcp-lbl">PLANNED</div><div class="dcp-val">' + target.toLocaleString('en-IN') + '</div></div>' +
+        '<div><div class="dcp-lbl">DISPATCHED</div><div class="dcp-val" style="color:#1D9E75">' + sent.toLocaleString('en-IN') + '</div></div>' +
+        '<div><div class="dcp-lbl">BAAKI</div><div class="dcp-val" style="color:' + (left > 0 ? '#D85A30' : '#1D9E75') + '">' + left.toLocaleString('en-IN') + '</div></div>' +
+        '<div><div class="dcp-lbl">PROGRESS</div><div class="dcp-val">' + pct + '%</div></div>' +
+      '</div>' +
+      '<div style="height:5px;background:#EEF1F7;border-radius:3px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:' + barColor + '"></div></div>' +
+      (chips ? '<div class="dcp-lbl" style="margin:9px 0 5px">DEALER — click to fill recipient</div><div style="display:flex;gap:6px;flex-wrap:wrap">' + chips + '</div>' : '');
+  } catch (e) {
+    box.innerHTML = '<div style="font-size:12px;color:var(--danger)">Progress load nahi hua</div>';
+  }
+}
+// Dealer chip click → recipient auto-fill (name/phone/address/qty)
+function pickDealer(i) {
+  const d = (state._campDesigns || []).filter(x => x.dealer_name)[i];
+  if (!d) return;
+  const set = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
+  set('dRecipientName', d.dealer_name);
+  set('dRecipientPhone', (d.dealer_phone || '').split(',')[0].trim());
+  set('dAddress', d.dealer_address);
+  set('dCity', d.location_name);
+  set('dQuantity', d.quantity);
+  const sel = document.getElementById('campaignSelected');
+  if (sel) sel.innerHTML = '\u2713 Campaign: ' + getWorkName((state.selectedCampaign || {}).campaign_name || (state.selectedCampaign || {}).name || '') +
+    '<br><small>\u2728 Dealer auto-filled: ' + d.dealer_name + ' \u00b7 ' + (Number(d.quantity) || 0) + ' pcs</small>';
+}
+
 function selectCampaign(campaign) {
   state.selectedCampaign = campaign;
   document.getElementById('campaignSearchResults').style.display = 'none';
@@ -1361,6 +1423,7 @@ function selectCampaign(campaign) {
   document.getElementById('dCampaignSearch').value = workName;
   document.getElementById('campaignSelected').textContent = '✓ Campaign: ' + workName;
   document.getElementById('campaignSelected').style.display = 'block';
+  loadDeliveryProgress(campaign.id);
   
   // AUTO-POPULATE if recipient type is "client"
   if (state.recipientType === 'client') {
