@@ -5954,14 +5954,15 @@ function openCampaignDetail(campId, campKey) {
     if (designs.length === 0) {
       html += '<div class="empty-state" style="padding:14px;"><i class="ti ti-info-circle"></i>Koi design/location detail nahi mili</div>';
     } else {
-      html += '<table class="cdm-loc-table"><thead><tr><th>Design</th><th>Location</th><th>Qty</th></tr></thead><tbody>';
+      html += '<table class="cdm-loc-table"><thead><tr><th>Design</th><th>Location</th><th>Dealer</th><th>Qty</th></tr></thead><tbody>';
       designs.forEach(function(d){
         html += '<tr><td>' + escapeHtml(d.design_name || '—') + '</td>' +
                 '<td>' + escapeHtml(d.location_name || d.location || '—') + '</td>' +
+                '<td>' + (d.dealer_name ? escapeHtml(d.dealer_name) + (d.dealer_phone ? '<div style="font-size:10px;color:var(--text-3)">' + escapeHtml(d.dealer_phone) + '</div>' : '') : '<span style="color:var(--text-3)">—</span>') + '</td>' +
                 '<td><span class="qty">' + (d.quantity || d.qty || 0) + '</span></td></tr>';
       });
       var totalQty = designs.reduce(function(s,d){ return s + (Number(d.quantity||d.qty)||0); }, 0);
-      html += '<tr style="background:#F4F5F9;font-weight:700;"><td colspan="2" style="text-align:right;">Total planned</td><td><span class="qty">' + totalQty + '</span></td></tr>';
+      html += '<tr style="background:#F4F5F9;font-weight:700;"><td colspan="3" style="text-align:right;">Total planned</td><td><span class="qty">' + totalQty + '</span></td></tr>';
       html += '</tbody></table>';
     }
 
@@ -7031,8 +7032,8 @@ function renderCampaigns() {
   visible.forEach(function(c) {
     Promise.all([
       api('/rest/v1/trial_campaign_cities?campaign_key=eq.' + encodeURIComponent(c.key) + '&select=id'),
-      apiAll('/rest/v1/trial_photos?campaign_key=eq.' + encodeURIComponent(c.key) + '&select=vehicle_number'),
-      api('/rest/v1/trial_campaign_designs?campaign_id=eq.' + encodeURIComponent(c.id) + '&select=quantity,design_name,location_name,location_city,location_address,location_lat,location_lng')
+      apiAll('/rest/v1/trial_photos?campaign_key=eq.' + encodeURIComponent(c.key) + '&deleted_at=is.null&select=vehicle_number,photo_number'),
+      api('/rest/v1/trial_campaign_designs?campaign_id=eq.' + encodeURIComponent(c.id) + '&select=quantity,design_name,location_name,location_city,location_address,location_lat,location_lng,dealer_name')
     ]).then(function(results) {
       var photos = results[1] || [];
       var designs = results[2] || [];
@@ -7047,22 +7048,30 @@ function renderCampaigns() {
       // Order (vehicles) = designs ki total quantity (SAHI)
       // ⭐ DEDUPE: same design+location ki duplicate rows count na ho (double bug fix)
       //    Launch page bhi yahi karta hai — max quantity rakho per unique location
+      // ⭐ DEALER FIX: dealer_name bhi key me hai — warna ek city ke saare dealer rows
+      //    (Amravati: Durga 80 + Sai 80 + Jadhao 90) "duplicate" samajh ke collapse ho
+      //    jaate the aur sirf max (90) count hota tha → 1450 ki jagah 590 dikhta tha.
       var _dedupeMap = {};
       (designs || []).forEach(function(d){
-        var k = (d.design_name||'') + '|' + (d.location_name||'') + '|' + (d.location_address||'') + '|' + (d.location_lat||'') + '|' + (d.location_lng||'');
+        var k = (d.design_name||'') + '|' + (d.location_name||'') + '|' + (d.dealer_name||'') + '|' + (d.location_address||'') + '|' + (d.location_lat||'') + '|' + (d.location_lng||'');
         var q = Number(d.quantity) || 0;
         if (_dedupeMap[k] === undefined || q > _dedupeMap[k]) _dedupeMap[k] = q;
       });
       var orderQty = Object.keys(_dedupeMap).reduce(function(s, k){ return s + _dedupeMap[k]; }, 0);
       var setTarget = Number(c.target_count || 0);
-      // Photos per vehicle = hood + back (Hood=3, Back=1, Both=4)
-      var photosPerVeh = (Number(c.hood_photo_count || 0) + Number(c.back_panel_photo_count || 0)) || 1;
+      // ⭐ PHOTOS PER VEHICLE = hood + back + before
+      //    Hood=3, Back=1, Both=4. before_photo=true → +1 (photo_number 0 = BEFORE shot).
+      //    Verified on tvsraider: photo_number 0=before, 1/2/3=hood (total_expected=3)
+      //    → 4 photos per vehicle. Pehle before count nahi hota tha → target kam aata tha.
+      var beforeCount = (c.before_photo === true) ? 1 : 0;
+      var photosPerVeh = (Number(c.hood_photo_count || 0) + Number(c.back_panel_photo_count || 0) + beforeCount) || 1;
       // Effective order (agar designs nahi to set target)
       var effOrder = orderQty > 0 ? orderQty : setTarget;
       // Target Photos = order × photos per vehicle
       var targetPhotos = effOrder * photosPerVeh;
-      // Done = total photos clicked (NOT unique vehicles — kyunki target photos hai)
-      var donePhotos = photos.length;
+      // Done = valid photos only. photo_number null = orphan/junk rows (seeded/bad import)
+      // — inhe count karne se progress galat inflate hota tha.
+      var donePhotos = photos.filter(function(p){ return p.photo_number !== null && p.photo_number !== undefined; }).length;
       // Progress against target PHOTOS
       var pct = targetPhotos > 0 ? Math.min(100, Math.round(donePhotos / targetPhotos * 100)) : 0;
 
