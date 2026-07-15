@@ -3958,7 +3958,13 @@ label {
       /* When embed tab is active, let iframe fill the content area */
       #tab-embed.active{height:calc(100vh - 0px);}
       #tab-embed.active #embedFrame{height:calc(100vh - 8px);}
-    </style>
+    
+.da-pick{position:relative;display:flex;align-items:center;gap:4px;min-width:230px}
+.da-pick-in{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;background:var(--card);color:var(--text-1);outline:none}
+.da-pick-in:focus{border-color:var(--primary)}
+.da-clear{background:transparent;border:none;color:var(--text-3);font-size:17px;cursor:pointer;padding:0 4px;line-height:1}
+.da-clear:hover{color:#E24B4A}
+</style>
 
   </main>
 </div>
@@ -8655,6 +8661,18 @@ function loadAssignments() {
       bulkSel.innerHTML = bopts;
     }
 
+    // ⭐ SEARCHABLE CAMPAIGN PICKER: ek shared <datalist> jisme saare campaigns —
+    //    har row ka input isi se filter/autocomplete karta hai (native select me search nahi hota).
+    window.__daCampaigns = campaigns || [];
+    var dlHtml = '<datalist id="daCampList">';
+    (campaigns || []).forEach(function(c) {
+      dlHtml += '<option value="' + escapeHtml((c.name || c.key) + ' \u00b7 ' + daMediaInfo(c)) + '"></option>';
+    });
+    dlHtml += '</datalist>';
+    var dlOld = document.getElementById('daCampList');
+    if (dlOld && dlOld.parentNode) dlOld.parentNode.removeChild(dlOld);
+    document.body.insertAdjacentHTML('beforeend', dlHtml);
+
     var html = '';
     members.forEach(function(m) {
       var current = assignMap[m.phone];
@@ -8672,6 +8690,12 @@ function loadAssignments() {
         : '<span class="status-pill unassigned">— Not assigned</span>';
       
       var isAssigned = current ? '1' : '0';
+      // searchable input ki visible value (jo campaign abhi assigned hai)
+      var currentLabel = '';
+      if (current) {
+        var cc = (campaigns || []).find(function(x){ return x.key === current.campaign_key; });
+        currentLabel = cc ? ((cc.name || cc.key) + ' \u00b7 ' + daMediaInfo(cc)) : current.campaign_key;
+      }
       html += '<div class="assign-row" data-phone="' + escapeHtml(m.phone) + '" data-assigned="' + isAssigned + '" data-search="' + escapeHtml(((m.name||'') + ' ' + (m.phone||'') + ' ' + (m.city||'')).toLowerCase()) + '">' +
                 '<input type="checkbox" class="da-check" onchange="daOnCheck()">' +
                 '<div class="assign-avatar">' + escapeHtml(initials) + '</div>' +
@@ -8679,7 +8703,13 @@ function loadAssignments() {
                   '<div class="name">' + escapeHtml(m.name) + '</div>' +
                   '<div class="phone">' + escapeHtml(m.phone) + (m.city ? ' · ' + escapeHtml(m.city) : '') + '</div>' +
                 '</div>' +
-                '<select onchange="saveAssignment(\'' + m.phone + '\', this.value, \'' + date + '\')">' + options + '</select>' +
+                '<div class="da-pick">' +
+                  '<input class="da-pick-in" type="text" list="daCampList" placeholder="Search campaign\u2026" ' +
+                    'value="' + escapeHtml(currentLabel) + '" ' +
+                    'data-phone="' + escapeHtml(m.phone) + '" data-date="' + escapeHtml(date) + '" ' +
+                    'onchange="daPickCampaign(this)" onfocus="this.select()">' +
+                  (current ? '<button class="da-clear" title="Remove assignment" onclick="daClearAssign(\'' + m.phone + '\',\'' + date + '\')">\u00d7</button>' : '') +
+                '</div>' +
                 statusPill +
               '</div>';
     });
@@ -8724,6 +8754,42 @@ function filterAssignments() {
     existing.remove();
   }
 }
+
+// ═══ SEARCHABLE CAMPAIGN PICKER (Daily assignments) ═══════════
+function daMediaInfo(c) {
+  try { return getMediaTypeLabel(c.hood_photo_count || 0, c.back_panel_photo_count || 0); }
+  catch (e) { return ''; }
+}
+// Input ki typed value ko campaign_key me resolve karo (label ya naam dono chalega)
+function daResolveCampaign(text) {
+  var t = String(text || '').trim().toLowerCase();
+  if (!t) return null;
+  var list = window.__daCampaigns || [];
+  var hit = list.find(function(c){ return ((c.name || c.key) + ' \u00b7 ' + daMediaInfo(c)).toLowerCase() === t; });
+  if (hit) return hit;
+  hit = list.find(function(c){ return String(c.name || '').toLowerCase() === t; });
+  if (hit) return hit;
+  hit = list.find(function(c){ return String(c.key || '').toLowerCase() === t; });
+  if (hit) return hit;
+  var partial = list.filter(function(c){ return ((c.name || c.key) || '').toLowerCase().indexOf(t) > -1; });
+  return partial.length === 1 ? partial[0] : null;
+}
+function daPickCampaign(inp) {
+  var phone = inp.getAttribute('data-phone');
+  var date = inp.getAttribute('data-date');
+  var raw = inp.value;
+  if (!String(raw || '').trim()) { saveAssignment(phone, '', date); return; }
+  var c = daResolveCampaign(raw);
+  if (!c) {
+    showToast('Campaign nahi mila: "' + raw + '" — list me se chuno.', 'error');
+    inp.style.borderColor = '#E24B4A';
+    setTimeout(function(){ inp.style.borderColor = ''; }, 1800);
+    return;
+  }
+  inp.value = (c.name || c.key) + ' \u00b7 ' + daMediaInfo(c);
+  saveAssignment(phone, c.key, date);
+}
+function daClearAssign(phone, date) { saveAssignment(phone, '', date); }
 
 function saveAssignment(phone, campaignKey, date) {
   if (!campaignKey) {

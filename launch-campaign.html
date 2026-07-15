@@ -207,6 +207,23 @@ a{color:inherit;text-decoration:none}
   .pricing-bar{grid-template-columns:repeat(2, 1fr)}
   .action-bar{padding:12px 18px;flex-wrap:wrap}
 }
+
+.loc-qty-locked{width:78px;text-align:center;background:#F4F6FC;border:1px solid #DBE0EE;border-radius:8px;padding:4px 0}
+.loc-qty-locked .lq-label{font-size:8px;letter-spacing:.5px;color:#8A93AD;font-weight:700}
+.loc-qty-locked .lq-val{font-size:16px;font-weight:800;color:#0B1957;line-height:1.1}
+.loc-lock{font-size:12px;opacity:.5;margin-left:2px}
+.dealer-wrap{margin:6px 0 10px 26px;padding-left:12px;border-left:2px solid #C9B98A}
+.dealer-row{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid #EEF1F7}
+.dealer-row:last-of-type{border-bottom:none}
+.dealer-fields{flex:1;display:flex;gap:6px;flex-wrap:wrap}
+.dl-in{border:1px solid #DDE2EC;border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit;outline:none;background:#fff}
+.dl-in:focus{border-color:#0B1957}
+.dl-name{flex:1.2;min-width:130px}
+.dl-addr{flex:1.6;min-width:150px}
+.dl-ph{flex:.9;min-width:100px}
+.dl-qty{width:64px !important}
+.dealer-add{margin-top:6px;background:transparent;border:1px dashed #C9B98A;color:#8B7430;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit}
+.dealer-add:hover{background:#FBF6E4}
 </style>
 </head>
 <body>
@@ -563,20 +580,39 @@ async function loadCampaignForEdit(campId) {
         return ((L.name||'') + '|' + (L.address||'') + '|' + (L.lat||'') + '|' + (L.lng||'')) === locKey;
       });
       if (existing) {
-        // Same location pehle se hai — quantity ADD mat karo, jo zyada hai woh rakho
-        // (duplicate rows the to double na ho; max lो taaki data loss na ho)
-        existing.quantity = Math.max(existing.quantity || 0, r.quantity || 0);
+        // ⭐ DEALER ROW: same location ke dealer rows → dealers[] me daalo
+        if (r.dealer_name) {
+          if (!existing.dealers) existing.dealers = [];
+          existing.dealers.push({
+            dlId: 'D_' + Math.random().toString(36).slice(2, 8),
+            name: r.dealer_name, phone: r.dealer_phone || '',
+            address: r.dealer_address || '', quantity: r.quantity || 0
+          });
+          existing.quantity = locQty(existing);   // city qty = dealers ka sum
+        } else {
+          // Non-dealer duplicate row — ADD mat karo (purana duplicate guard)
+          existing.quantity = Math.max(existing.quantity || 0, r.quantity || 0);
+        }
       } else {
-        byDesign[key].locations.push({
-          // ⭐ locId REQUIRED: render karte waqt updateLocQty(tempId, locId, qty) isi se
-          //    location dhoondta hai. Bina iske edit mode me quantity change silently
-          //    ignore ho jaati thi (purani qty hi save hoti thi).
+        var loc = {
+          // ⭐ locId REQUIRED: render me updateLocQty(tempId, locId, qty) isi se location
+          //    dhoondta hai. Bina iske edit mode me qty change SILENTLY ignore ho jaati thi.
           locId: 'L_' + Math.random().toString(36).slice(2, 8),
           name: r.location_name, address: r.location_address,
           lat: r.location_lat, lng: r.location_lng, place_id: r.location_place_id,
           city: r.location_city, state: r.location_state || 'Maharashtra',
-          pincode: r.location_pincode, type: r.location_type, quantity: r.quantity || 0
-        });
+          pincode: r.location_pincode, type: r.location_type,
+          quantity: r.quantity || 0, dealers: []
+        };
+        if (r.dealer_name) {
+          loc.dealers.push({
+            dlId: 'D_' + Math.random().toString(36).slice(2, 8),
+            name: r.dealer_name, phone: r.dealer_phone || '',
+            address: r.dealer_address || '', quantity: r.quantity || 0
+          });
+          loc.quantity = locQty(loc);
+        }
+        byDesign[key].locations.push(loc);
       }
     });
     designs = Object.values(byDesign);
@@ -951,8 +987,54 @@ function blankLocation() {
   return {
     locId: 'L_' + Math.random().toString(36).slice(2, 8),
     name: '', address: '', lat: null, lng: null, place_id: null,
-    city: null, state: 'Maharashtra', pincode: null, type: null, quantity: 0
+    city: null, state: 'Maharashtra', pincode: null, type: null, quantity: 0,
+    dealers: []
   };
+}
+
+// ═══ DEALER SUPPORT ═══════════════════════════════════════════
+// Rule: dealers OPTIONAL hain.
+//  - dealers[] khaali  → location ki apni quantity (Benecare pattern, purana behaviour)
+//  - dealers[] bhare   → location qty = dealers ka SUM (locked, manual entry band)
+// Isse city+dealer dono count hone wala 250→500 double-count IMPOSSIBLE ho jaata hai.
+function hasDealers(l) { return !!(l && l.dealers && l.dealers.length); }
+function locQty(l) {
+  if (!l) return 0;
+  if (hasDealers(l)) return l.dealers.reduce((s, d) => s + (Number(d.quantity) || 0), 0);
+  return Number(l.quantity) || 0;
+}
+function findLoc(tempId, locId) {
+  const d = designs.find(x => x.tempId === tempId);
+  if (!d) return null;
+  return (d.locations || []).find(x => x.locId === locId) || null;
+}
+function addDealer(tempId, locId) {
+  const l = findLoc(tempId, locId);
+  if (!l) return;
+  if (!l.dealers) l.dealers = [];
+  l.dealers.push({ dlId: 'D_' + Math.random().toString(36).slice(2, 8), name: '', phone: '', address: '', quantity: 0 });
+  renderDesigns(); updateActionBar(); calcPricing();
+}
+function removeDealer(tempId, locId, dlId) {
+  const l = findLoc(tempId, locId);
+  if (!l || !l.dealers) return;
+  l.dealers = l.dealers.filter(x => x.dlId !== dlId);
+  renderDesigns(); updateActionBar(); calcPricing();
+}
+function updateDealer(tempId, locId, dlId, field, value) {
+  const l = findLoc(tempId, locId);
+  if (!l || !l.dealers) return;
+  const dl = l.dealers.find(x => x.dlId === dlId);
+  if (!dl) return;
+  dl[field] = value;
+  if (field === 'quantity') {
+    // city qty ab dealers ka sum hai — location.quantity ko sync rakho
+    l.quantity = locQty(l);
+    const box = document.querySelector('#lq-' + tempId + '-' + locId);
+    if (box) box.textContent = l.quantity;
+    renderDesigns();
+  }
+  updateActionBar(); calcPricing();
 }
 
 function removeDesign(tempId) {
@@ -965,8 +1047,8 @@ function renderDesigns() {
   const el = document.getElementById('designsList');
   el.innerHTML = designs.map((d, i) => {
     const locs = d.locations || [];
-    const totalQty = locs.reduce((s, l) => s + (l.quantity || 0), 0);
-    const validLocs = locs.filter(l => l.name && l.quantity > 0);
+    const totalQty = locs.reduce((s, l) => s + locQty(l), 0);
+    const validLocs = locs.filter(l => l.name && locQty(l) > 0);
     const isFilled = d.design_name && validLocs.length > 0 && d.design_url;
     const isExpanded = d.design_name || locs.length > 0;
     const stateLabel = isFilled ? 'COMPLETE' : (isExpanded ? 'IN PROGRESS' : 'NEW · INCOMPLETE');
@@ -977,10 +1059,18 @@ function renderDesigns() {
           <span class="loc-pin">📍</span>
           <div class="loc-info">
             <div class="loc-name">${escapeHtml(l.name)}</div>
-            <div class="loc-detail">${escapeHtml((l.state || '').toUpperCase())}${l.lat ? ' · ' + l.lat.toFixed(4) + '°N, ' + l.lng.toFixed(4) + '°E' : ''}</div>
+            <div class="loc-detail">${escapeHtml((l.state || '').toUpperCase())}${l.lat ? ' · ' + l.lat.toFixed(4) + '°N, ' + l.lng.toFixed(4) + '°E' : ''}${hasDealers(l) ? ' · ' + l.dealers.length + ' dealer' + (l.dealers.length>1?'s':'') : ''}</div>
           </div>
-          <input class="loc-qty" type="number" min="1" value="${l.quantity || ''}" placeholder="qty"
-                 oninput="updateLocQty('${d.tempId}','${l.locId}', parseInt(this.value)||0)">
+          ${hasDealers(l) ? `
+            <div class="loc-qty-locked" title="Dealers ka auto-sum — edit karne ke liye dealer qty badlo">
+              <div class="lq-label">AUTO-SUM</div>
+              <div class="lq-val">${locQty(l)}</div>
+            </div>
+            <span class="loc-lock" title="Locked">🔒</span>
+          ` : `
+            <input class="loc-qty" type="number" min="1" value="${l.quantity || ''}" placeholder="qty"
+                   oninput="updateLocQty('${d.tempId}','${l.locId}', parseInt(this.value)||0)">
+          `}
           <button class="loc-remove" onclick="removeLocation('${d.tempId}','${l.locId}')" title="Remove location">×</button>
         ` : `
           <span class="loc-pin">🔍</span>
@@ -995,6 +1085,26 @@ function renderDesigns() {
           <button class="loc-remove" onclick="removeLocation('${d.tempId}','${l.locId}')" title="Remove">×</button>
         `}
       </div>
+      ${l.name ? `
+        <div class="dealer-wrap">
+          ${(l.dealers || []).map(dl => `
+            <div class="dealer-row">
+              <div class="dealer-fields">
+                <input type="text" class="dl-in dl-name" placeholder="Dealer name (e.g. Durga TVS)" value="${escapeHtml(dl.name || '')}"
+                       oninput="updateDealer('${d.tempId}','${l.locId}','${dl.dlId}','name', this.value)">
+                <input type="text" class="dl-in dl-addr" placeholder="Address" value="${escapeHtml(dl.address || '')}"
+                       oninput="updateDealer('${d.tempId}','${l.locId}','${dl.dlId}','address', this.value)">
+                <input type="text" class="dl-in dl-ph" placeholder="Phone" value="${escapeHtml(dl.phone || '')}"
+                       oninput="updateDealer('${d.tempId}','${l.locId}','${dl.dlId}','phone', this.value)">
+              </div>
+              <input class="loc-qty dl-qty" type="number" min="1" value="${dl.quantity || ''}" placeholder="qty"
+                     oninput="updateDealer('${d.tempId}','${l.locId}','${dl.dlId}','quantity', parseInt(this.value)||0)">
+              <button class="loc-remove" onclick="removeDealer('${d.tempId}','${l.locId}','${dl.dlId}')" title="Remove dealer">×</button>
+            </div>
+          `).join('')}
+          <button class="dealer-add" onclick="addDealer('${d.tempId}','${l.locId}')">+ Add dealer</button>
+        </div>
+      ` : ''}
     `).join('');
 
     return `
@@ -1075,16 +1185,15 @@ function updateLocQty(tempId, locId, qty) {
   const d = designs.find(x => x.tempId === tempId);
   if (!d) { console.warn('[updateLocQty] design not found:', tempId); return; }
   let l = (d.locations || []).find(x => x.locId === locId);
-  // SAFETY NET: agar kisi wajah se locId match na ho (purana data / missing id),
-  // silently ignore mat karo — warna user ki qty change chup-chaap gum ho jaati hai.
   if (!l) {
-    console.warn('[updateLocQty] locId match nahi hua:', locId, '— repairing.');
-    // repair: jis location ke paas locId nahi hai use yeh id de do
+    // SAFETY NET: locId match na ho to silently ignore mat karo (qty gum ho jaati thi)
+    console.warn('[updateLocQty] locId match nahi hua:', locId, '- repairing.');
     l = (d.locations || []).find(x => !x.locId);
     if (l) l.locId = locId;
   }
-  if (l) { l.quantity = qty; updateActionBar(); calcPricing(); }
-  else console.error('[updateLocQty] location update FAIL — qty save nahi hogi:', tempId, locId);
+  if (!l) { console.error('[updateLocQty] location FAIL - qty save nahi hogi'); return; }
+  if (hasDealers(l)) return;   // dealers hain to qty locked (auto-sum)
+  l.quantity = qty; updateActionBar(); calcPricing();
 }
 
 function updateDesignField(tempId, field, value) {
@@ -1283,7 +1392,7 @@ async function handleFileSelect(tempId, file) {
 }
 
 function calcPricing() {
-  const totalQty = designs.reduce((s, d) => s + (d.locations || []).reduce((t, l) => t + (l.quantity || 0), 0), 0);
+  const totalQty = designs.reduce((s, d) => s + (d.locations || []).reduce((t, l) => t + locQty(l), 0), 0);
   const rate = parseFloat(document.getElementById('rateUnit').value) || 0;
   const disc = parseFloat(document.getElementById('discount').value) || 0;
   const gstPct = parseFloat(document.getElementById('gstPct').value) || 0;
@@ -1313,13 +1422,13 @@ function calcPricing() {
 }
 
 function updateActionBar() {
-  const totalQty = designs.reduce((s, d) => s + (d.locations || []).reduce((t, l) => t + (l.quantity || 0), 0), 0);
+  const totalQty = designs.reduce((s, d) => s + (d.locations || []).reduce((t, l) => t + locQty(l), 0), 0);
   // Edit mode mein design_url optional (purane campaigns ka file load na ho to bhi edit ho sake)
   const isEdit = !!editingCampaign;
-  const validDesigns = designs.filter(d => d.design_name && (isEdit || d.design_url) && (d.locations || []).some(l => l.name && l.quantity > 0));
+  const validDesigns = designs.filter(d => d.design_name && (isEdit || d.design_url) && (d.locations || []).some(l => l.name && locQty(l) > 0));
   const cities = new Set();
   designs.forEach(d => (d.locations || []).forEach(l => l.city && cities.add(l.city)));
-  const locCount = designs.reduce((s, d) => s + (d.locations || []).filter(l => l.name && l.quantity > 0).length, 0);
+  const locCount = designs.reduce((s, d) => s + (d.locations || []).filter(l => l.name && locQty(l) > 0).length, 0);
   
   const parts = [];
   if (validDesigns.length > 0) parts.push(`<strong>${validDesigns.length}</strong> design${validDesigns.length !== 1 ? 's' : ''}`);
@@ -1361,7 +1470,7 @@ async function _submitCampaignInner(targetStatus = 'pending_execution_plan') {
   const campaignName = document.getElementById('campaignName').value.trim();
   const isEdit = !!editingCampaign;
   // Edit mode mein design_url optional (purane campaign ka file na ho to bhi save ho)
-  const validDesigns = designs.filter(d => d.design_name && (isEdit || d.design_url) && (d.locations || []).some(l => l.name && l.quantity > 0));
+  const validDesigns = designs.filter(d => d.design_name && (isEdit || d.design_url) && (d.locations || []).some(l => l.name && locQty(l) > 0));
   
   if (targetStatus !== 'draft') {
     // Edit mode mein job_type optional (admin-v2 se bane campaigns ka job_type nahi hota)
@@ -1402,7 +1511,7 @@ async function _submitCampaignInner(targetStatus = 'pending_execution_plan') {
       } catch(e) { clientId = null; }
     }
     
-    const totalQty = validDesigns.reduce((s, d) => s + (d.locations || []).reduce((t, l) => t + ((l.name && l.quantity > 0) ? l.quantity : 0), 0), 0);
+    const totalQty = validDesigns.reduce((s, d) => s + (d.locations || []).reduce((t, l) => t + ((l.name && locQty(l) > 0) ? locQty(l) : 0), 0), 0);
     const rate = parseFloat(document.getElementById('rateUnit').value) || 0;
     const disc = parseFloat(document.getElementById('discount').value) || 0;
     const gstPct = parseFloat(document.getElementById('gstPct').value) || 0;
@@ -1524,11 +1633,14 @@ async function _submitCampaignInner(targetStatus = 'pending_execution_plan') {
       // Same design_name + design_url repeated per location (ek design, multi-location).
       let sortIdx = 0;
       const designsPayload = [];
+      // ⭐ DEALER RULE: dealer rows hi SINGLE SOURCE OF TRUTH hain.
+      //    Dealers hain  → har dealer ka 1 row (city ka ALAG row NAHI banta).
+      //    Dealers nahi  → location ka 1 row (purana behaviour, dealer_* null).
+      //    Isse city+dealer dono add hone wala 250→500 double-count khatam.
       validDesigns.forEach(d => {
-        (d.locations || []).filter(l => l.name && l.quantity > 0).forEach(l => {
-          designsPayload.push({
+        (d.locations || []).filter(l => l.name && locQty(l) > 0).forEach(l => {
+          const baseRow = {
             campaign_id: campaign.id,
-            sort_order: sortIdx++,
             design_name: d.design_name,
             location_name: l.name,
             location_address: l.address,
@@ -1539,13 +1651,28 @@ async function _submitCampaignInner(targetStatus = 'pending_execution_plan') {
             location_state: l.state,
             location_pincode: l.pincode,
             location_type: l.type,
-            quantity: l.quantity,
             design_url: d.design_url,
             design_file_name: d.design_file_name,
             design_file_size: d.design_file_size,
             design_file_type: d.design_file_type,
             created_by: user.id
-          });
+          };
+          if (hasDealers(l)) {
+            l.dealers.filter(dl => dl.name && Number(dl.quantity) > 0).forEach(dl => {
+              designsPayload.push(Object.assign({}, baseRow, {
+                sort_order: sortIdx++,
+                dealer_name: dl.name,
+                dealer_phone: dl.phone || null,
+                dealer_address: dl.address || null,
+                quantity: Number(dl.quantity) || 0
+              }));
+            });
+          } else {
+            designsPayload.push(Object.assign({}, baseRow, {
+              sort_order: sortIdx++,
+              quantity: Number(l.quantity) || 0
+            }));
+          }
         });
       });
       
@@ -1625,7 +1752,7 @@ async function loadCampaignPayments(){
   if(!total){
     try {
       let qty = 0;
-      (designs||[]).forEach(d => (d.locations||[]).forEach(l => { if(l.name && l.quantity>0) qty += (parseFloat(l.quantity)||0); }));
+      (designs||[]).forEach(d => (d.locations||[]).forEach(l => { if(l.name && locQty(l)>0) qty += locQty(l); }));
       const rate = parseFloat((document.getElementById('rateUnit')||{}).value) || parseFloat(editingCampaign.rate_per_unit) || 0;
       const disc = parseFloat((document.getElementById('discount')||{}).value) || parseFloat(editingCampaign.discount) || 0;
       const gstP = parseFloat((document.getElementById('gstPct')||{}).value) || parseFloat(editingCampaign.gst_pct) || 0;

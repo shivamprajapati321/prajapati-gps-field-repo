@@ -575,11 +575,11 @@ async function enrichJobFiles(jobs) {
       const stash = (k, r) => { if (!k) return; (byCampaign[String(k)] = byCampaign[String(k)] || []).push(r); };
 
       if (cids.length) {
-        const rows = await api(`/rest/v1/trial_campaign_designs?campaign_id=in.(${cids.join(',')})&select=id,campaign_id,design_url,drive_url,design_file_name,design_files,print_status,sort_order`);
+        const rows = await api(`/rest/v1/trial_campaign_designs?campaign_id=in.(${cids.join(',')})&select=id,campaign_id,design_url,drive_url,design_file_name,design_files,print_status,sort_order,dealer_name,dealer_phone,location_name,quantity`);
         (rows || []).forEach(r => stash(r.campaign_id, r));
       }
       if (ckeys.length) {
-        const rowsK = await api(`/rest/v1/trial_campaign_designs?campaign_key=in.(${ckeys.map(encodeURIComponent).join(',')})&select=id,campaign_key,design_url,drive_url,design_file_name,design_files,print_status,sort_order`);
+        const rowsK = await api(`/rest/v1/trial_campaign_designs?campaign_key=in.(${ckeys.map(encodeURIComponent).join(',')})&select=id,campaign_key,design_url,drive_url,design_file_name,design_files,print_status,sort_order,dealer_name,dealer_phone,location_name,quantity`);
         (rowsK || []).forEach(r => stash(r.campaign_key, r));
       }
 
@@ -807,7 +807,7 @@ function renderCompletedTab() {
             <div class="job-meta">
               <span>🎟️ <strong>Job #${(job.assignment_id || '').slice(-6).toUpperCase()}</strong></span>
               ${job.design_name && job.design_name !== job.campaign_name && !/^(design job|job|design)$/i.test(job.design_name.trim()) ? `<span>🎨 ${escapeHtml(job.design_name)}</span>` : ''}
-              ${job.location_name ? `<span>📍 ${escapeHtml(job.location_name)}</span>` : (job.location_city ? `<span>📍 ${escapeHtml(job.location_city)}</span>` : '')}
+              ${job.location_name ? `<span>📍 ${escapeHtml(job.location_name)}</span>` : (job.location_city ? `<span>📍 ${escapeHtml(job.location_city)}</span>` : '')}${job.dealer_name ? `<span>🏪 ${escapeHtml(job.dealer_name)}</span>` : ''}
               ${completedDate ? `<span>✅ Completed: ${completedDate}</span>` : ''}
             </div>
             <div class="job-tags">
@@ -855,7 +855,7 @@ function renderJobsTab() {
             <div class="job-title">${job.job_type_icon || '🖨️'} ${escapeHtml(job.campaign_name || job.design_name || 'Printing Job')}</div>
             <div class="job-meta">
               ${job.design_name && job.design_name !== job.campaign_name && !/^(design job|job|design)$/i.test((job.design_name||'').trim()) ? `<span>🎨 ${escapeHtml(job.design_name)}</span>` : ''}
-              ${job._count && job._count > 1 ? `<span>📍 ${job._count} locations</span>` : (job.location_name ? `<span>📍 ${escapeHtml(job.location_name)}</span>` : (job.location_city ? `<span>📍 ${escapeHtml(job.location_city)}</span>` : ''))}
+              ${job._count && job._count > 1 ? `<span>📍 ${job._count} locations</span>` : (job.location_name ? `<span>📍 ${escapeHtml(job.location_name)}</span>` : (job.location_city ? `<span>📍 ${escapeHtml(job.location_city)}</span>` : ''))}${job.dealer_name ? `<span>🏪 ${escapeHtml(job.dealer_name)}</span>` : ''}
               ${dueTxt ? `<span>📅 ${dueTxt}</span>` : ''}
             </div>
           </div>
@@ -1059,7 +1059,7 @@ function openLogModal(assignmentId) {
       <div>
         <strong>${escapeHtml(job.campaign_name || job.design_name || 'Printing Job')}</strong> · Job #${(job.assignment_id || '').slice(-6).toUpperCase()}<br>
         ${job.design_name && job.design_name !== job.campaign_name && !/^(design job|job|design)$/i.test(job.design_name.trim()) ? '<small>🎨 ' + escapeHtml(job.design_name) + '</small><br>' : ''}
-        <small>${escapeHtml(job.location_name || job.location_city || '')} · Total: ${(job.quantity_assigned || 0).toLocaleString('en-IN')} · Done: ${(job.quantity_done || 0).toLocaleString('en-IN')} · Outstanding: ${Math.max(0, (job.quantity_assigned || 0) - (job.quantity_done || 0)).toLocaleString('en-IN')}</small>
+        <small>${escapeHtml(job.location_name || job.location_city || '')}${job.dealer_name ? ' · 🏪 ' + escapeHtml(job.dealer_name) : ''} · Total: ${(job.quantity_assigned || 0).toLocaleString('en-IN')} · Done: ${(job.quantity_done || 0).toLocaleString('en-IN')} · Outstanding: ${Math.max(0, (job.quantity_assigned || 0) - (job.quantity_done || 0)).toLocaleString('en-IN')}</small>
       </div>
     </div>
   `;
@@ -1359,7 +1359,7 @@ function renderManagerView() {
                     <span>📋 ${escapeHtml(job.campaign_name || '')}</span>
                     ${job.client_name ? `<span>👤 ${escapeHtml(job.client_name)}</span>` : ''}
                     ${opData ? `<span>🧑‍🔧 <strong>${escapeHtml(opData.operator_name)}</strong></span>` : '<span style="color:var(--err)">⚠️ UNASSIGNED</span>'}
-                    ${job.location_name ? `<span>📍 ${escapeHtml(job.location_name)}</span>` : ''}
+                    ${job.location_name ? `<span>📍 ${escapeHtml(job.location_name)}</span>` : ''}${job.dealer_name ? `<span>🏪 ${escapeHtml(job.dealer_name)}</span>` : ''}
                   </div>
                 </div>
                 ${job.is_urgent ? '<span class="tag urgent">Urgent</span>' : ''}
