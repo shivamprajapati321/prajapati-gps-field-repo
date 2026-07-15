@@ -568,6 +568,10 @@ async function loadCampaignForEdit(campId) {
         existing.quantity = Math.max(existing.quantity || 0, r.quantity || 0);
       } else {
         byDesign[key].locations.push({
+          // ⭐ locId REQUIRED: render karte waqt updateLocQty(tempId, locId, qty) isi se
+          //    location dhoondta hai. Bina iske edit mode me quantity change silently
+          //    ignore ho jaati thi (purani qty hi save hoti thi).
+          locId: 'L_' + Math.random().toString(36).slice(2, 8),
           name: r.location_name, address: r.location_address,
           lat: r.location_lat, lng: r.location_lng, place_id: r.location_place_id,
           city: r.location_city, state: r.location_state || 'Maharashtra',
@@ -1069,9 +1073,18 @@ function removeLocation(tempId, locId) {
 
 function updateLocQty(tempId, locId, qty) {
   const d = designs.find(x => x.tempId === tempId);
-  if (!d) return;
-  const l = (d.locations || []).find(x => x.locId === locId);
+  if (!d) { console.warn('[updateLocQty] design not found:', tempId); return; }
+  let l = (d.locations || []).find(x => x.locId === locId);
+  // SAFETY NET: agar kisi wajah se locId match na ho (purana data / missing id),
+  // silently ignore mat karo — warna user ki qty change chup-chaap gum ho jaati hai.
+  if (!l) {
+    console.warn('[updateLocQty] locId match nahi hua:', locId, '— repairing.');
+    // repair: jis location ke paas locId nahi hai use yeh id de do
+    l = (d.locations || []).find(x => !x.locId);
+    if (l) l.locId = locId;
+  }
   if (l) { l.quantity = qty; updateActionBar(); calcPricing(); }
+  else console.error('[updateLocQty] location update FAIL — qty save nahi hogi:', tempId, locId);
 }
 
 function updateDesignField(tempId, field, value) {
