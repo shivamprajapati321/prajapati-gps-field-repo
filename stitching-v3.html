@@ -1107,6 +1107,19 @@ async function loadCampaignProgress() {
     const df = document.getElementById('entryDealerField');
     if (df) df.style.display = state.entryDealers.length ? 'flex' : 'none';
     if (!state.entryDealers.length) state.entryDealerName = '';
+    // ⭐ Datalist ko yahin bharo — render ke waqt dealers load nahi hue the,
+    //    isliye sirf display toggle karne se dropdown khaali reh jaata tha.
+    const dl = document.getElementById('dealers-datalist');
+    if (dl) {
+      dl.innerHTML = state.entryDealers.map(d =>
+        '<option value="' + escapeHtml(d.dealer_name) + '">' +
+        escapeHtml((d.location_name || '') + ' \u00b7 ' + (Number(d.quantity) || 0) + ' pcs') +
+        '</option>'
+      ).join('');
+    }
+    // dealer input ki value state se sync rakho (re-render ke bina)
+    const di = document.getElementById('entryDealerInput');
+    if (di && di.value !== (state.entryDealerName || '')) di.value = state.entryDealerName || '';
 
     const dealer = state.entryDealerName;
     const scopedDesigns = dealer ? (designs || []).filter(d => d.dealer_name === dealer) : (designs || []);
@@ -1866,6 +1879,8 @@ function renderEntryTab() {
           </div>
         </div>
         
+        <div id="campProgressBox" class="cp-box" style="display:none"></div>
+
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
           <button class="btn btn-secondary" onclick="addDraftRow()">➕ Add Row</button>
           <button class="btn btn-secondary" onclick="duplicateLastRow()">📋 Duplicate Last</button>
@@ -2096,7 +2111,6 @@ function renderHistoryTab() {
         </select>
       </div>
       
-      <div id="campProgressBox" class="cp-box" style="display:none"></div>
       <div class="toolbar">
         <div class="view-toggle">
           <div class="vt ${state.histView === 'table' ? 'active' : ''}" onclick="state.histView = 'table'; renderTab()">📋 Entries</div>
