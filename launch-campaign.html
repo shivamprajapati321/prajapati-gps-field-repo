@@ -1541,6 +1541,9 @@ async function _submitCampaignInner(targetStatus = 'pending_execution_plan') {
       total_amount: total,
       total_quantity: totalQty,
       target_vehicles: totalQty,
+      // target_count bhi sync — admin-v2 isko fallback me use karta hai (setTarget),
+      // warna qty badalne par card pe purana "set 30" dikhta rehta tha.
+      target_count: totalQty,
       status: targetStatus,
       created_by: user.id
     };
@@ -1678,6 +1681,52 @@ async function _submitCampaignInner(targetStatus = 'pending_execution_plan') {
       
       const { error: dErr } = await db.from('trial_campaign_designs').insert(designsPayload);
       if (dErr) throw dErr;
+
+      // ⭐ ASSIGNMENT QTY SYNC — warna printing/stitching/manual-printing me PURANI qty dikhti hai.
+      //   Edit pe designs delete+reinsert hote hain (nayi id milti hai), par
+      //   trial_campaign_assignments purani design_id + purani quantity_assigned (jaise 30)
+      //   ke saath padi reh jaati thi. Isliye 30 -> 20 karne par bhi downstream 30 dikhta tha.
+      if (EDIT_ID) {
+        try {
+          const { data: freshDesigns } = await db.from('trial_campaign_designs')
+            .select('id,quantity').eq('campaign_id', EDIT_ID).order('sort_order');
+          const newTotal = (freshDesigns || []).reduce((s, r) => s + (Number(r.quantity) || 0), 0);
+
+          const { data: assigns } = await db.from('trial_campaign_assignments')
+            .select('id,stage,quantity_assigned,status')
+            .eq('campaign_id', EDIT_ID).neq('status', 'completed');
+
+          if (assigns && assigns.length) {
+            const byStage = {};
+            assigns.forEach(a => { (byStage[a.stage] = byStage[a.stage] || []).push(a); });
+            for (const stage of Object.keys(byStage)) {
+              const list = byStage[stage];
+              if (list.length === 1) {
+                // stage pe ek hi assignment → poora naya campaign total
+                await db.from('trial_campaign_assignments').update({
+                  quantity_assigned: newTotal,
+                  design_id: (freshDesigns && freshDesigns[0]) ? freshDesigns[0].id : null,
+                  updated_at: new Date().toISOString()
+                }).eq('id', list[0].id);
+              } else {
+                // multiple → design-wise map karo (purane design_id orphan ho chuke hain)
+                for (let i = 0; i < list.length; i++) {
+                  const fd = (freshDesigns || [])[i];
+                  if (!fd) break;
+                  await db.from('trial_campaign_assignments').update({
+                    quantity_assigned: Number(fd.quantity) || 0,
+                    design_id: fd.id,
+                    updated_at: new Date().toISOString()
+                  }).eq('id', list[i].id);
+                }
+              }
+            }
+            console.log('[assign sync] updated', assigns.length, 'assignments → total', newTotal);
+          }
+        } catch (e) {
+          console.warn('[assign sync] failed (non-fatal):', e);
+        }
+      }
     }
     
     document.getElementById('submitStatus').innerHTML = `
