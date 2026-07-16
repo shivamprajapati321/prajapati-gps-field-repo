@@ -10580,9 +10580,32 @@ function loadClientLinks() {
   Promise.all([campP, linksP]).then(function(results) {
     var campaigns = (results[0] || []).filter(function(c){ return c.active; });
     var savedLinks = results[1] || [];
-    
+
+    // ⭐ SCOPE: sales (non-full-view) ko sirf APNE campaigns ke client links dikhein.
+    //   Campaigns list pe scoping pehle se thi, par client links unscoped the —
+    //   isliye sales team ko sabke links dikh jaate the.
+    //   Note: state.campaigns already scoped hota hai, par fallback query nahi —
+    //   isliye yahan dobara filter karna zaroori hai.
+    if (dashIsScoped()) {
+      var myId = String((state.admin && state.admin.id) || '');
+      var myPhone = String((state.admin && state.admin.phone) || '');
+      var myName = String((state.admin && state.admin.name) || '').toLowerCase();
+      campaigns = campaigns.filter(function(c){
+        return (myId && String(c.created_by||'') === myId) ||
+               (myId && String(c.sales_member_id||'') === myId) ||
+               (myPhone && String(c.sales_member_phone||'') === myPhone) ||
+               (myName && String(c.sales_member_name||'').toLowerCase() === myName);
+      });
+      // links bhi sirf un campaigns ke jo ab visible hain
+      var okKeys = {};
+      campaigns.forEach(function(c){ okKeys[c.key || c.campaign_key || c.id] = 1; });
+      savedLinks = savedLinks.filter(function(s){ return okKeys[s.campaign_key]; });
+    }
+
     if (campaigns.length === 0) {
-      $('clientLinksList').innerHTML = '<div class="empty-state"><i class="ti ti-flag-off"></i>No active campaigns. First create campaigns to enable client links.</div>';
+      $('clientLinksList').innerHTML = '<div class="empty-state"><i class="ti ti-flag-off"></i>' +
+        (dashIsScoped() ? 'Aapne abhi koi campaign nahi banaya. Campaign banao, phir client link yahan aayega.'
+                        : 'No active campaigns. First create campaigns to enable client links.') + '</div>';
       return;
     }
     
