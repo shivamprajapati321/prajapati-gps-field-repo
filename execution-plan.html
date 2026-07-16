@@ -696,12 +696,23 @@ async function doLockPlan(stagesNeeded, willNotify) {
   btn.disabled = true;
   btn.innerHTML = '<span class="spin"></span> Locking…';
   try {
+    // ⭐ LIVE QTY: currentCampaign page-load ka snapshot hai — agar beech me kisi ne
+    //   qty edit ki (30 -> 20) to yeh stale ho sakta hai. Designs se fresh total lo,
+    //   kyunki dealer/location rows hi single source of truth hain.
+    let liveQty = Number(currentCampaign.total_quantity) || 0;
+    try {
+      const { data: fd } = await db.from('trial_campaign_designs')
+        .select('quantity').eq('campaign_id', currentCampaign.id);
+      const sum = (fd || []).reduce((s, r) => s + (Number(r.quantity) || 0), 0);
+      if (sum > 0) liveQty = sum;
+    } catch (e) { console.warn('[lock] live qty fetch failed, using campaign total:', e); }
+
     for (const s of stagesNeeded) {
       const a = assignments[s.key];
       const payload = {
         campaign_id: currentCampaign.id, stage: s.key, assigned_to: a.member_id,
         assigned_by: user.id, due_date: a.due_date || null, status: 'pending',
-        quantity_assigned: currentCampaign.total_quantity || 0
+        quantity_assigned: liveQty
       };
       if (a.existing_id) {
         const r = await db.from('trial_campaign_assignments').update(payload).eq('id', a.existing_id);
