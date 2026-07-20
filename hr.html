@@ -342,6 +342,7 @@ function nav(view){
   else if (view==='holidays') renderHolidays(root);
   else if (view==='tasks') renderTasks(root);
   else if (view==='documents') renderDocuments(root);
+  else if (view==='bulkfill') renderBulkFill(root);
 }
 function placeholder(title,icon,sub){
   return '<div class="card" style="text-align:center;padding:40px 20px">'+
@@ -1015,6 +1016,7 @@ async function renderEmployees(root){
     window.__EMPS = emps;
     let h = '<div class="sechead"><i class="ti ti-users"></i>Team <span class="c-blue pill" style="margin-left:auto">'+emps.length+'</span></div>';
     if (admin) h += '<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Employee pe tap karo — salary, DOB, payroll set karne ke liye</div>';
+    if (admin) h += '<button class="btn-ghost" style="width:100%;height:40px;margin-bottom:12px;font-weight:600" onclick="nav(\'bulkfill\')"><i class="ti ti-table" style="vertical-align:-2px"></i> Bulk Fill — sab ka salary/DOB ek saath</button>';
     h += '<input type="text" placeholder="Search name / phone..." oninput="filterEmp(this.value)" style="margin-bottom:12px">';
     h += '<div class="card" id="empList">';
     emps.forEach(e=>{
@@ -1134,6 +1136,54 @@ async function saveEmp(btn){
   } catch(ex){ err.textContent='Save fail: '+ex.message; if(btn){btn.disabled=false;btn.textContent='Save Profile';} }
 }
 function numOrNull(id){ const el=document.getElementById(id); if(!el||!el.value.trim())return null; const n=parseFloat(el.value); return isNaN(n)?null:n; }
+// WhatsApp notify (silent — fail hone pe app normal chalega)
+const EXPENSE_ADMIN_PHONES = ['9922138138','8484861631','8484838138']; // Shivam, Ravi, Rajendra
+async function notifyWhatsApp(toPhone, toName, templateName, params, ctxType){
+  if(!toPhone) return;
+  try {
+    const U='https://fpbktcgtspqsqpaytslv.supabase.co', K='sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
+    await fetch(U+'/functions/v1/wati-send',{
+      method:'POST',
+      headers:{apikey:K,Authorization:'Bearer '+K,'Content-Type':'application/json'},
+      body:JSON.stringify({ action:'send_template', to_phone:toPhone, to_name:toName||'', template_name:templateName, params:params||[], context_type:ctxType||'hr', triggered_by:USER.name })
+    });
+  } catch(e){ /* silent — notify fail se main action nahi rukta */ }
+}
+function downloadSlip(){
+  const e=window.__CUR_EMP, c=window.__PAYCALC;
+  if(!c||!e){ toast('Pehle calculate karo'); return; }
+  const months=['','January','February','March','April','May','June','July','August','September','October','November','December'];
+  const otRow = c.otTotal>0 ? '<tr><td>Sunday OT + Food (same-day paid)</td><td style="text-align:right">'+inr(c.otTotal)+'</td></tr>' : '';
+  const w=window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Salary Slip '+esc(e.name)+' '+months[c.month]+'</title>'+
+    '<style>body{font-family:Arial,sans-serif;max-width:600px;margin:20px auto;padding:20px;color:#1a1a1a}'+
+    '.hd{text-align:center;border-bottom:3px solid #0E9F8E;padding-bottom:12px;margin-bottom:16px}'+
+    '.hd h1{margin:0;color:#0B1957;font-size:22px}.hd div{color:#666;font-size:13px;margin-top:4px}'+
+    'h2{background:#0E9F8E;color:#fff;padding:8px 12px;font-size:15px;border-radius:4px;margin:16px 0 8px}'+
+    'table{width:100%;border-collapse:collapse}td{padding:7px 10px;border-bottom:1px solid #eee;font-size:14px}'+
+    '.info td{border:none;padding:3px 10px}.tot{font-weight:700;font-size:16px;background:#f0faf8}'+
+    '.net{background:#0B1957;color:#fff;font-size:18px;font-weight:700}.net td{color:#fff}'+
+    '@media print{button{display:none}}</style></head><body>'+
+    '<div class="hd"><h1>PRAJAPATI ADVERTISING</h1><div>Warje Malwadi, Pune · Salary Slip</div></div>'+
+    '<table class="info"><tr><td><b>Employee:</b> '+esc(e.name)+'</td><td style="text-align:right"><b>Month:</b> '+months[c.month]+' '+c.year+'</td></tr>'+
+    '<tr><td><b>Designation:</b> '+esc(e.designation||'—')+'</td><td style="text-align:right"><b>Phone:</b> '+esc(e.phone||'—')+'</td></tr></table>'+
+    '<h2>Attendance</h2><table>'+
+    '<tr><td>Total Days</td><td style="text-align:right">'+ (c.workingDays+c.sundays) +'</td></tr>'+
+    '<tr><td>Sundays (Weekly Off)</td><td style="text-align:right">'+c.sundays+'</td></tr>'+
+    '<tr><td>Working Days</td><td style="text-align:right">'+c.workingDays+'</td></tr>'+
+    '<tr><td>Present</td><td style="text-align:right">'+c.present+'</td></tr>'+
+    '<tr><td>Approved Leave</td><td style="text-align:right">'+c.leaveDays+'</td></tr>'+
+    '<tr><td>Absent</td><td style="text-align:right">'+c.absent+'</td></tr></table>'+
+    '<h2>Earnings & Deductions</h2><table>'+
+    '<tr><td>Monthly Salary (full)</td><td style="text-align:right">'+inr(c.gross)+'</td></tr>'+
+    '<tr><td>Absent Deduction</td><td style="text-align:right;color:#c00">- '+inr(c.unpaidDeduction)+'</td></tr>'+
+    '<tr class="net"><td>NET SALARY</td><td style="text-align:right">'+inr(c.earned)+'</td></tr></table>'+
+    (otRow?'<h2>Sunday OT (Separate — Cash Paid)</h2><table>'+otRow+'</table>':'')+
+    '<p style="font-size:11px;color:#999;margin-top:20px;text-align:center">Computer generated slip · '+new Date().toLocaleDateString('en-IN')+'</p>'+
+    '<button onclick="window.print()" style="display:block;margin:20px auto;padding:12px 28px;background:#0E9F8E;color:#fff;border:none;border-radius:6px;font-size:15px;cursor:pointer">🖨 Print / Save PDF</button>'+
+    '</body></html>');
+  w.document.close();
+}
 
 // ── PAYROLL CALCULATION ──
 async function calcPayroll(){
@@ -1186,6 +1236,7 @@ async function calcPayroll(){
     }
     h+='</div>';
     h+='<button class="btn-green" style="width:100%;height:44px;font-weight:600;margin-top:10px" onclick="savePayroll(this)">💾 Save Salary Record</button>';
+    h+='<button class="btn-ghost" style="width:100%;height:42px;font-weight:600;margin-top:8px" onclick="downloadSlip()"><i class="ti ti-download" style="vertical-align:-2px"></i> Salary Slip (Print / PDF)</button>';
     h+='<div id="payErr" style="color:var(--red);font-size:12px;text-align:center;margin-top:8px"></div>';
     box.innerHTML=h;
   } catch(ex){ box.innerHTML='<div style="color:var(--red);font-size:12px">Calc fail: '+esc(ex.message)+'</div>'; }
@@ -1268,12 +1319,24 @@ async function renderExpenses(root){
         const apr = (x.approval_status||'pending');
         const aprPill = apr==='approved'?'pill-green':apr==='rejected'?'pill-red':'pill-amber';
         const pay = (x.payment_status||'pending');
-        h += '<div class="row-item">';
-        h += '<div style="flex:1"><div style="font-size:13px;font-weight:500">'+esc(cat)+' · '+inr(amt)+'</div>';
+        h += '<div class="row-item" style="flex-wrap:wrap">';
+        h += '<div style="flex:1;min-width:60%"><div style="font-size:13px;font-weight:500">'+esc(cat)+' · '+inr(amt)+'</div>';
         h += '<div style="font-size:11px;color:var(--muted)">'+esc(x.expense_date||'')+(admin&&x.team_member_name?' · '+esc(x.team_member_name):'')+(x.remark?' · '+esc(x.remark):'')+'</div></div>';
         if (x.receipt_url) h += '<span class="pill pill-blue" style="cursor:pointer" onclick="viewImg(\''+esc(x.receipt_url)+'\')">Receipt</span>';
         h += '<span class="pill '+aprPill+'">'+esc(apr)+'</span>';
         if (pay==='paid') h += '<span class="pill pill-green">paid</span>';
+        // admin actions
+        if (admin){
+          const dataAttr = 'data-exp="'+x.id+'" data-amt="'+amt+'" data-phone="'+esc(x.team_member_phone||'')+'" data-name="'+esc(x.team_member_name||'')+'"';
+          if (apr==='pending'){
+            h += '<div style="width:100%;display:flex;gap:6px;margin-top:8px">'+
+              '<button class="btn-green" style="flex:1;height:36px;font-size:12px" '+dataAttr+' onclick="expApprove(this,\'approved\')">Approve</button>'+
+              '<button class="btn-ghost-red" style="flex:1;height:36px;font-size:12px" '+dataAttr+' onclick="expApprove(this,\'rejected\')">Reject</button></div>';
+          } else if (apr==='approved' && pay!=='paid'){
+            h += '<div style="width:100%;margin-top:8px">'+
+              '<button class="btn-primary" style="width:100%;height:38px;background:var(--teal);color:#fff;font-size:13px" '+dataAttr+' onclick="expPay(this)"><i class="ti ti-cash"></i> Pay '+inr(amt)+'</button></div>';
+          }
+        }
         h += '</div>';
       });
       h += '</div>';
@@ -1322,13 +1385,46 @@ async function submitExpense(btn){
       created_by:USER.phone, created_by_name:USER.name
     };
     await api('/prajapati_expenses', { method:'POST', headers:{'Prefer':'return=minimal'}, body:JSON.stringify(row) });
+    // notify 2-3 admins on WhatsApp (silent)
+    try {
+      EXPENSE_ADMIN_PHONES.forEach((ap,i)=>{
+        if(ap!==phone) setTimeout(()=>notifyWhatsApp(ap, 'Admin', 'hr_expense_new', [name, inr(amt), cat], 'expense'), i*300);
+      });
+    } catch(_){}
     toast('Expense submit ho gaya ✓');
     nav('expenses');
   } catch(e){ err.textContent='Save fail: '+e.message; if(btn){btn.disabled=false;btn.textContent='Submit Expense';} }
 }
 
-// ══════════ SETTINGS — Banking + Aadhaar/PAN ══════════
-let DOC_URLS = { aadhaar_photo_url:'', pan_photo_url:'', upi_qr_url:'' };
+// ══════════ EXPENSE APPROVE + PAY (admin) ══════════
+async function expApprove(btn, status){
+  const id=btn.getAttribute('data-exp');
+  if(btn){btn.disabled=true;btn.textContent='...';}
+  try {
+    await api('/prajapati_expenses?id=eq.'+id,{method:'PATCH',headers:{'Prefer':'return=minimal'},
+      body:JSON.stringify({approval_status:status, approved_by:USER.id, approved_at:new Date().toISOString()})});
+    toast(status==='approved'?'Approved ✓':'Rejected');
+    nav('expenses');
+  } catch(e){ toast('Fail: '+e.message); if(btn){btn.disabled=false;btn.textContent=status==='approved'?'Approve':'Reject';} }
+}
+async function expPay(btn){
+  const id=btn.getAttribute('data-exp');
+  const amt=parseFloat(btn.getAttribute('data-amt')||'0');
+  const phone=btn.getAttribute('data-phone');
+  const name=btn.getAttribute('data-name');
+  if(!confirm('Pay '+inr(amt)+' to '+(name||'employee')+'?')) return;
+  if(btn){btn.disabled=true;btn.textContent='Paying...';}
+  try {
+    await api('/prajapati_expenses?id=eq.'+id,{method:'PATCH',headers:{'Prefer':'return=minimal'},
+      body:JSON.stringify({payment_status:'paid'})});
+    // notify submitter (silent)
+    if(phone) notifyWhatsApp(phone, name, 'hr_expense_paid', [name||'', inr(amt)], 'expense');
+    toast('Paid '+inr(amt)+' ✓');
+    nav('expenses');
+  } catch(e){ toast('Fail: '+e.message); if(btn){btn.disabled=false;btn.textContent='Pay '+inr(amt);} }
+}
+
+// ══════════ SETTINGS — Banking + Aadhaar/PAN ══════════let DOC_URLS = { aadhaar_photo_url:'', pan_photo_url:'', upi_qr_url:'' };
 async function renderSettings(root){
   try {
     const admin = isAdmin();
@@ -1541,6 +1637,7 @@ async function renderAnnouncements(root){
       h+='<div><label style="font-size:12px;color:var(--muted)">Priority</label><select id="anPrio" style="margin-bottom:10px"><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></div>';
       h+='<div><label style="font-size:12px;color:var(--muted)">Pin?</label><select id="anPin" style="margin-bottom:10px"><option value="false">No</option><option value="true">Pin top</option></select></div>';
       h+='</div>';
+      h+='<label style="font-size:12px;display:block;margin-bottom:10px"><input type="checkbox" id="anWa" style="width:auto;margin-right:6px">WhatsApp pe bhi bhejo (sabko)</label>';
       h+='<button class="btn-primary" style="width:100%;height:44px;font-weight:600" onclick="postAnnouncement(this)">Publish Notice</button>';
       h+='<div id="anErr" style="color:var(--red);font-size:12px;text-align:center;margin-top:8px"></div>';
       h+='</div>';
@@ -1574,7 +1671,17 @@ async function postAnnouncement(btn){
     const row={ title:title, content:body, body:body, priority:document.getElementById('anPrio').value,
       pinned:document.getElementById('anPin').value==='true', active:true, published_at:new Date().toISOString(), created_by:USER.id };
     await api('/trial_hr_announcements',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(row)});
-    toast('Notice publish ho gaya ✓');
+    // WhatsApp broadcast if checked (silent, throttled)
+    const waEl=document.getElementById('anWa');
+    if(waEl&&waEl.checked){
+      try {
+        const emps=await api('/trial_team_members?select=name,phone&active=eq.true&phone=not.is.null');
+        (emps||[]).forEach((m,i)=>{ if(m.phone) setTimeout(()=>notifyWhatsApp(m.phone,m.name,'hr_announcement',[m.name,title,body],'announcement'), i*300); });
+        toast('Notice + WhatsApp bhej raha hai ('+(emps||[]).length+') ✓');
+      } catch(_){ toast('Notice publish hua ✓'); }
+    } else {
+      toast('Notice publish ho gaya ✓');
+    }
     nav('announcements');
   } catch(e){ err.textContent='Fail: '+e.message; if(btn){btn.disabled=false;btn.textContent='Publish Notice';} }
 }
@@ -1700,6 +1807,11 @@ async function assignTask(btn){
     const row={ title:title, description:v('tkDesc'), assigned_to:mem, assigned_by:USER.id, assigned_at:new Date().toISOString(),
       priority:document.getElementById('tkPrio').value, due_date:v('tkDue'), status:'pending' };
     await api('/trial_hr_tasks',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(row)});
+    // WhatsApp notify to assignee (silent)
+    try {
+      const m = await api('/trial_team_members?select=name,phone&id=eq.'+mem);
+      if(m&&m[0]&&m[0].phone) notifyWhatsApp(m[0].phone, m[0].name, 'hr_task_assigned', [m[0].name, title, v('tkDue')||'jaldi'], 'task');
+    } catch(_){}
     toast('Task assign ho gaya ✓'); nav('tasks');
   } catch(e){ err.textContent='Fail: '+e.message; if(btn){btn.disabled=false;btn.textContent='Assign Task';} }
 }
@@ -1770,6 +1882,76 @@ async function uploadDoc(btn){
 
 // helper: format date nicely
 function fmtDate(d){ if(!d)return ''; try{ return new Date(d).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}); }catch(e){ return ''; } }
+
+
+
+// ══════════════════════════════════════════════
+// 📝 BULK FILL — sab employees ka salary/DOB ek saath
+// ══════════════════════════════════════════════
+let BULK_EMPS = [];
+async function renderBulkFill(root){
+  if(!isAdmin()){ root.innerHTML='<div class="card">Sirf admin</div>'; return; }
+  try {
+    const emps = await api('/trial_team_members?select=id,name,phone,designation,monthly_salary,basic_pay,petrol_rate_per_km,date_of_birth,joining_date,attendance_mode&active=eq.true&order=name');
+    BULK_EMPS = emps;
+    const filled = emps.filter(e=>e.monthly_salary>0).length;
+    let h='<div class="sechead"><i class="ti ti-table"></i>Bulk Fill — Salary & Details</div>';
+    h+='<div class="card" style="background:var(--s1);margin-bottom:12px">';
+    h+='<div style="font-size:13px">Progress: <b class="c-teal">'+filled+'/'+emps.length+'</b> employees ka salary set</div>';
+    h+='<div style="font-size:11px;color:var(--muted);margin-top:4px">Har row bharo, save dabao. Ek-ek ya sab ek saath.</div>';
+    h+='</div>';
+    h+='<input type="text" placeholder="Search name..." oninput="filterBulk(this.value)" style="margin-bottom:12px">';
+    h+='<div id="bulkList">';
+    emps.forEach((e,i)=>{
+      h+='<div class="card bulk-row" data-s="'+esc(e.name.toLowerCase())+'" data-id="'+e.id+'" style="margin-bottom:10px">';
+      h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
+      h+='<div class="ava" style="width:32px;height:32px;font-size:12px">'+initials(e.name)+'</div>';
+      h+='<div style="flex:1"><div style="font-size:13px;font-weight:600">'+esc(e.name)+'</div><div style="font-size:10px;color:var(--muted)">'+esc(e.phone)+'</div></div>';
+      h+='<span class="bulk-status" style="font-size:11px"></span>';
+      h+='</div>';
+      h+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">';
+      h+='<input type="number" id="bSal_'+i+'" placeholder="Salary" value="'+(e.monthly_salary||'')+'" inputmode="numeric" style="font-size:12px;padding:8px">';
+      h+='<input type="number" id="bBasic_'+i+'" placeholder="Basic" value="'+(e.basic_pay||'')+'" inputmode="numeric" style="font-size:12px;padding:8px">';
+      h+='<input type="number" id="bPet_'+i+'" placeholder="₹/km" value="'+(e.petrol_rate_per_km||'')+'" inputmode="numeric" style="font-size:12px;padding:8px">';
+      h+='</div>';
+      h+='<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;margin-top:6px">';
+      h+='<input type="date" id="bDob_'+i+'" value="'+(e.date_of_birth||'')+'" title="DOB" style="font-size:12px;padding:8px">';
+      h+='<select id="bMode_'+i+'" style="font-size:12px;padding:8px"><option value="office"'+(e.attendance_mode==='office'?' selected':'')+'>Office</option><option value="anywhere"'+(e.attendance_mode==='anywhere'?' selected':'')+'>Anywhere</option></select>';
+      h+='<button class="btn-primary" style="padding:8px 14px;font-size:12px" onclick="saveBulkRow('+i+',this)">Save</button>';
+      h+='</div>';
+      h+='</div>';
+    });
+    h+='</div>';
+    root.innerHTML=h;
+  } catch(e){ root.innerHTML='<div class="card" style="color:var(--red)">Load fail: '+esc(e.message)+'</div>'; }
+}
+function filterBulk(q){
+  q=q.toLowerCase();
+  document.querySelectorAll('.bulk-row').forEach(r=>{ r.style.display=r.dataset.s.includes(q)?'':'none'; });
+}
+async function saveBulkRow(i, btn){
+  const e=BULK_EMPS[i];
+  const row=e.id;
+  const st=btn.closest('.bulk-row').querySelector('.bulk-status');
+  if(btn){btn.disabled=true;btn.textContent='...';}
+  try {
+    const upd={
+      monthly_salary: numOrNull('bSal_'+i),
+      basic_pay: numOrNull('bBasic_'+i),
+      petrol_rate_per_km: numOrNull('bPet_'+i),
+      date_of_birth: v('bDob_'+i)||null,
+      attendance_mode: document.getElementById('bMode_'+i).value
+    };
+    await api('/trial_team_members?id=eq.'+row, {method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify(upd)});
+    if(st){ st.textContent='✓ saved'; st.style.color='var(--green)'; }
+    if(btn){btn.disabled=false;btn.textContent='Save';}
+    // update local
+    Object.assign(BULK_EMPS[i], upd);
+  } catch(ex){
+    if(st){ st.textContent='✗ fail'; st.style.color='var(--red)'; }
+    if(btn){btn.disabled=false;btn.textContent='Save';}
+  }
+}
 
 
 // ══════════ BOOT ══════════
