@@ -1000,16 +1000,21 @@ async function loadMyLeaves(){
 // ══════════ EMPLOYEES (admin) ══════════
 async function renderEmployees(root){
   try {
-    const emps = await api('/trial_team_members?select=id,name,phone,department,designation,emp_code,role,active,city&active=eq.true&order=name');
+    const admin = isAdmin();
+    const emps = await api('/trial_team_members?select=id,name,phone,department,designation,emp_code,role,active,city,monthly_salary,basic_pay,petrol_rate_per_km,date_of_birth,joining_date&active=eq.true&order=name');
+    window.__EMPS = emps;
     let h = '<div class="sechead"><i class="ti ti-users"></i>Team <span class="c-blue pill" style="margin-left:auto">'+emps.length+'</span></div>';
+    if (admin) h += '<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Employee pe tap karo — salary, DOB, payroll set karne ke liye</div>';
     h += '<input type="text" placeholder="Search name / phone..." oninput="filterEmp(this.value)" style="margin-bottom:12px">';
     h += '<div class="card" id="empList">';
     emps.forEach(e=>{
-      h += '<div class="row-item emp-row" data-s="'+esc((e.name+' '+e.phone).toLowerCase())+'">'+
+      const salTag = e.monthly_salary>0 ? '<span class="pill pill-green">₹'+fmt(e.monthly_salary)+'</span>' : (admin?'<span class="pill pill-amber">salary set karo</span>':'');
+      h += '<div class="row-item emp-row" data-s="'+esc((e.name+' '+e.phone).toLowerCase())+'"'+(admin?' style="cursor:pointer" onclick="openEmp(\''+e.id+'\')"':'')+'>'+
         '<div class="ava">'+initials(e.name)+'</div>'+
         '<div style="flex:1"><div style="font-size:13px;font-weight:500">'+esc(e.name)+'</div>'+
         '<div style="font-size:11px;color:var(--muted)">'+esc(e.designation||e.department||'—')+' · '+esc(e.emp_code||e.phone)+'</div></div>'+
-        '<span class="c-gray pill">'+esc(e.role||'emp')+'</span></div>';
+        salTag+
+        (admin?'<i class="ti ti-chevron-right" style="color:var(--muted)"></i>':'<span class="c-gray pill">'+esc(e.role||'emp')+'</span>')+'</div>';
     });
     h += '</div>';
     root.innerHTML = h;
@@ -1022,6 +1027,185 @@ function filterEmp(q){
   document.querySelectorAll('.emp-row').forEach(r=>{
     r.style.display = r.dataset.s.includes(q) ? '' : 'none';
   });
+}
+// ══════════ EMPLOYEE DETAIL / EDIT / PAYROLL ══════════
+function openEmp(id){
+  const e = (window.__EMPS||[]).find(x=>x.id===id);
+  if(!e) return;
+  window.__CUR_EMP = e;
+  const m = document.getElementById('modalRoot');
+  const mo = new Date().getMonth()+1, yr = new Date().getFullYear();
+  let h = '<div class="modal-bg" onclick="if(event.target===this)this.remove()"><div class="modal" style="max-height:88vh;overflow-y:auto" onclick="event.stopPropagation()">';
+  h += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px"><div class="ava" style="width:44px;height:44px;font-size:16px">'+initials(e.name)+'</div>';
+  h += '<div style="flex:1"><div style="font-size:16px;font-weight:600">'+esc(e.name)+'</div><div style="font-size:12px;color:var(--muted)">'+esc(e.designation||'—')+' · '+esc(e.phone)+'</div></div>';
+  h += '<button class="btn-ghost" style="padding:6px 10px" onclick="document.getElementById(\'modalRoot\').innerHTML=\'\'">✕</button></div>';
+
+  // TABS
+  h += '<div style="display:flex;gap:6px;margin-bottom:14px">';
+  h += '<button class="tabBtn active" id="etab_profile" onclick="empTab(\'profile\')">Profile / Salary</button>';
+  h += '<button class="tabBtn" id="etab_payroll" onclick="empTab(\'payroll\')">Payroll</button>';
+  h += '</div>';
+
+  // PROFILE TAB
+  h += '<div id="epane_profile">';
+  h += efld('empDesig','Designation', e.designation);
+  h += eGrid([
+    ['empSalary','Monthly Salary (₹)', e.monthly_salary, 'number'],
+    ['empBasic','Basic Pay (₹)', e.basic_pay, 'number']
+  ]);
+  h += eGrid([
+    ['empPetrol','Petrol ₹/km', e.petrol_rate_per_km, 'number'],
+    ['empDob','Date of Birth', e.date_of_birth, 'date']
+  ]);
+  h += eGrid([
+    ['empJoin','Joining Date', e.joining_date, 'date'],
+    ['empMode','Attendance', null, 'mode']
+  ]);
+  h += '<button class="btn-primary" style="width:100%;height:44px;font-weight:600;margin-top:6px" onclick="saveEmp()">Save Profile</button>';
+  h += '<div id="empErr" style="color:var(--red);font-size:12px;text-align:center;margin-top:8px"></div>';
+  h += '</div>';
+
+  // PAYROLL TAB (hidden)
+  h += '<div id="epane_payroll" class="hidden">';
+  h += '<div style="font-size:13px;color:var(--muted);margin-bottom:10px">Salary slip generate karo — attendance se present days auto aayenge</div>';
+  h += eGrid([['payYear','Year', yr, 'number'],['payMonth','Month (1-12)', mo, 'number']]);
+  h += '<button class="btn-ghost" style="width:100%;height:40px;margin-bottom:10px" onclick="calcPayroll()">📊 Calculate (attendance se)</button>';
+  h += '<div id="payResult"></div>';
+  h += '</div>';
+
+  h += '</div></div>';
+  m.innerHTML = h;
+  // set attendance mode select value
+  setTimeout(()=>{ const sel=document.getElementById('empMode'); if(sel) sel.value=e.attendance_mode||'office'; },50);
+}
+function empTab(t){
+  document.getElementById('etab_profile').classList.toggle('active', t==='profile');
+  document.getElementById('etab_payroll').classList.toggle('active', t==='payroll');
+  document.getElementById('epane_profile').classList.toggle('hidden', t!=='profile');
+  document.getElementById('epane_payroll').classList.toggle('hidden', t!=='payroll');
+}
+function efld(id,label,val,type){
+  return '<label style="font-size:12px;color:var(--muted)">'+label+'</label>'+
+    '<input type="'+(type||'text')+'" id="'+id+'" value="'+esc(val||'')+'" style="margin-bottom:10px">';
+}
+function eGrid(fields){
+  let h='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+  fields.forEach(f=>{
+    const [id,label,val,type]=f;
+    h+='<div>';
+    h+='<label style="font-size:12px;color:var(--muted)">'+label+'</label>';
+    if(type==='mode'){
+      h+='<select id="'+id+'" style="margin-bottom:10px"><option value="office">Office (geofence)</option><option value="anywhere">Anywhere</option></select>';
+    } else {
+      h+='<input type="'+(type||'text')+'" id="'+id+'" value="'+esc(val||'')+'" '+(type==='number'?'inputmode="numeric"':'')+' style="margin-bottom:10px">';
+    }
+    h+='</div>';
+  });
+  h+='</div>';
+  return h;
+}
+async function saveEmp(){
+  const e=window.__CUR_EMP; const err=document.getElementById('empErr'); err.textContent='';
+  const btn=event.target; btn.disabled=true; btn.textContent='Saving...';
+  try {
+    const upd = {
+      designation: v('empDesig'),
+      monthly_salary: numOrNull('empSalary'),
+      basic_pay: numOrNull('empBasic'),
+      petrol_rate_per_km: numOrNull('empPetrol'),
+      date_of_birth: v('empDob'),
+      joining_date: v('empJoin'),
+      attendance_mode: document.getElementById('empMode').value
+    };
+    await api('/trial_team_members?id=eq.'+e.id, { method:'PATCH', headers:{'Prefer':'return=minimal'}, body:JSON.stringify(upd) });
+    toast('Profile save ho gaya ✓');
+    document.getElementById('modalRoot').innerHTML='';
+    nav('employees');
+  } catch(ex){ err.textContent='Save fail: '+ex.message; btn.disabled=false; btn.textContent='Save Profile'; }
+}
+function numOrNull(id){ const el=document.getElementById(id); if(!el||!el.value.trim())return null; const n=parseFloat(el.value); return isNaN(n)?null:n; }
+
+// ── PAYROLL CALCULATION ──
+async function calcPayroll(){
+  const e=window.__CUR_EMP;
+  const yr=parseInt(v('payYear')||'0'), mo=parseInt(v('payMonth')||'0');
+  const box=document.getElementById('payResult');
+  if(!yr||!mo||mo<1||mo>12){ box.innerHTML='<div style="color:var(--red);font-size:12px">Sahi year/month daalo</div>'; return; }
+  if(!e.monthly_salary||e.monthly_salary<=0){ box.innerHTML='<div class="pill pill-amber" style="display:block;padding:10px">Pehle Profile tab me Monthly Salary set karo</div>'; return; }
+  box.innerHTML='<div style="text-align:center;padding:16px"><i class="ti ti-loader-2 spin"></i></div>';
+  try {
+    // attendance for the month
+    const from = yr+'-'+String(mo).padStart(2,'0')+'-01';
+    const toD = new Date(yr, mo, 0).getDate();
+    const to = yr+'-'+String(mo).padStart(2,'0')+'-'+String(toD).padStart(2,'0');
+    const att = await api('/trial_hr_attendance?select=status,is_late,attendance_date&member_id=eq.'+e.id+'&attendance_date=gte.'+from+'&attendance_date=lte.'+to);
+    const leaves = await api('/trial_hr_leaves?select=total_days,status&member_id=eq.'+e.id+'&status=eq.approved&from_date=lte.'+to+'&to_date=gte.'+from);
+    // Sunday OT reimbursements (helper/stitching — same-day paid, alag se)
+    const sundayOT = await api('/trial_hr_reimbursements?select=ot_amount,food_amount,status&member_id=eq.'+e.id+'&is_sunday_ot=eq.true&work_date=gte.'+from+'&work_date=lte.'+to).catch(()=>[]);
+    const present = att.filter(a=>a.status==='present').length;
+    const leaveDays = leaves.reduce((s,l)=>s+(+l.total_days||0),0);
+    // count Sundays in month — Sunday = weekly off, working days se hatao
+    let sundays=0;
+    for(let dd=1; dd<=toD; dd++){ if(new Date(yr,mo-1,dd).getDay()===0) sundays++; }
+    const workingDays = toD - sundays; // Sunday chhutti — count nahi
+    const perDay = e.monthly_salary / workingDays;
+    const absent = Math.max(0, workingDays - present - leaveDays);
+    const earned = Math.round(perDay * (present + leaveDays));
+    const unpaidDeduction = Math.round(perDay * absent);
+    const otTotal = (sundayOT||[]).reduce((s,r)=>s+(+r.ot_amount||0)+(+r.food_amount||0),0);
+
+    window.__PAYCALC = { year:yr, month:mo, present, leaveDays, absent, workingDays, earned, unpaidDeduction, gross:e.monthly_salary, sundays, otTotal };
+
+    let h='<div class="card" style="background:var(--s1);margin-top:6px">';
+    h+=payRow('Month', mo+'/'+yr);
+    h+=payRow('Monthly salary', inr(e.monthly_salary));
+    h+=payRow('Total days', toD);
+    h+=payRow('Sundays (off)', sundays, 'var(--muted)');
+    h+=payRow('Working days', workingDays);
+    h+=payRow('Present days', present, 'var(--green)');
+    h+=payRow('Approved leave', leaveDays);
+    h+=payRow('Absent days', absent, absent>0?'var(--red)':null);
+    h+='<div style="border-top:1px solid var(--bd);margin:8px 0"></div>';
+    h+=payRow('Absent deduction', '- '+inr(unpaidDeduction), 'var(--red)');
+    h+='<div style="border-top:1px solid var(--bd);margin:8px 0"></div>';
+    h+='<div style="display:flex;justify-content:space-between;font-weight:700;font-size:16px"><span>Net Salary</span><span style="color:var(--teal)">'+inr(earned)+'</span></div>';
+    if(otTotal>0){
+      h+='<div style="border-top:1px solid var(--bd);margin:10px 0 6px"></div>';
+      h+='<div style="font-size:11px;color:var(--muted);margin-bottom:4px">Sunday OT (helper/stitching — same-day cash, alag)</div>';
+      h+=payRow('Sunday OT + food', inr(otTotal), 'var(--amber)');
+    }
+    h+='</div>';
+    h+='<button class="btn-green" style="width:100%;height:44px;font-weight:600;margin-top:10px" onclick="savePayroll()">💾 Save Salary Record</button>';
+    h+='<div id="payErr" style="color:var(--red);font-size:12px;text-align:center;margin-top:8px"></div>';
+    box.innerHTML=h;
+  } catch(ex){ box.innerHTML='<div style="color:var(--red);font-size:12px">Calc fail: '+esc(ex.message)+'</div>'; }
+}
+function payRow(l,val,color){
+  return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0"><span style="color:var(--muted)">'+l+'</span><span'+(color?' style="color:'+color+';font-weight:600"':'')+'>'+val+'</span></div>';
+}
+async function savePayroll(){
+  const e=window.__CUR_EMP, c=window.__PAYCALC;
+  if(!c) return;
+  const err=document.getElementById('payErr'); if(err)err.textContent='';
+  const btn=event.target; btn.disabled=true; btn.textContent='Saving...';
+  try {
+    // check existing record for this month
+    const exist = await api('/trial_hr_salary_records?select=id&member_id=eq.'+e.id+'&year=eq.'+c.year+'&month=eq.'+c.month);
+    const row = {
+      member_id:e.id, year:c.year, month:c.month,
+      basic_pay: c.earned,
+      unpaid_leave_deduction:c.unpaidDeduction,
+      total_working_days:c.workingDays, present_days:c.present, absent_days:c.absent, leave_days:c.leaveDays,
+      status:'draft', updated_at:new Date().toISOString()
+    };
+    if(exist&&exist.length){
+      await api('/trial_hr_salary_records?id=eq.'+exist[0].id, {method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify(row)});
+    } else {
+      await api('/trial_hr_salary_records', {method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(row)});
+    }
+    toast('Salary record save ho gaya ✓');
+    document.getElementById('modalRoot').innerHTML='';
+  } catch(ex){ if(err)err.textContent='Save fail: '+ex.message; btn.disabled=false; btn.textContent='💾 Save Salary Record'; }
 }
 
 
