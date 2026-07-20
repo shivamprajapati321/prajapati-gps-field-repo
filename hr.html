@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#0B1957">
+<meta name="theme-color" content="#0E9F8E">
+<link rel="manifest" href="/hr-manifest.json">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="PA HR">
@@ -137,7 +139,7 @@
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <div id="tbName" style="font-size:12px;text-align:right"></div>
-      <div class="tb-ava" id="tbAva">?</div>
+      <div class="tb-ava" id="tbAva" onclick="nav('settings')" style="cursor:pointer" title="Settings / Banking">?</div>
     </div>
   </div>
 
@@ -148,8 +150,9 @@
   <!-- bottom nav -->
   <div class="botnav" id="botnav">
     <button data-view="dashboard" class="on" onclick="nav('dashboard')"><i class="ti ti-layout-dashboard"></i>Home</button>
-    <button data-view="attendance" onclick="nav('attendance')"><i class="ti ti-fingerprint"></i>Attendance</button>
-    <button data-view="approvals" onclick="nav('approvals')"><i class="ti ti-checklist"></i>Approvals</button>
+    <button data-view="attendance" onclick="nav('attendance')"><i class="ti ti-fingerprint"></i>Attend</button>
+    <button data-view="expenses" onclick="nav('expenses')"><i class="ti ti-receipt"></i>Expense</button>
+    <button data-view="approvals" onclick="nav('approvals')"><i class="ti ti-checklist"></i>Approve</button>
     <button data-view="employees" onclick="nav('employees')"><i class="ti ti-users"></i>Team</button>
   </div>
   <div id="modalRoot"></div>
@@ -186,6 +189,20 @@ function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t
 // role helpers
 const ADMIN_ROLES = ['owner','admin','hr','operations_manager','ops_manager'];
 function isAdmin(){ return ADMIN_ROLES.includes(String(USER.role||'').toLowerCase()) || USER.hr_role === true; }
+
+// ══════════ FILE UPLOAD (Execution app jaisa — payment-receipts / team-docs) ══════════
+// prefix: 'aadhaar' | 'pan' | 'upiqr' | 'receipt'  → path team-docs/{phone}/{prefix}_{ts}_{name}
+async function uploadFile(file, phone, prefix){
+  const safeName = (file.name||'file').replace(/[^a-zA-Z0-9._-]/g,'_').slice(-40);
+  const path = 'team-docs/'+phone+'/'+prefix+'_'+Date.now()+'_'+safeName;
+  const up = await fetch(SUPABASE_URL+'/storage/v1/object/payment-receipts/'+path, {
+    method:'POST',
+    headers:{ 'Authorization':'Bearer '+SUPABASE_KEY, 'apikey':SUPABASE_KEY, 'Content-Type': file.type||'application/octet-stream', 'x-upsert':'true' },
+    body: file
+  });
+  if (!up.ok) throw new Error('Upload failed: '+up.status);
+  return SUPABASE_URL+'/storage/v1/object/public/payment-receipts/'+path;
+}
 
 // ══════════ LOGIN — Wati OTP (GPS app jaisa, wati-send/wati-verify-otp) ══════════
 const FN_URL = SUPABASE_URL + '/functions/v1';
@@ -315,9 +332,11 @@ function nav(view){
   root.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)"><i class="ti ti-loader-2 spin" style="font-size:26px"></i></div>';
   if (view==='dashboard') renderDashboard(root);
   else if (view==='attendance') renderAttendance(root);
+  else if (view==='expenses') renderExpenses(root);
   else if (view==='approvals') renderApprovals(root);
   else if (view==='leave') renderLeave(root);
   else if (view==='employees') renderEmployees(root);
+  else if (view==='settings') renderSettings(root);
 }
 function placeholder(title,icon,sub){
   return '<div class="card" style="text-align:center;padding:40px 20px">'+
@@ -1004,6 +1023,245 @@ function filterEmp(q){
     r.style.display = r.dataset.s.includes(q) ? '' : 'none';
   });
 }
+
+
+// ══════════ EXPENSES ══════════
+let EXP_RECEIPT_URL = '';
+async function renderExpenses(root){
+  try {
+    const admin = isAdmin();
+    // employee sees own; admin sees all (recent 60)
+    const filter = admin ? '' : '&team_member_phone=eq.'+USER.phone;
+    const exps = await api('/prajapati_expenses?select=id,expense_date,expense_type,internal_category,total_amount,payment_status,approval_status,receipt_url,team_member_name,remark,other_description,food_amount,hotel_amount,transport_amount,other_amount&order=created_at.desc&limit=60'+filter);
+
+    let h = '<div class="sechead"><i class="ti ti-receipt"></i>Expenses</div>';
+
+    // ── SUBMIT FORM ──
+    h += '<div class="card">';
+    h += '<div style="font-size:14px;font-weight:600;margin-bottom:10px">Naya expense add karo</div>';
+    if (admin){
+      h += '<label style="font-size:12px;color:var(--muted)">Kiske liye (team member)</label>';
+      h += '<select id="expMember" style="margin-bottom:10px"><option value="'+esc(USER.phone)+'|'+esc(USER.name)+'">Khud ('+esc(USER.name)+')</option></select>';
+    }
+    h += '<label style="font-size:12px;color:var(--muted)">Date</label>';
+    h += '<input type="date" id="expDate" value="'+today()+'" style="margin-bottom:10px">';
+    h += '<label style="font-size:12px;color:var(--muted)">Category</label>';
+    h += '<select id="expCat" style="margin-bottom:10px">'+
+         '<option value="Food">Food</option><option value="Hotel">Hotel</option>'+
+         '<option value="Transport">Transport</option><option value="Fuel">Fuel</option>'+
+         '<option value="Parcel">Parcel</option><option value="Office Expense">Office Expense</option>'+
+         '<option value="Other">Other</option></select>';
+    h += '<label style="font-size:12px;color:var(--muted)">Amount (₹)</label>';
+    h += '<input type="number" id="expAmt" inputmode="numeric" placeholder="0" style="margin-bottom:10px">';
+    h += '<label style="font-size:12px;color:var(--muted)">Remark (optional)</label>';
+    h += '<input type="text" id="expRemark" placeholder="kis kaam ka expense" style="margin-bottom:10px">';
+    h += '<label style="font-size:12px;color:var(--muted)">Receipt photo (optional)</label>';
+    h += '<input type="file" id="expReceipt" accept="image/*" onchange="onExpReceipt(this)" style="margin-bottom:6px">';
+    h += '<div id="expReceiptLbl" style="font-size:11px;color:var(--muted);margin-bottom:10px"></div>';
+    h += '<button class="btn-primary" style="width:100%;height:44px;font-weight:600" onclick="submitExpense()">Submit Expense</button>';
+    h += '<div id="expErr" style="color:var(--red);font-size:12px;text-align:center;margin-top:8px"></div>';
+    h += '</div>';
+
+    // ── LIST ──
+    h += '<div class="sechead" style="margin-top:16px"><i class="ti ti-list"></i>'+(admin?'Sab expenses':'Mere expenses')+'</div>';
+    if (!exps.length){
+      h += '<div class="card" style="text-align:center;color:var(--muted);padding:30px">Abhi tak koi expense nahi</div>';
+    } else {
+      h += '<div class="card">';
+      exps.forEach(x=>{
+        const amt = x.total_amount || ((+x.food_amount||0)+(+x.hotel_amount||0)+(+x.transport_amount||0)+(+x.other_amount||0));
+        const cat = x.internal_category || x.other_description || x.expense_type || 'Expense';
+        const apr = (x.approval_status||'pending');
+        const aprPill = apr==='approved'?'pill-green':apr==='rejected'?'pill-red':'pill-amber';
+        const pay = (x.payment_status||'pending');
+        h += '<div class="row-item">';
+        h += '<div style="flex:1"><div style="font-size:13px;font-weight:500">'+esc(cat)+' · '+inr(amt)+'</div>';
+        h += '<div style="font-size:11px;color:var(--muted)">'+esc(x.expense_date||'')+(admin&&x.team_member_name?' · '+esc(x.team_member_name):'')+(x.remark?' · '+esc(x.remark):'')+'</div></div>';
+        if (x.receipt_url) h += '<span class="pill pill-blue" style="cursor:pointer" onclick="viewImg(\''+esc(x.receipt_url)+'\')">Receipt</span>';
+        h += '<span class="pill '+aprPill+'">'+esc(apr)+'</span>';
+        if (pay==='paid') h += '<span class="pill pill-green">paid</span>';
+        h += '</div>';
+      });
+      h += '</div>';
+    }
+    root.innerHTML = h;
+    EXP_RECEIPT_URL = '';
+
+    // admin: load members into dropdown
+    if (admin){
+      api('/trial_team_members?select=name,phone&active=eq.true&order=name').then(ms=>{
+        const sel = document.getElementById('expMember');
+        if (sel && ms) ms.forEach(m=>{ if(m.phone!==USER.phone){ const o=document.createElement('option'); o.value=m.phone+'|'+m.name; o.textContent=m.name; sel.appendChild(o); }});
+      }).catch(()=>{});
+    }
+  } catch(e){
+    root.innerHTML = '<div class="card" style="color:var(--red)">Load fail: '+esc(e.message)+'</div>';
+  }
+}
+async function onExpReceipt(input){
+  const f = input.files[0]; if(!f) return;
+  const lbl = document.getElementById('expReceiptLbl');
+  lbl.textContent = 'Uploading...';
+  try {
+    EXP_RECEIPT_URL = await uploadFile(f, USER.phone, 'receipt');
+    lbl.innerHTML = '<span style="color:var(--green)">Receipt added ✓</span>';
+  } catch(e){ lbl.innerHTML = '<span style="color:var(--red)">Upload fail</span>'; EXP_RECEIPT_URL=''; }
+}
+async function submitExpense(){
+  const err = document.getElementById('expErr'); err.textContent='';
+  const amt = parseFloat(document.getElementById('expAmt').value||'0');
+  const cat = document.getElementById('expCat').value;
+  const date = document.getElementById('expDate').value;
+  const remark = document.getElementById('expRemark').value.trim();
+  if (!amt || amt<=0){ err.textContent='Amount daalo'; return; }
+  if (!date){ err.textContent='Date daalo'; return; }
+  let phone=USER.phone, name=USER.name;
+  const memSel = document.getElementById('expMember');
+  if (memSel){ const parts=memSel.value.split('|'); phone=parts[0]; name=parts[1]||''; }
+  const btn = event.target; btn.disabled=true; btn.textContent='Saving...';
+  try {
+    const row = {
+      expense_type:'internal', internal_category:cat, total_amount:amt, other_amount:amt,
+      expense_date:date, team_member_phone:phone, team_member_name:name,
+      remark:remark||null, receipt_url:EXP_RECEIPT_URL||null,
+      approval_status:'pending', payment_status:'pending', source:'hr',
+      created_by:USER.phone, created_by_name:USER.name
+    };
+    await api('/prajapati_expenses', { method:'POST', headers:{'Prefer':'return=minimal'}, body:JSON.stringify(row) });
+    toast('Expense submit ho gaya ✓');
+    nav('expenses');
+  } catch(e){ err.textContent='Save fail: '+e.message; btn.disabled=false; btn.textContent='Submit Expense'; }
+}
+
+// ══════════ SETTINGS — Banking + Aadhaar/PAN ══════════
+let DOC_URLS = { aadhaar_photo_url:'', pan_photo_url:'', upi_qr_url:'' };
+async function renderSettings(root){
+  try {
+    const admin = isAdmin();
+    // employee: own profile. admin: can pick anyone (default self)
+    let targetPhone = USER.phone, targetName = USER.name;
+    const rows = await api('/prajapati_team_bank_profile?select=*&member_phone=eq.'+encodeURIComponent(targetPhone));
+    const p = (rows && rows[0]) || {};
+    DOC_URLS = { aadhaar_photo_url:p.aadhaar_photo_url||'', pan_photo_url:p.pan_photo_url||'', upi_qr_url:p.upi_qr_url||'' };
+
+    let h = '<div class="sechead"><i class="ti ti-settings"></i>Settings — Banking & Documents</div>';
+    h += '<div class="card">';
+    h += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px"><div class="ava">'+initials(targetName)+'</div>';
+    h += '<div><div style="font-size:14px;font-weight:600">'+esc(targetName)+'</div><div style="font-size:11px;color:var(--muted)">'+esc(targetPhone)+'</div></div></div>';
+
+    h += '<div style="font-size:13px;font-weight:600;color:var(--navy);margin:6px 0 8px">Bank Account</div>';
+    h += fld('setBank','Bank name', p.bank_name);
+    h += fld('setAcct','Account number', p.account_number);
+    h += fld('setIfsc','IFSC code', p.ifsc_code);
+    h += fld('setHolder','Account holder name', p.account_holder);
+    h += fld('setUpi','UPI ID', p.upi_id);
+
+    h += '<div style="font-size:13px;font-weight:600;color:var(--navy);margin:14px 0 8px">Documents</div>';
+    h += fld('setAadhaarNo','Aadhaar number', p.aadhaar_number);
+    h += docRow('aadhaar','Aadhaar photo', p.aadhaar_photo_url);
+    h += fld('setPanNo','PAN number', p.pan_number);
+    h += docRow('pan','PAN photo', p.pan_photo_url);
+    h += docRow('upiqr','UPI QR', p.upi_qr_url);
+
+    h += '<div style="font-size:13px;font-weight:600;color:var(--navy);margin:14px 0 8px">Preferred payment</div>';
+    h += '<select id="setPref" style="margin-bottom:12px">'+
+         opt('bank','Bank transfer',p.preferred_method)+opt('upi','UPI',p.preferred_method)+opt('cash','Cash',p.preferred_method)+'</select>';
+
+    h += '<button class="btn-primary" style="width:100%;height:44px;font-weight:600" onclick="saveSettings()">Save Details</button>';
+    h += '<div id="setErr" style="color:var(--red);font-size:12px;text-align:center;margin-top:8px"></div>';
+    h += '</div>';
+
+    // admin: view other employees' details
+    if (admin){
+      h += '<div class="sechead" style="margin-top:16px"><i class="ti ti-users"></i>Team ki details dekho</div>';
+      h += '<div class="card"><input type="text" id="setSearch" placeholder="Employee name search..." oninput="filterBankRows(this.value)" style="margin-bottom:10px">';
+      h += '<div id="bankRows" style="font-size:12px;color:var(--muted);text-align:center;padding:10px">Loading...</div></div>';
+    }
+
+    root.innerHTML = h;
+    if (admin) loadAllBankProfiles();
+  } catch(e){
+    root.innerHTML = '<div class="card" style="color:var(--red)">Load fail: '+esc(e.message)+'</div>';
+  }
+}
+function fld(id,label,val){
+  return '<label style="font-size:12px;color:var(--muted)">'+label+'</label>'+
+    '<input type="text" id="'+id+'" value="'+esc(val||'')+'" style="margin-bottom:10px">';
+}
+function opt(v,label,cur){ return '<option value="'+v+'"'+(cur===v?' selected':'')+'>'+label+'</option>'; }
+function docRow(prefix,label,url){
+  let h = '<label style="font-size:12px;color:var(--muted)">'+label+'</label>';
+  h += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">';
+  h += '<input type="file" accept="image/*" onchange="onDocUpload(this,\''+prefix+'\')" style="flex:1">';
+  h += '<span id="doclbl_'+prefix+'">'+(url?'<span class="pill pill-green" style="cursor:pointer" onclick="viewImg(\''+esc(url)+'\')">View</span>':'')+'</span>';
+  h += '</div>';
+  return h;
+}
+async function onDocUpload(input,prefix){
+  const f=input.files[0]; if(!f) return;
+  const lbl=document.getElementById('doclbl_'+prefix);
+  lbl.textContent='Uploading...';
+  try {
+    const url = await uploadFile(f, USER.phone, prefix);
+    const key = prefix==='aadhaar'?'aadhaar_photo_url':prefix==='pan'?'pan_photo_url':'upi_qr_url';
+    DOC_URLS[key]=url;
+    lbl.innerHTML='<span class="pill pill-green" style="cursor:pointer" onclick="viewImg(\''+esc(url)+'\')">View ✓</span>';
+  } catch(e){ lbl.innerHTML='<span style="color:var(--red)">fail</span>'; }
+}
+async function saveSettings(){
+  const err=document.getElementById('setErr'); err.textContent='';
+  const btn=event.target; btn.disabled=true; btn.textContent='Saving...';
+  try {
+    const row = {
+      member_phone:USER.phone, member_name:USER.name,
+      bank_name:v('setBank'), account_number:v('setAcct'), ifsc_code:v('setIfsc'),
+      account_holder:v('setHolder'), upi_id:v('setUpi'),
+      aadhaar_number:v('setAadhaarNo'), pan_number:v('setPanNo'),
+      aadhaar_photo_url:DOC_URLS.aadhaar_photo_url||null, pan_photo_url:DOC_URLS.pan_photo_url||null,
+      upi_qr_url:DOC_URLS.upi_qr_url||null, preferred_method:v('setPref'),
+      updated_at:new Date().toISOString()
+    };
+    // upsert on member_phone
+    await api('/prajapati_team_bank_profile?on_conflict=member_phone', {
+      method:'POST',
+      headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify(row)
+    });
+    toast('Details save ho gayi ✓');
+    btn.disabled=false; btn.textContent='Save Details';
+  } catch(e){ err.textContent='Save fail: '+e.message; btn.disabled=false; btn.textContent='Save Details'; }
+}
+function v(id){ const el=document.getElementById(id); return el?el.value.trim()||null:null; }
+async function loadAllBankProfiles(){
+  try {
+    const rows = await api('/prajapati_team_bank_profile?select=member_name,member_phone,bank_name,account_number,ifsc_code,upi_id,aadhaar_number,pan_number,aadhaar_photo_url,pan_photo_url,preferred_method&order=member_name');
+    const box=document.getElementById('bankRows'); if(!box) return;
+    if(!rows.length){ box.textContent='Koi details nahi'; return; }
+    let h='';
+    rows.forEach(r=>{
+      h += '<div class="row-item bank-row" data-s="'+esc((r.member_name+' '+r.member_phone).toLowerCase())+'">';
+      h += '<div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--ink)">'+esc(r.member_name||r.member_phone)+'</div>';
+      h += '<div style="font-size:11px;color:var(--muted)">'+esc(r.bank_name||'—')+(r.account_number?' · A/C '+esc(r.account_number):'')+(r.ifsc_code?' · '+esc(r.ifsc_code):'')+'</div>';
+      h += '<div style="font-size:11px;color:var(--muted)">'+(r.upi_id?'UPI: '+esc(r.upi_id):'')+(r.aadhaar_number?' · Aadhaar ✓':'')+(r.pan_number?' · PAN ✓':'')+'</div></div>';
+      if(r.aadhaar_photo_url) h+='<span class="pill pill-blue" style="cursor:pointer" onclick="viewImg(\''+esc(r.aadhaar_photo_url)+'\')">Aadhaar</span>';
+      if(r.pan_photo_url) h+='<span class="pill pill-blue" style="cursor:pointer" onclick="viewImg(\''+esc(r.pan_photo_url)+'\')">PAN</span>';
+      h += '</div>';
+    });
+    box.style.cssText='text-align:left'; box.innerHTML=h;
+  } catch(e){ const box=document.getElementById('bankRows'); if(box) box.textContent='Load fail'; }
+}
+function filterBankRows(q){
+  q=q.toLowerCase();
+  document.querySelectorAll('.bank-row').forEach(r=>{ r.style.display=r.dataset.s.includes(q)?'':'none'; });
+}
+// image viewer modal
+function viewImg(url){
+  const m=document.getElementById('modalRoot');
+  m.innerHTML='<div class="modal-bg" onclick="this.remove()"><div class="modal" style="max-width:92%;text-align:center" onclick="event.stopPropagation()">'+
+    '<img src="'+esc(url)+'" style="max-width:100%;max-height:70vh;border-radius:10px"><br>'+
+    '<button class="btn-ghost" style="margin-top:12px;padding:8px 20px" onclick="document.getElementById(\'modalRoot\').innerHTML=\'\'">Close</button></div></div>';
+}
+
 
 // ══════════ BOOT ══════════
 (function boot(){
