@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0B1957">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PA HR">
+<title>Prajapati HR</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --navy:#0B1957; --navy2:#12235f; --teal:#0E9F8E; --teal-d:#0B8375;
+    --blue:#378ADD; --amber:#BA7517; --amber-bg:#FAEEDA;
+    --green:#1D9E75; --green-bg:#E1F5EE; --red:#E24B4A; --red-bg:#FCEBEB;
+    --ink:#141922; --muted:#6B7280; --sec:#3d4453;
+    --bg:#F4F6FA; --card:#fff; --s2:#F7F9FC; --s1:#EEF2F8;
+    --bd:#E4E9F0; --bd2:#D4DCE6; --acc-bg:#E8F0FB; --acc-bd:#BBD4F3; --acc:#2B6FC4;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.45;font-size:14px}
+  button{font-family:inherit;cursor:pointer;border:none;border-radius:8px;font-size:14px}
+  input,select{font-family:inherit;font-size:14px;width:100%;padding:11px;border:0.5px solid var(--bd2);border-radius:8px;background:#fff;outline:none}
+  input:focus,select:focus{border-color:var(--acc)}
+  .hidden{display:none!important}
+  .muted{color:var(--muted)} .sec{color:var(--sec)}
+  .pill{padding:3px 10px;border-radius:20px;font-size:11px;display:inline-block;font-weight:500}
+  .c-amber{background:var(--amber-bg);color:#7a4d0e} .c-teal{background:var(--green-bg);color:#0B6E5B}
+  .c-blue{background:var(--acc-bg);color:var(--acc)} .c-red{background:var(--red-bg);color:#A32D2D}
+  .c-gray{background:var(--s1);color:var(--sec)}
+  .spin{animation:sp 0.8s linear infinite;display:inline-block}
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  /* ===== LOGIN ===== */
+  #login{position:fixed;inset:0;background:linear-gradient(160deg,var(--navy),var(--navy2));display:flex;align-items:center;justify-content:center;padding:20px;z-index:100}
+  .login-card{background:#fff;border-radius:20px;padding:28px 24px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  .login-logo{width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,var(--teal),var(--teal-d));display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
+  .login-logo i{font-size:28px;color:#fff}
+
+  /* ===== APP SHELL ===== */
+  #app{max-width:1200px;margin:0 auto;padding-bottom:70px}
+  .topbar{background:var(--navy);color:#fff;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:40}
+  .topbar-l{display:flex;align-items:center;gap:10px}
+  .tb-logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--teal),var(--teal-d));display:flex;align-items:center;justify-content:center}
+  .tb-ava{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600}
+  .content{padding:16px}
+
+  .card{background:var(--card);border:0.5px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:12px}
+  .sechead{font-size:15px;font-weight:600;color:var(--navy);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:10px;margin-bottom:14px}
+  .stat{background:var(--card);border:0.5px solid var(--bd);border-radius:12px;padding:13px}
+  .stat .lbl{font-size:11px;color:var(--muted)}
+  .stat .val{font-size:22px;font-weight:600;margin-top:2px}
+
+  /* ===== BOTTOM NAV (mobile) ===== */
+  .botnav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:0.5px solid var(--bd);display:flex;justify-content:space-around;padding:7px 0 9px;z-index:40;max-width:1200px;margin:0 auto}
+  .botnav button{background:none;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--muted);font-size:10px;padding:2px 8px}
+  .botnav button.on{color:var(--acc)}
+  .botnav button i{font-size:20px}
+
+  .row-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:0.5px solid var(--bd)}
+  .row-item:last-child{border-bottom:none}
+  .ava{width:36px;height:36px;border-radius:50%;background:var(--acc-bg);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--acc);flex-shrink:0}
+  .btn-sm{height:30px;font-size:12px;padding:0 12px;background:var(--acc-bg);color:var(--acc)}
+  .btn-primary{background:var(--teal);color:#fff}
+  .btn-green{background:var(--green);color:#fff}
+  .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;z-index:200;opacity:0;transition:.3s;pointer-events:none;max-width:90%}
+  .toast.show{opacity:1}
+  /* pill color variants */
+  .pill-green{background:var(--green-bg);color:#0F6E56} .pill-red{background:var(--red-bg);color:#A32D2D}
+  .pill-amber{background:var(--amber-bg);color:#8A5308} .pill-blue{background:var(--acc-bg);color:var(--acc)}
+  /* tabs */
+  .tabBtn{flex:1;height:38px;border-radius:9px;background:var(--s1);color:var(--sec);font-size:13px;font-weight:500;border:0}
+  .tabBtn.active{background:var(--teal);color:#fff}
+  /* ghost buttons */
+  .btn-ghost{background:var(--s1);color:var(--sec)}
+  .btn-ghost-red{background:var(--red-bg);color:#A32D2D}
+  /* modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(11,25,87,.45);z-index:300;display:flex;align-items:flex-end;justify-content:center;padding:0}
+  .modal{background:var(--card);border-radius:18px 18px 0 0;padding:20px;width:100%;max-width:480px;box-shadow:0 -6px 30px rgba(0,0,0,.2);animation:slideUp .22s ease}
+  @keyframes slideUp{from{transform:translateY(40px);opacity:.4}to{transform:translateY(0);opacity:1}}
+  @media(min-width:520px){.modal-bg{align-items:center}.modal{border-radius:18px}}
+</style>
+</head>
+<body>
+
+<!-- ══════════ LOGIN ══════════ -->
+<div id="login">
+  <div class="login-card">
+    <div class="login-logo"><i class="ti ti-users-group"></i></div>
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:19px;font-weight:600;color:var(--navy)">Prajapati HR</div>
+      <div style="font-size:12px;color:var(--muted)">Team attendance &amp; payroll</div>
+    </div>
+
+    <!-- STEP 1: phone -->
+    <div id="loginStep1">
+      <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:5px">WhatsApp number</label>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <div style="padding:11px 12px;background:var(--s1);border-radius:8px;font-size:14px;color:var(--sec)">+91</div>
+        <input id="loginPhone" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit number">
+      </div>
+      <button id="loginBtn" onclick="sendOtp()" style="width:100%;height:46px;background:var(--teal);color:#fff;font-weight:600">Send OTP on WhatsApp</button>
+      <div id="loginErr" style="color:var(--red);font-size:12px;text-align:center;margin-top:10px"></div>
+    </div>
+
+    <!-- STEP 2: OTP -->
+    <div id="loginStep2" class="hidden">
+      <div style="font-size:13px;color:var(--sec);margin-bottom:10px" id="otpSentTo"></div>
+      <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:5px">6-digit OTP</label>
+      <input id="loginOtp" type="tel" inputmode="numeric" maxlength="6" placeholder="------" style="text-align:center;letter-spacing:8px;font-size:20px;margin-bottom:14px">
+      <button id="verifyBtn" onclick="verifyOtp()" style="width:100%;height:46px;background:var(--teal);color:#fff;font-weight:600">Verify &amp; Login</button>
+      <div style="display:flex;justify-content:space-between;margin-top:12px;font-size:12px">
+        <span style="color:var(--acc);cursor:pointer" onclick="backToPhone()">&larr; Change number</span>
+        <span id="resendBox" style="color:var(--muted);cursor:pointer"></span>
+      </div>
+      <div id="otpErr" style="color:var(--red);font-size:12px;text-align:center;margin-top:10px"></div>
+    </div>
+
+    <div style="text-align:center;margin-top:18px;font-size:11px;color:var(--muted)">Prajapati Advertising · internal use</div>
+  </div>
+</div>
+
+<!-- ══════════ APP ══════════ -->
+<div id="app" class="hidden">
+  <div class="topbar">
+    <div class="topbar-l">
+      <div class="tb-logo"><i class="ti ti-users-group" style="font-size:18px;color:#fff"></i></div>
+      <div>
+        <div style="font-size:15px;font-weight:600">Prajapati HR</div>
+        <div id="tbDate" style="font-size:11px;opacity:.7"></div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div id="tbName" style="font-size:12px;text-align:right"></div>
+      <div class="tb-ava" id="tbAva">?</div>
+    </div>
+  </div>
+
+  <div class="content" id="viewRoot">
+    <!-- views render here -->
+  </div>
+
+  <!-- bottom nav -->
+  <div class="botnav" id="botnav">
+    <button data-view="dashboard" class="on" onclick="nav('dashboard')"><i class="ti ti-layout-dashboard"></i>Home</button>
+    <button data-view="attendance" onclick="nav('attendance')"><i class="ti ti-fingerprint"></i>Attendance</button>
+    <button data-view="approvals" onclick="nav('approvals')"><i class="ti ti-checklist"></i>Approvals</button>
+    <button data-view="employees" onclick="nav('employees')"><i class="ti ti-users"></i>Team</button>
+  </div>
+  <div id="modalRoot"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════ CONFIG ══════════
+const SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
+const HEADERS = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' };
+// supabase-js optional — app REST fetch use karta hai, CDN fail ho tab bhi chale
+const db = (typeof supabase !== 'undefined') ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
+let USER = null;   // logged in employee row
+
+// ══════════ HELPERS ══════════
+async function api(path, opts = {}) {
+  const res = await fetch(SUPABASE_URL + '/rest/v1' + path, { ...opts, headers: { ...HEADERS, ...(opts.headers || {}) } });
+  if (!res.ok) throw new Error('API ' + res.status + ': ' + await res.text());
+  if (res.status === 204) return null;
+  const t = await res.text();
+  return t ? JSON.parse(t) : null;
+}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function fmt(n){return Number(n||0).toLocaleString('en-IN');}
+function inr(n){return '₹'+fmt(n);}
+function initials(name){return (name||'?').trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();}
+function today(){return new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Kolkata'});} // YYYY-MM-DD
+function isSunday(){return new Date().toLocaleDateString('en-US',{weekday:'long',timeZone:'Asia/Kolkata'})==='Sunday';}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
+
+// role helpers
+const ADMIN_ROLES = ['owner','admin','hr','operations_manager','ops_manager'];
+function isAdmin(){ return ADMIN_ROLES.includes(String(USER.role||'').toLowerCase()) || USER.hr_role === true; }
+
+// ══════════ LOGIN — Wati OTP (GPS app jaisa, wati-send/wati-verify-otp) ══════════
+const FN_URL = SUPABASE_URL + '/functions/v1';
+let LOGIN_PHONE = '';
+
+async function fn(name, body){
+  const res = await fetch(FN_URL + '/' + name, {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+SUPABASE_KEY, 'apikey':SUPABASE_KEY },
+    body: JSON.stringify(body)
+  });
+  return res.json();
+}
+
+async function sendOtp(){
+  const phone = document.getElementById('loginPhone').value.replace(/\D/g,'');
+  const errEl = document.getElementById('loginErr');
+  const btn = document.getElementById('loginBtn');
+  errEl.textContent = '';
+  if (phone.length !== 10 || !/^[6-9]/.test(phone)) { errEl.textContent = 'Sahi 10-digit WhatsApp number daalo'; return; }
+  btn.innerHTML = '<i class="ti ti-loader-2 spin"></i>'; btn.disabled = true;
+  try {
+    const r = await fn('wati-send', { action:'send_otp', phone, purpose:'login' });
+    if (!r.success) {
+      errEl.textContent = r.error || 'OTP bhejne mein dikkat. Dobara try karo.';
+      btn.innerHTML = 'Send OTP on WhatsApp'; btn.disabled = false; return;
+    }
+    LOGIN_PHONE = phone;
+    document.getElementById('otpSentTo').innerHTML = 'OTP bheja gaya <b>'+(r.masked_phone||('+91 '+phone))+'</b> par WhatsApp pe';
+    document.getElementById('loginStep1').classList.add('hidden');
+    document.getElementById('loginStep2').classList.remove('hidden');
+    document.getElementById('loginOtp').focus();
+    startResendTimer();
+  } catch(e) {
+    errEl.textContent = 'Network issue. Dobara try karo.';
+    btn.innerHTML = 'Send OTP on WhatsApp'; btn.disabled = false;
+  }
+}
+
+async function verifyOtp(){
+  const code = document.getElementById('loginOtp').value.replace(/\D/g,'');
+  const errEl = document.getElementById('otpErr');
+  const btn = document.getElementById('verifyBtn');
+  errEl.textContent = '';
+  if (code.length !== 6) { errEl.textContent = '6-digit OTP daalo'; return; }
+  btn.innerHTML = '<i class="ti ti-loader-2 spin"></i>'; btn.disabled = true;
+  try {
+    const r = await fn('wati-verify-otp', { phone: LOGIN_PHONE, code });
+    if (!r.success) {
+      errEl.textContent = r.error || 'OTP galat hai';
+      btn.innerHTML = 'Verify & Login'; btn.disabled = false; return;
+    }
+    // member aa gaya — par HR app ko full row chahiye (ot rate, hr_role, etc.)
+    let member = r.member || {};
+    try {
+      const full = await api('/trial_team_members?select=*&phone=eq.'+LOGIN_PHONE+'&active=eq.true');
+      if (full && full.length) member = full[0];
+    } catch(e){}
+    USER = member;
+    USER._session = r.session_token;
+    USER._session_exp = Date.now() + (r.expires_in||43200)*1000;
+    localStorage.setItem('hr_user', JSON.stringify(USER));
+    enterApp();
+  } catch(e) {
+    errEl.textContent = 'Network issue. Dobara try karo.';
+    btn.innerHTML = 'Verify & Login'; btn.disabled = false;
+  }
+}
+
+function backToPhone(){
+  document.getElementById('loginStep2').classList.add('hidden');
+  document.getElementById('loginStep1').classList.remove('hidden');
+  document.getElementById('loginBtn').innerHTML = 'Send OTP on WhatsApp';
+  document.getElementById('loginBtn').disabled = false;
+  document.getElementById('loginOtp').value = '';
+  document.getElementById('otpErr').textContent = '';
+}
+
+let resendTimer = null;
+function startResendTimer(){
+  let s = 30;
+  const box = document.getElementById('resendBox');
+  clearInterval(resendTimer);
+  box.style.cursor = 'default'; box.onclick = null;
+  resendTimer = setInterval(()=>{
+    s--;
+    if (s <= 0) {
+      clearInterval(resendTimer);
+      box.textContent = 'Resend OTP';
+      box.style.color = 'var(--acc)'; box.style.cursor = 'pointer';
+      box.onclick = () => { backToPhone(); sendOtp(); };
+    } else {
+      box.textContent = 'Resend in '+s+'s';
+      box.style.color = 'var(--muted)';
+    }
+  }, 1000);
+}
+
+function logout(){ localStorage.removeItem('hr_user'); location.reload(); }
+
+// session expiry check
+function sessionValid(){
+  if (!USER) return false;
+  if (USER._session_exp && Date.now() > USER._session_exp) return false;
+  return true;
+}
+
+function enterApp(){
+  document.getElementById('login').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('tbAva').textContent = initials(USER.name);
+  document.getElementById('tbName').textContent = USER.name;
+  document.getElementById('tbDate').textContent = new Date().toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short',timeZone:'Asia/Kolkata'});
+  // hide admin-only nav for plain employees
+  if (!isAdmin()) {
+    document.querySelectorAll('.botnav button[data-view="approvals"],.botnav button[data-view="employees"]').forEach(b=>b.classList.add('hidden'));
+  }
+  nav('dashboard');
+}
+
+// ══════════ NAV ══════════
+let CURRENT = 'dashboard';
+function nav(view){
+  CURRENT = view;
+  document.querySelectorAll('.botnav button').forEach(b=>b.classList.toggle('on', b.dataset.view===view));
+  const root = document.getElementById('viewRoot');
+  root.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)"><i class="ti ti-loader-2 spin" style="font-size:26px"></i></div>';
+  if (view==='dashboard') renderDashboard(root);
+  else if (view==='attendance') renderAttendance(root);
+  else if (view==='approvals') renderApprovals(root);
+  else if (view==='leave') renderLeave(root);
+  else if (view==='employees') renderEmployees(root);
+}
+function placeholder(title,icon,sub){
+  return '<div class="card" style="text-align:center;padding:40px 20px">'+
+    '<i class="ti ti-'+icon+'" style="font-size:42px;color:var(--acc)"></i>'+
+    '<div style="font-size:16px;font-weight:600;margin-top:10px">'+title+'</div>'+
+    '<div style="font-size:12px;color:var(--muted);margin-top:4px">'+sub+'</div></div>';
+}
+
+// ══════════ DASHBOARD ══════════
+async function renderDashboard(root){
+  try {
+    const t = today();
+    // employee sees own summary; admin sees company overview
+    if (isAdmin()) {
+      const [emps, att, leaves, reimb] = await Promise.all([
+        api('/trial_team_members?select=id,name,active&active=eq.true'),
+        api('/trial_hr_attendance?select=member_id,status,is_late&attendance_date=eq.'+t),
+        api('/trial_hr_leaves?select=id,status&status=eq.pending'),
+        api('/trial_hr_reimbursements?select=id,status,amount&status=eq.pending')
+      ]);
+      const total = emps.length;
+      const present = att.filter(a=>a.status==='present'||a.status==='half_day').length;
+      const late = att.filter(a=>a.is_late).length;
+      const onLeave = att.filter(a=>a.status==='leave').length;
+      const absent = Math.max(0, total - present - onLeave);
+      const pendReimb = reimb.reduce((s,r)=>s+Number(r.amount||0),0);
+
+      let h = '<div style="margin-bottom:14px"><div style="font-size:17px;font-weight:600">Namaste, '+esc(USER.name.split(' ')[0])+' 👋</div>'+
+        '<div style="font-size:12px;color:var(--muted)">'+new Date().toLocaleDateString('en-IN',{weekday:'long',day:'2-digit',month:'long',year:'numeric',timeZone:'Asia/Kolkata'})+' · '+total+' employees</div></div>';
+
+      if (isSunday()) h += '<div class="c-amber" style="border-radius:12px;padding:12px 14px;margin-bottom:12px;font-size:13px"><i class="ti ti-briefcase" style="font-size:16px;vertical-align:-2px;margin-right:6px"></i><b>Sunday OT day</b> — team ko OT + food cash milega</div>';
+
+      h += '<div class="stat-grid">'+
+        '<div class="stat"><div class="lbl">PRESENT</div><div class="val" style="color:var(--green)">'+present+'</div><div class="lbl">of '+total+'</div></div>'+
+        '<div class="stat"><div class="lbl">ON LEAVE</div><div class="val" style="color:var(--amber)">'+onLeave+'</div></div>'+
+        '<div class="stat"><div class="lbl">ABSENT</div><div class="val" style="color:var(--red)">'+absent+'</div></div>'+
+        '<div class="stat"><div class="lbl">LATE</div><div class="val">'+late+'</div></div>'+
+        '</div>';
+
+      // pending approvals
+      h += '<div class="card"><div class="sechead"><i class="ti ti-bell" style="color:var(--amber)"></i>Pending approval'+
+        '<span class="c-amber pill" style="margin-left:auto">'+(leaves.length+reimb.length)+' items</span></div>';
+      if (leaves.length+reimb.length===0) {
+        h += '<div style="text-align:center;color:var(--muted);font-size:13px;padding:14px">Sab clear 👍 koi pending nahi</div>';
+      } else {
+        h += '<div class="row-item"><div class="ava"><i class="ti ti-calendar-off"></i></div><div style="flex:1"><div style="font-size:13px;font-weight:500">'+leaves.length+' leave requests</div><div style="font-size:11px;color:var(--muted)">approval ka intezaar</div></div><button class="btn-sm" onclick="nav(\'approvals\')">View</button></div>';
+        h += '<div class="row-item"><div class="ava"><i class="ti ti-cash"></i></div><div style="flex:1"><div style="font-size:13px;font-weight:500">'+reimb.length+' expense/OT · '+inr(pendReimb)+'</div><div style="font-size:11px;color:var(--muted)">cash payment pending</div></div><button class="btn-sm" onclick="nav(\'approvals\')">View</button></div>';
+      }
+      h += '</div>';
+
+      h += '<button onclick="logout()" style="width:100%;height:40px;background:var(--s1);color:var(--sec);margin-top:6px">Logout</button>';
+      root.innerHTML = h;
+    } else {
+      // EMPLOYEE self-view
+      const att = await api('/trial_hr_attendance?select=*&member_id=eq.'+USER.id+'&attendance_date=eq.'+t);
+      const punched = att && att.length>0;
+      const rec = punched ? att[0] : null;
+
+      let h = '<div style="margin-bottom:14px"><div style="font-size:17px;font-weight:600">Namaste, '+esc(USER.name.split(' ')[0])+' 👋</div>'+
+        '<div style="font-size:12px;color:var(--muted)">'+new Date().toLocaleDateString('en-IN',{weekday:'long',day:'2-digit',month:'long',timeZone:'Asia/Kolkata'})+'</div></div>';
+
+      if (isSunday()) h += '<div class="c-amber" style="border-radius:12px;padding:12px 14px;margin-bottom:12px;font-size:13px"><i class="ti ti-briefcase" style="font-size:16px;vertical-align:-2px;margin-right:6px"></i><b>Sunday overtime day</b> — punch karne pe OT + food add hoga</div>';
+
+      h += '<div class="card" style="text-align:center;padding:22px">';
+      if (!punched) {
+        h += '<div style="width:88px;height:88px;border-radius:50%;background:var(--acc-bg);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;border:2px solid var(--acc-bd)"><i class="ti ti-scan-eye" style="font-size:40px;color:var(--acc)"></i></div>'+
+          '<div style="font-size:15px;font-weight:600">Punch in karo</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px">Face + location verify</div>'+
+          '<button class="btn-green" style="width:100%;height:46px;font-weight:600" onclick="nav(\'attendance\')">Punch in</button>';
+      } else if (!rec.check_out_time) {
+        h += '<div style="width:88px;height:88px;border-radius:50%;background:var(--green-bg);margin:0 auto 12px;display:flex;align-items:center;justify-content:center"><i class="ti ti-check" style="font-size:40px;color:var(--green)"></i></div>'+
+          '<div style="font-size:15px;font-weight:600">Punched in ✓</div><div style="font-size:12px;color:var(--muted)">'+new Date(rec.check_in_time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'})+' · abhi kaam pe ho</div>'+
+          '<button class="btn-sm" style="margin-top:14px" onclick="nav(\'attendance\')">Punch out</button>';
+      } else {
+        h += '<div style="width:88px;height:88px;border-radius:50%;background:var(--green-bg);margin:0 auto 12px;display:flex;align-items:center;justify-content:center"><i class="ti ti-calendar-check" style="font-size:40px;color:var(--green)"></i></div>'+
+          '<div style="font-size:15px;font-weight:600">Aaj ka din complete 👍</div><div style="font-size:12px;color:var(--muted)">'+Number(rec.total_hours_worked||0).toFixed(1)+' hours worked</div>';
+      }
+      h += '</div>';
+
+      // quick actions
+      h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:10px">'+
+        quickTile('calendar-plus','Apply leave','leave')+
+        quickTile('cash-banknote','Advance','approvals')+
+        quickTile('receipt','Expense','approvals')+
+        quickTile('file-dollar','Salary slip','dashboard')+
+        '</div>';
+      h += '<button onclick="logout()" style="width:100%;height:40px;background:var(--s1);color:var(--sec);margin-top:6px">Logout</button>';
+      root.innerHTML = h;
+    }
+  } catch(e){
+    root.innerHTML = '<div class="card" style="color:var(--red)">Load fail: '+esc(e.message)+'</div>';
+  }
+}
+function quickTile(icon,label,view){
+  return '<div class="card" style="margin:0;text-align:center;padding:14px 10px;cursor:pointer" onclick="nav(\''+view+'\')"><i class="ti ti-'+icon+'" style="font-size:24px;color:var(--acc)"></i><div style="font-size:12px;margin-top:5px">'+label+'</div></div>';
+}
+
+// ══════════ ATTENDANCE ══════════
+let OFFICES = [];
+async function loadOffices(){
+  if (OFFICES.length) return OFFICES;
+  try { OFFICES = await api('/trial_hr_office_locations?select=*&active=eq.true') || []; } catch(e){ OFFICES = []; }
+  return OFFICES;
+}
+function haversine(lat1,lng1,lat2,lng2){
+  const R=6371000, dLat=(lat2-lat1)*Math.PI/180, dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return Math.round(R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)));
+}
+
+async function renderAttendance(root){
+  try {
+    await loadOffices();
+    const t = today();
+    const att = await api('/trial_hr_attendance?select=*&member_id=eq.'+USER.id+'&attendance_date=eq.'+t);
+    const rec = (att && att.length) ? att[0] : null;
+    const mode = USER.attendance_mode || 'office';   // office = geofence, anywhere = no check
+
+    let h = '<div class="sechead"><i class="ti ti-fingerprint"></i>Attendance</div>';
+
+    if (isSunday()) h += '<div class="c-amber" style="border-radius:12px;padding:11px 14px;margin-bottom:12px;font-size:13px"><i class="ti ti-briefcase" style="font-size:15px;vertical-align:-2px;margin-right:6px"></i><b>Sunday OT day</b> — punch pe OT + food add hoga</div>';
+
+    // ── punch card ──
+    h += '<div class="card" id="punchCard" style="text-align:center;padding:20px">';
+    if (!rec) {
+      h += punchUI('in');
+    } else if (!rec.check_out_time) {
+      const inT = new Date(rec.check_in_time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'});
+      h += '<div style="width:76px;height:76px;border-radius:50%;background:var(--green-bg);margin:0 auto 10px;display:flex;align-items:center;justify-content:center"><i class="ti ti-check" style="font-size:36px;color:var(--green)"></i></div>'+
+        '<div style="font-size:15px;font-weight:600">Punched in · '+inT+'</div>'+
+        '<div style="font-size:12px;color:var(--muted);margin-bottom:6px">'+(rec.check_in_within_geofence===false?'⚠️ office ke bahar':(rec.check_in_location_name||'location recorded'))+'</div>'+
+        punchUI('out');
+    } else {
+      const inT = new Date(rec.check_in_time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'});
+      const outT = new Date(rec.check_out_time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'});
+      h += '<div style="width:76px;height:76px;border-radius:50%;background:var(--green-bg);margin:0 auto 10px;display:flex;align-items:center;justify-content:center"><i class="ti ti-calendar-check" style="font-size:36px;color:var(--green)"></i></div>'+
+        '<div style="font-size:15px;font-weight:600">Aaj complete 👍</div>'+
+        '<div style="font-size:12px;color:var(--muted)">In '+inT+' · Out '+outT+' · '+Number(rec.total_hours_worked||0).toFixed(1)+'h</div>';
+    }
+    h += '</div>';
+
+    // mode hint
+    h += '<div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:14px">'+
+      (mode==='office' ? '<i class="ti ti-map-pin" style="font-size:13px;vertical-align:-2px"></i> Office attendance — geofence check hoga'
+                       : '<i class="ti ti-world" style="font-size:13px;vertical-align:-2px"></i> Field/telecaller — kahin se bhi punch, GPS record hoga')+'</div>';
+
+    // ── month calendar ──
+    h += '<div class="card" id="calCard"><div style="text-align:center;color:var(--muted);font-size:12px;padding:10px"><i class="ti ti-loader-2 spin"></i> calendar load...</div></div>';
+
+    root.innerHTML = h;
+    renderAttCalendar();  // async fill
+  } catch(e){
+    root.innerHTML = '<div class="card" style="color:var(--red)">Load fail: '+esc(e.message)+'</div>';
+  }
+}
+
+function punchUI(kind){
+  // selfie + GPS punch button. kind = 'in' | 'out'
+  const label = kind==='in' ? 'Punch in' : 'Punch out';
+  const col = kind==='in' ? 'var(--green)' : 'var(--amber)';
+  return '<div style="width:76px;height:76px;border-radius:50%;background:var(--acc-bg);margin:0 auto 10px;display:flex;align-items:center;justify-content:center;border:2px solid var(--acc-bd)'+(kind==='in'?'':';display:none')+'" id="punchIcon"><i class="ti ti-camera-selfie" style="font-size:34px;color:var(--acc)"></i></div>'+
+    '<div style="font-size:14px;font-weight:600;margin-bottom:2px" id="punchTitle">'+(kind==='in'?'Selfie + location':'Din khatam? Punch out')+'</div>'+
+    '<div style="font-size:12px;color:var(--muted);margin-bottom:14px" id="punchSub">Camera khulega, selfie lo</div>'+
+    '<input type="file" accept="image/*" capture="user" id="selfieInput" style="display:none" onchange="onSelfie(this,\''+kind+'\')">'+
+    '<button class="btn-'+(kind==='in'?'green':'primary')+'" style="width:100%;height:46px;font-weight:600;'+(kind==='out'?'background:'+col+';color:#fff':'')+'" onclick="startPunch(\''+kind+'\')" id="punchBtn"><i class="ti ti-camera" style="font-size:17px;vertical-align:-3px;margin-right:5px"></i>'+label+'</button>'+
+    '<div id="punchMsg" style="font-size:12px;margin-top:10px"></div>';
+}
+
+let PUNCH_GPS = null;
+function startPunch(kind){
+  const msg = document.getElementById('punchMsg');
+  const btn = document.getElementById('punchBtn');
+  msg.style.color = 'var(--muted)';
+  msg.innerHTML = '<i class="ti ti-loader-2 spin"></i> Location le rahe hain...';
+  btn.disabled = true;
+  if (!navigator.geolocation) { msg.style.color='var(--red)'; msg.textContent='GPS support nahi. Phone me location on karo.'; btn.disabled=false; return; }
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      PUNCH_GPS = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: Math.round(pos.coords.accuracy) };
+      // geofence check (office mode only)
+      const mode = USER.attendance_mode || 'office';
+      let geo = { inside: true, dist: null, office: null };
+      if (mode === 'office' && OFFICES.length) {
+        const off = OFFICES.find(o=>o.is_primary) || OFFICES[0];
+        const d = haversine(PUNCH_GPS.lat, PUNCH_GPS.lng, Number(off.latitude), Number(off.longitude));
+        geo = { inside: d <= (off.geofence_radius_meters||300), dist: d, office: off };
+        PUNCH_GPS.geo = geo;
+      } else {
+        PUNCH_GPS.geo = geo;
+      }
+      // ask for selfie
+      msg.innerHTML = '<i class="ti ti-map-pin" style="font-size:13px;vertical-align:-2px;color:'+(geo.inside?'var(--green)':'var(--red)')+'"></i> '+
+        (geo.dist!=null ? (geo.inside ? 'Office ke andar ('+geo.dist+'m) ✓' : 'Office se '+geo.dist+'m door ⚠️') : 'Location mil gayi (±'+PUNCH_GPS.acc+'m)') +
+        ' — ab selfie lo';
+      document.getElementById('selfieInput').click();
+      btn.disabled = false;
+    },
+    err => {
+      msg.style.color = 'var(--red)';
+      msg.textContent = 'Location nahi mili. Phone settings me location ON karo, phir dobara.';
+      btn.disabled = false;
+    },
+    { enableHighAccuracy:true, timeout:12000, maximumAge:0 }
+  );
+}
+
+async function onSelfie(input, kind){
+  const file = input.files && input.files[0];
+  const msg = document.getElementById('punchMsg');
+  if (!file) return;
+  if (!PUNCH_GPS) { msg.style.color='var(--red)'; msg.textContent='Pehle location lena zaroori. Dobara Punch dabao.'; return; }
+  msg.style.color = 'var(--muted)';
+  msg.innerHTML = '<i class="ti ti-loader-2 spin"></i> Selfie upload ho rahi hai...';
+  try {
+    // upload selfie to storage
+    const path = 'hr-attendance/'+USER.id+'/'+today()+'-'+kind+'-'+Date.now()+'.jpg';
+    const up = await fetch(SUPABASE_URL+'/storage/v1/object/fc-photos/'+path, {
+      method:'POST',
+      headers:{ 'Authorization':'Bearer '+SUPABASE_KEY, 'apikey':SUPABASE_KEY, 'Content-Type': file.type||'image/jpeg', 'x-upsert':'true' },
+      body: file
+    });
+    let selfieUrl = null;
+    if (up.ok) selfieUrl = SUPABASE_URL+'/storage/v1/object/public/fc-photos/'+path;
+    await savePunch(kind, selfieUrl);
+  } catch(e){
+    // selfie upload fail — phir bhi punch save karo (GPS ke saath)
+    await savePunch(kind, null);
+  }
+}
+
+async function savePunch(kind, selfieUrl){
+  const msg = document.getElementById('punchMsg');
+  const g = PUNCH_GPS.geo || { inside:true, dist:null };
+  const now = new Date().toISOString();
+  try {
+    if (kind === 'in') {
+      // late? office work_start_time se compare (default 10:00)
+      const startT = USER.work_start_time || '10:00:00';
+      const nowHM = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'});
+      const isLate = nowHM > startT.slice(0,5);
+      const body = {
+        member_id: USER.id, attendance_date: today(),
+        check_in_time: now, check_in_selfie_url: selfieUrl,
+        check_in_lat: PUNCH_GPS.lat, check_in_lng: PUNCH_GPS.lng,
+        check_in_accuracy_meters: PUNCH_GPS.acc,
+        check_in_location_name: g.office ? g.office.name : (USER.city||'Field'),
+        check_in_office_id: g.office ? g.office.id : null,
+        check_in_within_geofence: g.inside,
+        check_in_device: 'pwa',
+        is_late: isLate,
+        status: 'present'
+      };
+      await api('/trial_hr_attendance', { method:'POST', headers:{'Prefer':'return=minimal'}, body: JSON.stringify(body) });
+    } else {
+      // punch out — update today's row
+      const att = await api('/trial_hr_attendance?select=id,check_in_time&member_id=eq.'+USER.id+'&attendance_date=eq.'+today());
+      if (att && att.length) {
+        const rec = att[0];
+        const hours = ((new Date(now) - new Date(rec.check_in_time)) / 3600000);
+        await api('/trial_hr_attendance?id=eq.'+rec.id, { method:'PATCH', headers:{'Prefer':'return=minimal'}, body: JSON.stringify({
+          check_out_time: now, check_out_selfie_url: selfieUrl,
+          check_out_lat: PUNCH_GPS.lat, check_out_lng: PUNCH_GPS.lng,
+          check_out_accuracy_meters: PUNCH_GPS.acc,
+          total_hours_worked: Math.round(hours*100)/100
+        }) });
+      }
+    }
+    // Sunday OT auto-entry
+    if (kind==='in' && isSunday()) await createSundayOT();
+    PUNCH_GPS = null;
+    toast(kind==='in' ? 'Punch in ho gaya ✓' : 'Punch out ho gaya ✓');
+    nav('attendance');  // refresh
+  } catch(e){
+    msg.style.color = 'var(--red)';
+    msg.textContent = 'Save fail: '+e.message;
+  }
+}
+
+// Sunday OT → reimbursement entry (pending approval)
+async function createSundayOT(){
+  try {
+    const ot = Number(USER.ot_rate_sunday||0);
+    const food = Number(USER.food_allowance_sunday||0);
+    if (ot<=0 && food<=0) return;   // rate set nahi → skip
+    // duplicate check
+    const ex = await api('/trial_hr_reimbursements?select=id&member_id=eq.'+USER.id+'&is_sunday_ot=eq.true&work_date=eq.'+today());
+    if (ex && ex.length) return;    // already banaya
+    await api('/trial_hr_reimbursements', { method:'POST', headers:{'Prefer':'return=minimal'}, body: JSON.stringify({
+      member_id: USER.id,
+      reimbursement_type: 'sunday_ot',
+      category: 'sunday_ot',
+      amount: ot+food, ot_amount: ot, food_amount: food,
+      expense_date: today(), work_date: today(),
+      is_sunday_ot: true,
+      description: 'Sunday OT ('+inr(ot)+') + Food ('+inr(food)+')',
+      status: 'pending'
+    }) });
+  } catch(e){ /* silent — punch to ho hi gaya */ }
+}
+
+async function renderAttCalendar(){
+  const box = document.getElementById('calCard');
+  if (!box) return;
+  try {
+    const now = new Date();
+    const y = now.getFullYear(), m = now.getMonth();  // current month
+    const first = new Date(y, m, 1);
+    const days = new Date(y, m+1, 0).getDate();
+    const startDay = first.getDay();
+    const monthStr = new Date(y,m,1).toLocaleDateString('en-CA');
+    const endStr = new Date(y,m,days).toLocaleDateString('en-CA');
+    const att = await api('/trial_hr_attendance?select=attendance_date,status,is_late&member_id=eq.'+USER.id+'&attendance_date=gte.'+monthStr+'&attendance_date=lte.'+endStr) || [];
+    const byDate = {}; att.forEach(a=>byDate[a.attendance_date]={status:a.status,late:a.is_late});
+
+    let present=0, leave=0, late=0;
+    let h = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'+
+      '<div style="font-size:13px;font-weight:600">'+now.toLocaleDateString('en-IN',{month:'long',year:'numeric'})+'</div></div>';
+    h += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:10px;color:var(--muted);text-align:center;margin-bottom:5px"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>';
+    h += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">';
+    for (let i=0;i<startDay;i++) h+='<div></div>';
+    for (let d=1; d<=days; d++){
+      const ds = new Date(y,m,d).toLocaleDateString('en-CA');
+      const rec = byDate[ds];
+      const isToday = ds===today();
+      let bg='var(--s2)', col='var(--muted)';
+      if (rec){
+        if (rec.status==='leave'){ bg='#FAEEDA'; col='#854F0B'; leave++; }
+        else if (rec.late){ bg='#FAEEDA'; col='#854F0B'; present++; late++; }
+        else { bg='#E1F5EE'; col='#0F6E56'; present++; }
+      }
+      const style = isToday ? 'background:var(--acc);color:#fff;font-weight:600' : 'background:'+bg+';color:'+col;
+      h += '<div style="aspect-ratio:1;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;'+style+'">'+d+'</div>';
+    }
+    h += '</div>';
+    h += '<div style="display:flex;gap:14px;margin-top:12px;font-size:11px;color:var(--sec);flex-wrap:wrap">'+
+      '<span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#9FE1CB;vertical-align:-1px"></span> Present '+present+'</span>'+
+      '<span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#FAC775;vertical-align:-1px"></span> Late '+late+'</span>'+
+      '<span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#F7C1C1;vertical-align:-1px"></span> Leave '+leave+'</span></div>';
+    box.innerHTML = h;
+  } catch(e){
+    box.innerHTML = '<div style="color:var(--red);font-size:12px;padding:10px">Calendar load fail: '+esc(e.message)+'</div>';
+  }
+}
+
+// ══════════ APPROVALS (admin) ══════════
+let LEAVE_TYPES = {};
+let MEMBER_NAMES = {};
+let APPROVAL_TAB = 'pending';
+
+async function loadLeaveTypes(){
+  if (Object.keys(LEAVE_TYPES).length) return;
+  try {
+    const lt = await api('/trial_hr_leave_types?select=id,name,code') || [];
+    lt.forEach(t=>LEAVE_TYPES[t.id]={name:t.name,code:t.code});
+  } catch(e){}
+}
+async function nameFor(ids){
+  const need = ids.filter(id=>id && !MEMBER_NAMES[id]);
+  if (need.length){
+    try {
+      const rows = await api('/trial_team_members?select=id,name&id=in.('+need.join(',')+')') || [];
+      rows.forEach(r=>MEMBER_NAMES[r.id]=r.name);
+    } catch(e){}
+  }
+}
+
+async function renderApprovals(root){
+  if (!isAdmin()){ root.innerHTML = placeholder('Approvals','lock','Sirf HR/admin ke liye'); return; }
+  root.innerHTML = '<div class="sechead"><i class="ti ti-checklist"></i>Approvals</div>'+
+    '<div style="display:flex;gap:8px;margin-bottom:14px">'+
+    ['pending','approved','history'].map(t=>'<button class="tabBtn'+(APPROVAL_TAB===t?' active':'')+'" onclick="setApprovalTab(\''+t+'\')">'+
+      (t==='pending'?'Pending':t==='approved'?'To Pay':'History')+'</button>').join('')+'</div>'+
+    '<div id="apprList"><div style="text-align:center;color:var(--muted);padding:30px"><i class="ti ti-loader-2 spin"></i></div></div>';
+  loadApprovalList();
+}
+function setApprovalTab(t){ APPROVAL_TAB=t; renderApprovals(document.getElementById('viewRoot')||document.getElementById('app').querySelector('.view')); }
+
+async function loadApprovalList(){
+  const box = document.getElementById('apprList');
+  if (!box) return;
+  await loadLeaveTypes();
+  try {
+    let leaves=[], reimb=[];
+    if (APPROVAL_TAB==='pending'){
+      leaves = await api('/trial_hr_leaves?select=*&status=eq.pending&order=applied_at.desc') || [];
+      reimb  = await api('/trial_hr_reimbursements?select=*&status=eq.pending&order=created_at.desc') || [];
+    } else if (APPROVAL_TAB==='approved'){
+      // approved but not yet paid (reimbursements only — cash pending)
+      reimb  = await api('/trial_hr_reimbursements?select=*&status=eq.approved&order=approved_at.desc') || [];
+    } else {
+      leaves = await api('/trial_hr_leaves?select=*&status=in.(approved,rejected)&order=applied_at.desc&limit=30') || [];
+      reimb  = await api('/trial_hr_reimbursements?select=*&status=in.(paid,rejected)&order=updated_at.desc&limit=30') || [];
+    }
+
+    // collect member names
+    const ids = [...new Set([...leaves.map(l=>l.member_id), ...reimb.map(r=>r.member_id)])];
+    await nameFor(ids);
+
+    // merge + sort by date
+    const items = [
+      ...leaves.map(l=>({kind:'leave', data:l, when:l.applied_at||l.created_at})),
+      ...reimb.map(r=>({kind:'reimb', data:r, when:r.created_at}))
+    ].sort((a,b)=>new Date(b.when)-new Date(a.when));
+
+    if (!items.length){
+      box.innerHTML = '<div class="card" style="text-align:center;padding:34px;color:var(--muted)">'+
+        '<i class="ti ti-circle-check" style="font-size:34px;color:var(--green);display:block;margin-bottom:8px"></i>'+
+        (APPROVAL_TAB==='pending'?'Koi pending approval nahi 🎉':APPROVAL_TAB==='approved'?'Pay karne ke liye kuch nahi':'History khaali')+'</div>';
+      return;
+    }
+    box.innerHTML = items.map(it=> it.kind==='leave' ? leaveCard(it.data) : reimbCard(it.data)).join('');
+  } catch(e){
+    box.innerHTML = '<div class="card" style="color:var(--red)">Load fail: '+esc(e.message)+'</div>';
+  }
+}
+
+function leaveCard(l){
+  const lt = LEAVE_TYPES[l.leave_type_id] || {name:'Leave',code:''};
+  const nm = MEMBER_NAMES[l.member_id]||'—';
+  const from = new Date(l.from_date).toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+  const to = new Date(l.to_date).toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+  const range = l.from_date===l.to_date ? from : from+' – '+to;
+  const badge = l.status==='pending'?'':'<span class="pill '+(l.status==='approved'?'pill-green':'pill-red')+'">'+l.status+'</span>';
+  return '<div class="card" style="padding:14px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">'+
+      '<div><div style="font-weight:600;font-size:14px">'+esc(nm)+'</div>'+
+      '<div style="font-size:12px;color:var(--acc);margin-top:1px"><i class="ti ti-calendar-event" style="font-size:12px;vertical-align:-1px"></i> '+lt.name+' · '+range+' · '+Number(l.total_days||1)+'d'+(l.is_half_day?' (half)':'')+'</div></div>'+
+      '<span class="pill pill-amber">Leave</span></div>'+
+    (l.reason?'<div style="font-size:12px;color:var(--sec);background:var(--s1);border-radius:7px;padding:8px 10px;margin-bottom:10px">'+esc(l.reason)+'</div>':'')+
+    (l.status==='pending'
+      ? '<div style="display:flex;gap:8px">'+
+        '<button class="btn-green" style="flex:1;height:40px" onclick="actLeave(\''+l.id+'\',\'approved\')"><i class="ti ti-check"></i> Approve</button>'+
+        '<button class="btn-ghost-red" style="flex:1;height:40px" onclick="actLeave(\''+l.id+'\',\'rejected\')"><i class="ti ti-x"></i> Reject</button></div>'
+      : badge)+
+    '</div>';
+}
+
+function reimbCard(r){
+  const nm = MEMBER_NAMES[r.member_id]||'—';
+  const isOT = r.is_sunday_ot;
+  const dt = new Date(r.work_date||r.expense_date||r.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+  const label = isOT ? 'Sunday OT' : (r.reimbursement_type||r.category||'Expense');
+  let amtLine = inr(r.amount);
+  if (isOT) amtLine = 'OT '+inr(r.ot_amount||0)+' + Food '+inr(r.food_amount||0)+' = <b>'+inr(r.amount)+'</b>';
+  const badge = '<span class="pill '+(r.status==='paid'?'pill-green':r.status==='rejected'?'pill-red':r.status==='approved'?'pill-blue':'pill-amber')+'">'+r.status+'</span>';
+
+  let actions='';
+  if (r.status==='pending'){
+    actions = '<div style="display:flex;gap:8px">'+
+      '<button class="btn-green" style="flex:1;height:40px" onclick="actReimb(\''+r.id+'\',\'approved\')"><i class="ti ti-check"></i> Approve</button>'+
+      '<button class="btn-ghost-red" style="flex:1;height:40px" onclick="actReimb(\''+r.id+'\',\'rejected\')"><i class="ti ti-x"></i> Reject</button></div>';
+  } else if (r.status==='approved'){
+    actions = '<button class="btn-primary" style="width:100%;height:42px;background:var(--teal);color:#fff" onclick="openPay(\''+r.id+'\','+(r.amount||0)+',\''+esc(label)+'\')"><i class="ti ti-cash"></i> Pay Cash '+inr(r.amount)+'</button>';
+  } else { actions = badge; }
+
+  return '<div class="card" style="padding:14px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">'+
+      '<div><div style="font-weight:600;font-size:14px">'+esc(nm)+'</div>'+
+      '<div style="font-size:12px;color:'+(isOT?'#B45309':'var(--acc)')+';margin-top:1px"><i class="ti ti-'+(isOT?'briefcase':'receipt')+'" style="font-size:12px;vertical-align:-1px"></i> '+esc(label)+' · '+dt+'</div></div>'+
+      '<span class="pill '+(isOT?'pill-amber':'pill-blue')+'">'+(isOT?'OT':'Expense')+'</span></div>'+
+    '<div style="font-size:13px;color:var(--sec);margin-bottom:10px">'+amtLine+'</div>'+
+    actions+'</div>';
+}
+
+// ── actions ──
+async function actLeave(id, status){
+  try {
+    const patch = { status };
+    if (status==='approved'){ patch.approved_by=USER.id; patch.approved_at=new Date().toISOString(); }
+    else { patch.rejected_by=USER.id; patch.rejected_at=new Date().toISOString(); }
+    await api('/trial_hr_leaves?id=eq.'+id, {method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify(patch)});
+    toast(status==='approved'?'Leave approved ✓':'Leave rejected');
+    loadApprovalList();
+  } catch(e){ toast('Fail: '+e.message); }
+}
+
+async function actReimb(id, status){
+  try {
+    const patch = { status };
+    if (status==='approved'){ patch.approved_by=USER.id; patch.approved_at=new Date().toISOString(); }
+    await api('/trial_hr_reimbursements?id=eq.'+id, {method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify(patch)});
+    toast(status==='approved'?'Approved — ab pay karo ✓':'Rejected');
+    loadApprovalList();
+  } catch(e){ toast('Fail: '+e.message); }
+}
+
+// ── pay + receipt popup ──
+let PAY_ID=null, PAY_RECEIPT=null;
+function openPay(id, amt, label){
+  PAY_ID=id; PAY_RECEIPT=null;
+  const m = document.getElementById('modalRoot');
+  m.innerHTML = '<div class="modal-bg" onclick="closePay(event)">'+
+    '<div class="modal" onclick="event.stopPropagation()">'+
+      '<div style="font-size:15px;font-weight:700;margin-bottom:3px">Cash Pay</div>'+
+      '<div style="font-size:13px;color:var(--muted);margin-bottom:14px">'+esc(label)+' — <b style="color:var(--teal)">'+inr(amt)+'</b></div>'+
+      '<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:5px">Payment method</label>'+
+      '<select id="payMethod" style="width:100%;margin-bottom:12px"><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank">Bank transfer</option></select>'+
+      '<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:5px">Receipt / proof (optional)</label>'+
+      '<input type="file" accept="image/*" id="payReceipt" style="display:none" onchange="onReceipt(this)">'+
+      '<button class="btn-ghost" style="width:100%;height:42px;margin-bottom:14px" onclick="document.getElementById(\'payReceipt\').click()"><i class="ti ti-camera"></i> <span id="receiptLbl">Receipt photo add karo</span></button>'+
+      '<div style="display:flex;gap:8px">'+
+        '<button class="btn-ghost" style="flex:1;height:44px" onclick="closePay()">Cancel</button>'+
+        '<button class="btn-primary" style="flex:2;height:44px;background:var(--teal);color:#fff" id="payConfirmBtn" onclick="confirmPay('+amt+')"><i class="ti ti-check"></i> Mark Paid</button>'+
+      '</div>'+
+      '<div id="payMsg" style="font-size:12px;text-align:center;margin-top:10px"></div>'+
+    '</div></div>';
+}
+function closePay(e){ if(e&&e.target&&!e.target.classList.contains('modal-bg')&&e.type==='click')return; document.getElementById('modalRoot').innerHTML=''; PAY_ID=null; }
+async function onReceipt(input){
+  const f=input.files&&input.files[0]; if(!f)return;
+  document.getElementById('receiptLbl').textContent='Uploading...';
+  try {
+    const path='hr-receipts/'+PAY_ID+'-'+Date.now()+'.jpg';
+    const up=await fetch(SUPABASE_URL+'/storage/v1/object/fc-photos/'+path,{method:'POST',headers:{'Authorization':'Bearer '+SUPABASE_KEY,'apikey':SUPABASE_KEY,'Content-Type':f.type||'image/jpeg','x-upsert':'true'},body:f});
+    if(up.ok){ PAY_RECEIPT=SUPABASE_URL+'/storage/v1/object/public/fc-photos/'+path; document.getElementById('receiptLbl').textContent='Receipt added ✓'; }
+    else document.getElementById('receiptLbl').textContent='Upload fail — bina receipt bhi pay kar sakte';
+  } catch(e){ document.getElementById('receiptLbl').textContent='Upload fail — bina receipt bhi pay kar sakte'; }
+}
+async function confirmPay(amt){
+  const btn=document.getElementById('payConfirmBtn'), msg=document.getElementById('payMsg');
+  btn.disabled=true; btn.innerHTML='<i class="ti ti-loader-2 spin"></i>';
+  try {
+    const patch={ status:'paid', paid_by:USER.id, paid_at:new Date().toISOString(),
+      payment_method:document.getElementById('payMethod').value };
+    if(PAY_RECEIPT) patch.receipt_url=PAY_RECEIPT;
+    await api('/trial_hr_reimbursements?id=eq.'+PAY_ID,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify(patch)});
+    document.getElementById('modalRoot').innerHTML='';
+    toast('Paid '+inr(amt)+' ✓');
+    loadApprovalList();
+  } catch(e){ msg.style.color='var(--red)'; msg.textContent='Fail: '+e.message; btn.disabled=false; btn.innerHTML='<i class="ti ti-check"></i> Mark Paid'; }
+}
+
+// ══════════ LEAVE (employee — apply + my leaves) ══════════
+async function renderLeave(root){
+  await loadLeaveTypes();
+  root.innerHTML = '<div class="sechead"><i class="ti ti-calendar-plus"></i>Leave</div>'+
+    '<div id="leaveBalances"></div>'+
+    '<div class="card"><div style="font-weight:600;font-size:14px;margin-bottom:12px">Apply for leave</div>'+
+      '<label class="flbl">Leave type</label>'+
+      '<select id="lvType" style="width:100%;margin-bottom:12px" onchange="lvRecalc()"></select>'+
+      '<div style="display:flex;gap:8px">'+
+        '<div style="flex:1"><label class="flbl">From</label><input id="lvFrom" type="date" style="width:100%" onchange="lvRecalc()"></div>'+
+        '<div style="flex:1"><label class="flbl">To</label><input id="lvTo" type="date" style="width:100%" onchange="lvRecalc()"></div>'+
+      '</div>'+
+      '<label style="display:flex;align-items:center;gap:8px;margin:12px 0;font-size:13px;color:var(--sec);cursor:pointer">'+
+        '<input type="checkbox" id="lvHalf" onchange="lvRecalc()" style="width:16px;height:16px"> Half day</label>'+
+      '<div id="lvHalfSession" class="hidden" style="margin-bottom:12px"><label class="flbl">Half day session</label>'+
+        '<select id="lvSession" style="width:100%"><option value="first_half">First half (morning)</option><option value="second_half">Second half (afternoon)</option></select></div>'+
+      '<label class="flbl">Reason</label>'+
+      '<textarea id="lvReason" rows="2" placeholder="Reason likho..." style="width:100%;margin-bottom:6px;resize:vertical"></textarea>'+
+      '<div id="lvDays" style="font-size:13px;color:var(--acc);font-weight:600;margin-bottom:12px"></div>'+
+      '<button class="btn-primary" style="width:100%;height:46px;background:var(--teal);color:#fff;font-weight:600" id="lvSubmit" onclick="submitLeave()"><i class="ti ti-send"></i> Submit Leave Request</button>'+
+      '<div id="lvMsg" style="font-size:12px;text-align:center;margin-top:10px"></div>'+
+    '</div>'+
+    '<div style="font-weight:600;font-size:14px;margin:18px 0 10px">My leaves</div>'+
+    '<div id="myLeaves"><div style="text-align:center;color:var(--muted);padding:20px"><i class="ti ti-loader-2 spin"></i></div></div>';
+
+  // fill leave type dropdown
+  const sel = document.getElementById('lvType');
+  sel.innerHTML = Object.entries(LEAVE_TYPES).map(([id,t])=>'<option value="'+id+'">'+esc(t.name)+'</option>').join('');
+  // default dates = today
+  const t = today();
+  document.getElementById('lvFrom').value = t;
+  document.getElementById('lvTo').value = t;
+
+  loadLeaveBalances();
+  loadMyLeaves();
+  lvRecalc();
+}
+
+async function loadLeaveBalances(){
+  const box = document.getElementById('leaveBalances');
+  if (!box) return;
+  try {
+    const yr = new Date().getFullYear();
+    const bal = await api('/trial_hr_leave_balances?select=leave_type_id,allocated,used,pending,balance&member_id=eq.'+USER.id+'&year=eq.'+yr) || [];
+    if (!bal.length){ box.innerHTML=''; return; }
+    // show top leave types with balance
+    let cards = bal.filter(b=>LEAVE_TYPES[b.leave_type_id]).map(b=>{
+      const lt = LEAVE_TYPES[b.leave_type_id];
+      const remain = Number(b.balance!=null ? b.balance : (Number(b.allocated||0)-Number(b.used||0)-Number(b.pending||0)));
+      return '<div style="min-width:96px;background:var(--card);border:0.5px solid var(--bd);border-radius:11px;padding:11px 13px">'+
+        '<div style="font-size:22px;font-weight:700;color:'+(remain>0?'var(--teal)':'var(--muted)')+'">'+remain+'</div>'+
+        '<div style="font-size:11px;color:var(--muted);margin-top:1px">'+esc(lt.code||lt.name)+'</div></div>';
+    }).join('');
+    box.innerHTML = '<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:6px">'+cards+'</div>';
+  } catch(e){ box.innerHTML=''; }
+}
+
+function lvRecalc(){
+  const half = document.getElementById('lvHalf').checked;
+  document.getElementById('lvHalfSession').classList.toggle('hidden', !half);
+  const from = document.getElementById('lvFrom').value;
+  const to = document.getElementById('lvTo').value;
+  const daysEl = document.getElementById('lvDays');
+  if (!from || !to){ daysEl.textContent=''; return; }
+  if (half){ document.getElementById('lvTo').value = from; daysEl.textContent = '0.5 day'; return; }
+  const d1 = new Date(from), d2 = new Date(to);
+  if (d2 < d1){ daysEl.style.color='var(--red)'; daysEl.textContent='To date From se pehle nahi ho sakti'; return; }
+  const days = Math.round((d2-d1)/86400000)+1;
+  daysEl.style.color='var(--acc)';
+  daysEl.textContent = days+' day'+(days>1?'s':'');
+}
+
+async function submitLeave(){
+  const btn = document.getElementById('lvSubmit'), msg = document.getElementById('lvMsg');
+  const typeId = document.getElementById('lvType').value;
+  const from = document.getElementById('lvFrom').value;
+  const to = document.getElementById('lvTo').value;
+  const half = document.getElementById('lvHalf').checked;
+  const reason = document.getElementById('lvReason').value.trim();
+  msg.textContent='';
+  if (!typeId){ msg.style.color='var(--red)'; msg.textContent='Leave type chuno'; return; }
+  if (!from || !to){ msg.style.color='var(--red)'; msg.textContent='Dates daalo'; return; }
+  if (new Date(to) < new Date(from)){ msg.style.color='var(--red)'; msg.textContent='To date galat hai'; return; }
+  if (!reason){ msg.style.color='var(--red)'; msg.textContent='Reason likhna zaroori hai'; return; }
+
+  const days = half ? 0.5 : Math.round((new Date(to)-new Date(from))/86400000)+1;
+  btn.disabled=true; btn.innerHTML='<i class="ti ti-loader-2 spin"></i>';
+  try {
+    const body = {
+      member_id: USER.id, leave_type_id: typeId,
+      from_date: from, to_date: half ? from : to,
+      total_days: days, reason,
+      is_half_day: half,
+      half_day_session: half ? document.getElementById('lvSession').value : null,
+      status: 'pending', applied_at: new Date().toISOString()
+    };
+    await api('/trial_hr_leaves', {method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(body)});
+    toast('Leave request bhej diya ✓');
+    // reset + reload
+    document.getElementById('lvReason').value='';
+    document.getElementById('lvHalf').checked=false;
+    lvRecalc(); loadMyLeaves(); loadLeaveBalances();
+  } catch(e){
+    msg.style.color='var(--red)'; msg.textContent='Fail: '+e.message;
+  }
+  btn.disabled=false; btn.innerHTML='<i class="ti ti-send"></i> Submit Leave Request';
+}
+
+async function loadMyLeaves(){
+  const box = document.getElementById('myLeaves');
+  if (!box) return;
+  try {
+    const rows = await api('/trial_hr_leaves?select=*&member_id=eq.'+USER.id+'&order=applied_at.desc&limit=15') || [];
+    if (!rows.length){ box.innerHTML='<div class="card" style="text-align:center;color:var(--muted);padding:22px">Abhi tak koi leave nahi</div>'; return; }
+    box.innerHTML = rows.map(l=>{
+      const lt = LEAVE_TYPES[l.leave_type_id]||{name:'Leave',code:''};
+      const from = new Date(l.from_date).toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+      const to = new Date(l.to_date).toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+      const range = l.from_date===l.to_date ? from : from+' – '+to;
+      const pillCls = l.status==='approved'?'pill-green':l.status==='rejected'?'pill-red':'pill-amber';
+      return '<div class="card" style="padding:13px;display:flex;justify-content:space-between;align-items:center">'+
+        '<div><div style="font-size:13px;font-weight:600">'+esc(lt.name)+'</div>'+
+        '<div style="font-size:12px;color:var(--muted);margin-top:1px">'+range+' · '+Number(l.total_days||1)+'d'+(l.is_half_day?' (half)':'')+'</div>'+
+        (l.status==='rejected'&&l.rejection_reason?'<div style="font-size:11px;color:var(--red);margin-top:3px">'+esc(l.rejection_reason)+'</div>':'')+'</div>'+
+        '<span class="pill '+pillCls+'">'+l.status+'</span></div>';
+    }).join('');
+  } catch(e){ box.innerHTML='<div class="card" style="color:var(--red)">Load fail</div>'; }
+}
+
+// ══════════ EMPLOYEES (admin) ══════════
+async function renderEmployees(root){
+  try {
+    const emps = await api('/trial_team_members?select=id,name,phone,department,designation,emp_code,role,active,city&active=eq.true&order=name');
+    let h = '<div class="sechead"><i class="ti ti-users"></i>Team <span class="c-blue pill" style="margin-left:auto">'+emps.length+'</span></div>';
+    h += '<input type="text" placeholder="Search name / phone..." oninput="filterEmp(this.value)" style="margin-bottom:12px">';
+    h += '<div class="card" id="empList">';
+    emps.forEach(e=>{
+      h += '<div class="row-item emp-row" data-s="'+esc((e.name+' '+e.phone).toLowerCase())+'">'+
+        '<div class="ava">'+initials(e.name)+'</div>'+
+        '<div style="flex:1"><div style="font-size:13px;font-weight:500">'+esc(e.name)+'</div>'+
+        '<div style="font-size:11px;color:var(--muted)">'+esc(e.designation||e.department||'—')+' · '+esc(e.emp_code||e.phone)+'</div></div>'+
+        '<span class="c-gray pill">'+esc(e.role||'emp')+'</span></div>';
+    });
+    h += '</div>';
+    root.innerHTML = h;
+  } catch(e){
+    root.innerHTML = '<div class="card" style="color:var(--red)">Load fail: '+esc(e.message)+'</div>';
+  }
+}
+function filterEmp(q){
+  q = q.toLowerCase();
+  document.querySelectorAll('.emp-row').forEach(r=>{
+    r.style.display = r.dataset.s.includes(q) ? '' : 'none';
+  });
+}
+
+// ══════════ BOOT ══════════
+(function boot(){
+  const saved = localStorage.getItem('hr_user');
+  if (saved) {
+    try {
+      USER = JSON.parse(saved);
+      if (sessionValid()) { enterApp(); return; }
+      localStorage.removeItem('hr_user'); USER = null;  // expired → phir se login
+    } catch(e){}
+  }
+  document.getElementById('loginPhone').addEventListener('keydown',e=>{if(e.key==='Enter')sendOtp();});
+  document.getElementById('loginOtp').addEventListener('keydown',e=>{if(e.key==='Enter')verifyOtp();});
+  // auto-submit OTP jab 6 digit ho jaye
+  document.getElementById('loginOtp').addEventListener('input',function(){
+    if (this.value.replace(/\D/g,'').length === 6) verifyOtp();
+  });
+})();
+</script>
+</body>
+</html>
