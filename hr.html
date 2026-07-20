@@ -337,6 +337,11 @@ function nav(view){
   else if (view==='leave') renderLeave(root);
   else if (view==='employees') renderEmployees(root);
   else if (view==='settings') renderSettings(root);
+  else if (view==='petrol') renderPetrol(root);
+  else if (view==='announcements') renderAnnouncements(root);
+  else if (view==='holidays') renderHolidays(root);
+  else if (view==='tasks') renderTasks(root);
+  else if (view==='documents') renderDocuments(root);
 }
 function placeholder(title,icon,sub){
   return '<div class="card" style="text-align:center;padding:40px 20px">'+
@@ -416,11 +421,16 @@ async function renderDashboard(root){
       h += '</div>';
 
       // quick actions
-      h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:10px">'+
-        quickTile('calendar-plus','Apply leave','leave')+
-        quickTile('cash-banknote','Advance','approvals')+
-        quickTile('receipt','Expense','approvals')+
-        quickTile('file-dollar','Salary slip','dashboard')+
+      h += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:10px">'+
+        quickTile('calendar-plus','Leave','leave')+
+        quickTile('receipt','Expense','expenses')+
+        quickTile('gas-station','Petrol','petrol')+
+        quickTile('speakerphone','Notices','announcements')+
+        quickTile('checklist','Tasks','tasks')+
+        quickTile('files','Docs','documents')+
+        quickTile('cake','Holidays','holidays')+
+        quickTile('user-cog','Settings','settings')+
+        (isAdmin()?quickTile('users','Team','employees'):quickTile('file-dollar','Salary','dashboard'))+
         '</div>';
       h += '<button onclick="logout()" style="width:100%;height:40px;background:var(--s1);color:var(--sec);margin-top:6px">Logout</button>';
       root.innerHTML = h;
@@ -1445,6 +1455,321 @@ function viewImg(url){
     '<img src="'+esc(url)+'" style="max-width:100%;max-height:70vh;border-radius:10px"><br>'+
     '<button class="btn-ghost" style="margin-top:12px;padding:8px 20px" onclick="document.getElementById(\'modalRoot\').innerHTML=\'\'">Close</button></div></div>';
 }
+
+
+
+// ══════════════════════════════════════════════
+// ⛽ PETROL / TRAVEL REIMBURSEMENT
+// ══════════════════════════════════════════════
+let PETROL_RATE = 0;
+async function renderPetrol(root){
+  try {
+    const admin = isAdmin();
+    // load own rate
+    const me = await api('/trial_team_members?select=petrol_rate_per_km&id=eq.'+USER.id);
+    PETROL_RATE = (me&&me[0]&&+me[0].petrol_rate_per_km)||0;
+    // my petrol reimbursements
+    const mine = await api('/trial_hr_reimbursements?select=id,amount,expense_date,description,status,reimbursement_type&member_id=eq.'+USER.id+'&reimbursement_type=eq.petrol&order=created_at.desc&limit=30');
+
+    let h='<div class="sechead"><i class="ti ti-gas-station"></i>Petrol / Travel</div>';
+    h+='<div class="card">';
+    h+='<div style="font-size:14px;font-weight:600;margin-bottom:4px">Travel claim add karo</div>';
+    if(PETROL_RATE>0){
+      h+='<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Tumhara rate: <b style="color:var(--teal)">₹'+PETROL_RATE+'/km</b></div>';
+    } else {
+      h+='<div class="pill pill-amber" style="display:block;padding:8px;margin-bottom:10px">Petrol rate set nahi hai — admin se profile me set karwao</div>';
+    }
+    h+='<label style="font-size:12px;color:var(--muted)">Date</label><input type="date" id="ptDate" value="'+today()+'" style="margin-bottom:10px">';
+    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+    h+='<div><label style="font-size:12px;color:var(--muted)">KM chala</label><input type="number" id="ptKm" inputmode="numeric" placeholder="0" oninput="calcPetrol()" style="margin-bottom:10px"></div>';
+    h+='<div><label style="font-size:12px;color:var(--muted)">Amount (₹)</label><input type="number" id="ptAmt" inputmode="numeric" placeholder="0" style="margin-bottom:10px"></div>';
+    h+='</div>';
+    h+='<label style="font-size:12px;color:var(--muted)">Kahan gaye / purpose</label><input type="text" id="ptPurpose" placeholder="client visit, site, etc" style="margin-bottom:10px">';
+    h+='<button class="btn-primary" style="width:100%;height:44px;font-weight:600" onclick="submitPetrol(this)">Submit Travel Claim</button>';
+    h+='<div id="ptErr" style="color:var(--red);font-size:12px;text-align:center;margin-top:8px"></div>';
+    h+='</div>';
+
+    h+='<div class="sechead" style="margin-top:16px"><i class="ti ti-list"></i>Mere travel claims</div>';
+    if(!mine.length){ h+='<div class="card" style="text-align:center;color:var(--muted);padding:26px">Abhi tak koi claim nahi</div>'; }
+    else {
+      h+='<div class="card">';
+      mine.forEach(r=>{
+        const st=(r.status||'pending');
+        const pill=st==='paid'?'pill-green':st==='approved'?'pill-blue':st==='rejected'?'pill-red':'pill-amber';
+        h+='<div class="row-item"><div style="flex:1"><div style="font-size:13px;font-weight:500">'+inr(r.amount)+'</div>'+
+          '<div style="font-size:11px;color:var(--muted)">'+esc(r.expense_date||'')+(r.description?' · '+esc(r.description):'')+'</div></div>'+
+          '<span class="pill '+pill+'">'+esc(st)+'</span></div>';
+      });
+      h+='</div>';
+    }
+    root.innerHTML=h;
+  } catch(e){ root.innerHTML='<div class="card" style="color:var(--red)">Load fail: '+esc(e.message)+'</div>'; }
+}
+function calcPetrol(){
+  const km=parseFloat(document.getElementById('ptKm').value||'0');
+  if(PETROL_RATE>0 && km>0){ document.getElementById('ptAmt').value=Math.round(km*PETROL_RATE); }
+}
+async function submitPetrol(btn){
+  const err=document.getElementById('ptErr'); err.textContent='';
+  const km=parseFloat(v('ptKm')||'0'), amt=parseFloat(v('ptAmt')||'0'), date=v('ptDate'), purpose=v('ptPurpose');
+  if(!amt||amt<=0){ err.textContent='Amount ya KM daalo'; return; }
+  if(!date){ err.textContent='Date daalo'; return; }
+  if(btn){btn.disabled=true;btn.textContent='Saving...';}
+  try {
+    const row={ member_id:USER.id, reimbursement_type:'petrol', amount:amt, expense_date:date,
+      description:(km?km+' km':'')+ (purpose?' · '+purpose:''), status:'pending', category:'petrol' };
+    await api('/trial_hr_reimbursements',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(row)});
+    toast('Travel claim submit ho gaya ✓');
+    nav('petrol');
+  } catch(e){ err.textContent='Fail: '+e.message; if(btn){btn.disabled=false;btn.textContent='Submit Travel Claim';} }
+}
+
+// ══════════════════════════════════════════════
+// 📢 ANNOUNCEMENTS
+// ══════════════════════════════════════════════
+async function renderAnnouncements(root){
+  try {
+    const admin=isAdmin();
+    const anns = await api('/trial_hr_announcements?select=id,title,content,body,category,priority,pinned,active,created_at,published_at&active=eq.true&order=pinned.desc,created_at.desc&limit=40');
+    let h='<div class="sechead"><i class="ti ti-speakerphone"></i>Announcements</div>';
+    if(admin){
+      h+='<div class="card">';
+      h+='<div style="font-size:14px;font-weight:600;margin-bottom:10px">Naya notice bhejo</div>';
+      h+='<input type="text" id="anTitle" placeholder="Title" style="margin-bottom:10px">';
+      h+='<textarea id="anBody" placeholder="Message..." rows="3" style="width:100%;padding:11px;border:0.5px solid var(--bd2);border-radius:8px;font-family:inherit;font-size:14px;margin-bottom:10px;resize:vertical"></textarea>';
+      h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+      h+='<div><label style="font-size:12px;color:var(--muted)">Priority</label><select id="anPrio" style="margin-bottom:10px"><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></div>';
+      h+='<div><label style="font-size:12px;color:var(--muted)">Pin?</label><select id="anPin" style="margin-bottom:10px"><option value="false">No</option><option value="true">Pin top</option></select></div>';
+      h+='</div>';
+      h+='<button class="btn-primary" style="width:100%;height:44px;font-weight:600" onclick="postAnnouncement(this)">Publish Notice</button>';
+      h+='<div id="anErr" style="color:var(--red);font-size:12px;text-align:center;margin-top:8px"></div>';
+      h+='</div>';
+    }
+    h+='<div class="sechead" style="margin-top:16px"><i class="ti ti-news"></i>Notices</div>';
+    if(!anns.length){ h+='<div class="card" style="text-align:center;color:var(--muted);padding:26px">Koi notice nahi</div>'; }
+    else anns.forEach(a=>{
+      const msg=a.body||a.content||'';
+      const prio=a.priority||'normal';
+      const pc=prio==='urgent'?'pill-red':prio==='high'?'pill-amber':'pill-blue';
+      h+='<div class="card">';
+      h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
+      if(a.pinned) h+='<i class="ti ti-pin" style="color:var(--amber)"></i>';
+      h+='<div style="font-size:15px;font-weight:600;flex:1">'+esc(a.title)+'</div>';
+      if(prio!=='normal') h+='<span class="pill '+pc+'">'+esc(prio)+'</span>';
+      h+='</div>';
+      h+='<div style="font-size:13px;color:var(--sec);white-space:pre-wrap">'+esc(msg)+'</div>';
+      h+='<div style="font-size:11px;color:var(--muted);margin-top:8px">'+fmtDate(a.published_at||a.created_at)+(admin?' · <span style="color:var(--red);cursor:pointer" onclick="delAnnouncement(\''+a.id+'\')">Delete</span>':'')+'</div>';
+      h+='</div>';
+    });
+    root.innerHTML=h;
+  } catch(e){ root.innerHTML='<div class="card" style="color:var(--red)">Load fail: '+esc(e.message)+'</div>'; }
+}
+async function postAnnouncement(btn){
+  const err=document.getElementById('anErr'); err.textContent='';
+  const title=v('anTitle'), body=v('anBody');
+  if(!title){ err.textContent='Title daalo'; return; }
+  if(!body){ err.textContent='Message daalo'; return; }
+  if(btn){btn.disabled=true;btn.textContent='Publishing...';}
+  try {
+    const row={ title:title, content:body, body:body, priority:document.getElementById('anPrio').value,
+      pinned:document.getElementById('anPin').value==='true', active:true, published_at:new Date().toISOString(), created_by:USER.id };
+    await api('/trial_hr_announcements',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(row)});
+    toast('Notice publish ho gaya ✓');
+    nav('announcements');
+  } catch(e){ err.textContent='Fail: '+e.message; if(btn){btn.disabled=false;btn.textContent='Publish Notice';} }
+}
+async function delAnnouncement(id){
+  if(!confirm('Ye notice delete karein?')) return;
+  try { await api('/trial_hr_announcements?id=eq.'+id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify({active:false})}); toast('Deleted'); nav('announcements'); }
+  catch(e){ toast('Fail: '+e.message); }
+}
+
+// ══════════════════════════════════════════════
+// 🎉 HOLIDAYS + 🎂 BIRTHDAYS
+// ══════════════════════════════════════════════
+async function renderHolidays(root){
+  try {
+    const admin=isAdmin();
+    const yr=new Date().getFullYear();
+    const hols = await api('/trial_hr_holidays?select=id,holiday_date,name,type,active&active=eq.true&holiday_date=gte.'+yr+'-01-01&order=holiday_date');
+    // birthdays this month
+    const emps = await api('/trial_team_members?select=name,date_of_birth&active=eq.true&date_of_birth=not.is.null');
+    const curMonth=new Date().getMonth()+1;
+    const bdays=emps.filter(e=>{ if(!e.date_of_birth)return false; return (new Date(e.date_of_birth).getMonth()+1)===curMonth; })
+      .sort((a,b)=>new Date(a.date_of_birth).getDate()-new Date(b.date_of_birth).getDate());
+
+    let h='<div class="sechead"><i class="ti ti-cake"></i>Birthdays — is mahine</div>';
+    if(!bdays.length){ h+='<div class="card" style="text-align:center;color:var(--muted);padding:20px">Is mahine koi birthday nahi</div>'; }
+    else { h+='<div class="card">'; bdays.forEach(e=>{
+      const d=new Date(e.date_of_birth), day=d.getDate();
+      h+='<div class="row-item"><div class="ava" style="background:var(--amber-bg);color:#8A5308">🎂</div>'+
+        '<div style="flex:1"><div style="font-size:13px;font-weight:500">'+esc(e.name)+'</div>'+
+        '<div style="font-size:11px;color:var(--muted)">'+day+' '+d.toLocaleDateString('en-IN',{month:'long'})+'</div></div></div>';
+    }); h+='</div>'; }
+
+    h+='<div class="sechead" style="margin-top:16px"><i class="ti ti-calendar-event"></i>Holidays '+yr+'</div>';
+    if(admin){
+      h+='<div class="card"><div style="font-size:13px;font-weight:600;margin-bottom:8px">Holiday add karo</div>';
+      h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+      h+='<input type="date" id="hlDate"><input type="text" id="hlName" placeholder="Holiday name">';
+      h+='</div>';
+      h+='<button class="btn-primary" style="width:100%;height:40px;font-weight:600;margin-top:10px" onclick="addHoliday(this)">Add Holiday</button>';
+      h+='<div id="hlErr" style="color:var(--red);font-size:12px;text-align:center;margin-top:8px"></div></div>';
+    }
+    if(!hols.length){ h+='<div class="card" style="text-align:center;color:var(--muted);padding:20px">Koi holiday set nahi</div>'; }
+    else { h+='<div class="card">'; hols.forEach(hh=>{
+      const d=new Date(hh.holiday_date);
+      const past=d<new Date(new Date().toDateString());
+      h+='<div class="row-item" style="'+(past?'opacity:0.5':'')+'"><div style="flex:1"><div style="font-size:13px;font-weight:500">'+esc(hh.name)+'</div>'+
+        '<div style="font-size:11px;color:var(--muted)">'+d.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'})+'</div></div>'+
+        (admin?'<span style="color:var(--red);cursor:pointer;font-size:12px" onclick="delHoliday(\''+hh.id+'\')">✕</span>':'')+'</div>';
+    }); h+='</div>'; }
+    root.innerHTML=h;
+  } catch(e){ root.innerHTML='<div class="card" style="color:var(--red)">Load fail: '+esc(e.message)+'</div>'; }
+}
+async function addHoliday(btn){
+  const err=document.getElementById('hlErr'); err.textContent='';
+  const date=v('hlDate'), name=v('hlName');
+  if(!date||!name){ err.textContent='Date aur name daalo'; return; }
+  if(btn){btn.disabled=true;btn.textContent='...';}
+  try { await api('/trial_hr_holidays',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify({holiday_date:date,name:name,type:'company',active:true})});
+    toast('Holiday added ✓'); nav('holidays'); }
+  catch(e){ err.textContent='Fail: '+e.message; if(btn){btn.disabled=false;btn.textContent='Add Holiday';} }
+}
+async function delHoliday(id){
+  if(!confirm('Delete holiday?')) return;
+  try { await api('/trial_hr_holidays?id=eq.'+id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify({active:false})}); toast('Deleted'); nav('holidays'); }
+  catch(e){ toast('Fail'); }
+}
+
+// ══════════════════════════════════════════════
+// ✅ TASKS
+// ══════════════════════════════════════════════
+async function renderTasks(root){
+  try {
+    const admin=isAdmin();
+    // admin: all tasks; employee: assigned to me
+    const filter = admin ? '' : '&assigned_to=eq.'+USER.id;
+    const tasks = await api('/trial_hr_tasks?select=id,title,description,assigned_to,priority,due_date,status,category&order=created_at.desc&limit=50'+filter);
+    let h='<div class="sechead"><i class="ti ti-checklist"></i>Tasks</div>';
+    if(admin){
+      h+='<div class="card"><div style="font-size:14px;font-weight:600;margin-bottom:10px">Naya task assign karo</div>';
+      h+='<label style="font-size:12px;color:var(--muted)">Kiske liye</label><select id="tkMember" style="margin-bottom:10px"><option value="">— select —</option></select>';
+      h+='<input type="text" id="tkTitle" placeholder="Task title" style="margin-bottom:10px">';
+      h+='<textarea id="tkDesc" placeholder="Details (optional)" rows="2" style="width:100%;padding:11px;border:0.5px solid var(--bd2);border-radius:8px;font-family:inherit;font-size:14px;margin-bottom:10px;resize:vertical"></textarea>';
+      h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+      h+='<div><label style="font-size:12px;color:var(--muted)">Priority</label><select id="tkPrio" style="margin-bottom:10px"><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></div>';
+      h+='<div><label style="font-size:12px;color:var(--muted)">Due date</label><input type="date" id="tkDue" style="margin-bottom:10px"></div>';
+      h+='</div>';
+      h+='<button class="btn-primary" style="width:100%;height:44px;font-weight:600" onclick="assignTask(this)">Assign Task</button>';
+      h+='<div id="tkErr" style="color:var(--red);font-size:12px;text-align:center;margin-top:8px"></div></div>';
+    }
+    h+='<div class="sechead" style="margin-top:16px"><i class="ti ti-list-check"></i>'+(admin?'Sab tasks':'Mere tasks')+'</div>';
+    if(!tasks.length){ h+='<div class="card" style="text-align:center;color:var(--muted);padding:26px">Koi task nahi</div>'; }
+    else {
+      h+='<div class="card">';
+      tasks.forEach(t=>{
+        const st=t.status||'pending';
+        const done=st==='completed'||st==='done';
+        const pc=done?'pill-green':st==='in_progress'?'pill-blue':'pill-amber';
+        const prio=t.priority||'normal';
+        h+='<div class="row-item"><div style="flex:1"><div style="font-size:13px;font-weight:500'+(done?';text-decoration:line-through;color:var(--muted)':'')+'">'+esc(t.title)+'</div>'+
+          '<div style="font-size:11px;color:var(--muted)">'+(t.due_date?'Due '+t.due_date:'')+(prio!=='normal'?' · '+prio:'')+'</div></div>';
+        if(!admin && !done) h+='<button class="btn-sm btn-green" onclick="completeTask(\''+t.id+'\')">Done</button>';
+        else h+='<span class="pill '+pc+'">'+esc(st)+'</span>';
+        h+='</div>';
+      });
+      h+='</div>';
+    }
+    root.innerHTML=h;
+    if(admin){
+      api('/trial_team_members?select=id,name&active=eq.true&order=name').then(ms=>{
+        const sel=document.getElementById('tkMember');
+        if(sel&&ms) ms.forEach(m=>{ const o=document.createElement('option'); o.value=m.id; o.textContent=m.name; sel.appendChild(o); });
+      }).catch(()=>{});
+    }
+  } catch(e){ root.innerHTML='<div class="card" style="color:var(--red)">Load fail: '+esc(e.message)+'</div>'; }
+}
+async function assignTask(btn){
+  const err=document.getElementById('tkErr'); err.textContent='';
+  const mem=document.getElementById('tkMember').value, title=v('tkTitle');
+  if(!mem){ err.textContent='Member select karo'; return; }
+  if(!title){ err.textContent='Title daalo'; return; }
+  if(btn){btn.disabled=true;btn.textContent='Assigning...';}
+  try {
+    const row={ title:title, description:v('tkDesc'), assigned_to:mem, assigned_by:USER.id, assigned_at:new Date().toISOString(),
+      priority:document.getElementById('tkPrio').value, due_date:v('tkDue'), status:'pending' };
+    await api('/trial_hr_tasks',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(row)});
+    toast('Task assign ho gaya ✓'); nav('tasks');
+  } catch(e){ err.textContent='Fail: '+e.message; if(btn){btn.disabled=false;btn.textContent='Assign Task';} }
+}
+async function completeTask(id){
+  try { await api('/trial_hr_tasks?id=eq.'+id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify({status:'completed',completed_at:new Date().toISOString(),completed_by:USER.id})});
+    toast('Task complete ✓'); nav('tasks'); }
+  catch(e){ toast('Fail: '+e.message); }
+}
+
+// ══════════════════════════════════════════════
+// 📄 DOCUMENTS
+// ══════════════════════════════════════════════
+let DOC_UPLOAD_URL='';
+async function renderDocuments(root){
+  try {
+    const admin=isAdmin();
+    // employee: own visible docs; admin: all
+    const filter = admin ? '' : '&member_id=eq.'+USER.id+'&visible_to_employee=eq.true';
+    const docs = await api('/trial_hr_documents?select=id,member_id,document_type,document_name,document_url,uploaded_at,visible_to_employee&order=uploaded_at.desc&limit=60'+filter);
+    let h='<div class="sechead"><i class="ti ti-files"></i>Documents</div>';
+    if(admin){
+      h+='<div class="card"><div style="font-size:14px;font-weight:600;margin-bottom:10px">Document upload karo</div>';
+      h+='<label style="font-size:12px;color:var(--muted)">Kiska document</label><select id="dcMember" style="margin-bottom:10px"><option value="">— select —</option></select>';
+      h+='<label style="font-size:12px;color:var(--muted)">Type</label><select id="dcType" style="margin-bottom:10px"><option value="offer_letter">Offer Letter</option><option value="id_proof">ID Proof</option><option value="salary_slip">Salary Slip</option><option value="contract">Contract</option><option value="other">Other</option></select>';
+      h+='<label style="font-size:12px;color:var(--muted)">Name</label><input type="text" id="dcName" placeholder="Document name" style="margin-bottom:10px">';
+      h+='<label style="font-size:12px;color:var(--muted)">File</label><input type="file" id="dcFile" accept="image/*,application/pdf" onchange="onDocFile(this)" style="margin-bottom:6px">';
+      h+='<div id="dcLbl" style="font-size:11px;color:var(--muted);margin-bottom:10px"></div>';
+      h+='<label style="font-size:12px"><input type="checkbox" id="dcVisible" checked style="width:auto;margin-right:6px">Employee ko dikhe</label>';
+      h+='<button class="btn-primary" style="width:100%;height:44px;font-weight:600;margin-top:10px" onclick="uploadDoc(this)">Upload Document</button>';
+      h+='<div id="dcErr" style="color:var(--red);font-size:12px;text-align:center;margin-top:8px"></div></div>';
+    }
+    h+='<div class="sechead" style="margin-top:16px"><i class="ti ti-folder"></i>'+(admin?'Sab documents':'Mere documents')+'</div>';
+    if(!docs.length){ h+='<div class="card" style="text-align:center;color:var(--muted);padding:26px">Koi document nahi</div>'; }
+    else { h+='<div class="card">'; docs.forEach(d=>{
+      h+='<div class="row-item"><div style="flex:1"><div style="font-size:13px;font-weight:500">'+esc(d.document_name)+'</div>'+
+        '<div style="font-size:11px;color:var(--muted)">'+esc((d.document_type||'').replace(/_/g,' '))+' · '+fmtDate(d.uploaded_at)+'</div></div>'+
+        '<span class="pill pill-blue" style="cursor:pointer" onclick="viewImg(\''+esc(d.document_url)+'\')">Open</span></div>';
+    }); h+='</div>'; }
+    root.innerHTML=h; DOC_UPLOAD_URL='';
+    if(admin){
+      api('/trial_team_members?select=id,name&active=eq.true&order=name').then(ms=>{
+        const sel=document.getElementById('dcMember');
+        if(sel&&ms) ms.forEach(m=>{ const o=document.createElement('option'); o.value=m.id; o.textContent=m.name; sel.appendChild(o); });
+      }).catch(()=>{});
+    }
+  } catch(e){ root.innerHTML='<div class="card" style="color:var(--red)">Load fail: '+esc(e.message)+'</div>'; }
+}
+async function onDocFile(input){
+  const f=input.files[0]; if(!f) return;
+  const lbl=document.getElementById('dcLbl'); lbl.textContent='Uploading...';
+  try { DOC_UPLOAD_URL=await uploadFile(f, USER.phone, 'doc'); lbl.innerHTML='<span style="color:var(--green)">File added ✓</span>'; }
+  catch(e){ lbl.innerHTML='<span style="color:var(--red)">Upload fail</span>'; DOC_UPLOAD_URL=''; }
+}
+async function uploadDoc(btn){
+  const err=document.getElementById('dcErr'); err.textContent='';
+  const mem=document.getElementById('dcMember').value, name=v('dcName'), type=document.getElementById('dcType').value;
+  if(!mem){ err.textContent='Member select karo'; return; }
+  if(!name){ err.textContent='Document name daalo'; return; }
+  if(!DOC_UPLOAD_URL){ err.textContent='File upload karo'; return; }
+  if(btn){btn.disabled=true;btn.textContent='Saving...';}
+  try {
+    const row={ member_id:mem, document_type:type, document_name:name, document_url:DOC_UPLOAD_URL,
+      visible_to_employee:document.getElementById('dcVisible').checked, uploaded_by:USER.id, uploaded_at:new Date().toISOString() };
+    await api('/trial_hr_documents',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(row)});
+    toast('Document upload ho gaya ✓'); nav('documents');
+  } catch(e){ err.textContent='Fail: '+e.message; if(btn){btn.disabled=false;btn.textContent='Upload Document';} }
+}
+
+// helper: format date nicely
+function fmtDate(d){ if(!d)return ''; try{ return new Date(d).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}); }catch(e){ return ''; } }
 
 
 // ══════════ BOOT ══════════
