@@ -1061,7 +1061,7 @@ function openEmp(id){
     ['empJoin','Joining Date', e.joining_date, 'date'],
     ['empMode','Attendance', null, 'mode']
   ]);
-  h += '<button class="btn-primary" style="width:100%;height:44px;font-weight:600;margin-top:6px" onclick="saveEmp()">Save Profile</button>';
+  h += '<button class="btn-primary" style="width:100%;height:44px;font-weight:600;margin-top:6px" onclick="saveEmp(this)">Save Profile</button>';
   h += '<div id="empErr" style="color:var(--red);font-size:12px;text-align:center;margin-top:8px"></div>';
   h += '</div>';
 
@@ -1104,9 +1104,9 @@ function eGrid(fields){
   h+='</div>';
   return h;
 }
-async function saveEmp(){
+async function saveEmp(btn){
   const e=window.__CUR_EMP; const err=document.getElementById('empErr'); err.textContent='';
-  const btn=event.target; btn.disabled=true; btn.textContent='Saving...';
+  btn=btn||(typeof event!=="undefined"&&event.target); if(btn){btn.disabled=true;btn.textContent='Saving...';}
   try {
     const upd = {
       designation: v('empDesig'),
@@ -1121,7 +1121,7 @@ async function saveEmp(){
     toast('Profile save ho gaya ✓');
     document.getElementById('modalRoot').innerHTML='';
     nav('employees');
-  } catch(ex){ err.textContent='Save fail: '+ex.message; btn.disabled=false; btn.textContent='Save Profile'; }
+  } catch(ex){ err.textContent='Save fail: '+ex.message; if(btn){btn.disabled=false;btn.textContent='Save Profile';} }
 }
 function numOrNull(id){ const el=document.getElementById(id); if(!el||!el.value.trim())return null; const n=parseFloat(el.value); return isNaN(n)?null:n; }
 
@@ -1175,7 +1175,7 @@ async function calcPayroll(){
       h+=payRow('Sunday OT + food', inr(otTotal), 'var(--amber)');
     }
     h+='</div>';
-    h+='<button class="btn-green" style="width:100%;height:44px;font-weight:600;margin-top:10px" onclick="savePayroll()">💾 Save Salary Record</button>';
+    h+='<button class="btn-green" style="width:100%;height:44px;font-weight:600;margin-top:10px" onclick="savePayroll(this)">💾 Save Salary Record</button>';
     h+='<div id="payErr" style="color:var(--red);font-size:12px;text-align:center;margin-top:8px"></div>';
     box.innerHTML=h;
   } catch(ex){ box.innerHTML='<div style="color:var(--red);font-size:12px">Calc fail: '+esc(ex.message)+'</div>'; }
@@ -1183,11 +1183,11 @@ async function calcPayroll(){
 function payRow(l,val,color){
   return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0"><span style="color:var(--muted)">'+l+'</span><span'+(color?' style="color:'+color+';font-weight:600"':'')+'>'+val+'</span></div>';
 }
-async function savePayroll(){
+async function savePayroll(btn){
   const e=window.__CUR_EMP, c=window.__PAYCALC;
   if(!c) return;
   const err=document.getElementById('payErr'); if(err)err.textContent='';
-  const btn=event.target; btn.disabled=true; btn.textContent='Saving...';
+  btn=btn||(typeof event!=="undefined"&&event.target); if(btn){btn.disabled=true;btn.textContent='Saving...';}
   try {
     // check existing record for this month
     const exist = await api('/trial_hr_salary_records?select=id&member_id=eq.'+e.id+'&year=eq.'+c.year+'&month=eq.'+c.month);
@@ -1205,7 +1205,7 @@ async function savePayroll(){
     }
     toast('Salary record save ho gaya ✓');
     document.getElementById('modalRoot').innerHTML='';
-  } catch(ex){ if(err)err.textContent='Save fail: '+ex.message; btn.disabled=false; btn.textContent='💾 Save Salary Record'; }
+  } catch(ex){ if(err)err.textContent='Save fail: '+ex.message; if(btn){btn.disabled=false;btn.textContent='💾 Save Salary Record';} }
 }
 
 
@@ -1242,7 +1242,7 @@ async function renderExpenses(root){
     h += '<label style="font-size:12px;color:var(--muted)">Receipt photo (optional)</label>';
     h += '<input type="file" id="expReceipt" accept="image/*" onchange="onExpReceipt(this)" style="margin-bottom:6px">';
     h += '<div id="expReceiptLbl" style="font-size:11px;color:var(--muted);margin-bottom:10px"></div>';
-    h += '<button class="btn-primary" style="width:100%;height:44px;font-weight:600" onclick="submitExpense()">Submit Expense</button>';
+    h += '<button class="btn-primary" style="width:100%;height:44px;font-weight:600" onclick="submitExpense(this)">Submit Expense</button>';
     h += '<div id="expErr" style="color:var(--red);font-size:12px;text-align:center;margin-top:8px"></div>';
     h += '</div>';
 
@@ -1291,7 +1291,7 @@ async function onExpReceipt(input){
     lbl.innerHTML = '<span style="color:var(--green)">Receipt added ✓</span>';
   } catch(e){ lbl.innerHTML = '<span style="color:var(--red)">Upload fail</span>'; EXP_RECEIPT_URL=''; }
 }
-async function submitExpense(){
+async function submitExpense(btn){
   const err = document.getElementById('expErr'); err.textContent='';
   const amt = parseFloat(document.getElementById('expAmt').value||'0');
   const cat = document.getElementById('expCat').value;
@@ -1302,7 +1302,7 @@ async function submitExpense(){
   let phone=USER.phone, name=USER.name;
   const memSel = document.getElementById('expMember');
   if (memSel){ const parts=memSel.value.split('|'); phone=parts[0]; name=parts[1]||''; }
-  const btn = event.target; btn.disabled=true; btn.textContent='Saving...';
+  btn=btn||(typeof event!=="undefined"&&event.target); if(btn){btn.disabled=true;btn.textContent='Saving...';}
   try {
     const row = {
       expense_type:'internal', internal_category:cat, total_amount:amt, other_amount:amt,
@@ -1314,7 +1314,7 @@ async function submitExpense(){
     await api('/prajapati_expenses', { method:'POST', headers:{'Prefer':'return=minimal'}, body:JSON.stringify(row) });
     toast('Expense submit ho gaya ✓');
     nav('expenses');
-  } catch(e){ err.textContent='Save fail: '+e.message; btn.disabled=false; btn.textContent='Submit Expense'; }
+  } catch(e){ err.textContent='Save fail: '+e.message; if(btn){btn.disabled=false;btn.textContent='Submit Expense';} }
 }
 
 // ══════════ SETTINGS — Banking + Aadhaar/PAN ══════════
@@ -1351,7 +1351,7 @@ async function renderSettings(root){
     h += '<select id="setPref" style="margin-bottom:12px">'+
          opt('bank','Bank transfer',p.preferred_method)+opt('upi','UPI',p.preferred_method)+opt('cash','Cash',p.preferred_method)+'</select>';
 
-    h += '<button class="btn-primary" style="width:100%;height:44px;font-weight:600" onclick="saveSettings()">Save Details</button>';
+    h += '<button class="btn-primary" style="width:100%;height:44px;font-weight:600" onclick="saveSettings(this)">Save Details</button>';
     h += '<div id="setErr" style="color:var(--red);font-size:12px;text-align:center;margin-top:8px"></div>';
     h += '</div>';
 
@@ -1392,9 +1392,9 @@ async function onDocUpload(input,prefix){
     lbl.innerHTML='<span class="pill pill-green" style="cursor:pointer" onclick="viewImg(\''+esc(url)+'\')">View ✓</span>';
   } catch(e){ lbl.innerHTML='<span style="color:var(--red)">fail</span>'; }
 }
-async function saveSettings(){
+async function saveSettings(btn){
   const err=document.getElementById('setErr'); err.textContent='';
-  const btn=event.target; btn.disabled=true; btn.textContent='Saving...';
+  btn=btn||(typeof event!=="undefined"&&event.target); if(btn){btn.disabled=true;btn.textContent='Saving...';}
   try {
     const row = {
       member_phone:USER.phone, member_name:USER.name,
@@ -1412,8 +1412,8 @@ async function saveSettings(){
       body:JSON.stringify(row)
     });
     toast('Details save ho gayi ✓');
-    btn.disabled=false; btn.textContent='Save Details';
-  } catch(e){ err.textContent='Save fail: '+e.message; btn.disabled=false; btn.textContent='Save Details'; }
+    if(btn){btn.disabled=false;btn.textContent='Save Details';}
+  } catch(e){ err.textContent='Save fail: '+e.message; if(btn){btn.disabled=false;btn.textContent='Save Details';} }
 }
 function v(id){ const el=document.getElementById(id); return el?el.value.trim()||null:null; }
 async function loadAllBankProfiles(){
