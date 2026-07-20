@@ -686,6 +686,19 @@ async function api(path, opts){
   return txt ? JSON.parse(txt) : null;
 }
 
+// ── WhatsApp notify (silent — fail hone pe expense normal chalega) ──
+var EXPENSE_ADMIN_PHONES = ['9922138138','8484861631','8484838138']; // Shivam, Ravi, Rajendra
+function notifyWhatsApp(toPhone, toName, templateName, params, ctxType){
+  if(!toPhone) return;
+  try {
+    fetch(SUPABASE_URL+'/functions/v1/wati-send',{
+      method:'POST',
+      headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({ action:'send_template', to_phone:toPhone, to_name:toName||'', template_name:templateName, params:params||[], context_type:ctxType||'expense', triggered_by:(typeof user!=='undefined'&&user&&user.name)||'' })
+    }).catch(function(){});
+  } catch(e){ /* silent */ }
+}
+
 function switchTab(tab){
   document.querySelectorAll('.tab').forEach(function(t){ t.classList.toggle('active', t.getAttribute('data-tab')===tab); });
   document.querySelectorAll('.panel').forEach(function(p){ p.classList.toggle('active', p.id==='panel-'+tab); });
@@ -1030,6 +1043,16 @@ async function saveExpense(){
       }catch(rcErr){ console.warn('receipt',rcErr); }
     }
     toast('✓ Expense saved');
+    // notify 2-3 admins on WhatsApp (silent) — only for unpaid (approval pending) submissions
+    try {
+      var _sname = payload.team_member_name || payload.created_by_name || 'Team';
+      var _samt = fmt(total);
+      var _scat = payload.internal_category || payload.other_description || (payload.expense_type||'Expense');
+      var _submitter = payload.team_member_phone || payload.created_by || '';
+      EXPENSE_ADMIN_PHONES.forEach(function(ap,i){
+        if(ap!==_submitter) setTimeout(function(){ notifyWhatsApp(ap,'Admin','hr_expense_new',[_sname,_samt,_scat],'expense'); }, i*300);
+      });
+    } catch(_e){}
     resetEntry();
     // Refresh list + summary so new entry shows immediately (no manual reload)
     if (typeof loadExpenses === 'function') { try { loadExpenses(); } catch(e){} }
@@ -1278,6 +1301,13 @@ async function confirmPay(){
       throw new Error('Update hua par status "'+newStatus+'" raha (paid nahi).');
     }
     toast('✓ Payment done'+(payload.payment_receipt_url?' + receipt saved':receiptWarn||''));
+    // notify submitter on WhatsApp (silent)
+    try {
+      var _pe = (state.expenses||[]).find(function(x){ return String(x.id)===String(_payId); });
+      if(_pe && _pe.team_member_phone){
+        notifyWhatsApp(_pe.team_member_phone, _pe.team_member_name, 'hr_expense_paid', [_pe.team_member_name||'', fmt(_pe.total_amount)], 'expense');
+      }
+    } catch(_e){}
     if(receiptWarn){ alert('Payment ho gaya, PAR receipt save nahi hua:\n\n'+receiptWarn); }
     $('expensePayModal').classList.remove('show');
     _payId = null; _payReceiptFile = null;
