@@ -1218,7 +1218,11 @@ function renderExpenseTable(){
       apCol = '<span class="tag" style="background:#DCFCE7;color:#15803D">Approved</span>';
     }
     var statusTag = e.payment_status==='paid' ? '<span class="tag tag-paid">Paid</span>' : '<span class="tag tag-unpaid">Unpaid</span>';
-    var rc = e.receipt_url ? '<a href="'+esc(e.receipt_url)+'" target="_blank" style="color:var(--info)">📎</a>' : '—';
+    // Receipt column: bill receipt (📎) + payment proof (💰). HR expenses ka proof payment_receipt_url me hota hai.
+    var rcParts = [];
+    if (e.receipt_url) rcParts.push('<a href="'+esc(e.receipt_url)+'" target="_blank" style="color:var(--info)" title="Bill/Receipt">📎</a>');
+    if (e.payment_receipt_url) rcParts.push('<a href="'+esc(e.payment_receipt_url)+'" target="_blank" style="color:#16a34a" title="Payment Proof">💰</a>');
+    var rc = rcParts.length ? rcParts.join(' ') : '—';
     // Approver ko pay/slip/voucher nahi — sirf approve/reject
     var payBtn = (!IS_APPROVER_ONLY && e.payment_status!=='paid' && ap==='approved') ? '<button class="btn btn-sm btn-secondary" style="margin-left:6px" onclick="markPaid(\''+e.id+'\')">Pay</button>' : '';
     var slipBtn = IS_APPROVER_ONLY ? '' : '<button class="btn btn-sm btn-secondary" style="margin-left:4px;padding:3px 7px" onclick="expenseSlipPDF(\''+e.id+'\')" title="Slip PDF">📄</button>';
