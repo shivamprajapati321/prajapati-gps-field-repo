@@ -4806,6 +4806,21 @@ function bootFromSession() {
     try { m.module_access = JSON.parse(m.module_access); } catch(e) { m.module_access = {}; }
   }
   state.admin = m;
+  // ── hr_role fallback: purane session mein hr_role field nahi hai ──
+  // Agar session mein hr_role undefined hai to DB se fetch karke set karo,
+  // taaki HR button dikhe bina re-login ke. (nav filter re-run hota hai.)
+  if (m.hr_role === undefined && m.id) {
+    try {
+      api('/rest/v1/trial_team_members?id=eq.' + encodeURIComponent(m.id) + '&select=hr_role')
+        .then(function(rows){
+          if (rows && rows[0] && rows[0].hr_role === true) {
+            m.hr_role = true;
+            state.admin.hr_role = true;
+            if (typeof applyModuleFilter === 'function') applyModuleFilter();
+          }
+        }).catch(function(){});
+    } catch(e){}
+  }
   enterDashboard();
   return true;
 }
