@@ -1276,8 +1276,9 @@ async function renderExpenses(root){
   try {
     const admin = isAdmin();
     // employee sees own; admin sees all (recent 60)
+    // HR app sirf INTERNAL/office expenses dikhata hai — field/campaign wale nahi
     const filter = admin ? '' : '&team_member_phone=eq.'+USER.phone;
-    const exps = await api('/prajapati_expenses?select=id,expense_date,expense_type,internal_category,total_amount,payment_status,approval_status,receipt_url,team_member_name,remark,other_description,food_amount,hotel_amount,transport_amount,other_amount&order=created_at.desc&limit=60'+filter);
+    const exps = await api('/prajapati_expenses?select=id,expense_date,expense_type,internal_category,total_amount,payment_status,approval_status,receipt_url,team_member_name,remark,other_description,food_amount,hotel_amount,transport_amount,other_amount&expense_type=eq.internal&order=created_at.desc&limit=60'+filter);
 
     let h = '<div class="sechead"><i class="ti ti-receipt"></i>Expenses</div>';
 
