@@ -2871,16 +2871,6 @@ label {
       </div>
     </div>
 
-    <!-- ═══ HR & ATTENDANCE ═══ -->
-    <div class="nav-section">
-      <div class="nav-section-title">👥 HR &amp; Attendance</div>
-      <div data-module="hr" class="nav-item" onclick="openExternal('hr.html')">
-        <i class="ti ti-fingerprint"></i>
-        <span>HR App (Attendance / Leave / Expenses)</span>
-        <i class="ti ti-external-link" style="font-size:13px; margin-left:auto; opacity:0.5;"></i>
-      </div>
-    </div>
-
     <!-- ═══ REPORTS ═══ -->
     <div class="nav-section">
       <div class="nav-section-title">📈 Reports Suite</div>
@@ -7043,7 +7033,7 @@ function renderCampaigns() {
     Promise.all([
       api('/rest/v1/trial_campaign_cities?campaign_key=eq.' + encodeURIComponent(c.key) + '&select=id'),
       apiAll('/rest/v1/trial_photos?campaign_key=eq.' + encodeURIComponent(c.key) + '&deleted_at=is.null&select=vehicle_number,photo_number'),
-      api('/rest/v1/trial_campaign_designs?campaign_id=eq.' + encodeURIComponent(c.id) + '&select=quantity,design_name,location_name,location_city,location_address,location_lat,location_lng,dealer_name')
+      api('/rest/v1/trial_campaign_designs?campaign_id=eq.' + encodeURIComponent(c.id) + '&select=id,quantity,design_name,location_name,location_city,location_address,location_lat,location_lng,dealer_name')
     ]).then(function(results) {
       var photos = results[1] || [];
       var designs = results[2] || [];
@@ -7055,19 +7045,11 @@ function renderCampaigns() {
         if (city) _citySet[city.toLowerCase()] = true;
       });
       var citiesCount = Object.keys(_citySet).length || (results[0] || []).length;
-      // Order (vehicles) = designs ki total quantity (SAHI)
-      // ⭐ DEDUPE: same design+location ki duplicate rows count na ho (double bug fix)
-      //    Launch page bhi yahi karta hai — max quantity rakho per unique location
-      // ⭐ DEALER FIX: dealer_name bhi key me hai — warna ek city ke saare dealer rows
-      //    (Amravati: Durga 80 + Sai 80 + Jadhao 90) "duplicate" samajh ke collapse ho
-      //    jaate the aur sirf max (90) count hota tha → 1450 ki jagah 590 dikhta tha.
-      var _dedupeMap = {};
-      (designs || []).forEach(function(d){
-        var k = (d.design_name||'') + '|' + (d.location_name||'') + '|' + (d.dealer_name||'') + '|' + (d.location_address||'') + '|' + (d.location_lat||'') + '|' + (d.location_lng||'');
-        var q = Number(d.quantity) || 0;
-        if (_dedupeMap[k] === undefined || q > _dedupeMap[k]) _dedupeMap[k] = q;
-      });
-      var orderQty = Object.keys(_dedupeMap).reduce(function(s, k){ return s + _dedupeMap[k]; }, 0);
+      // Order (vehicles) = designs ki total quantity (SAHI = simple SUM)
+      // ⚠️ PEHLE BUG: "dedupe max per key" logic legit multiple orders ko collapse kar deta tha.
+      //    Jaise Gandhi TVS ke 2 alag order (126 + 50) → sirf 126 count hota, 50 gayab.
+      //    Ab har row ka pura quantity sum hota hai (jaise campaign.total_quantity karta hai).
+      var orderQty = (designs || []).reduce(function(s, d){ return s + (Number(d.quantity) || 0); }, 0);
       var setTarget = Number(c.target_count || 0);
       // ⭐ PHOTOS PER VEHICLE = hood + back + before
       //    Hood=3, Back=1, Both=4. before_photo=true → +1 (photo_number 0 = BEFORE shot).
