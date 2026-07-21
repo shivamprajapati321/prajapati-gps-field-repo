@@ -169,6 +169,10 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
   .tabs-pick{grid-template-columns:1fr}
 }
 
+
+.loc-chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
+.loc-chip{background:#F4F6FC;border:1px solid #DBE0EE;border-radius:20px;padding:2px 9px;font-size:11px;color:#4A5578;display:inline-flex;gap:5px;align-items:center}
+.loc-chip b{color:#0B1957}
 </style>
 </head>
 <body>
@@ -654,7 +658,41 @@ function renderContent() {
     return;
   }
 
-  document.getElementById('contentArea').innerHTML = bulkBarHtml + list.map(d => {
+  // ⭐ GROUPING: 1 design = 1 card, chahe kitni bhi locations ho.
+  //   Key = campaign_id + design_name.
+  //   - IT Vedant (1 design, 2 locations)  → 1 card, locations chips ke roop me
+  //   - TVS-style (multi design)           → har design ka alag card
+  //   Pehle har ROW ka card banta tha, isliye ek hi design 2 baar dikhta tha
+  //   (designer 2 baar upload karta, printing me 2 job ban jaati).
+  const _groups = {};
+  list.forEach(row => {
+    const key = (row.campaign_id || '') + '||' + (row.design_name || '');
+    if (!_groups[key]) {
+      _groups[key] = Object.assign({}, row);   // representative row
+      _groups[key]._siblings = [];             // saare row ids (group actions ke liye)
+      _groups[key]._locs = [];                 // location breakdown
+    }
+    const g = _groups[key];
+    g._siblings.push(row.id);
+    g._locs.push({
+      name: row.location_name || row.location_city || '',
+      dealer: row.dealer_name || '',
+      qty: Number(row.quantity) || 0
+    });
+    // agar kisi bhi row pe file hai to group ko file-wala maano
+    if (!getPrintFileUrl(g) && getPrintFileUrl(row)) {
+      g.design_files = row.design_files;
+      g.design_url = row.design_url;
+      g.drive_url = row.drive_url;
+      g.design_file_name = row.design_file_name;
+      g.design_file_size = row.design_file_size;
+    }
+  });
+  const grouped = Object.values(_groups);
+  // group ki total qty = sab locations ka sum
+  grouped.forEach(g => { g._groupQty = g._locs.reduce((s, l) => s + l.qty, 0); });
+
+  document.getElementById('contentArea').innerHTML = bulkBarHtml + grouped.map(d => {
     const c = d.campaign || {};
     const isUrgent = c.is_urgent;
     const stage = getStage(d);
@@ -667,8 +705,9 @@ function renderContent() {
     // multi-file list (design_files array) ya single file fallback
     const files = (Array.isArray(d.design_files) && d.design_files.length)
       ? d.design_files
-      : (printUrl ? [{ url: printUrl, name: d.design_file_name || 'print file', size: d.design_file_size || 0, qty: d.quantity || 0 }] : []);
-    const totalQty = files.reduce((s, f) => s + (f.qty || 0), 0) || (d.quantity || 0);
+      : (printUrl ? [{ url: printUrl, name: d.design_file_name || 'print file', size: d.design_file_size || 0, qty: d._groupQty || d.quantity || 0 }] : []);
+    // group total = sab locations ka sum (single row ki qty nahi)
+    const totalQty = d._groupQty || files.reduce((s, f) => s + (f.qty || 0), 0) || (d.quantity || 0);
 
     // draft chip (reference, read-only)
     const draftChip = draftUrl
@@ -725,9 +764,16 @@ function renderContent() {
             <div class="dc-meta">
               <span>📋 ${escapeHtml(c.campaign_name || c.name || '')}</span>
               ${c.client_name ? `<span>👤 ${escapeHtml(c.client_name)}</span>` : ''}
-              ${d.location_name ? `<span>📍 ${escapeHtml(d.location_name)}</span>` : (d.location_city ? `<span>📍 ${escapeHtml(d.location_city)}</span>` : '')}${d.dealer_name ? `<span>🏪 ${escapeHtml(d.dealer_name)}</span>` : ''}
+              ${(d._locs && d._locs.length > 1)
+                ? `<span>📍 ${d._locs.length} locations</span>`
+                : (d.location_name ? `<span>📍 ${escapeHtml(d.location_name)}</span>` : (d.location_city ? `<span>📍 ${escapeHtml(d.location_city)}</span>` : ''))}
+              ${(d._locs && d._locs.length === 1 && d._locs[0].dealer) ? `<span>🏪 ${escapeHtml(d._locs[0].dealer)}</span>` : ''}
               <span>📦 ${totalQty.toLocaleString('en-IN')} units</span>
             </div>
+            ${(d._locs && d._locs.length > 1) ? `
+              <div class="loc-chips">
+                ${d._locs.map(l => `<span class="loc-chip">${l.dealer ? '🏪 ' + escapeHtml(l.dealer) : '📍 ' + escapeHtml(l.name)}<b>${l.qty}</b></span>`).join('')}
+              </div>` : ''}
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
             ${isUrgent ? '<span class="stage-pill sp-pending">🔥 Urgent</span>' : ''}
@@ -748,6 +794,11 @@ function renderContent() {
 async function markStage(designId, newStage) {
   const d = state.designs.find(x => x.id === designId);
   if (!d) return;
+  // Group ke saare rows (same campaign + same design_name) — grouped card ke liye
+  const _sibs = (state.designs || [])
+    .filter(x => (x.campaign_id || '') === (d.campaign_id || '') && (x.design_name || '') === (d.design_name || ''))
+    .map(x => x.id);
+  d._siblings = _sibs.length ? _sibs : [designId];
 
   const payload = { updated_at: new Date().toISOString() };
   if (newStage === 'sent') {
@@ -759,12 +810,18 @@ async function markStage(designId, newStage) {
   }
 
   try {
-    await api(`/rest/v1/trial_campaign_designs?id=eq.${designId}`, {
+    // ⭐ GROUP ACTION: ek design ke saare location rows ek saath update karo.
+    //   Warna sirf pehla row 'sent' hota aur baaki locations pending reh jaate.
+    const ids = (d._siblings && d._siblings.length) ? d._siblings : [designId];
+    await api('/rest/v1/trial_campaign_designs?id=in.(' + ids.map(encodeURIComponent).join(',') + ')', {
       method: 'PATCH',
-      headers: { 'Prefer': 'return=minimal' },
+      headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
       body: JSON.stringify(payload)
     });
-    // update local + re-render (optimistic)
+    // update local + re-render (optimistic) — saare siblings pe
+    (state.designs || []).forEach(function(row){
+      if (ids.indexOf(row.id) > -1) Object.assign(row, payload);
+    });
     Object.assign(d, payload);
     renderUI();
   } catch (e) {
@@ -1167,11 +1224,32 @@ async function saveUpload() {
     }
     
     // Save to DB
-    await api(`/rest/v1/trial_campaign_designs?id=eq.${design.id}`, {
-      method: 'PATCH',
-      headers: { 'Prefer': 'return=minimal' },
-      body: JSON.stringify(payload)
-    });
+    // ⭐ GROUP SAVE: ek design ke saare location rows pe same file lagti hai
+    //   (design ek hi hai, locations alag). Warna designer ko har location pe
+    //   alag upload karna padta aur printing me duplicate job banti.
+    const _sibIds = (state.designs || [])
+      .filter(x => (x.campaign_id || '') === (design.campaign_id || '') && (x.design_name || '') === (design.design_name || ''))
+      .map(x => x.id);
+    const targetIds = _sibIds.length ? _sibIds : [design.id];
+
+    // ⚠️ quantity NEVER group-wide — har location ki apni qty hai (25 + 25),
+    //    warna dono 50 ho jaate aur total 100 dikhta.
+    const groupPayload = Object.assign({}, payload);
+    delete groupPayload.quantity;
+
+    if (targetIds.length > 1) {
+      await api('/rest/v1/trial_campaign_designs?id=in.(' + targetIds.map(encodeURIComponent).join(',') + ')', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify(groupPayload)
+      });
+    } else {
+      await api(`/rest/v1/trial_campaign_designs?id=eq.${design.id}`, {
+        method: 'PATCH',
+        headers: { 'Prefer': 'return=minimal' },
+        body: JSON.stringify(payload)
+      });
+    }
 
     // ⭐ Quantity badli to assignments bhi sync karo (warna printer ko purana number dikhega)
     if (payload.quantity !== undefined && payload.quantity !== (design.quantity || 0)) {
