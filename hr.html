@@ -69,6 +69,12 @@
   .ava{width:36px;height:36px;border-radius:50%;background:var(--acc-bg);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--acc);flex-shrink:0}
   .btn-sm{height:30px;font-size:12px;padding:0 12px;background:var(--acc-bg);color:var(--acc)}
   .btn-primary{background:var(--teal);color:#fff}
+  .sw{position:relative;display:inline-block;width:46px;height:26px;flex-shrink:0}
+  .sw input{opacity:0;width:0;height:0}
+  .sw-slider{position:absolute;cursor:pointer;inset:0;background:#cbd5e1;border-radius:26px;transition:.2s}
+  .sw-slider:before{content:"";position:absolute;height:20px;width:20px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s}
+  .sw input:checked+.sw-slider{background:var(--teal)}
+  .sw input:checked+.sw-slider:before{transform:translateX(20px)}
   .btn-green{background:var(--green);color:#fff}
   .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;z-index:200;opacity:0;transition:.3s;pointer-events:none;max-width:90%}
   .toast.show{opacity:1}
@@ -1012,7 +1018,7 @@ async function loadMyLeaves(){
 async function renderEmployees(root){
   try {
     const admin = isAdmin();
-    const emps = await api('/trial_team_members?select=id,name,phone,department,designation,emp_code,role,active,city,monthly_salary,basic_pay,petrol_rate_per_km,date_of_birth,joining_date&active=eq.true&order=name');
+    const emps = await api('/trial_team_members?select=id,name,phone,department,designation,emp_code,role,active,city,monthly_salary,basic_pay,petrol_rate_per_km,date_of_birth,joining_date,attendance_mode,hr_role&active=eq.true&order=name');
     window.__EMPS = emps;
     let h = '<div class="sechead"><i class="ti ti-users"></i>Team <span class="c-blue pill" style="margin-left:auto">'+emps.length+'</span></div>';
     if (admin) h += '<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Employee pe tap karo — salary, DOB, payroll set karne ke liye</div>';
@@ -1073,6 +1079,14 @@ function openEmp(id){
     ['empJoin','Joining Date', e.joining_date, 'date'],
     ['empMode','Attendance', null, 'mode']
   ]);
+  // HR Access toggle — sirf owner/admin de sakta hai
+  if (['owner','admin'].includes(String(USER.role||'').toLowerCase())) {
+    const hasHr = (e.hr_role===true);
+    h += '<div style="display:flex;align-items:center;justify-content:space-between;background:var(--s1);border-radius:10px;padding:12px 14px;margin:4px 0 10px">'+
+      '<div><div style="font-size:13px;font-weight:600">HR Admin Access</div><div style="font-size:11px;color:var(--muted)">Approvals, team, payroll, sabki details dikhengi</div></div>'+
+      '<label class="sw"><input type="checkbox" id="empHrRole"'+(hasHr?' checked':'')+'><span class="sw-slider"></span></label>'+
+      '</div>';
+  }
   h += '<button class="btn-primary" style="width:100%;height:44px;font-weight:600;margin-top:6px" onclick="saveEmp(this)">Save Profile</button>';
   h += '<div id="empErr" style="color:var(--red);font-size:12px;text-align:center;margin-top:8px"></div>';
   h += '</div>';
@@ -1129,6 +1143,9 @@ async function saveEmp(btn){
       joining_date: v('empJoin'),
       attendance_mode: document.getElementById('empMode').value
     };
+    // HR access toggle (sirf owner/admin ko dikhta hai)
+    const hrToggle = document.getElementById('empHrRole');
+    if (hrToggle) upd.hr_role = hrToggle.checked;
     await api('/trial_team_members?id=eq.'+e.id, { method:'PATCH', headers:{'Prefer':'return=minimal'}, body:JSON.stringify(upd) });
     toast('Profile save ho gaya ✓');
     document.getElementById('modalRoot').innerHTML='';
