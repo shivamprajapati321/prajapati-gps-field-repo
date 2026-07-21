@@ -1200,10 +1200,10 @@ function renderExpenseTable(){
     var forCol = e.expense_type==='campaign' ? esc(getWork(e.campaign_name)) : esc(e.internal_category||'—');
     var partyCol = e.expense_type==='campaign'
       ? (e.team_member_name ? esc(e.team_member_name) : '<span style="color:var(--text-dim)">—</span>')
-      : (e.internal_party ? esc(e.internal_party) : '<span style="color:var(--text-dim)">—</span>');
+      : ((e.internal_party || e.team_member_name) ? esc(e.internal_party || e.team_member_name) : '<span style="color:var(--text-dim)">—</span>');
     var detail = e.expense_type==='campaign'
       ? [e.location, headsSummary(e)].filter(Boolean).join(' · ')
-      : [e.internal_details].filter(Boolean).join(' · ');
+      : [e.internal_details || e.remark].filter(Boolean).join(' · ');
     // Approval column
     var ap = e.approval_status || 'approved';
     var apCol;
