@@ -145,7 +145,12 @@
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <div id="tbName" style="font-size:12px;text-align:right"></div>
-      <div class="tb-ava" id="tbAva" onclick="nav('settings')" style="cursor:pointer" title="Settings / Banking">?</div>
+      <div class="tb-ava" id="tbAva" onclick="toggleUserMenu(event)" style="cursor:pointer" title="Menu">?</div>
+      <div id="userMenu" style="display:none;position:absolute;top:56px;right:14px;background:#fff;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.18);overflow:hidden;z-index:60;min-width:190px">
+        <div id="umName" style="padding:12px 16px 8px;font-size:13px;font-weight:600;color:var(--navy);border-bottom:1px solid var(--s1)"></div>
+        <div onclick="nav('settings');closeUserMenu()" style="padding:13px 16px;font-size:13.5px;color:var(--sec);cursor:pointer;display:flex;align-items:center;gap:10px"><i class="ti ti-settings" style="font-size:17px"></i>Settings / Banking</div>
+        <div onclick="logout()" style="padding:13px 16px;font-size:13.5px;color:var(--red);cursor:pointer;display:flex;align-items:center;gap:10px;border-top:1px solid var(--s1)"><i class="ti ti-logout" style="font-size:17px"></i>Logout</div>
+      </div>
     </div>
   </div>
 
@@ -307,7 +312,30 @@ function startResendTimer(){
   }, 1000);
 }
 
-function logout(){ localStorage.removeItem('hr_user'); location.reload(); }
+function logout(){
+  if (!confirm('Logout karna hai?')) return;
+  localStorage.removeItem('hr_user');
+  location.reload();
+}
+function toggleUserMenu(ev){
+  if (ev) ev.stopPropagation();
+  var m = document.getElementById('userMenu');
+  if (!m) return;
+  var open = m.style.display !== 'none';
+  if (open) { m.style.display = 'none'; return; }
+  var nm = document.getElementById('umName');
+  if (nm) nm.textContent = (typeof USER !== 'undefined' && USER && USER.name) ? USER.name : '';
+  m.style.display = 'block';
+  setTimeout(function(){ document.addEventListener('click', closeUserMenuOnce); }, 0);
+}
+function closeUserMenu(){
+  var m = document.getElementById('userMenu');
+  if (m) m.style.display = 'none';
+}
+function closeUserMenuOnce(){
+  closeUserMenu();
+  document.removeEventListener('click', closeUserMenuOnce);
+}
 
 // session expiry check
 function sessionValid(){
@@ -348,6 +376,7 @@ function nav(view){
   else if (view==='holidays') renderHolidays(root);
   else if (view==='tasks') renderTasks(root);
   else if (view==='documents') renderDocuments(root);
+  else if (view==='advance') renderAdvance(root);
   else if (view==='bulkfill') renderBulkFill(root);
 }
 function placeholder(title,icon,sub){
@@ -452,6 +481,7 @@ async function renderDashboard(root){
         quickTile('speakerphone','Notices','announcements')+
         quickTile('checklist','Tasks','tasks')+
         quickTile('files','Docs','documents')+
+        quickTile('cash-banknote','Advance','advance')+
         quickTile('cake','Holidays','holidays')+
         quickTile('user-cog','Settings','settings')+
         (isAdmin()?quickTile('users','Team','employees'):quickTile('file-dollar','Salary','dashboard'))+
@@ -1318,7 +1348,26 @@ async function calcPayroll(){
     const unpaidDeduction = Math.round(perDay * absent);
     const otTotal = (sundayOT||[]).reduce((s,r)=>s+(+r.ot_amount||0)+(+r.food_amount||0),0);
 
-    window.__PAYCALC = { year:yr, month:mo, present, leaveDays, absent, workingDays, earned, unpaidDeduction, gross:e.monthly_salary, sundays, otTotal };
+    // ── ADVANCE: is month ki planned installment nikalo ──
+    const smon = yr+'-'+String(mo).padStart(2,'0');
+    let advDue = 0, advList = [];
+    try {
+      const advs = await api('/prajapati_advances?select=id,amount,recovered_amount,balance_amount,monthly_deduction,recovery_mode,total_months,recovery_status,recovery_start_month&member_id=eq.'+e.id+'&recovery_status=in.(active,pending)&status=eq.paid');
+      (advs||[]).forEach(function(a){
+        const bal = Number(a.balance_amount||0);
+        if (bal <= 0) return;
+        if (a.recovery_start_month && smon < a.recovery_start_month) return;   // abhi shuru nahi hua
+        let inst = 0;
+        if (a.recovery_mode === 'months' && a.total_months) inst = Math.round(Number(a.amount||0) / a.total_months);
+        else inst = Number(a.monthly_deduction||0);
+        if (inst <= 0) return;
+        inst = Math.min(inst, bal);   // aakhri kist balance se zyada na ho
+        advDue += inst;
+        advList.push({ id:a.id, inst:inst, bal:bal });
+      });
+    } catch(ex){ console.warn('advance fetch', ex); }
+
+    window.__PAYCALC = { year:yr, month:mo, present, leaveDays, absent, workingDays, earned, unpaidDeduction, gross:e.monthly_salary, sundays, otTotal, advDue, advList, salaryMonth:smon };
 
     let h='<div class="card" style="background:var(--s1);margin-top:6px">';
     h+=payRow('Month', mo+'/'+yr);
@@ -1331,8 +1380,15 @@ async function calcPayroll(){
     h+=payRow('Absent days', absent, absent>0?'var(--red)':null);
     h+='<div style="border-top:1px solid var(--bd);margin:8px 0"></div>';
     h+=payRow('Absent deduction', '- '+inr(unpaidDeduction), 'var(--red)');
+    if(advDue>0){
+      h+=payRow('Advance installment', '- '+inr(advDue), 'var(--red)');
+      h+='<div style="display:flex;align-items:center;gap:8px;margin:4px 0 2px">'+
+         '<span style="font-size:11px;color:var(--muted);flex:1">Advance kitna kaatna hai? (0 = is month skip)</span>'+
+         '<input id="advEdit" type="number" value="'+advDue+'" oninput="reNet()" style="width:92px;height:34px;border:1px solid var(--bd);border-radius:8px;padding:0 8px;font-size:13px;text-align:right">'+
+         '</div>';
+    }
     h+='<div style="border-top:1px solid var(--bd);margin:8px 0"></div>';
-    h+='<div style="display:flex;justify-content:space-between;font-weight:700;font-size:16px"><span>Net Salary</span><span style="color:var(--teal)">'+inr(earned)+'</span></div>';
+    h+='<div style="display:flex;justify-content:space-between;font-weight:700;font-size:16px"><span>Net Salary</span><span style="color:var(--teal)" id="netSal">'+inr(Math.max(0, earned-advDue))+'</span></div>';
     if(otTotal>0){
       h+='<div style="border-top:1px solid var(--bd);margin:10px 0 6px"></div>';
       h+='<div style="font-size:11px;color:var(--muted);margin-bottom:4px">Sunday OT (helper/stitching — same-day cash, alag)</div>';
@@ -1347,6 +1403,15 @@ async function calcPayroll(){
 }
 function payRow(l,val,color){
   return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0"><span style="color:var(--muted)">'+l+'</span><span'+(color?' style="color:'+color+';font-weight:600"':'')+'>'+val+'</span></div>';
+}
+// advance edit hone pe Net Salary live update
+function reNet(){
+  const c = window.__PAYCALC; if(!c) return;
+  const el = document.getElementById('advEdit');
+  const adv = el ? Math.max(0, Number(el.value)||0) : 0;
+  c.advDeduct = adv;
+  const n = document.getElementById('netSal');
+  if(n) n.textContent = inr(Math.max(0, c.earned - adv));
 }
 async function savePayroll(btn){
   const e=window.__CUR_EMP, c=window.__PAYCALC;
@@ -1368,11 +1433,163 @@ async function savePayroll(btn){
     } else {
       await api('/trial_hr_salary_records', {method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(row)});
     }
-    toast('Salary record save ho gaya ✓');
+    // ── ADVANCE recovery: installment ledger + recovered_amount update ──
+    const advEl = document.getElementById('advEdit');
+    const advTake = advEl ? Math.max(0, Number(advEl.value)||0) : (c.advDue||0);
+    if (advTake > 0 && c.advList && c.advList.length) {
+      let left = advTake;
+      for (const a of c.advList) {
+        if (left <= 0) break;
+        const take = Math.min(a.inst, a.bal, left);
+        if (take <= 0) continue;
+        left -= take;
+        try {
+          await api('/prajapati_advance_installments', { method:'POST',
+            headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
+            body: JSON.stringify({ advance_id:a.id, member_id:e.id, member_phone:e.phone, member_name:e.name,
+              salary_month:c.salaryMonth, planned_amount:a.inst, deducted_amount:take,
+              status:'deducted', updated_at:new Date().toISOString() }) });
+          const cur = await api('/prajapati_advances?select=amount,recovered_amount&id=eq.'+a.id);
+          const rec = Number((cur&&cur[0]&&cur[0].recovered_amount)||0) + take;
+          const amt = Number((cur&&cur[0]&&cur[0].amount)||0);
+          await api('/prajapati_advances?id=eq.'+a.id, { method:'PATCH', headers:{'Prefer':'return=minimal'},
+            body: JSON.stringify({ recovered_amount:rec, recovery_status: rec>=amt?'completed':'active' }) });
+        } catch(ax){ console.warn('advance recovery', ax); }
+      }
+    }
+    toast('Salary record save ho gaya ✓'+(advTake>0?' (advance '+inr(advTake)+' kata)':''));
     document.getElementById('modalRoot').innerHTML='';
   } catch(ex){ if(err)err.textContent='Save fail: '+ex.message; if(btn){btn.disabled=false;btn.textContent='💾 Save Salary Record';} }
 }
 
+
+// ══════════ ADVANCE (loan) ══════════
+async function renderAdvance(root){
+  try {
+    const admin = isAdmin();
+    const q = admin
+      ? '/prajapati_advances?select=*&order=requested_at.desc&limit=80'
+      : '/prajapati_advances?select=*&member_id=eq.'+USER.id+'&order=requested_at.desc&limit=40';
+    const rows = await api(q) || [];
+
+    let h = '<div class="sechead"><i class="ti ti-cash-banknote"></i>Advance</div>';
+
+    // my outstanding summary
+    const mine = admin ? rows : rows;
+    const myOut = (admin ? rows.filter(r=>String(r.member_id)===String(USER.id)) : rows)
+      .filter(r=>r.status==='paid').reduce((s,r)=>s+Number(r.balance_amount||0),0);
+    if(!admin && myOut>0){
+      h += '<div class="card" style="background:var(--s1);margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center">'+
+        '<div><div style="font-size:12px;color:var(--muted)">Aapka baaki advance</div>'+
+        '<div style="font-size:20px;font-weight:700;color:var(--red)">'+inr(myOut)+'</div></div>'+
+        '<i class="ti ti-wallet" style="font-size:30px;color:var(--muted)"></i></div></div>';
+    }
+
+    // request form (sab ke liye)
+    h += '<div class="card"><div style="font-size:13px;font-weight:600;margin-bottom:8px">Naya advance '+(admin?'entry / request':'request')+'</div>';
+    if(admin){
+      h += '<label style="font-size:12px;color:var(--muted)">Kiske liye</label><select id="advMember" style="width:100%;height:40px;border:1px solid var(--bd);border-radius:8px;padding:0 8px;margin-bottom:8px"><option value="">-- select --</option></select>';
+    }
+    h += '<label style="font-size:12px;color:var(--muted)">Amount (₹)</label><input id="advAmt" type="number" placeholder="0" style="width:100%;height:40px;border:1px solid var(--bd);border-radius:8px;padding:0 10px;margin-bottom:8px">';
+    h += '<label style="font-size:12px;color:var(--muted)">Kis liye</label><input id="advReason" placeholder="reason" style="width:100%;height:40px;border:1px solid var(--bd);border-radius:8px;padding:0 10px;margin-bottom:8px">';
+    if(admin){
+      h += '<label style="font-size:12px;color:var(--muted)">Recovery kaise</label>'+
+        '<select id="advMode" onchange="advModeChange()" style="width:100%;height:40px;border:1px solid var(--bd);border-radius:8px;padding:0 8px;margin-bottom:8px">'+
+        '<option value="monthly_amount">Har month fixed amount</option>'+
+        '<option value="months">Kitne months me (auto divide)</option></select>';
+      h += '<div id="advModeBox"><label style="font-size:12px;color:var(--muted)">Har month kitna kate (₹)</label><input id="advPerMonth" type="number" placeholder="0" style="width:100%;height:40px;border:1px solid var(--bd);border-radius:8px;padding:0 10px;margin-bottom:8px"></div>';
+      h += '<label style="font-size:12px;color:var(--muted)">Katna kab se shuru (YYYY-MM)</label><input id="advStart" placeholder="'+(new Date().toISOString().slice(0,7))+'" value="'+(new Date().toISOString().slice(0,7))+'" style="width:100%;height:40px;border:1px solid var(--bd);border-radius:8px;padding:0 10px;margin-bottom:10px">';
+    }
+    h += '<button class="btn-primary" style="width:100%;height:44px;font-weight:600" onclick="submitAdvance(this)">'+(admin?'Add advance':'Request bhejo')+'</button>';
+    h += '<div id="advErr" style="color:var(--red);font-size:12px;margin-top:8px"></div></div>';
+
+    // list
+    h += '<div class="sechead" style="margin-top:14px"><i class="ti ti-list"></i>'+(admin?'Sab advances':'Mere advances')+'</div>';
+    if(!rows.length) h += '<div class="card" style="text-align:center;color:var(--muted);font-size:13px">Koi advance nahi</div>';
+    rows.forEach(function(r){
+      const bal = Number(r.balance_amount||0);
+      const done = bal<=0 && r.status==='paid';
+      const stCol = r.status==='paid' ? (done?'var(--green)':'var(--amber)') : 'var(--muted)';
+      h += '<div class="card" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:flex-start">'+
+        '<div style="flex:1"><div style="font-size:14px;font-weight:600">'+esc(r.member_name||'')+' · '+inr(r.amount)+'</div>'+
+        '<div style="font-size:11px;color:var(--muted)">'+esc(r.reason||'')+' · '+(r.requested_at||'').slice(0,10)+'</div>'+
+        (r.status==='paid' ? '<div style="font-size:12px;margin-top:4px">Wasool: '+inr(r.recovered_amount||0)+' · <b style="color:'+(bal>0?'var(--red)':'var(--green)')+'">Baaki: '+inr(bal)+'</b></div>' : '')+
+        (r.monthly_deduction>0 ? '<div style="font-size:11px;color:var(--muted)">Har month: '+inr(r.monthly_deduction)+'</div>' : '')+
+        (r.recovery_mode==='months'&&r.total_months ? '<div style="font-size:11px;color:var(--muted)">'+r.total_months+' months me</div>' : '')+
+        '</div>'+
+        '<span class="pill" style="background:var(--s1);color:'+stCol+'">'+esc(done?'chuka diya':(r.status||'')) +'</span></div>';
+      if(admin && r.status!=='paid'){
+        h += '<div style="display:flex;gap:6px;margin-top:8px">'+
+          '<button class="btn-sm btn-green" style="flex:1" onclick="advApprove(\''+r.id+'\')">Approve + Paid</button>'+
+          '<button class="btn-sm" style="flex:1;background:var(--s1)" onclick="advReject(\''+r.id+'\')">Reject</button></div>';
+      }
+      h += '</div>';
+    });
+    root.innerHTML = h;
+
+    if(admin){
+      const sel=document.getElementById('advMember');
+      if(sel){
+        const mem = await api('/trial_team_members?select=id,name,phone&active=eq.true&order=name');
+        (mem||[]).forEach(function(m){ const o=document.createElement('option'); o.value=m.id; o.textContent=m.name; o.dataset.phone=m.phone||''; sel.appendChild(o); });
+      }
+    }
+  } catch(e){ root.innerHTML='<div class="card" style="color:var(--red)">Load fail: '+esc(e.message)+'</div>'; }
+}
+function advModeChange(){
+  const mode=(document.getElementById('advMode')||{}).value;
+  const box=document.getElementById('advModeBox');
+  if(!box) return;
+  box.innerHTML = (mode==='months')
+    ? '<label style="font-size:12px;color:var(--muted)">Kitne months me</label><input id="advMonths" type="number" placeholder="5" style="width:100%;height:40px;border:1px solid var(--bd);border-radius:8px;padding:0 10px;margin-bottom:8px">'
+    : '<label style="font-size:12px;color:var(--muted)">Har month kitna kate (₹)</label><input id="advPerMonth" type="number" placeholder="0" style="width:100%;height:40px;border:1px solid var(--bd);border-radius:8px;padding:0 10px;margin-bottom:8px">';
+}
+async function submitAdvance(btn){
+  const admin=isAdmin();
+  const err=document.getElementById('advErr'); if(err)err.textContent='';
+  const amt=Number(v('advAmt')||0);
+  if(!amt||amt<=0){ if(err)err.textContent='Amount daalo'; return; }
+  let mid=USER.id, mname=USER.name, mphone=USER.phone;
+  if(admin){
+    const sel=document.getElementById('advMember');
+    if(!sel||!sel.value){ if(err)err.textContent='Employee select karo'; return; }
+    mid=sel.value; mname=sel.options[sel.selectedIndex].textContent;
+    mphone=sel.options[sel.selectedIndex].dataset.phone||'';
+  }
+  btn=btn||(typeof event!=="undefined"&&event.target); if(btn){btn.disabled=true;btn.textContent='Saving...';}
+  try {
+    const row={ member_id:mid, member_name:mname, member_phone:mphone, amount:amt,
+      reason:v('advReason')||'', status: admin?'approved':'pending',
+      requested_at:new Date().toISOString(), source:'hr',
+      created_by:USER.id, created_by_name:USER.name };
+    if(admin){
+      const mode=(document.getElementById('advMode')||{}).value||'monthly_amount';
+      row.recovery_mode=mode;
+      if(mode==='months'){ row.total_months=Number(v('advMonths')||0)||null; row.monthly_deduction=row.total_months?Math.round(amt/row.total_months):0; }
+      else row.monthly_deduction=Number(v('advPerMonth')||0);
+      row.recovery_start_month=v('advStart')||new Date().toISOString().slice(0,7);
+      row.recovery_status='pending';
+    }
+    await api('/prajapati_advances',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(row)});
+    toast(admin?'Advance add ho gaya ✓':'Request bhej di ✓');
+    nav('advance');
+  } catch(ex){ if(err)err.textContent='Fail: '+ex.message; if(btn){btn.disabled=false;btn.textContent=admin?'Add advance':'Request bhejo';} }
+}
+async function advApprove(id){
+  if(!confirm('Approve karke paid mark karein?')) return;
+  try{
+    await api('/prajapati_advances?id=eq.'+id,{method:'PATCH',headers:{'Prefer':'return=minimal'},
+      body:JSON.stringify({status:'paid', approved_at:new Date().toISOString(), paid_at:new Date().toISOString(), recovery_status:'active'})});
+    toast('Advance paid ✓'); nav('advance');
+  }catch(e){ toast('Fail: '+e.message); }
+}
+async function advReject(id){
+  if(!confirm('Reject karein?')) return;
+  try{
+    await api('/prajapati_advances?id=eq.'+id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify({status:'rejected'})});
+    toast('Rejected'); nav('advance');
+  }catch(e){ toast('Fail: '+e.message); }
+}
 
 // ══════════ EXPENSES ══════════
 let EXP_RECEIPT_URL = '';
