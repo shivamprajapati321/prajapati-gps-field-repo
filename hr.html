@@ -564,7 +564,7 @@ function startPunch(kind){
       msg.innerHTML = '<i class="ti ti-map-pin" style="font-size:13px;vertical-align:-2px;color:'+(geo.inside?'var(--green)':'var(--red)')+'"></i> '+
         (geo.dist!=null ? (geo.inside ? 'Office ke andar ('+geo.dist+'m) ✓' : 'Office se '+geo.dist+'m door ⚠️') : 'Location mil gayi (±'+PUNCH_GPS.acc+'m)') +
         ' — ab selfie lo';
-      document.getElementById('selfieInput').click();
+      openSelfieCam(kind);
       btn.disabled = false;
     },
     err => {
@@ -574,6 +574,76 @@ function startPunch(kind){
     },
     { enableHighAccuracy:true, timeout:12000, maximumAge:0 }
   );
+}
+
+// ── IN-APP FRONT CAMERA (selfie) ──
+// capture="user" ko kai Android phone ignore kar dete hain aur back camera khol dete hain.
+// getUserMedia se facingMode:'user' force hota hai — hamesha front camera + live preview.
+let CAM_STREAM = null;
+function openSelfieCam(kind){
+  const msg = document.getElementById('punchMsg');
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    // purana browser — file input fallback
+    document.getElementById('selfieInput').click();
+    return;
+  }
+  const html =
+    '<div id="camWrap" style="position:fixed;inset:0;background:#000;z-index:9999;display:flex;flex-direction:column">' +
+      '<video id="camVid" autoplay playsinline muted style="flex:1;width:100%;object-fit:cover;transform:scaleX(-1)"></video>' +
+      '<div style="padding:18px 16px 26px;background:#000;text-align:center">' +
+        '<div style="color:#fff;font-size:13px;margin-bottom:12px">Chehra frame me rakho, phir photo lo</div>' +
+        '<div style="display:flex;gap:12px;align-items:center;justify-content:center">' +
+          '<button onclick="closeSelfieCam()" style="flex:1;max-width:120px;height:46px;border-radius:10px;border:1px solid #444;background:#111;color:#fff;font-weight:600">Cancel</button>' +
+          '<button onclick="snapSelfie(\''+kind+'\')" style="width:72px;height:72px;border-radius:50%;border:4px solid #fff;background:var(--teal);color:#fff;font-size:26px">\u25cf</button>' +
+          '<button onclick="flipSelfieCam(\''+kind+'\')" style="flex:1;max-width:120px;height:46px;border-radius:10px;border:1px solid #444;background:#111;color:#fff;font-weight:600">Flip</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  const d = document.createElement('div');
+  d.id = 'camRoot';
+  d.innerHTML = html;
+  document.body.appendChild(d);
+  window.__camFacing = 'user';
+  startCamStream('user');
+}
+function startCamStream(facing){
+  const vid = document.getElementById('camVid');
+  if (CAM_STREAM) { try { CAM_STREAM.getTracks().forEach(t=>t.stop()); } catch(e){} }
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: facing }, width:{ideal:1280}, height:{ideal:1280} }, audio:false })
+    .then(function(s){
+      CAM_STREAM = s;
+      if (vid) { vid.srcObject = s; vid.style.transform = (facing==='user') ? 'scaleX(-1)' : 'none'; }
+    })
+    .catch(function(){
+      closeSelfieCam();
+      const msg = document.getElementById('punchMsg');
+      if (msg) { msg.style.color='var(--amber)'; msg.textContent='Camera permission nahi mili — phone camera se lo.'; }
+      document.getElementById('selfieInput').click();
+    });
+}
+function flipSelfieCam(kind){
+  window.__camFacing = (window.__camFacing === 'user') ? 'environment' : 'user';
+  startCamStream(window.__camFacing);
+}
+function closeSelfieCam(){
+  if (CAM_STREAM) { try { CAM_STREAM.getTracks().forEach(t=>t.stop()); } catch(e){} CAM_STREAM = null; }
+  const r = document.getElementById('camRoot');
+  if (r) r.remove();
+}
+function snapSelfie(kind){
+  const vid = document.getElementById('camVid');
+  if (!vid || !vid.videoWidth) return;
+  const c = document.createElement('canvas');
+  c.width = vid.videoWidth; c.height = vid.videoHeight;
+  const ctx = c.getContext('2d');
+  if (window.__camFacing === 'user') { ctx.translate(c.width,0); ctx.scale(-1,1); }
+  ctx.drawImage(vid, 0, 0, c.width, c.height);
+  closeSelfieCam();
+  c.toBlob(function(blob){
+    if (!blob) return;
+    const file = new File([blob], 'selfie.jpg', { type:'image/jpeg' });
+    onSelfie({ files:[file] }, kind);
+  }, 'image/jpeg', 0.85);
 }
 
 async function onSelfie(input, kind){
