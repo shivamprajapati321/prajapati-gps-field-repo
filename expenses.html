@@ -1220,9 +1220,13 @@ function renderExpenseTable(){
     var statusTag = e.payment_status==='paid' ? '<span class="tag tag-paid">Paid</span>' : '<span class="tag tag-unpaid">Unpaid</span>';
     // Receipt column: bill receipt (📎) + payment proof (💰). HR expenses ka proof payment_receipt_url me hota hai.
     var rcParts = [];
-    if (e.receipt_url) rcParts.push('<a href="'+esc(e.receipt_url)+'" target="_blank" style="color:var(--info)" title="Bill/Receipt">📎</a>');
-    if (e.payment_receipt_url) rcParts.push('<a href="'+esc(e.payment_receipt_url)+'" target="_blank" style="color:#16a34a" title="Payment Proof">💰</a>');
-    var rc = rcParts.length ? rcParts.join(' ') : '—';
+    if (e.receipt_url) rcParts.push('<a href="'+esc(e.receipt_url)+'" target="_blank" title="Bill / Receipt" style="display:inline-block;line-height:0"><img src="'+esc(e.receipt_url)+'" style="width:34px;height:34px;object-fit:cover;border-radius:6px;border:2px solid #3b82f6;vertical-align:middle" onerror="this.replaceWith(document.createTextNode(\'📎\'))"></a>');
+    if (e.payment_receipt_url) rcParts.push('<a href="'+esc(e.payment_receipt_url)+'" target="_blank" title="Payment Proof" style="display:inline-block;line-height:0"><img src="'+esc(e.payment_receipt_url)+'" style="width:34px;height:34px;object-fit:cover;border-radius:6px;border:2px solid #16a34a;vertical-align:middle" onerror="this.replaceWith(document.createTextNode(\'💰\'))"></a>');
+    // paid hai par payment proof nahi -> upload karne ka option
+    if (!IS_APPROVER_ONLY && e.payment_status==='paid' && !e.payment_receipt_url) {
+      rcParts.push('<button class="btn btn-sm" style="padding:3px 7px;background:#FEF3C7;color:#92400E;border:1px solid #FCD34D" onclick="uploadPayProof(\''+e.id+'\')" title="Payment proof upload karo">⬆️ proof</button>');
+    }
+    var rc = rcParts.length ? '<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">'+rcParts.join('')+'</div>' : '—';
     // Approver ko pay/slip/voucher nahi — sirf approve/reject
     var payBtn = (!IS_APPROVER_ONLY && e.payment_status!=='paid' && ap==='approved') ? '<button class="btn btn-sm btn-secondary" style="margin-left:6px" onclick="markPaid(\''+e.id+'\')">Pay</button>' : '';
     var slipBtn = IS_APPROVER_ONLY ? '' : '<button class="btn btn-sm btn-secondary" style="margin-left:4px;padding:3px 7px" onclick="expenseSlipPDF(\''+e.id+'\')" title="Slip PDF">📄</button>';
@@ -1265,8 +1269,36 @@ function payReceiptPick(input){
   $('pay-receipt-btn').textContent = '✓ Receipt selected';
 }
 
+// ── Payment proof baad me upload (agar pay ke waqt reh gaya) ──
+function uploadPayProof(id){
+  var inp = document.createElement('input');
+  inp.type='file'; inp.accept='image/*';
+  inp.onchange = async function(){
+    var f = inp.files && inp.files[0];
+    if(!f) return;
+    toast('⏳ Receipt upload ho rahi hai…');
+    try{
+      var safe = f.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+      var path = 'payment-proofs/'+id+'_'+Date.now()+'_'+safe;
+      var upRes = await db.storage.from('payment-receipts').upload(path, f, { upsert:true, contentType:f.type||'image/jpeg' });
+      if(upRes && upRes.error) throw new Error(upRes.error.message||'upload fail');
+      var pub = db.storage.from('payment-receipts').getPublicUrl(path);
+      var url = (pub && pub.data && pub.data.publicUrl) || (SUPABASE_URL+'/storage/v1/object/public/payment-receipts/'+encodeURI(path));
+      var updated = await api('/prajapati_expenses?id=eq.'+id, { method:'PATCH', body:{ payment_receipt_url:url }, prefer:'return=representation' });
+      if(!updated || !updated.length) throw new Error('DB update 0 rows');
+      toast('✓ Payment proof save ho gaya');
+      loadExpenses();
+    }catch(err){ toast('❌ Fail: '+err.message); }
+  };
+  inp.click();
+}
+
 async function confirmPay(){
   if(!_payId) return;
+  // payment proof zaroori — bina receipt pay complete na ho
+  if(!_payReceiptFile){
+    if(!confirm('Payment receipt attach nahi ki!\n\nReceipt ke bina paid mark karna hai?\n(Baad me RECEIPT column se bhi upload kar sakte ho)')) return;
+  }
   var btn = $('expensePayConfirmBtn');
   btn.disabled = true; btn.textContent = '⏳ Saving…';
   var payload = {
