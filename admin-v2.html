@@ -3302,6 +3302,9 @@ label {
           <option value="progress">⇅ Progress</option>
           <option value="target">⇅ Target</option>
         </select>
+        <select id="campaignCreator" onchange="setCampaignCreator(this.value)" style="padding:9px 10px;border:1px solid var(--border);border-radius:9px;font-family:inherit;font-size:13px;background:var(--card);cursor:pointer;color:var(--text-1)">
+          <option value="all">👤 Sab creators</option>
+        </select>
         <div style="display:flex;gap:5px">
           <button class="cf-tab active" data-cf="active" onclick="setCampaignFilter('active')" style="padding:9px 14px;border-radius:8px;border:1px solid var(--border);background:var(--primary);color:#fff;font-family:inherit;font-weight:600;font-size:13px;cursor:pointer">Active</button>
           <button class="cf-tab" data-cf="completed" onclick="setCampaignFilter('completed')" style="padding:9px 14px;border-radius:8px;border:1px solid var(--border);background:var(--card);font-family:inherit;font-weight:600;font-size:13px;cursor:pointer">Completed</button>
@@ -4752,7 +4755,7 @@ async function apiAll(path, pageSize) {
     .replace(/([?&])&+/g, '$1')
     .replace(/[?&]$/, '');
   if (/[?&]order=/.test(base)) {
-    if (!/[?&]order=[^&]*\bid\b/.test(base)) base = base.replace(/([?&]order=[^&]*)/, '$1,id.asc');
+    if (!/[?&]order=[^&]*id/.test(base)) base = base.replace(/([?&]order=[^&]*)/, '$1,id.asc');
   } else {
     base += (base.indexOf('?') === -1 ? '?' : '&') + 'order=id.asc';
   }
@@ -6056,7 +6059,10 @@ function closeCampaignDetail() {
 
 // ─── Admin/Owner: correct any operator's printing entry ───
 function adminEditPrint(entryId, curQty, campId, campKey) {
-  var val = prompt('Correct printing units\n\nCurrent: ' + curQty + ' units\nEnter correct value:', curQty);
+  var val = prompt('Correct printing units
+
+Current: ' + curQty + ' units
+Enter correct value:', curQty);
   if (val === null) return;
   var newQty = parseInt(val);
   if (isNaN(newQty) || newQty < 0) { showToast('Valid number daalein (0+)', 'error'); return; }
@@ -6893,6 +6899,7 @@ function renderCampaigns() {
   var filt = state._campaignFilter || 'active';
   var dateFilt = state._campaignDate || 'all';
   var typeFilt = state._campaignType || 'all';
+  var creatorFilt = state._campaignCreator || 'all';
   var sortBy = state._campaignSort || 'newest';
   var dateBounds = getCampaignDateBounds(dateFilt);
 
@@ -6901,6 +6908,10 @@ function renderCampaigns() {
     var isCompleted = c.completed === true;
     if (filt === 'active' && isCompleted) return false;
     if (filt === 'completed' && !isCompleted) return false;
+    // created-by filter
+    if (creatorFilt !== 'all') {
+      if (campaignCreatorName(c) !== creatorFilt) return false;
+    }
     // search filter
     if (q) {
       var hay = ((c.name||'') + ' ' + (c.campaign_name||'') + ' ' + (c.client_name||'') + ' ' + (c.key||'') + ' ' + (c.campaign_key||'')).toLowerCase();
@@ -6933,6 +6944,7 @@ function renderCampaigns() {
   // Update subtitle + type chips
   updateCampaignsSubtitle(visible.length);
   renderTypeChips();
+  populateCreatorFilter();
   
   if (visible.length === 0) {
     list.innerHTML = '<div class="empty-state"><i class="ti ti-search-off"></i>' + (q ? 'Koi match nahi "' + escapeHtml(q) + '"' : 'Is filter mein koi campaign nahi') + '</div>';
@@ -7010,8 +7022,9 @@ function renderCampaigns() {
         return '<div class="campaign-card-client"><i class="ti ti-building-store" style="font-size:13px;"></i> ' + escapeHtml(cl) + '</div>';
       })();
 
-      // Sales person (top-right)
-      var salesLine = (c.sales_member_name || c.created_by_name) ? '<div class="cc-sales"><i class="ti ti-user" style="font-size:12px;"></i> ' + escapeHtml(c.sales_member_name || c.created_by_name) + '</div>' : '';
+      // Sales person / creator (top-right) — uuid se bhi naam resolve hota hai
+      var _who = c.sales_member_name || campaignCreatorName(c);
+      var salesLine = _who ? '<div class="cc-sales"><i class="ti ti-user" style="font-size:12px;"></i> ' + escapeHtml(_who) + '</div>' : '';
 
       // Action buttons
       var actions =
@@ -7182,6 +7195,53 @@ function getCampaignDateBounds(filter) {
 function setCampaignSort(v) {
   state._campaignSort = v;
   renderCampaigns();
+}
+
+// ⭐ Created-by filter — kisne campaign banayi
+// created_by_name direct hota hai; warna created_by (uuid) se team member ka naam nikaalte hain.
+function campaignCreatorName(c) {
+  if (!c) return '';
+  var nm = (c.created_by_name || '').trim();
+  if (nm) return nm;
+  var uid = c.created_by;
+  if (uid && state.members && state.members.length) {
+    for (var i = 0; i < state.members.length; i++) {
+      if (state.members[i].id === uid) return (state.members[i].name || '').trim();
+    }
+  }
+  return '';
+}
+function setCampaignCreator(v) {
+  state._campaignCreator = v;
+  renderCampaigns();
+}
+function populateCreatorFilter() {
+  var sel = $('campaignCreator');
+  if (!sel || !state.campaigns) return;
+  // members chahiye uuid → naam resolve karne ke liye; na ho to ek baar load karo
+  if ((!state.members || !state.members.length) && !state._creatorMembersLoading) {
+    state._creatorMembersLoading = true;
+    api('/rest/v1/trial_team_members?select=id,name&order=name.asc')
+      .then(function(rows){
+        state.members = rows || [];
+        state._creatorMembersLoading = false;
+        populateCreatorFilter();   // dobara bhar do
+      })
+      .catch(function(){ state._creatorMembersLoading = false; });
+  }
+  var counts = {};
+  state.campaigns.forEach(function(c){
+    var n = campaignCreatorName(c);
+    if (n) counts[n] = (counts[n] || 0) + 1;
+  });
+  var names = Object.keys(counts).sort(function(a,b){ return counts[b] - counts[a]; });
+  var cur = state._campaignCreator || 'all';
+  var h = '<option value="all">👤 Sab creators</option>';
+  names.forEach(function(n){
+    h += '<option value="' + escapeHtml(n) + '">' + escapeHtml(n) + ' (' + counts[n] + ')</option>';
+  });
+  sel.innerHTML = h;
+  sel.value = cur;
 }
 function campProgressPct(c) {
   var target = Number(c.target_vehicles || c.total_quantity || c.target_count || 0);
@@ -7913,7 +7973,7 @@ function mgmSearchAnchor() {
         results.forEach(function(r) {
           var pincode = (r.address && (r.address.postcode || '')).match(/\d{6}/);
           pincode = pincode ? pincode[0] : '';
-          html += '<div class="loc-item" onclick="mgmSelectAnchor(' + r.lat + ', ' + r.lon + ', \'' + (r.display_name || '').replace(/'/g, "\\'") + '\', \'' + pincode + '\')">';
+          html += '<div class="loc-item" onclick="mgmSelectAnchor(' + r.lat + ', ' + r.lon + ', \'' + (r.display_name || '').replace(/'/g, "\'") + '\', \'' + pincode + '\')">';
           html += '<div style="font-size:12px; font-weight:600; color:var(--text-1);">' + escapeHtml((r.display_name || '').substring(0, 80)) + '</div>';
           html += '<div style="font-size:10px; color:var(--text-3); margin-top:2px;">' + (pincode ? '📮 ' + pincode + ' · ' : '') + '📍 ' + parseFloat(r.lat).toFixed(4) + ', ' + parseFloat(r.lon).toFixed(4) + '</div>';
           html += '</div>';
@@ -10410,14 +10470,22 @@ function bulkDeletePhotos() {
     if (byVehicle[v] >= totalLive && totalLive > 0) fullVehicleWipes.push(v);
   });
 
-  var msg = ids.length + ' photos delete karein?\n\n';
-  msg += 'Vehicles: ' + vehicleList.slice(0, 8).join(', ') + (vehicleList.length > 8 ? ' +' + (vehicleList.length-8) + ' more' : '') + '\n';
+  var msg = ids.length + ' photos delete karein?
+
+';
+  msg += 'Vehicles: ' + vehicleList.slice(0, 8).join(', ') + (vehicleList.length > 8 ? ' +' + (vehicleList.length-8) + ' more' : '') + '
+';
   if (fullVehicleWipes.length > 0) {
-    msg += '\n⚠️ WARNING: In ' + fullVehicleWipes.length + ' vehicle(s) ki SAARI photos delete ho jayengi (poora vehicle gayab):\n';
-    msg += fullVehicleWipes.slice(0, 10).join(', ') + '\n';
-    msg += '\nPakka? Yeh photos recover ho sakti hain par confirm karo.';
+    msg += '
+⚠️ WARNING: In ' + fullVehicleWipes.length + ' vehicle(s) ki SAARI photos delete ho jayengi (poora vehicle gayab):
+';
+    msg += fullVehicleWipes.slice(0, 10).join(', ') + '
+';
+    msg += '
+Pakka? Yeh photos recover ho sakti hain par confirm karo.';
   } else {
-    msg += '\n(Soft delete — recover ho sakti hain)';
+    msg += '
+(Soft delete — recover ho sakti hain)';
   }
   if (!confirm(msg)) return;
 
@@ -10943,8 +11011,13 @@ function shareClientWhatsApp(idx) {
 
   if (saved) {
     var ok = confirm(
-      (l.client_name || 'Client') + ' ko WhatsApp bhejein?\n\n' +
-      'Number: +' + saved + '\nCampaign: ' + l.campaign_name + '\n\n' +
+      (l.client_name || 'Client') + ' ko WhatsApp bhejein?
+
+' +
+      'Number: +' + saved + '
+Campaign: ' + l.campaign_name + '
+
+' +
       'OK = bhejo   ·   Cancel = number badlo'
     );
     if (ok) { entered = l.client_phone; }
@@ -10954,8 +11027,12 @@ function shareClientWhatsApp(idx) {
     }
   } else {
     entered = prompt(
-      'Is campaign ka client number nahi mila.\nWhatsApp number daalein (10 digit):\n\n' +
-      'Campaign: ' + l.campaign_name + '\nClient: ' + (l.client_name || '—'),
+      'Is campaign ka client number nahi mila.
+WhatsApp number daalein (10 digit):
+
+' +
+      'Campaign: ' + l.campaign_name + '
+Client: ' + (l.client_name || '—'),
       ''
     );
     if (entered === null) return;
@@ -11528,7 +11605,7 @@ function formatTimeForFilename(isoDate) {
 // sanitizeName
 function sanitizeName(name) {
   if (!name) return 'unknown';
-  return String(name).replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').replace(/\s+/g, '-').substring(0, 60);
+  return String(name).replace(/[<>:"/\|?*\x00-\x1F]/g, '_').replace(/\s+/g, '-').substring(0, 60);
 }
 // ──── downloadPhotosZip (ported from V1) ────
 
@@ -11600,7 +11677,8 @@ function downloadPhotosZip() {
   if ($('photosCity') && $('photosCity').value) fSummary.push('City: ' + $('photosCity').value);
   if ($('photosMode') && $('photosMode').value) fSummary.push('Mode: ' + $('photosMode').value);
   if ($('photosStatus') && $('photosStatus').value) fSummary.push('Status: ' + $('photosStatus').value);
-  var filterText = fSummary.length ? fSummary.join('\n• ') : '(no filters — ALL photos)';
+  var filterText = fSummary.length ? fSummary.join('
+• ') : '(no filters — ALL photos)';
 
   btn.disabled = true;
   btn.innerHTML = '⏳ Loading photos...';
@@ -11618,7 +11696,12 @@ function downloadPhotosZip() {
       }
       
       // Always confirm, showing the filters being applied (transparency)
-      var msg = 'Download ' + photos.length + ' photos (~' + Math.round(photos.length * 0.3) + ' MB)\n\nFilters applied:\n• ' + filterText + '\n\nContinue?';
+      var msg = 'Download ' + photos.length + ' photos (~' + Math.round(photos.length * 0.3) + ' MB)
+
+Filters applied:
+• ' + filterText + '
+
+Continue?';
       if (!confirm(msg)) {
         btn.disabled = false;
         btn.innerHTML = '📦 Download ZIP';
@@ -11832,7 +11915,8 @@ async function downloadStaffReport() {
       } catch(ce){ console.warn('campaigns preload', ce); }
     }
     var data = await buildStaffReportData();
-    if (!data) { alert('❌ Is filter mein koi photo nahi.\nDate range ya campaign badal ke dekho.'); return; }
+    if (!data) { alert('❌ Is filter mein koi photo nahi.
+Date range ya campaign badal ke dekho.'); return; }
     window._staffReportData = data;
     openStaffReportModal(data);
   } catch (e) {
@@ -12381,7 +12465,9 @@ async function downloadExcelReport() {
     console.log('[Excel] Photos loaded:', photos.length);
     
     if (photos.length === 0) {
-      alert('❌ No photos found in selected filters.\n\nTry different date range or campaign.');
+      alert('❌ No photos found in selected filters.
+
+Try different date range or campaign.');
       if (btn) {
         btn.disabled = false;
         btn.innerHTML = originalText;
@@ -12458,22 +12544,37 @@ async function downloadExcelReport() {
     var withOwner = groupArr.filter(function(g) { return g.ownerName; }).length;
     var verified = groupArr.filter(function(g) { return g.isVerified; }).length;
     
-    alert('✅ Excel Report Downloaded!\n\n' +
-          '📁 File: ' + filename + '\n' +
-          '📊 6 Sheets included:\n' +
-          '   1. All Vehicles\n' +
-          '   2. Campaign-wise\n' +
-          '   3. Date-wise\n' +
-          '   4. Team-wise\n' +
-          '   5. Location-wise (NEW!)\n' +
-          '   6. Summary\n\n' +
-          '🚗 Total Vehicles: ' + groupArr.length + '\n' +
-          '✅ Verified: ' + verified + '\n' +
+    alert('✅ Excel Report Downloaded!
+
+' +
+          '📁 File: ' + filename + '
+' +
+          '📊 6 Sheets included:
+' +
+          '   1. All Vehicles
+' +
+          '   2. Campaign-wise
+' +
+          '   3. Date-wise
+' +
+          '   4. Team-wise
+' +
+          '   5. Location-wise (NEW!)
+' +
+          '   6. Summary
+
+' +
+          '🚗 Total Vehicles: ' + groupArr.length + '
+' +
+          '✅ Verified: ' + verified + '
+' +
           '👤 With Owner Details: ' + withOwner);
     
   } catch (err) {
     console.error('Excel report error:', err);
-    alert('❌ Failed: ' + err.message + '\n\nCheck browser console (F12) for details.');
+    alert('❌ Failed: ' + err.message + '
+
+Check browser console (F12) for details.');
     if (btn) {
       btn.disabled = false;
       btn.innerHTML = originalText;
@@ -12641,7 +12742,9 @@ async function generatePPT() {
     var data = await fetchPPTData();
     
     if (data.vehicles.length === 0) {
-      alert('❌ No verified vehicles found in selected filter.\n\nPlease verify vehicles first using Verifier Portal.');
+      alert('❌ No verified vehicles found in selected filter.
+
+Please verify vehicles first using Verifier Portal.');
       btn.disabled = false;
       btn.innerHTML = '📊 Generate PPT';
       return;
@@ -12707,21 +12810,24 @@ async function generatePPT() {
     });
     
     cover.addText([
-      { text: data.vehicles.length + '\n', options: { fontSize: 48, color: COLORS.primary, bold: true, breakLine: true } },
+      { text: data.vehicles.length + '
+', options: { fontSize: 48, color: COLORS.primary, bold: true, breakLine: true } },
       { text: 'Total Vehicles Documented', options: { fontSize: 16, color: COLORS.gray } }
     ], {
       x: 1.5, y: 4.2, w: 3.3, h: 1.6, align: 'center'
     });
     
     cover.addText([
-      { text: data.withOwner + '\n', options: { fontSize: 48, color: COLORS.green, bold: true, breakLine: true } },
+      { text: data.withOwner + '
+', options: { fontSize: 48, color: COLORS.green, bold: true, breakLine: true } },
       { text: 'Owner Details Captured', options: { fontSize: 16, color: COLORS.gray } }
     ], {
       x: 5.0, y: 4.2, w: 3.3, h: 1.6, align: 'center'
     });
     
     cover.addText([
-      { text: data.cities.length + '\n', options: { fontSize: 48, color: COLORS.gold, bold: true, breakLine: true } },
+      { text: data.cities.length + '
+', options: { fontSize: 48, color: COLORS.gold, bold: true, breakLine: true } },
       { text: 'Cities Covered', options: { fontSize: 16, color: COLORS.gray } }
     ], {
       x: 8.5, y: 4.2, w: 3.3, h: 1.6, align: 'center'
@@ -12803,10 +12909,16 @@ async function generatePPT() {
     btn.disabled = false;
     btn.innerHTML = '📊 Generate PPT';
     
-    alert('✅ PPT Generated Successfully!\n\n' +
-          '📄 File: ' + fileName + '\n' +
-          '📊 ' + data.vehicles.length + ' vehicles\n' +
-          '📑 ' + (data.vehicles.length + 2) + ' slides total\n\n' +
+    alert('✅ PPT Generated Successfully!
+
+' +
+          '📄 File: ' + fileName + '
+' +
+          '📊 ' + data.vehicles.length + ' vehicles
+' +
+          '📑 ' + (data.vehicles.length + 2) + ' slides total
+
+' +
           'Check Downloads folder!');
     
     closePPTGen();
@@ -13491,10 +13603,16 @@ async function processBulkUpload() {
     btn.innerHTML = '✅ Upload Complete!';
     
     setTimeout(function() {
-      alert('📤 Bulk Upload Complete!\n\n' +
-            '✅ Uploaded: ' + uploaded + '\n' +
-            (failed > 0 ? '❌ Failed: ' + failed + '\n' : '') +
-            '\n💾 Next ZIP download will use this data\n' +
+      alert('📤 Bulk Upload Complete!
+
+' +
+            '✅ Uploaded: ' + uploaded + '
+' +
+            (failed > 0 ? '❌ Failed: ' + failed + '
+' : '') +
+            '
+💾 Next ZIP download will use this data
+' +
             '💰 No Findr API calls for these vehicles!');
       closeBulkUpload();
       btn.disabled = false;
@@ -13566,13 +13684,23 @@ function downloadVehicleLookupTemplate() {
 
 function configFindrServer() {
   var currentUrl = localStorage.getItem('findr_server_url') || 'http://localhost:3000';
-  var message = 'Findr Server URL Configuration\n\n' +
-    'Current: ' + currentUrl + '\n\n' +
-    'Examples:\n' +
-    '• Local Mac: http://localhost:3000\n' +
-    '• Local PC: http://192.168.1.X:3000\n' +
-    '• Railway: https://your-app.railway.app\n' +
-    '• Vercel: https://your-server.vercel.app\n\n' +
+  var message = 'Findr Server URL Configuration
+
+' +
+    'Current: ' + currentUrl + '
+
+' +
+    'Examples:
+' +
+    '• Local Mac: http://localhost:3000
+' +
+    '• Local PC: http://192.168.1.X:3000
+' +
+    '• Railway: https://your-app.railway.app
+' +
+    '• Vercel: https://your-server.vercel.app
+
+' +
     'Enter new URL (or click OK to keep current):';
   
   var newUrl = prompt(message, currentUrl);
@@ -13602,7 +13730,11 @@ function configFindrServer() {
       if (data.status === 'ok' || data.server) {
         localStorage.setItem('findr_server_url', newUrl);
         FINDR_SERVER_URL = newUrl;
-        alert('✅ Findr server configured!\n\nServer: ' + (data.server || newUrl) + '\nCached: ' + (data.cached || 0) + ' vehicles\nUptime: ' + (data.uptime || 'N/A'));
+        alert('✅ Findr server configured!
+
+Server: ' + (data.server || newUrl) + '
+Cached: ' + (data.cached || 0) + ' vehicles
+Uptime: ' + (data.uptime || 'N/A'));
       } else {
         alert('⚠️ Server responded but doesn\'t look like Findr server. Save anyway?');
         if (confirm('Save URL despite test failure?')) {
@@ -13612,7 +13744,14 @@ function configFindrServer() {
       }
     })
     .catch(function(err) {
-      alert('❌ Could not reach server: ' + err.message + '\n\nMake sure:\n1. Server is running\n2. URL is correct\n3. CORS allows this origin\n\nSave anyway?');
+      alert('❌ Could not reach server: ' + err.message + '
+
+Make sure:
+1. Server is running
+2. URL is correct
+3. CORS allows this origin
+
+Save anyway?');
       if (confirm('Save URL despite test failure?')) {
         localStorage.setItem('findr_server_url', newUrl);
         FINDR_SERVER_URL = newUrl;
@@ -14368,7 +14507,8 @@ async function smartBuildAndDownloadZip(photos, btn) {
       ].join(','));
     });
   });
-  zip.file('photos-index.csv', csvLines.join('\n'));
+  zip.file('photos-index.csv', csvLines.join('
+'));
   
   // ⭐ v16.4: Add failed/skipped photos log file
   if (failedPhotosList.length > 0 || skippedPhotosList.length > 0) {
@@ -14416,7 +14556,8 @@ async function smartBuildAndDownloadZip(photos, btn) {
       });
     }
     
-    zip.file('_FAILED_PHOTOS.txt', failLog.join('\n'));
+    zip.file('_FAILED_PHOTOS.txt', failLog.join('
+'));
   }
   
   // STEP 8: Add README
@@ -14491,7 +14632,8 @@ async function smartBuildAndDownloadZip(photos, btn) {
     '',
     'For queries: info@prajapatiadvertising.co.in',
     '             +91 99 22 138 138'
-  ].filter(function(line) { return line !== ''; }).join('\n');
+  ].filter(function(line) { return line !== ''; }).join('
+');
   zip.file('README.txt', readme);
   
   // STEP 9: Generate final ZIP
@@ -14519,13 +14661,21 @@ async function smartBuildAndDownloadZip(photos, btn) {
   var identified = Object.values(groups).filter(function(g) { return g.hasPlate; }).length;
   var withOwner = Object.values(groups).filter(function(g) { return g.ownerName; }).length;
   
-  var summary = '✅ ZIP Downloaded!\n\n' +
-    '📊 ' + groupCount + ' unique vehicles\n' +
-    '🚗 ' + identified + ' plates identified\n' +
-    '👤 ' + withOwner + ' owner details fetched\n' +
-    '📷 ' + (total - failed) + ' photos packaged\n' +
-    (failed > 0 ? '⚠️ ' + failed + ' photos failed\n' : '') +
-    '\nExcel report inside ZIP has 5 sheets!';
+  var summary = '✅ ZIP Downloaded!
+
+' +
+    '📊 ' + groupCount + ' unique vehicles
+' +
+    '🚗 ' + identified + ' plates identified
+' +
+    '👤 ' + withOwner + ' owner details fetched
+' +
+    '📷 ' + (total - failed) + ' photos packaged
+' +
+    (failed > 0 ? '⚠️ ' + failed + ' photos failed
+' : '') +
+    '
+Excel report inside ZIP has 5 sheets!';
   alert(summary);
 }
 
@@ -15119,7 +15269,9 @@ function inferMediaType(hood, back) {
       photos = photos || [];
       
       if (photos.length === 0) {
-        alert('❌ No photos found in selected filters.\n\nTry different date range or campaign.');
+        alert('❌ No photos found in selected filters.
+
+Try different date range or campaign.');
         if (btn) { btn.disabled = false; btn.innerHTML = originalText; }
         return;
       }
@@ -15131,9 +15283,14 @@ function inferMediaType(hood, back) {
       
       if (verifiedPhotos.length === 0) {
         var proceed = confirm(
-          '⚠️ No verified photos found in this filter.\n\n' +
-          'Total photos: ' + photos.length + '\n' +
-          'Verified: 0\n\n' +
+          '⚠️ No verified photos found in this filter.
+
+' +
+          'Total photos: ' + photos.length + '
+' +
+          'Verified: 0
+
+' +
           'Include unverified photos anyway?'
         );
         if (!proceed) {
@@ -15249,14 +15406,25 @@ function inferMediaType(hood, back) {
       var withContact = vehicles.filter(function(v) { return v.contactNumber; }).length;
       
       alert(
-        '✅ Excel Report Downloaded!\n\n' +
-        'File: ' + filename + '\n\n' +
-        '📊 Summary:\n' +
-        '  Vehicles: ' + vehicles.length + '\n' +
-        '  Photos: ' + totalPhotos + '\n' +
-        '  Coverage: ' + coverage + '\n' +
-        '  With owner name: ' + withOwner + '/' + vehicles.length + '\n' +
-        '  With contact: ' + withContact + '/' + vehicles.length + '\n\n' +
+        '✅ Excel Report Downloaded!
+
+' +
+        'File: ' + filename + '
+
+' +
+        '📊 Summary:
+' +
+        '  Vehicles: ' + vehicles.length + '
+' +
+        '  Photos: ' + totalPhotos + '
+' +
+        '  Coverage: ' + coverage + '
+' +
+        '  With owner name: ' + withOwner + '/' + vehicles.length + '
+' +
+        '  With contact: ' + withContact + '/' + vehicles.length + '
+
+' +
         (withOwner < vehicles.length 
           ? '⚠️ Some vehicles missing owner data. Use Bulk Fetch button to refresh.' 
           : '🎉 All owner details populated!')
@@ -15314,10 +15482,16 @@ function inferMediaType(hood, back) {
         return;
       }
       
-      var confirmMsg = '🔍 Fetch owner + contact details from Verified Database?\n\n' +
-                       'Vehicles: ' + plates.length + '\n' +
-                       'Each fetch makes 2 lookups (Name + Contact)\n' +
-                       'Cached results skip API call (free)\n\n' +
+      var confirmMsg = '🔍 Fetch owner + contact details from Verified Database?
+
+' +
+                       'Vehicles: ' + plates.length + '
+' +
+                       'Each fetch makes 2 lookups (Name + Contact)
+' +
+                       'Cached results skip API call (free)
+
+' +
                        'Proceed?';
       if (!confirm(confirmMsg)) {
         if (btn) { btn.disabled = false; btn.innerHTML = originalText; }
@@ -15352,13 +15526,22 @@ function inferMediaType(hood, back) {
 
       if (toFetch.length === 0) {
         if (btn) { btn.disabled = false; btn.innerHTML = originalText; }
-        alert('✅ Sabhi ' + plates.length + ' vehicles pehle se saved hain (Verified Database cache).\n\nKoi Surepass call nahi hui — ₹' + (plates.length * SUREPASS_COST_EST) + ' bach gaye.\n\nData refresh kar raha hoon…');
+        alert('✅ Sabhi ' + plates.length + ' vehicles pehle se saved hain (Verified Database cache).
+
+Koi Surepass call nahi hui — ₹' + (plates.length * SUREPASS_COST_EST) + ' bach gaye.
+
+Data refresh kar raha hoon…');
         if (typeof loadPhotos === 'function') loadPhotos(true);
         return;
       }
 
       if (skipped > 0) {
-        var proceed = confirm('💰 Cost-saving:\n\n' + skipped + ' vehicles pehle se saved hain → SKIP (free).\n' + toFetch.length + ' missing → Surepass se fetch hongi (~₹' + (toFetch.length * SUREPASS_COST_EST) + ').\n\nProceed?');
+        var proceed = confirm('💰 Cost-saving:
+
+' + skipped + ' vehicles pehle se saved hain → SKIP (free).
+' + toFetch.length + ' missing → Surepass se fetch hongi (~₹' + (toFetch.length * SUREPASS_COST_EST) + ').
+
+Proceed?');
         if (!proceed) { if (btn) { btn.disabled = false; btn.innerHTML = originalText; } return; }
       }
 
@@ -15400,18 +15583,31 @@ function inferMediaType(hood, back) {
       
       if (btn) { btn.disabled = false; btn.innerHTML = originalText; }
       
-      var summary = '✅ Vehicle Owners Fetch Complete!\n\n' +
-        '📊 Results:\n' +
-        '  Total vehicles: ' + plates.length + '\n' +
-        '  Already saved (skipped, free): ' + skipped + '\n' +
-        '  Fetched now: ' + toFetch.length + '\n' +
-        '  Success: ' + success + ' (Cached: ' + cached + ', Fresh: ' + (success - cached) + ')\n' +
-        '  Failed: ' + failed + '\n' +
-        '  ₹ Saved approx: ₹' + (skipped * SUREPASS_COST_EST) + '\n\n';
+      var summary = '✅ Vehicle Owners Fetch Complete!
+
+' +
+        '📊 Results:
+' +
+        '  Total vehicles: ' + plates.length + '
+' +
+        '  Already saved (skipped, free): ' + skipped + '
+' +
+        '  Fetched now: ' + toFetch.length + '
+' +
+        '  Success: ' + success + ' (Cached: ' + cached + ', Fresh: ' + (success - cached) + ')
+' +
+        '  Failed: ' + failed + '
+' +
+        '  ₹ Saved approx: ₹' + (skipped * SUREPASS_COST_EST) + '
+
+';
       
       if (failed > 0 && failedPlates.length > 0) {
-        summary += '⚠️ Failed plates:\n' + failedPlates.slice(0, 10).join('\n');
-        if (failedPlates.length > 10) summary += '\n... and ' + (failedPlates.length - 10) + ' more';
+        summary += '⚠️ Failed plates:
+' + failedPlates.slice(0, 10).join('
+');
+        if (failedPlates.length > 10) summary += '
+... and ' + (failedPlates.length - 10) + ' more';
       }
       
       alert(summary);
