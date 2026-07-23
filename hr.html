@@ -1485,22 +1485,47 @@ async function renderAdvance(root){
         '<i class="ti ti-wallet" style="font-size:30px;color:var(--muted)"></i></div></div>';
     }
 
-    // request form (sab ke liye)
-    h += '<div class="card"><div style="font-size:13px;font-weight:600;margin-bottom:8px">Naya advance '+(admin?'entry / request':'request')+'</div>';
-    if(admin){
-      h += '<label style="font-size:12px;color:var(--muted)">Kiske liye</label><select id="advMember" style="width:100%;height:40px;border:1px solid var(--bd);border-radius:8px;padding:0 8px;margin-bottom:8px"><option value="">-- select --</option></select>';
+    // ── pending advance check: purana clear na ho to naya block ──
+    const myRows = admin ? [] : rows;
+    const myPending = myRows.filter(function(r){
+      return (r.status==='paid' && Number(r.balance_amount||0) > 0) || r.status==='pending';
+    });
+    const blocked = !admin && myPending.length > 0;
+    window.__ADV_BLOCKED = blocked;
+    window.__ADV_BLOCK_ID = blocked ? myPending[0].id : null;
+
+    // request form
+    h += '<div class="card"><div style="font-size:13px;font-weight:600;margin-bottom:8px">Naya advance '+(admin?'entry':'request')+'</div>';
+
+    if(blocked){
+      const b = myPending[0];
+      const bBal = Number(b.balance_amount||0);
+      h += '<div class="c-amber" style="border-radius:10px;padding:12px 14px;margin-bottom:10px;font-size:12.5px">'+
+        '<b>Purana advance abhi baaki hai</b><br>'+
+        (b.status==='pending' ? 'Ek request pehle se pending hai (approval ka intezaar).'
+                              : inr(b.amount)+' liya tha, '+inr(bBal)+' abhi baaki hai.')+
+        '<br><span style="color:var(--muted)">Pehle wo pura ho jaye, phir naya request kar sakte ho.</span></div>';
+      h += '<div style="font-size:12px;color:var(--muted);margin-bottom:6px">Bahut zaroori hai? Neeche apni baat likho — admin dekhega.</div>';
+      h += '<textarea id="advSpecial" rows="3" placeholder="Kyun zaroori hai, likho..." style="width:100%;border:1px solid var(--bd);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:13px;margin-bottom:8px"></textarea>';
+      h += '<label style="font-size:12px;color:var(--muted)">Kitna chahiye (₹)</label><input id="advAmt" type="number" placeholder="0" style="width:100%;height:40px;border:1px solid var(--bd);border-radius:8px;padding:0 10px;margin-bottom:10px">';
+      h += '<button class="btn-primary" style="width:100%;height:44px;font-weight:600;background:var(--amber)" onclick="submitAdvance(this)">Special request bhejo</button>';
+    } else {
+      if(admin){
+        h += '<label style="font-size:12px;color:var(--muted)">Kiske liye</label><select id="advMember" style="width:100%;height:40px;border:1px solid var(--bd);border-radius:8px;padding:0 8px;margin-bottom:8px"><option value="">-- select --</option></select>';
+      }
+      h += '<label style="font-size:12px;color:var(--muted)">Amount (₹)</label><input id="advAmt" type="number" placeholder="0" oninput="advKistPreview()" style="width:100%;height:40px;border:1px solid var(--bd);border-radius:8px;padding:0 10px;margin-bottom:8px">';
+      h += '<label style="font-size:12px;color:var(--muted)">Kis liye</label><input id="advReason" placeholder="reason" style="width:100%;height:40px;border:1px solid var(--bd);border-radius:8px;padding:0 10px;margin-bottom:8px">';
+      h += '<label style="font-size:12px;color:var(--muted)">Kitni kist me katega</label>'+
+        '<select id="advMonths" onchange="advKistPreview()" style="width:100%;height:40px;border:1px solid var(--bd);border-radius:8px;padding:0 8px;margin-bottom:8px">'+
+        '<option value="1">1 month — agli salary me pura</option>'+
+        '<option value="2">2 month — 2 barabar kist</option>'+
+        '<option value="3">3 month — 3 barabar kist</option></select>';
+      h += '<div id="advKistBox" style="margin-bottom:10px"></div>';
+      if(admin){
+        h += '<label style="font-size:12px;color:var(--muted)">Katna kab se shuru (YYYY-MM)</label><input id="advStart" value="'+(new Date().toISOString().slice(0,7))+'" style="width:100%;height:40px;border:1px solid var(--bd);border-radius:8px;padding:0 10px;margin-bottom:10px">';
+      }
+      h += '<button class="btn-primary" style="width:100%;height:44px;font-weight:600" onclick="submitAdvance(this)">'+(admin?'Add advance':'Request bhejo')+'</button>';
     }
-    h += '<label style="font-size:12px;color:var(--muted)">Amount (₹)</label><input id="advAmt" type="number" placeholder="0" style="width:100%;height:40px;border:1px solid var(--bd);border-radius:8px;padding:0 10px;margin-bottom:8px">';
-    h += '<label style="font-size:12px;color:var(--muted)">Kis liye</label><input id="advReason" placeholder="reason" style="width:100%;height:40px;border:1px solid var(--bd);border-radius:8px;padding:0 10px;margin-bottom:8px">';
-    if(admin){
-      h += '<label style="font-size:12px;color:var(--muted)">Recovery kaise</label>'+
-        '<select id="advMode" onchange="advModeChange()" style="width:100%;height:40px;border:1px solid var(--bd);border-radius:8px;padding:0 8px;margin-bottom:8px">'+
-        '<option value="monthly_amount">Har month fixed amount</option>'+
-        '<option value="months">Kitne months me (auto divide)</option></select>';
-      h += '<div id="advModeBox"><label style="font-size:12px;color:var(--muted)">Har month kitna kate (₹)</label><input id="advPerMonth" type="number" placeholder="0" style="width:100%;height:40px;border:1px solid var(--bd);border-radius:8px;padding:0 10px;margin-bottom:8px"></div>';
-      h += '<label style="font-size:12px;color:var(--muted)">Katna kab se shuru (YYYY-MM)</label><input id="advStart" placeholder="'+(new Date().toISOString().slice(0,7))+'" value="'+(new Date().toISOString().slice(0,7))+'" style="width:100%;height:40px;border:1px solid var(--bd);border-radius:8px;padding:0 10px;margin-bottom:10px">';
-    }
-    h += '<button class="btn-primary" style="width:100%;height:44px;font-weight:600" onclick="submitAdvance(this)">'+(admin?'Add advance':'Request bhejo')+'</button>';
     h += '<div id="advErr" style="color:var(--red);font-size:12px;margin-top:8px"></div></div>';
 
     // list
@@ -1513,9 +1538,11 @@ async function renderAdvance(root){
       h += '<div class="card" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:flex-start">'+
         '<div style="flex:1"><div style="font-size:14px;font-weight:600">'+esc(r.member_name||'')+' · '+inr(r.amount)+'</div>'+
         '<div style="font-size:11px;color:var(--muted)">'+esc(r.reason||'')+' · '+(r.requested_at||'').slice(0,10)+'</div>'+
+        (r.is_special_request ? '<div class="c-amber" style="border-radius:8px;padding:7px 9px;margin-top:5px;font-size:11.5px"><b>⚠️ Special request</b><br>'+esc(r.special_reason||'')+'</div>' : '')+
         (r.status==='paid' ? '<div style="font-size:12px;margin-top:4px">Wasool: '+inr(r.recovered_amount||0)+' · <b style="color:'+(bal>0?'var(--red)':'var(--green)')+'">Baaki: '+inr(bal)+'</b></div>' : '')+
         (r.monthly_deduction>0 ? '<div style="font-size:11px;color:var(--muted)">Har month: '+inr(r.monthly_deduction)+'</div>' : '')+
         (r.recovery_mode==='months'&&r.total_months ? '<div style="font-size:11px;color:var(--muted)">'+r.total_months+' months me</div>' : '')+
+        (r.status==='paid' && bal>0 ? '<button class="btn-sm" style="margin-top:6px;background:var(--s1);font-size:11px;padding:4px 10px" onclick="toggleEmi(\''+r.id+'\')">📅 EMI plan dekho</button><div id="emi-'+r.id+'" style="display:none;margin-top:8px"></div>' : '')+
         '</div>'+
         '<span class="pill" style="background:var(--s1);color:'+stCol+'">'+esc(done?'chuka diya':(r.status||'')) +'</span></div>';
       if(admin && r.status!=='paid'){
@@ -1536,19 +1563,34 @@ async function renderAdvance(root){
     }
   } catch(e){ root.innerHTML='<div class="card" style="color:var(--red)">Load fail: '+esc(e.message)+'</div>'; }
 }
-function advModeChange(){
-  const mode=(document.getElementById('advMode')||{}).value;
-  const box=document.getElementById('advModeBox');
-  if(!box) return;
-  box.innerHTML = (mode==='months')
-    ? '<label style="font-size:12px;color:var(--muted)">Kitne months me</label><input id="advMonths" type="number" placeholder="5" style="width:100%;height:40px;border:1px solid var(--bd);border-radius:8px;padding:0 10px;margin-bottom:8px">'
-    : '<label style="font-size:12px;color:var(--muted)">Har month kitna kate (₹)</label><input id="advPerMonth" type="number" placeholder="0" style="width:100%;height:40px;border:1px solid var(--bd);border-radius:8px;padding:0 10px;margin-bottom:8px">';
+// kist ka live preview — kitna kab katega
+function advKistPreview(){
+  const box=document.getElementById('advKistBox'); if(!box) return;
+  const amt=Number(v('advAmt')||0);
+  const n=Number((document.getElementById('advMonths')||{}).value||1);
+  if(!amt||amt<=0){ box.innerHTML=''; return; }
+  const base=Math.round(amt/n), last=amt-(base*(n-1));
+  const d=new Date(); let y=d.getFullYear(), m=d.getMonth()+2;
+  if(m>12){m-=12;y++;}
+  let rows='';
+  for(let i=0;i<n;i++){
+    const amtI = (i===n-1)? last : base;
+    rows+='<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0'+(i?';border-top:1px solid var(--bd)':'')+'">'+
+      '<span style="color:var(--muted)">'+y+'-'+String(m).padStart(2,'0')+'</span>'+
+      '<b>'+inr(amtI)+'</b></div>';
+    m++; if(m>12){m=1;y++;}
+  }
+  box.innerHTML='<div style="background:var(--s1);border-radius:10px;padding:10px">'+
+    '<div style="font-size:11px;color:var(--muted);margin-bottom:4px">Salary se aise katega:</div>'+rows+'</div>';
 }
 async function submitAdvance(btn){
   const admin=isAdmin();
   const err=document.getElementById('advErr'); if(err)err.textContent='';
   const amt=Number(v('advAmt')||0);
   if(!amt||amt<=0){ if(err)err.textContent='Amount daalo'; return; }
+  const special = !!window.__ADV_BLOCKED;
+  const specialMsg = special ? (v('advSpecial')||'').trim() : '';
+  if(special && specialMsg.length < 5){ if(err)err.textContent='Kyun zaroori hai, thoda likho'; return; }
   let mid=USER.id, mname=USER.name, mphone=USER.phone;
   if(admin){
     const sel=document.getElementById('advMember');
@@ -1556,25 +1598,104 @@ async function submitAdvance(btn){
     mid=sel.value; mname=sel.options[sel.selectedIndex].textContent;
     mphone=sel.options[sel.selectedIndex].dataset.phone||'';
   }
+  const btnTxt = special ? 'Special request bhejo' : (admin?'Add advance':'Request bhejo');
   btn=btn||(typeof event!=="undefined"&&event.target); if(btn){btn.disabled=true;btn.textContent='Saving...';}
   try {
     const row={ member_id:mid, member_name:mname, member_phone:mphone, amount:amt,
-      reason:v('advReason')||'', status: admin?'approved':'pending',
+      reason: special ? 'SPECIAL REQUEST' : (v('advReason')||''),
+      status: admin?'approved':'pending',
       requested_at:new Date().toISOString(), source:'hr',
       created_by:USER.id, created_by_name:USER.name };
+    if(special){
+      row.is_special_request = true;
+      row.special_reason = specialMsg;
+      row.blocked_by_advance_id = window.__ADV_BLOCK_ID || null;
+    }
     if(admin){
-      const mode=(document.getElementById('advMode')||{}).value||'monthly_amount';
-      row.recovery_mode=mode;
-      if(mode==='months'){ row.total_months=Number(v('advMonths')||0)||null; row.monthly_deduction=row.total_months?Math.round(amt/row.total_months):0; }
-      else row.monthly_deduction=Number(v('advPerMonth')||0);
+      const n=Number((document.getElementById('advMonths')||{}).value||1);
+      row.recovery_mode='months';
+      row.total_months=n;
+      row.monthly_deduction=Math.round(amt/n);
       row.recovery_start_month=v('advStart')||new Date().toISOString().slice(0,7);
       row.recovery_status='pending';
+    } else if(!special){
+      // employee ne kist chuni — admin approve pe wahi lagega
+      const n=Number((document.getElementById('advMonths')||{}).value||1);
+      row.recovery_mode='months';
+      row.total_months=n;
+      row.monthly_deduction=Math.round(amt/n);
     }
     await api('/prajapati_advances',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(row)});
-    toast(admin?'Advance add ho gaya ✓':'Request bhej di ✓');
+    // admin ko WhatsApp notify (special request pe)
+    if(special){ try{ notifyWhatsApp('9922138138','Admin','hr_expense_new',[USER.name||'', String(amt), 'SPECIAL ADVANCE'],'advance'); }catch(e){} }
+    toast(special?'Special request bhej di ✓':(admin?'Advance add ho gaya ✓':'Request bhej di ✓'));
     nav('advance');
-  } catch(ex){ if(err)err.textContent='Fail: '+ex.message; if(btn){btn.disabled=false;btn.textContent=admin?'Add advance':'Request bhejo';} }
+  } catch(ex){ if(err)err.textContent='Fail: '+ex.message; if(btn){btn.disabled=false;btn.textContent=btnTxt;} }
 }
+// ── EMI schedule: kaise katega, month by month ──
+function buildEmiPlan(adv){
+  const amt = Number(adv.amount||0);
+  const recovered = Number(adv.recovered_amount||0);
+  let bal = Number(adv.balance_amount||0);
+  let inst = (adv.recovery_mode==='months' && adv.total_months)
+    ? Math.round(amt / adv.total_months)
+    : Number(adv.monthly_deduction||0);
+  if(inst<=0) return { rows:[], err:'Monthly amount set nahi hai — Edit karke set karo' };
+  // start month
+  let sm = adv.recovery_start_month || new Date().toISOString().slice(0,7);
+  let [y,m] = sm.split('-').map(Number);
+  const now = new Date().toISOString().slice(0,7);
+  const rows = [];
+  let guard = 0;
+  while(bal > 0 && guard < 60){
+    const take = Math.min(inst, bal);
+    const mk = y+'-'+String(m).padStart(2,'0');
+    bal = Math.round((bal - take)*100)/100;
+    rows.push({ month:mk, amount:take, balAfter:bal, past: mk < now, current: mk===now });
+    m++; if(m>12){ m=1; y++; }
+    guard++;
+  }
+  return { rows, inst, recovered, amt };
+}
+async function toggleEmi(id){
+  const box = document.getElementById('emi-'+id);
+  if(!box) return;
+  if(box.style.display !== 'none'){ box.style.display='none'; return; }
+  box.style.display='block';
+  box.innerHTML='<div style="font-size:11px;color:var(--muted)">loading…</div>';
+  try{
+    const rows = await api('/prajapati_advances?select=*&id=eq.'+id);
+    const adv = rows && rows[0];
+    if(!adv){ box.innerHTML='<div style="font-size:11px;color:var(--red)">Advance nahi mila</div>'; return; }
+    const plan = buildEmiPlan(adv);
+    if(plan.err){ box.innerHTML='<div class="pill pill-amber" style="display:block;padding:8px;font-size:11px">'+plan.err+'</div>'; return; }
+    // already deducted installments
+    let done = [];
+    try{ done = await api('/prajapati_advance_installments?select=salary_month,deducted_amount,status&advance_id=eq.'+id+'&order=salary_month') || []; }catch(e){}
+    const doneMap = {};
+    done.forEach(function(d){ doneMap[d.salary_month] = d; });
+
+    let h='<div style="background:var(--s1);border-radius:10px;padding:10px">';
+    h+='<div style="font-size:11px;color:var(--muted);margin-bottom:6px">Total '+inr(plan.amt)+' · har month '+inr(plan.inst)+' · '+plan.rows.length+' kist</div>';
+    h+='<table style="width:100%;font-size:12px;border-collapse:collapse">';
+    h+='<tr style="color:var(--muted);font-size:10px;text-transform:uppercase"><th style="text-align:left;padding:3px 0">Month</th><th style="text-align:right">Kist</th><th style="text-align:right">Baaki</th><th style="text-align:center">Status</th></tr>';
+    plan.rows.forEach(function(r){
+      const d = doneMap[r.month];
+      const st = d ? (d.status==='skipped' ? '<span style="color:var(--amber)">skip</span>' : '<span style="color:var(--green)">✓ kata</span>')
+                   : (r.current ? '<span style="color:var(--teal)">is month</span>' : '<span style="color:var(--muted)">baaki</span>');
+      h+='<tr style="border-top:1px solid var(--bd)">'+
+        '<td style="padding:5px 0">'+r.month+'</td>'+
+        '<td style="text-align:right;font-weight:600">'+inr(d?d.deducted_amount:r.amount)+'</td>'+
+        '<td style="text-align:right;color:var(--muted)">'+inr(r.balAfter)+'</td>'+
+        '<td style="text-align:center;font-size:11px">'+st+'</td></tr>';
+    });
+    h+='</table>';
+    h+='<div style="font-size:10px;color:var(--muted);margin-top:6px">Salary banate waqt ye apne aap katega — chaho to kam/zyada ya skip kar sakte ho.</div>';
+    h+='</div>';
+    box.innerHTML=h;
+  }catch(e){ box.innerHTML='<div style="font-size:11px;color:var(--red)">Fail: '+esc(e.message)+'</div>'; }
+}
+
 async function advApprove(id){
   if(!confirm('Approve karke paid mark karein?')) return;
   try{
