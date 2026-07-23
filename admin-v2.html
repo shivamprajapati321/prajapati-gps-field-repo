@@ -3302,6 +3302,9 @@ label {
           <option value="progress">⇅ Progress</option>
           <option value="target">⇅ Target</option>
         </select>
+        <select id="campaignCreator" onchange="setCampaignCreator(this.value)" style="padding:9px 10px;border:1px solid var(--border);border-radius:9px;font-family:inherit;font-size:13px;background:var(--card);cursor:pointer;color:var(--text-1)">
+          <option value="all">Sab creators</option>
+        </select>
         <div style="display:flex;gap:5px">
           <button class="cf-tab active" data-cf="active" onclick="setCampaignFilter('active')" style="padding:9px 14px;border-radius:8px;border:1px solid var(--border);background:var(--primary);color:#fff;font-family:inherit;font-weight:600;font-size:13px;cursor:pointer">Active</button>
           <button class="cf-tab" data-cf="completed" onclick="setCampaignFilter('completed')" style="padding:9px 14px;border-radius:8px;border:1px solid var(--border);background:var(--card);font-family:inherit;font-weight:600;font-size:13px;cursor:pointer">Completed</button>
@@ -6893,6 +6896,7 @@ function renderCampaigns() {
   var filt = state._campaignFilter || 'active';
   var dateFilt = state._campaignDate || 'all';
   var typeFilt = state._campaignType || 'all';
+  var creatorFilt = state._campaignCreator || 'all';
   var sortBy = state._campaignSort || 'newest';
   var dateBounds = getCampaignDateBounds(dateFilt);
 
@@ -6901,6 +6905,7 @@ function renderCampaigns() {
     var isCompleted = c.completed === true;
     if (filt === 'active' && isCompleted) return false;
     if (filt === 'completed' && !isCompleted) return false;
+    if (creatorFilt !== 'all' && campaignCreatorName(c) !== creatorFilt) return false;
     // search filter
     if (q) {
       var hay = ((c.name||'') + ' ' + (c.campaign_name||'') + ' ' + (c.client_name||'') + ' ' + (c.key||'') + ' ' + (c.campaign_key||'')).toLowerCase();
@@ -6933,6 +6938,7 @@ function renderCampaigns() {
   // Update subtitle + type chips
   updateCampaignsSubtitle(visible.length);
   renderTypeChips();
+  populateCreatorFilter();
   
   if (visible.length === 0) {
     list.innerHTML = '<div class="empty-state"><i class="ti ti-search-off"></i>' + (q ? 'Koi match nahi "' + escapeHtml(q) + '"' : 'Is filter mein koi campaign nahi') + '</div>';
@@ -7182,6 +7188,40 @@ function getCampaignDateBounds(filter) {
 function setCampaignSort(v) {
   state._campaignSort = v;
   renderCampaigns();
+}
+function campaignCreatorName(c) {
+  if (!c) return '';
+  var nm = (c.created_by_name || '').trim();
+  if (nm) return nm;
+  var uid = c.created_by;
+  if (uid && state.members && state.members.length) {
+    for (var i = 0; i < state.members.length; i++) {
+      if (state.members[i].id === uid) return (state.members[i].name || '').trim();
+    }
+  }
+  return '';
+}
+function setCampaignCreator(v) {
+  state._campaignCreator = v;
+  renderCampaigns();
+}
+function populateCreatorFilter() {
+  var sel = document.getElementById('campaignCreator');
+  if (!sel || !state.campaigns) return;
+  if ((!state.members || !state.members.length) && !state._creatorLoading) {
+    state._creatorLoading = true;
+    api('/rest/v1/trial_team_members?select=id,name&order=name.asc')
+      .then(function(rows){ state.members = rows || []; state._creatorLoading = false; populateCreatorFilter(); })
+      .catch(function(){ state._creatorLoading = false; });
+  }
+  var counts = {};
+  state.campaigns.forEach(function(c){ var n = campaignCreatorName(c); if (n) counts[n] = (counts[n] || 0) + 1; });
+  var names = Object.keys(counts).sort(function(a,b){ return counts[b] - counts[a]; });
+  var cur = state._campaignCreator || 'all';
+  var out = '<option value="all">Sab creators</option>';
+  names.forEach(function(n){ out += '<option value="' + escapeHtml(n) + '">' + escapeHtml(n) + ' (' + counts[n] + ')</option>'; });
+  sel.innerHTML = out;
+  sel.value = cur;
 }
 function campProgressPct(c) {
   var target = Number(c.target_vehicles || c.total_quantity || c.target_count || 0);
