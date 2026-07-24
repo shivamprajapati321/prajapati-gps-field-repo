@@ -10648,7 +10648,8 @@ function loadClientLinks() {
   var linksP = api('/rest/v1/trial_client_links?select=*').catch(function(){ return []; });
   
   Promise.all([campP, linksP]).then(function(results) {
-    var campaigns = (results[0] || []).filter(function(c){ return c.active; });
+    // Sirf live campaigns ke links — completed wale client ko nahi bhejne.
+    var campaigns = (results[0] || []).filter(function(c){ return c.active && c.completed !== true; });
     var savedLinks = results[1] || [];
 
     // ⭐ SCOPE: sales (non-full-view) ko sirf APNE campaigns ke client links dikhein.
@@ -10691,6 +10692,7 @@ function loadClientLinks() {
         token: (saved && saved.token) || genClientToken(),
         active: saved ? saved.active : true,
         status: c.status || '',
+        completed: c.completed === true,
         start_date: c.start_date || null,
         view_count: (saved && saved.view_count) || 0,
         last_viewed_at: saved && saved.last_viewed_at,
@@ -10790,9 +10792,13 @@ function clClassify(l) {
   var yestStr = new Date(nowIST.getTime() - 86400000).toISOString().slice(0, 10);
   var lastActIST = l.last_activity ? new Date(new Date(l.last_activity).getTime() + 5.5 * 3600 * 1000).toISOString().slice(0, 10) : null;
   var st = String(l.status || '').toLowerCase();
+  // NOTE: campaign.completed (boolean) hi asli completion flag hai.
+  // status = pipeline stage (draft / plan_locked / production_done) — usse completion mat samjho,
+  // warna har draft campaign "completed" gin ke Active 0 dikhne lagta tha.
+  var done = (l.completed === true) || st === 'completed' || st === 'complete';
   return {
-    isCompleted: st === 'completed' || st === 'complete' || !l.active,
-    isActive: l.active && st !== 'completed' && st !== 'complete',
+    isCompleted: done || !l.active,
+    isActive: !!l.active && !done,
     liveToday: lastActIST === todayStr,
     activeYesterday: lastActIST === yestStr,
     hasPhone: !!(l.client_phone && String(l.client_phone).replace(/\D/g, '').length >= 10),
