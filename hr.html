@@ -1628,13 +1628,20 @@ async function trkLive(){
     const outT = r.check_out_time ? new Date(r.check_out_time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true,timeZone:'Asia/Kolkata'}) : null;
     const initials = (m.name||'?').split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
     const stripe = outY ? 'var(--muted)' : (isLive ? 'var(--teal)' : 'var(--amber)');
+    const posNote = (!outY && !p) ? 'Live GPS nahi mil raha — sirf punch-in location hai' : null;
 
-    // location label — distance se, flag se nahi (flag purana galat data ho sakta)
+    // Location kitni purani hai? ping ho to ping ka time, warna punch-in ka.
+    // (Bina ping ke sirf punch-in point hota hai — wo 8 ghante purana bhi ho sakta,
+    //  isliye usko "live" dikhana galat hai.)
+    const posAgeMin = p ? ageMin : (r.check_in_time ? Math.round((Date.now()-new Date(r.check_in_time))/60000) : null);
+    const stale = !outY && posAgeMin != null && posAgeMin > 20;
+
     let locTxt, locCol;
     if (dist == null) { locTxt = 'GPS nahi'; locCol = 'var(--muted)'; }
     else if (off && dist <= (off.geofence_radius_meters||300)) { locTxt = 'Office me'; locCol = 'var(--green)'; }
     else if (dist < 1000) { locTxt = dist+'m door'; locCol = 'var(--sec)'; }
     else { locTxt = (dist/1000).toFixed(1)+' km door'; locCol = 'var(--amber)'; }
+    if (stale) locCol = 'var(--muted)';
 
     h += '<div class="card" style="margin-bottom:8px;border-left:3px solid '+stripe+';padding:11px 13px">'+
       '<div style="display:flex;gap:10px;align-items:flex-start">'+
@@ -1648,10 +1655,16 @@ async function trkLive(){
           '<div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;margin-top:6px">'+
             '<span style="color:var(--sec)"><i class="ti ti-clock" style="font-size:12px;vertical-align:-2px"></i> '+trkHM(hrs)+'</span>'+
             '<span style="color:'+locCol+'"><i class="ti ti-map-pin" style="font-size:12px;vertical-align:-2px"></i> '+locTxt+'</span>'+
-            (p ? '<span style="color:var(--muted)">'+(ageMin<1?'abhi':ageMin+' min pehle')+'</span>' : '')+
+            (p
+              ? '<span style="color:var(--muted)">'+(ageMin<1?'abhi':ageMin+' min pehle')+'</span>'
+              : (posAgeMin!=null
+                  ? '<span style="color:'+(stale?'var(--amber)':'var(--muted)')+'">punch-in ka point · '+
+                    (posAgeMin<60 ? posAgeMin+' min' : Math.round(posAgeMin/60)+'h')+' purana</span>'
+                  : ''))+
             (p && p.battery_pct!=null ? '<span style="color:'+(p.battery_pct<20?'var(--red)':'var(--muted)')+'"><i class="ti ti-battery-2" style="font-size:12px;vertical-align:-2px"></i> '+p.battery_pct+'%</span>' : '')+
           '</div>'+
           '<div style="font-size:10.5px;color:var(--muted);margin-top:4px">in '+inT+(outT?' · out '+outT:'')+'</div>'+
+          (posNote && stale ? '<div style="font-size:10.5px;color:var(--amber);margin-top:4px"><i class="ti ti-alert-triangle" style="font-size:12px;vertical-align:-2px"></i> '+posNote+'</div>' : '')+
         '</div>'+
         '<div style="text-align:right;flex-shrink:0">'+
           '<span class="pill" style="background:var(--s1);color:'+(outY?'var(--muted)':'var(--green)')+';font-size:10px">'+(outY?'gaya':'kaam pe')+'</span>'+
@@ -1661,8 +1674,10 @@ async function trkLive(){
   });
 
   if(!(pings||[]).length && working.length){
-    h += '<div class="c-amber" style="border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:11.5px">'+
-      '<b>Live GPS abhi shuru nahi hua</b><br>Naya version deploy hone ke baad, jo log punch karenge unki location har 5 min update hogi.</div>';
+    h += '<div class="c-amber" style="border-radius:10px;padding:11px 13px;margin-bottom:10px;font-size:11.5px;line-height:1.6">'+
+      '<b>⚠️ Live GPS band hai — ye locations purani hain</b><br>'+
+      'Neeche jo dikh raha wo har banda jahan <b>punch kiya tha</b> wahi point hai. Uske baad wo kahin bhi ja sakta hai.<br>'+
+      '<span style="color:var(--muted)">Live tracking ke liye team ko naya app version kholna hoga (punch ke baad har 5 min GPS bhejega).</span></div>';
   }
 
   const punched = {}; list.forEach(r=>punched[r.member_id]=1);
