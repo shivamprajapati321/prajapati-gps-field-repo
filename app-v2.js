@@ -1456,12 +1456,26 @@ window.cancelEntry = function(){
   loadAssignment();
 };
 
+// Caret-safe cleanup: input.value set karte hi browser cursor ko END pe bhej deta hai.
+// Isliye value sirf tab likhte hain jab sach me badli ho, aur cursor wapas apni jagah rakhte hain.
+// (Warna beech me correction karte waqt agla akshar galat jagah jata tha — lagta tha akshar mit gaye.)
+function _veSetCaretSafe(el, cleaned){
+  if (!el || el.value === cleaned) return;
+  var pos = el.selectionStart;
+  var removed = el.value.length - cleaned.length;
+  el.value = cleaned;
+  try {
+    var np = Math.max(0, Math.min(cleaned.length, (pos == null ? cleaned.length : pos - removed)));
+    el.setSelectionRange(np, np);
+  } catch(e){}
+}
+
 window.veCleanContact = function(el){
-  el.value = String(el.value || '').replace(/[^0-9]/g, '').slice(0,10);
+  _veSetCaretSafe(el, String(el.value || '').replace(/[^0-9]/g, '').slice(0,10));
 };
 
 window.veCleanNum = function(el){
-  el.value = cleanVehicleNumber(el.value);
+  _veSetCaretSafe(el, cleanVehicleNumber(el.value));
 };
 
 var _veDupTimer = null;
