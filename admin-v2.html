@@ -7194,9 +7194,13 @@ function campaignCreatorName(c) {
   var nm = (c.created_by_name || '').trim();
   if (nm) return nm;
   var uid = c.created_by;
-  if (uid && state.members && state.members.length) {
-    for (var i = 0; i < state.members.length; i++) {
-      if (state.members[i].id === uid) return (state.members[i].name || '').trim();
+  if (uid) {
+    var pool = (state._creatorMembers && state._creatorMembers.length) ? state._creatorMembers
+             : ((state.members && state.members.length) ? state.members : null);
+    if (pool) {
+      for (var i = 0; i < pool.length; i++) {
+        if (pool[i].id === uid) return (pool[i].name || '').trim();
+      }
     }
   }
   return '';
@@ -7208,10 +7212,13 @@ function setCampaignCreator(v) {
 function populateCreatorFilter() {
   var sel = document.getElementById('campaignCreator');
   if (!sel || !state.campaigns) return;
-  if ((!state.members || !state.members.length) && !state._creatorLoading) {
+  // NOTE: apna alag cache — state.members ko kabhi overwrite mat karo.
+  // (state.members poore rows rakhta hai; yahan sirf id+name chahiye.
+  //  Overwrite karne se Daily Assignments jaise screens ka m.active undefined ho jata tha.)
+  if ((!state._creatorMembers || !state._creatorMembers.length) && !state._creatorLoading) {
     state._creatorLoading = true;
     api('/rest/v1/trial_team_members?select=id,name&order=name.asc')
-      .then(function(rows){ state.members = rows || []; state._creatorLoading = false; populateCreatorFilter(); })
+      .then(function(rows){ state._creatorMembers = rows || []; state._creatorLoading = false; populateCreatorFilter(); })
       .catch(function(){ state._creatorLoading = false; });
   }
   var counts = {};
@@ -8698,7 +8705,9 @@ function loadAssignments() {
   $('assignmentsList').innerHTML = '<div class="spinner"></div>';
   
   // Ensure members + campaigns loaded
-  var memberP = state.members.length > 0 ? Promise.resolve(state.members) : api('/rest/v1/trial_team_members?active=eq.true&order=name&select=*');
+  // cached list tabhi use karo jab usme poore row hain (active field maujood ho)
+  var cachedOk = state.members.length > 0 && state.members[0] && ('active' in state.members[0]);
+  var memberP = cachedOk ? Promise.resolve(state.members) : api('/rest/v1/trial_team_members?active=eq.true&order=name&select=*');
   var campaignP = state.campaigns.length > 0 ? Promise.resolve(state.campaigns) : api('/rest/v1/trial_campaigns?active=eq.true&order=name&select=*');
   var assignP = api('/rest/v1/trial_daily_assignments?assignment_date=eq.' + date + '&select=*');
   
