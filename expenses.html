@@ -1197,7 +1197,12 @@ function renderExpenseTable(){
     var d = e.expense_date ? new Date(e.expense_date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}) : '—';
     var typeTag = e.expense_type==='campaign' ? '<span class="tag tag-camp">Campaign</span>' : '<span class="tag tag-int">Internal</span>';
     var srcTag = e.source==='field' ? ' <span class="tag" style="background:#EEF2FF;color:#4338CA">field</span>' : '';
-    var forCol = e.expense_type==='campaign' ? esc(getWork(e.campaign_name)) : esc(e.internal_category||'—');
+    var _isAdv = /^advance$/i.test(String(e.internal_category||'').trim());
+    var forCol = e.expense_type==='campaign'
+      ? esc(getWork(e.campaign_name))
+      : (_isAdv
+          ? '<span style="display:inline-flex;align-items:center;gap:4px;background:#EDE9FE;color:#5B21B6;border:1px solid #C4B5FD;border-radius:6px;padding:2px 7px;font-size:11px;font-weight:700" title="Ye ADVANCE hai — HR app ke Advance section me recovery track hoti hai">🏦 ADVANCE</span>'
+          : esc(e.internal_category||'—'));
     var partyCol = e.expense_type==='campaign'
       ? (e.team_member_name ? esc(e.team_member_name) : '<span style="color:var(--text-dim)">—</span>')
       : ((e.internal_party || e.team_member_name) ? esc(e.internal_party || e.team_member_name) : '<span style="color:var(--text-dim)">—</span>');
@@ -1246,7 +1251,12 @@ function markPaid(id){
   _payId = id;
   var body = $('expensePayBody');
   var html = '';
+  var _dIsAdv = /^advance$/i.test(String(e.internal_category||'').trim());
   html += '<div style="background:#f8f9fc;border-radius:10px;padding:12px;margin-bottom:14px"><div style="font-weight:700;color:var(--navy)">'+esc(e.team_member_name||e.internal_party||'—')+'</div><div style="font-size:12px;color:var(--text-dim)">'+esc(getWork(e.campaign_name)||e.internal_category||'')+' · '+fmt(e.total_amount)+'</div></div>';
+  if (_dIsAdv) {
+    html += '<div style="background:#EDE9FE;border:1px solid #C4B5FD;border-radius:10px;padding:11px 13px;margin-bottom:14px;font-size:12.5px;color:#5B21B6">'+
+      '<b>🏦 Ye ADVANCE hai</b><br>Yahan sirf paisa dene ka record hai. Salary se kitna katega — wo <b>HR app → Advance</b> me set/track hota hai.</div>';
+  }
   html += '<div class="field"><div class="label">Payment Mode</div><select class="input" id="pay-mode"><option value="UPI">UPI</option><option value="Bank">Bank Transfer</option><option value="Cash">Cash</option></select></div>';
   html += '<div class="field"><div class="label">Payment Date</div><input class="input" id="pay-date" type="date" value="'+esc(todayIST())+'"></div>';
   html += '<div class="field"><div class="label">Receipt Photo <span style="color:var(--text-dim);font-weight:400">(recommend — worker ko dikhega)</span></div>';
