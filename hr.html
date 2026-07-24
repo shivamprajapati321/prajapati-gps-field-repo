@@ -1473,6 +1473,13 @@ async function renderAdvance(root){
     const rows = await api(q) || [];
 
     let h = '<div class="sechead"><i class="ti ti-cash-banknote"></i>Advance</div>';
+    h += '<div class="card" style="background:#EDE9FE;border:1px solid #C4B5FD;margin-bottom:10px;padding:11px 13px">'+
+      '<div style="font-size:12.5px;color:#5B21B6;line-height:1.55">'+
+      '<b>🏦 Advance kaise chalta hai</b><br>'+
+      '1) Yahan request/approve hota hai<br>'+
+      '2) Paisa dene ka record <b>Expenses → category "Advance"</b> me jaata hai<br>'+
+      '3) Salary se kist yahin se automatic katati hai'+
+      '</div></div>';
 
     // my outstanding summary
     const mine = admin ? rows : rows;
@@ -1542,6 +1549,8 @@ async function renderAdvance(root){
         (r.status==='paid' ? '<div style="font-size:12px;margin-top:4px">Wasool: '+inr(r.recovered_amount||0)+' · <b style="color:'+(bal>0?'var(--red)':'var(--green)')+'">Baaki: '+inr(bal)+'</b></div>' : '')+
         (r.monthly_deduction>0 ? '<div style="font-size:11px;color:var(--muted)">Har month: '+inr(r.monthly_deduction)+'</div>' : '')+
         (r.recovery_mode==='months'&&r.total_months ? '<div style="font-size:11px;color:var(--muted)">'+r.total_months+' months me</div>' : '')+
+        ((r.status==='paid'||r.status==='approved') && bal>0 && !(r.monthly_deduction>0) && !(r.recovery_mode==='months'&&r.total_months)
+          ? '<div class="c-amber" style="border-radius:8px;padding:6px 9px;margin-top:5px;font-size:11px"><b>⚠️ Kist set nahi</b> — salary se nahi katega. Edit karke set karo.</div>' : '')+
         (r.status==='paid' && bal>0 ? '<button class="btn-sm" style="margin-top:6px;background:var(--s1);font-size:11px;padding:4px 10px" onclick="toggleEmi(\''+r.id+'\')">📅 EMI plan dekho</button><div id="emi-'+r.id+'" style="display:none;margin-top:8px"></div>' : '')+
         '</div>'+
         '<span class="pill" style="background:var(--s1);color:'+stCol+'">'+esc(done?'chuka diya':(r.status||'')) +'</span></div>';
@@ -1697,6 +1706,19 @@ async function toggleEmi(id){
 }
 
 async function advApprove(id){
+  // recovery set hai ya nahi — bina iske salary se kuch nahi katega
+  try {
+    const rows = await api('/prajapati_advances?select=amount,monthly_deduction,total_months,recovery_mode&id=eq.'+id);
+    const a = rows && rows[0];
+    if (a) {
+      const inst = (a.recovery_mode==='months' && a.total_months)
+        ? Math.round(Number(a.amount||0)/a.total_months)
+        : Number(a.monthly_deduction||0);
+      if (!inst) {
+        if(!confirm('⚠️ Is advance me kist set nahi hai.\n\nApprove karne ke baad salary se kuch NAHI katega.\n\nPhir bhi approve karein?\n(Baad me Edit karke kist set kar sakte ho)')) return;
+      }
+    }
+  } catch(e){}
   if(!confirm('Approve karke paid mark karein?')) return;
   try{
     await api('/prajapati_advances?id=eq.'+id,{method:'PATCH',headers:{'Prefer':'return=minimal'},
