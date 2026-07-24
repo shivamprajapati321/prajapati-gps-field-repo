@@ -377,6 +377,7 @@ function nav(view){
   else if (view==='tasks') renderTasks(root);
   else if (view==='documents') renderDocuments(root);
   else if (view==='advance') renderAdvance(root);
+  else if (view==='tracking') renderTracking(root);
   else if (view==='bulkfill') renderBulkFill(root);
 }
 function placeholder(title,icon,sub){
@@ -427,6 +428,16 @@ async function renderDashboard(root){
         h += '<div class="row-item"><div class="ava"><i class="ti ti-cash"></i></div><div style="flex:1"><div style="font-size:13px;font-weight:500">'+reimb.length+' expense/OT · '+inr(pendReimb)+'</div><div style="font-size:11px;color:var(--muted)">cash payment pending</div></div><button class="btn-sm" onclick="nav(\'approvals\')">View</button></div>';
       }
       h += '</div>';
+
+      // ── Tracking (admin only) ──
+      h += '<div class="card" style="margin-top:10px"><div class="sechead"><i class="ti ti-radar" style="color:var(--teal)"></i>Tracking</div>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px">'+
+          quickTile('map-pin','Live aaj','tracking')+
+          quickTile('calendar-stats','Attendance','tracking')+
+          quickTile('cash-banknote','Advance','tracking')+
+        '</div>'+
+        '<div style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center">Kaun kahan hai · 30-din report · advance baaki</div>'+
+      '</div>';
 
       h += '<button onclick="logout()" style="width:100%;height:40px;background:var(--s1);color:var(--sec);margin-top:6px">Logout</button>';
       root.innerHTML = h;
@@ -1462,6 +1473,219 @@ async function savePayroll(btn){
   } catch(ex){ if(err)err.textContent='Save fail: '+ex.message; if(btn){btn.disabled=false;btn.textContent='💾 Save Salary Record';} }
 }
 
+
+// ══════════ TRACKING (admin) ══════════
+// 3 tabs: Live (aaj kaun kahan) · Attendance report · Advance status
+function trkTab(t){ window.__TRK_TAB = t; nav('tracking'); }
+// dashboard tiles se aaye to hamesha Live tab se shuru
+function trkReset(){ window.__TRK_TAB = 'live'; }
+
+async function renderTracking(root){
+  if(!isAdmin()){ root.innerHTML='<div class="card" style="color:var(--red)">Sirf admin ke liye</div>'; return; }
+  const tab = window.__TRK_TAB || 'live';
+  let h = '<div class="sechead"><i class="ti ti-radar"></i>Tracking</div>';
+  h += '<div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto">'+
+    trkBtn('live','📍 Live aaj',tab)+trkBtn('att','📅 Attendance',tab)+trkBtn('adv','🏦 Advance',tab)+'</div>';
+  h += '<div id="trkBody"><div class="card" style="text-align:center;color:var(--muted);font-size:13px">loading…</div></div>';
+  root.innerHTML = h;
+  try {
+    if(tab==='live') await trkLive();
+    else if(tab==='att') await trkAttendance();
+    else await trkAdvance();
+  } catch(e){
+    document.getElementById('trkBody').innerHTML='<div class="card" style="color:var(--red)">Load fail: '+esc(e.message)+'</div>';
+  }
+}
+function trkBtn(id,label,cur){
+  const on = cur===id;
+  return '<button onclick="trkTab(\''+id+'\')" style="flex:0 0 auto;padding:8px 14px;border-radius:20px;border:1px solid '+(on?'var(--teal)':'var(--bd)')+';background:'+(on?'var(--teal)':'var(--card)')+';color:'+(on?'#fff':'var(--sec)')+';font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer">'+label+'</button>';
+}
+// safe hours: DB me kabhi negative/0 aa jata hai — compute from times
+function trkHours(r){
+  if(!r.check_in_time) return null;
+  const end = r.check_out_time ? new Date(r.check_out_time) : new Date();
+  const hrs = (end - new Date(r.check_in_time))/3600000;
+  if(!isFinite(hrs) || hrs < 0) return null;
+  return hrs;
+}
+function trkHM(hrs){
+  if(hrs===null) return '—';
+  const h=Math.floor(hrs), m=Math.round((hrs-h)*60);
+  return h+'h '+String(m).padStart(2,'0')+'m';
+}
+
+// ── TAB 1: Live — aaj kaun punch kar chuka, kahan hai ──
+async function trkLive(){
+  const t = today();
+  const [rows, mem] = await Promise.all([
+    api('/trial_hr_attendance?select=*&attendance_date=eq.'+t+'&order=check_in_time.desc'),
+    api('/trial_team_members?select=id,name,role,phone&active=eq.true&order=name')
+  ]);
+  const byId = {}; (mem||[]).forEach(m=>byId[m.id]=m);
+  const list = rows||[];
+  const inCount = list.filter(r=>r.check_in_time && !r.check_out_time).length;
+  const outCount = list.filter(r=>r.check_out_time).length;
+  const absent = (mem||[]).length - list.length;
+
+  let h = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">'+
+    trkStat('Kaam pe', inCount, 'var(--green)')+
+    trkStat('Ja chuke', outCount, 'var(--muted)')+
+    trkStat('Nahi aaye', absent, 'var(--red)')+'</div>';
+
+  if(!list.length){
+    h += '<div class="card" style="text-align:center;color:var(--muted);font-size:13px">Aaj abhi kisi ne punch nahi kiya</div>';
+  }
+  list.forEach(function(r){
+    const m = byId[r.member_id] || {};
+    const outY = !!r.check_out_time;
+    const hrs = trkHours(r);
+    const inT = r.check_in_time ? new Date(r.check_in_time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true,timeZone:'Asia/Kolkata'}) : '—';
+    const outT = r.check_out_time ? new Date(r.check_out_time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true,timeZone:'Asia/Kolkata'}) : null;
+    const geo = r.check_in_within_geofence;
+    const hasGps = r.check_in_lat!=null && r.check_in_lng!=null;
+    h += '<div class="card" style="margin-bottom:8px;border-left:3px solid '+(outY?'var(--muted)':'var(--green)')+'">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-size:14px;font-weight:600">'+esc(m.name||'—')+'</div>'+
+          '<div style="font-size:11px;color:var(--muted)">'+esc(m.role||'')+' · in '+inT+(outT?' · out '+outT:'')+'</div>'+
+          '<div style="font-size:12px;margin-top:5px">'+
+            '<span style="color:var(--sec)">⏱ '+trkHM(hrs)+'</span>'+
+            (geo===true?' · <span style="color:var(--green)">🏢 office</span>':(geo===false?' · <span style="color:var(--amber)">📍 bahar</span>':''))+
+          '</div>'+
+        '</div>'+
+        '<div style="text-align:right;flex-shrink:0">'+
+          '<span class="pill" style="background:var(--s1);color:'+(outY?'var(--muted)':'var(--green)')+'">'+(outY?'gaya':'kaam pe')+'</span>'+
+          (hasGps?'<div style="margin-top:6px"><a href="https://maps.google.com/?q='+r.check_in_lat+','+r.check_in_lng+'" target="_blank" style="font-size:11px;color:var(--teal);text-decoration:none">🗺 map</a></div>':'')+
+        '</div>'+
+      '</div></div>';
+  });
+  // absent list
+  const punched = {}; list.forEach(r=>punched[r.member_id]=1);
+  const missing = (mem||[]).filter(m=>!punched[m.id]);
+  if(missing.length){
+    h += '<div class="sechead" style="margin-top:14px"><i class="ti ti-user-off"></i>Punch nahi kiya ('+missing.length+')</div>';
+    h += '<div class="card"><div style="font-size:12.5px;color:var(--sec);line-height:1.9">'+
+      missing.slice(0,40).map(m=>esc(m.name)).join(' · ')+
+      (missing.length>40?' <span style="color:var(--muted)">+'+(missing.length-40)+' aur</span>':'')+'</div></div>';
+  }
+  document.getElementById('trkBody').innerHTML = h;
+}
+function trkStat(label,val,color){
+  return '<div class="card" style="padding:11px 8px;text-align:center"><div style="font-size:20px;font-weight:700;color:'+color+'">'+val+'</div>'+
+    '<div style="font-size:10.5px;color:var(--muted);margin-top:2px">'+label+'</div></div>';
+}
+
+// ── TAB 2: Attendance report — last 30 din, per employee ──
+async function trkAttendance(){
+  const to = today();
+  const d = new Date(); d.setDate(d.getDate()-29);
+  const from = d.toISOString().slice(0,10);
+  const [rows, mem] = await Promise.all([
+    api('/trial_hr_attendance?select=*&attendance_date=gte.'+from+'&attendance_date=lte.'+to),
+    api('/trial_team_members?select=id,name,role&active=eq.true&order=name')
+  ]);
+  const byId = {}; (mem||[]).forEach(m=>byId[m.id]=m);
+  const agg = {};
+  (rows||[]).forEach(function(r){
+    const k = r.member_id; if(!k) return;
+    if(!agg[k]) agg[k] = { days:0, late:0, hours:0, outside:0, noOut:0 };
+    agg[k].days++;
+    if(r.is_late) agg[k].late++;
+    const hh = trkHours(r); if(hh!==null) agg[k].hours += hh;
+    if(r.check_in_within_geofence===false) agg[k].outside++;
+    if(!r.check_out_time) agg[k].noOut++;
+  });
+  const list = Object.keys(agg).map(k=>({ m: byId[k]||{}, ...agg[k] }))
+    .sort((a,b)=>b.days-a.days);
+
+  let h = '<div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">'+from+' → '+to+' (30 din)</div>';
+  if(!list.length){ h += '<div class="card" style="text-align:center;color:var(--muted);font-size:13px">Is period me koi attendance nahi</div>'; }
+  list.forEach(function(r){
+    const avg = r.days ? r.hours/r.days : 0;
+    h += '<div class="card" style="margin-bottom:8px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-size:14px;font-weight:600">'+esc(r.m.name||'—')+'</div>'+
+          '<div style="font-size:11px;color:var(--muted)">'+esc(r.m.role||'')+'</div>'+
+        '</div>'+
+        '<div style="text-align:right"><div style="font-size:18px;font-weight:700;color:var(--teal)">'+r.days+'</div>'+
+        '<div style="font-size:10px;color:var(--muted)">din</div></div>'+
+      '</div>'+
+      '<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;margin-top:8px;padding-top:8px;border-top:1px solid var(--bd)">'+
+        '<span style="color:var(--sec)">⏱ avg '+trkHM(avg)+'</span>'+
+        (r.late?'<span style="color:var(--amber)">⏰ '+r.late+' late</span>':'')+
+        (r.outside?'<span style="color:var(--amber)">📍 '+r.outside+' bahar</span>':'')+
+        (r.noOut?'<span style="color:var(--red)">⚠️ '+r.noOut+' punch-out nahi</span>':'')+
+      '</div></div>';
+  });
+  // never punched
+  const seen = {}; Object.keys(agg).forEach(k=>seen[k]=1);
+  const never = (mem||[]).filter(m=>!seen[m.id]);
+  if(never.length){
+    h += '<div class="sechead" style="margin-top:14px"><i class="ti ti-alert-circle"></i>30 din me ek bhi punch nahi ('+never.length+')</div>';
+    h += '<div class="card"><div style="font-size:12.5px;color:var(--sec);line-height:1.9">'+
+      never.slice(0,40).map(m=>esc(m.name)).join(' · ')+
+      (never.length>40?' <span style="color:var(--muted)">+'+(never.length-40)+' aur</span>':'')+'</div></div>';
+  }
+  document.getElementById('trkBody').innerHTML = h;
+}
+
+// ── TAB 3: Advance status — kiska kitna baaki ──
+async function trkAdvance(){
+  const rows = await api('/prajapati_advances?select=*&order=requested_at.desc') || [];
+  const paid = rows.filter(r=>r.status==='paid'||r.status==='approved');
+  const outstanding = paid.reduce((s,r)=>s+Math.max(0,Number(r.balance_amount||0)),0);
+  const given = paid.reduce((s,r)=>s+Number(r.amount||0),0);
+  const recovered = paid.reduce((s,r)=>s+Number(r.recovered_amount||0),0);
+  const pending = rows.filter(r=>r.status==='pending');
+  const noKist = paid.filter(r=>Number(r.balance_amount||0)>0 && !(r.monthly_deduction>0) && !(r.recovery_mode==='months'&&r.total_months));
+
+  let h = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">'+
+    trkStat('Diya', inr(given), 'var(--navy)')+
+    trkStat('Wasool', inr(recovered), 'var(--green)')+
+    trkStat('Baaki', inr(outstanding), 'var(--red)')+'</div>';
+
+  if(pending.length){
+    h += '<div class="c-amber" style="border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12.5px">'+
+      '<b>⏳ '+pending.length+' request pending</b> — approve karna baaki</div>';
+  }
+  if(noKist.length){
+    h += '<div class="c-amber" style="border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12.5px">'+
+      '<b>⚠️ '+noKist.length+' advance me kist set nahi</b> — salary se nahi katega: '+
+      noKist.slice(0,5).map(r=>esc(r.member_name||'')).join(', ')+'</div>';
+  }
+
+  // group by member
+  const byMem = {};
+  paid.forEach(function(r){
+    const k = r.member_name || r.member_phone || '—';
+    if(!byMem[k]) byMem[k] = { name:k, given:0, rec:0, bal:0, n:0, rows:[] };
+    byMem[k].given += Number(r.amount||0);
+    byMem[k].rec += Number(r.recovered_amount||0);
+    byMem[k].bal += Math.max(0, Number(r.balance_amount||0));
+    byMem[k].n++; byMem[k].rows.push(r);
+  });
+  const list = Object.values(byMem).sort((a,b)=>b.bal-a.bal);
+  if(!list.length) h += '<div class="card" style="text-align:center;color:var(--muted);font-size:13px">Koi active advance nahi</div>';
+  list.forEach(function(m){
+    const pct = m.given>0 ? Math.round(m.rec/m.given*100) : 0;
+    const clear = m.bal<=0;
+    h += '<div class="card" style="margin-bottom:8px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-size:14px;font-weight:600">'+esc(m.name)+'</div>'+
+          '<div style="font-size:11px;color:var(--muted)">'+m.n+' advance · diya '+inr(m.given)+'</div>'+
+        '</div>'+
+        '<div style="text-align:right"><div style="font-size:16px;font-weight:700;color:'+(clear?'var(--green)':'var(--red)')+'">'+(clear?'✓ clear':inr(m.bal))+'</div>'+
+        (clear?'':'<div style="font-size:10px;color:var(--muted)">baaki</div>')+'</div>'+
+      '</div>'+
+      '<div style="height:6px;background:var(--s1);border-radius:99px;overflow:hidden;margin-top:8px">'+
+        '<div style="height:100%;width:'+Math.min(100,pct)+'%;background:'+(clear?'var(--green)':'var(--teal)')+'"></div></div>'+
+      '<div style="font-size:11px;color:var(--muted);margin-top:4px">'+pct+'% wasool</div>'+
+      '</div>';
+  });
+  document.getElementById('trkBody').innerHTML = h;
+}
 
 // ══════════ ADVANCE (loan) ══════════
 async function renderAdvance(root){
