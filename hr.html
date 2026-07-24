@@ -355,6 +355,7 @@ function enterApp(){
     document.querySelectorAll('.botnav button[data-view="approvals"],.botnav button[data-view="employees"]').forEach(b=>b.classList.add('hidden'));
   }
   nav('dashboard');
+  resumeLivePing();
 }
 
 // ══════════ NAV ══════════
@@ -592,18 +593,24 @@ function startPunch(kind){
       PUNCH_GPS = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: Math.round(pos.coords.accuracy) };
       // geofence check (office mode only)
       const mode = USER.attendance_mode || 'office';
-      let geo = { inside: true, dist: null, office: null };
-      if (mode === 'office' && OFFICES.length) {
+      // Distance HAMESHA calculate karo — mode sirf ye decide karta hai ki
+      // warning dikhani hai ya nahi. (Pehle 'anywhere' me inside:true hardcode tha,
+      // isliye 1800m door wale ka bhi record "office ke andar" ban jata tha.)
+      let geo = { inside: null, dist: null, office: null };
+      if (OFFICES.length) {
         const off = OFFICES.find(o=>o.is_primary) || OFFICES[0];
         const d = haversine(PUNCH_GPS.lat, PUNCH_GPS.lng, Number(off.latitude), Number(off.longitude));
         geo = { inside: d <= (off.geofence_radius_meters||300), dist: d, office: off };
-        PUNCH_GPS.geo = geo;
-      } else {
-        PUNCH_GPS.geo = geo;
       }
+      PUNCH_GPS.geo = geo;
+      PUNCH_GPS.mode = mode;
       // ask for selfie
-      msg.innerHTML = '<i class="ti ti-map-pin" style="font-size:13px;vertical-align:-2px;color:'+(geo.inside?'var(--green)':'var(--red)')+'"></i> '+
-        (geo.dist!=null ? (geo.inside ? 'Office ke andar ('+geo.dist+'m) ✓' : 'Office se '+geo.dist+'m door ⚠️') : 'Location mil gayi (±'+PUNCH_GPS.acc+'m)') +
+      const strict = (mode === 'office');
+      msg.innerHTML = '<i class="ti ti-map-pin" style="font-size:13px;vertical-align:-2px;color:'+((geo.inside===false&&strict)?'var(--red)':'var(--green)')+'"></i> '+
+        (geo.dist!=null
+          ? (geo.inside ? 'Office ke andar ('+geo.dist+'m) ✓'
+                        : (strict ? 'Office se '+geo.dist+'m door ⚠️' : 'Location mil gayi · office se '+geo.dist+'m'))
+          : 'Location mil gayi (±'+PUNCH_GPS.acc+'m)') +
         ' — ab selfie lo';
       openSelfieCam(kind);
       btn.disabled = false;
@@ -615,6 +622,56 @@ function startPunch(kind){
     },
     { enableHighAccuracy:true, timeout:12000, maximumAge:0 }
   );
+}
+
+// ══════════ LIVE LOCATION PING ══════════
+// Punch-in ke baad har 5 min GPS bhejta hai, punch-out pe band.
+// Isse admin ko sach me "live" location dikhti hai (sirf punch-in ka point nahi).
+let PING_TIMER = null;
+
+function startLivePing(){
+  stopLivePing();
+  if (!navigator.geolocation) return;
+  sendPing();                                  // turant ek
+  PING_TIMER = setInterval(sendPing, 5*60*1000); // phir har 5 min
+  try { localStorage.setItem('hr_ping_on','1'); } catch(e){}
+}
+function stopLivePing(){
+  if (PING_TIMER) { clearInterval(PING_TIMER); PING_TIMER = null; }
+  try { localStorage.removeItem('hr_ping_on'); } catch(e){}
+}
+async function sendPing(){
+  if (!navigator.geolocation || !USER || !USER.id) return;
+  navigator.geolocation.getCurrentPosition(async function(pos){
+    try {
+      let dist = null;
+      if (OFFICES && OFFICES.length) {
+        const off = OFFICES.find(o=>o.is_primary) || OFFICES[0];
+        dist = haversine(pos.coords.latitude, pos.coords.longitude,
+                         Number(off.latitude), Number(off.longitude));
+      }
+      let batt = null;
+      try { if (navigator.getBattery) { const b = await navigator.getBattery(); batt = Math.round(b.level*100); } } catch(e){}
+      await api('/trial_hr_location_pings', { method:'POST',
+        headers:{'Prefer':'return=minimal'},
+        body: JSON.stringify({
+          member_id: USER.id, member_name: USER.name, member_phone: USER.phone,
+          lat: pos.coords.latitude, lng: pos.coords.longitude,
+          accuracy_meters: Math.round(pos.coords.accuracy),
+          distance_from_office_m: dist, battery_pct: batt,
+          attendance_date: today()
+        })});
+    } catch(e){ /* silent — ping fail se app na ruke */ }
+  }, function(){}, { enableHighAccuracy:false, timeout:15000, maximumAge:120000 });
+}
+// app khulte hi: agar aaj punch-in hai aur punch-out nahi, ping chalu rakho
+async function resumeLivePing(){
+  try {
+    if (!USER || !USER.id) return;
+    const rows = await api('/trial_hr_attendance?select=check_in_time,check_out_time&member_id=eq.'+USER.id+'&attendance_date=eq.'+today());
+    const r = rows && rows[0];
+    if (r && r.check_in_time && !r.check_out_time) startLivePing();
+  } catch(e){}
 }
 
 // ── IN-APP FRONT CAMERA (selfie) ──
@@ -726,7 +783,8 @@ async function savePunch(kind, selfieUrl){
         check_in_time: now, check_in_selfie_url: selfieUrl,
         check_in_lat: PUNCH_GPS.lat, check_in_lng: PUNCH_GPS.lng,
         check_in_accuracy_meters: PUNCH_GPS.acc,
-        check_in_location_name: g.office ? g.office.name : (USER.city||'Field'),
+        check_in_location_name: (g.office && g.inside) ? g.office.name
+          : (g.dist!=null ? 'Field (office se '+g.dist+'m)' : (USER.city||'Field')),
         check_in_office_id: g.office ? g.office.id : null,
         check_in_within_geofence: g.inside,
         check_in_device: 'pwa',
@@ -734,6 +792,7 @@ async function savePunch(kind, selfieUrl){
         status: 'present'
       };
       await api('/trial_hr_attendance', { method:'POST', headers:{'Prefer':'return=minimal'}, body: JSON.stringify(body) });
+      startLivePing();   // punch-in ke baad live tracking chalu
     } else {
       // punch out — update today's row
       const att = await api('/trial_hr_attendance?select=id,check_in_time&member_id=eq.'+USER.id+'&attendance_date=eq.'+today());
@@ -744,9 +803,10 @@ async function savePunch(kind, selfieUrl){
           check_out_time: now, check_out_selfie_url: selfieUrl,
           check_out_lat: PUNCH_GPS.lat, check_out_lng: PUNCH_GPS.lng,
           check_out_accuracy_meters: PUNCH_GPS.acc,
-          total_hours_worked: Math.round(hours*100)/100
+          total_hours_worked: (isFinite(hours) && hours > 0) ? Math.round(hours*100)/100 : 0
         }) });
       }
+      stopLivePing();   // punch-out — tracking band
     }
     // Sunday OT auto-entry
     if (kind==='in' && isSunday()) await createSundayOT();
@@ -1517,49 +1577,94 @@ function trkHM(hrs){
 // ── TAB 1: Live — aaj kaun punch kar chuka, kahan hai ──
 async function trkLive(){
   const t = today();
-  const [rows, mem] = await Promise.all([
+  const [rows, mem, pings] = await Promise.all([
     api('/trial_hr_attendance?select=*&attendance_date=eq.'+t+'&order=check_in_time.desc'),
-    api('/trial_team_members?select=id,name,role,phone&active=eq.true&order=name')
+    api('/trial_team_members?select=id,name,role,phone&active=eq.true&order=name'),
+    api('/trial_hr_location_pings?select=*&attendance_date=eq.'+t+'&order=pinged_at.desc&limit=400').catch(()=>[])
   ]);
+  await loadOffices();
+  const off = (OFFICES && OFFICES.length) ? (OFFICES.find(o=>o.is_primary)||OFFICES[0]) : null;
   const byId = {}; (mem||[]).forEach(m=>byId[m.id]=m);
-  const list = rows||[];
-  const inCount = list.filter(r=>r.check_in_time && !r.check_out_time).length;
-  const outCount = list.filter(r=>r.check_out_time).length;
-  const absent = (mem||[]).length - list.length;
+  // latest ping per member
+  const lastPing = {};
+  (pings||[]).forEach(function(p){ if(!lastPing[p.member_id]) lastPing[p.member_id]=p; });
 
-  let h = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">'+
-    trkStat('Kaam pe', inCount, 'var(--green)')+
-    trkStat('Ja chuke', outCount, 'var(--muted)')+
+  const list = rows||[];
+  const working = list.filter(r=>r.check_in_time && !r.check_out_time);
+  const done = list.filter(r=>r.check_out_time);
+  const absent = (mem||[]).length - list.length;
+  const liveCount = working.filter(r=>{
+    const p = lastPing[r.member_id];
+    return p && (Date.now() - new Date(p.pinged_at)) < 15*60*1000;
+  }).length;
+
+  let h = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:12px">'+
+    trkStat('Kaam pe', working.length, 'var(--green)')+
+    trkStat('Live GPS', liveCount, 'var(--teal)')+
+    trkStat('Ja chuke', done.length, 'var(--muted)')+
     trkStat('Nahi aaye', absent, 'var(--red)')+'</div>';
 
   if(!list.length){
-    h += '<div class="card" style="text-align:center;color:var(--muted);font-size:13px">Aaj abhi kisi ne punch nahi kiya</div>';
+    h += '<div class="card" style="text-align:center;color:var(--muted);font-size:13px;padding:24px">Aaj abhi kisi ne punch nahi kiya</div>';
   }
-  list.forEach(function(r){
+
+  // working first, then done
+  const ordered = working.concat(done);
+  ordered.forEach(function(r){
     const m = byId[r.member_id] || {};
     const outY = !!r.check_out_time;
     const hrs = trkHours(r);
+    const p = lastPing[r.member_id];
+    const ageMin = p ? Math.round((Date.now() - new Date(p.pinged_at))/60000) : null;
+    const isLive = !outY && p && ageMin < 15;
+
+    // position: latest ping > check-in
+    const lat = p ? p.lat : r.check_in_lat;
+    const lng = p ? p.lng : r.check_in_lng;
+    let dist = p ? p.distance_from_office_m : null;
+    if (dist == null && off && lat != null) dist = haversine(Number(lat), Number(lng), Number(off.latitude), Number(off.longitude));
+
     const inT = r.check_in_time ? new Date(r.check_in_time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true,timeZone:'Asia/Kolkata'}) : '—';
     const outT = r.check_out_time ? new Date(r.check_out_time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true,timeZone:'Asia/Kolkata'}) : null;
-    const geo = r.check_in_within_geofence;
-    const hasGps = r.check_in_lat!=null && r.check_in_lng!=null;
-    h += '<div class="card" style="margin-bottom:8px;border-left:3px solid '+(outY?'var(--muted)':'var(--green)')+'">'+
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'+
+    const initials = (m.name||'?').split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
+    const stripe = outY ? 'var(--muted)' : (isLive ? 'var(--teal)' : 'var(--amber)');
+
+    // location label — distance se, flag se nahi (flag purana galat data ho sakta)
+    let locTxt, locCol;
+    if (dist == null) { locTxt = 'GPS nahi'; locCol = 'var(--muted)'; }
+    else if (off && dist <= (off.geofence_radius_meters||300)) { locTxt = 'Office me'; locCol = 'var(--green)'; }
+    else if (dist < 1000) { locTxt = dist+'m door'; locCol = 'var(--sec)'; }
+    else { locTxt = (dist/1000).toFixed(1)+' km door'; locCol = 'var(--amber)'; }
+
+    h += '<div class="card" style="margin-bottom:8px;border-left:3px solid '+stripe+';padding:11px 13px">'+
+      '<div style="display:flex;gap:10px;align-items:flex-start">'+
+        '<div style="width:34px;height:34px;border-radius:50%;background:var(--s1);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--navy);flex-shrink:0">'+esc(initials)+'</div>'+
         '<div style="flex:1;min-width:0">'+
-          '<div style="font-size:14px;font-weight:600">'+esc(m.name||'—')+'</div>'+
-          '<div style="font-size:11px;color:var(--muted)">'+esc(m.role||'')+' · in '+inT+(outT?' · out '+outT:'')+'</div>'+
-          '<div style="font-size:12px;margin-top:5px">'+
-            '<span style="color:var(--sec)">⏱ '+trkHM(hrs)+'</span>'+
-            (geo===true?' · <span style="color:var(--green)">🏢 office</span>':(geo===false?' · <span style="color:var(--amber)">📍 bahar</span>':''))+
+          '<div style="display:flex;align-items:center;gap:6px">'+
+            '<span style="font-size:14px;font-weight:600">'+esc(m.name||'—')+'</span>'+
+            (isLive ? '<span style="display:inline-flex;align-items:center;gap:3px;background:var(--s1);color:var(--teal);font-size:9.5px;padding:1px 7px;border-radius:20px"><span style="width:5px;height:5px;border-radius:50%;background:var(--teal);display:inline-block"></span>LIVE</span>' : '')+
           '</div>'+
+          '<div style="font-size:11px;color:var(--muted);margin-top:1px">'+esc(m.role||'')+'</div>'+
+          '<div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;margin-top:6px">'+
+            '<span style="color:var(--sec)"><i class="ti ti-clock" style="font-size:12px;vertical-align:-2px"></i> '+trkHM(hrs)+'</span>'+
+            '<span style="color:'+locCol+'"><i class="ti ti-map-pin" style="font-size:12px;vertical-align:-2px"></i> '+locTxt+'</span>'+
+            (p ? '<span style="color:var(--muted)">'+(ageMin<1?'abhi':ageMin+' min pehle')+'</span>' : '')+
+            (p && p.battery_pct!=null ? '<span style="color:'+(p.battery_pct<20?'var(--red)':'var(--muted)')+'"><i class="ti ti-battery-2" style="font-size:12px;vertical-align:-2px"></i> '+p.battery_pct+'%</span>' : '')+
+          '</div>'+
+          '<div style="font-size:10.5px;color:var(--muted);margin-top:4px">in '+inT+(outT?' · out '+outT:'')+'</div>'+
         '</div>'+
         '<div style="text-align:right;flex-shrink:0">'+
-          '<span class="pill" style="background:var(--s1);color:'+(outY?'var(--muted)':'var(--green)')+'">'+(outY?'gaya':'kaam pe')+'</span>'+
-          (hasGps?'<div style="margin-top:6px"><a href="https://maps.google.com/?q='+r.check_in_lat+','+r.check_in_lng+'" target="_blank" style="font-size:11px;color:var(--teal);text-decoration:none">🗺 map</a></div>':'')+
+          '<span class="pill" style="background:var(--s1);color:'+(outY?'var(--muted)':'var(--green)')+';font-size:10px">'+(outY?'gaya':'kaam pe')+'</span>'+
+          (lat!=null ? '<div style="margin-top:7px"><a href="https://maps.google.com/?q='+lat+','+lng+'" target="_blank" style="font-size:11px;color:var(--teal);text-decoration:none"><i class="ti ti-map-2" style="font-size:13px;vertical-align:-2px"></i> map</a></div>' : '')+
         '</div>'+
       '</div></div>';
   });
-  // absent list
+
+  if(!(pings||[]).length && working.length){
+    h += '<div class="c-amber" style="border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:11.5px">'+
+      '<b>Live GPS abhi shuru nahi hua</b><br>Naya version deploy hone ke baad, jo log punch karenge unki location har 5 min update hogi.</div>';
+  }
+
   const punched = {}; list.forEach(r=>punched[r.member_id]=1);
   const missing = (mem||[]).filter(m=>!punched[m.id]);
   if(missing.length){
