@@ -904,7 +904,7 @@ function renderVehicleCard(v, idx) {
     var ownerRow = srcBadge + '<div class="vc-input-row" style="margin-top:4px"><label>👤 Owner Name</label>'+
       '<input type="text" class="vc-input" id="owner-input-' + idx + '" value="' + escHtml(v.ownerName || '') + '" placeholder="Owner ka naam" maxlength="80" /></div>';
     var contactRow = '<div class="vc-input-row" style="margin-top:8px"><label>📞 Contact</label>'+
-      '<input type="text" class="vc-input" id="contact-input-' + idx + '" value="' + escHtml(v.contactNumber || '') + '" placeholder="10 digit" inputmode="numeric" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,\'\').slice(0,10)" /></div>';
+      '<input type="text" class="vc-input" id="contact-input-' + idx + '" value="' + escHtml(v.contactNumber || '') + '" placeholder="10 digit" inputmode="numeric" maxlength="10" oninput="vcDigits(this)" /></div>';
     // v2: Surepass auto-fetch button (vehicle number se owner name suggest)
     // WhatsApp button — photo lene wale worker se number maango (Surepass band hai)
     var workerPhone = '';
@@ -1555,7 +1555,7 @@ document.addEventListener('DOMContentLoaded', function(){
       <div class="vpe-field" id="vpe-new-veh-field">
         <label>Corrected Plate Number *</label>
         <input type="text" class="veh-input" id="vpe-new-veh-input"
-               placeholder="MH00XX0000" maxlength="11"
+               placeholder="MH00XX0000" maxlength="13" autocapitalize="characters" autocomplete="off" spellcheck="false"
                oninput="VerifierPhotoEdit._validate(this.value)">
         <div class="help">RTO format: 2 letters + 2 digits + 1-3 letters + 4 digits</div>
         <div class="err">Invalid RTO format. Example: MH08EF7586</div>
@@ -1653,7 +1653,17 @@ document.addEventListener('DOMContentLoaded', function(){
   // ═══════════════════════════════════════════════════════════════
   //  PUBLIC API — window.VerifierPhotoEdit
   // ═══════════════════════════════════════════════════════════════
-  var VerifierPhotoEdit = {
+  function vcDigits(el){
+  var cleaned = (el.value||'').replace(/[^0-9]/g,'').slice(0,10);
+  if (el.value === cleaned) return;
+  var pos = el.selectionStart, removed = el.value.length - cleaned.length;
+  el.value = cleaned;
+  try {
+    var np = Math.max(0, Math.min(cleaned.length, (pos == null ? cleaned.length : pos - removed)));
+    el.setSelectionRange(np, np);
+  } catch(e){}
+}
+var VerifierPhotoEdit = {
     
     /**
      * Open edit modal for a verified vehicle (by idx in current filtered list)
@@ -1785,7 +1795,19 @@ document.addEventListener('DOMContentLoaded', function(){
 
     _validate: function(value) {
       var cleaned = (value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-      document.getElementById('vpe-new-veh-input').value = cleaned;
+      var el = document.getElementById('vpe-new-veh-input');
+      // Har keystroke pe .value reassign karne se caret end pe kood jata tha —
+      // beech me edit karte waqt akshar "mit" jaate dikhte the.
+      // Ab value sirf tab set hoti hai jab sach me badli ho, aur caret bahaal rakhte hain.
+      if (el && el.value !== cleaned) {
+        var pos = el.selectionStart;
+        var removed = el.value.length - cleaned.length;
+        el.value = cleaned;
+        try {
+          var np = Math.max(0, Math.min(cleaned.length, (pos == null ? cleaned.length : pos - removed)));
+          el.setSelectionRange(np, np);
+        } catch(e){}
+      }
       var field = document.getElementById('vpe-new-veh-field');
       var preview = document.getElementById('vpe-change-preview');
       if (cleaned.length === 0) {
