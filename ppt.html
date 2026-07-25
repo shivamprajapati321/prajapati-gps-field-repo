@@ -265,6 +265,41 @@ body {
 
 .empty-state { padding: 40px; text-align: center; color: #9ca3af; font-size: 13px; }
 
+.custom-brand-fields {
+  margin-top: 14px; padding: 14px 16px;
+  background: #ffffff; border: 1px solid #b9e6df; border-radius: 10px;
+}
+.cb-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.cb-label { display: block; font-size: 11px; font-weight: 600; color: #134e4a;
+  margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.4px; }
+.cb-dim { font-weight: 400; color: #6b7280; text-transform: none; letter-spacing: 0; }
+.cb-input {
+  width: 100%; padding: 9px 11px; font-size: 13px; color: #0B1957;
+  background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;
+}
+.cb-input:focus { border-color: #26d0ce; box-shadow: 0 0 0 3px rgba(38,208,206,.15); }
+.cb-input::placeholder { color: #9aa4b2; }
+.cb-logo-row { display: flex; gap: 10px; align-items: center; }
+.cb-btn {
+  padding: 9px 14px; font-size: 12px; font-weight: 600; white-space: nowrap;
+  color: #0B1957; background: #e6fbf8; border: 1px solid #7fd8d1;
+  border-radius: 8px; cursor: pointer;
+}
+.cb-btn:hover { background: #d3f6f1; }
+.cb-logo-box {
+  width: 104px; height: 44px; flex: none; overflow: hidden;
+  border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; color: #94a3b8;
+}
+.cb-msg { font-size: 11px; margin-top: 6px; color: #0f766e; min-height: 14px; }
+.cb-msg.err { color: #b91c1c; }
+.cb-actions { margin-top: 12px; display: flex; gap: 10px; align-items: center; }
+.cb-save {
+  padding: 8px 14px; font-size: 12px; font-weight: 600;
+  color: #fff; background: #0B1957; border: none; border-radius: 8px; cursor: pointer;
+}
+.cb-save:hover { background: #142a75; }
 .branding-control {
   margin-top: 16px; padding: 16px 20px;
   background: #f0fdfa; border-left: 4px solid #26d0ce; border-radius: 8px;
@@ -445,44 +480,30 @@ body {
           <div class="opt-desc">Agency with their own logo</div>
         </div>
       </div>
-      <div class="custom-brand-fields" id="customBrandFields" style="display:none; margin-top:14px; padding:14px; background:rgba(255,255,255,.06); border-radius:10px;">
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+      <div class="custom-brand-fields" id="customBrandFields" style="display:none;">
+        <div class="cb-grid">
           <div>
-            <label style="display:block; font-size:11px; opacity:.75; margin-bottom:5px;">Company name</label>
-            <input id="cbName" type="text" placeholder="Jaaguar Media Solutions"
-                   oninput="onCustomBrandInput()"
-                   style="width:100%; padding:9px 11px; border-radius:8px; border:1px solid rgba(255,255,255,.2); background:rgba(0,0,0,.2); color:#fff; font-size:13px;">
+            <label class="cb-label">Company name</label>
+            <input id="cbName" class="cb-input" type="text" placeholder="Jaaguar Media Solutions" oninput="onCustomBrandInput()">
           </div>
           <div>
-            <label style="display:block; font-size:11px; opacity:.75; margin-bottom:5px;">Website <span style="opacity:.6;">(optional)</span></label>
-            <input id="cbSite" type="text" placeholder="www.jaaguar.co.in"
-                   oninput="onCustomBrandInput()"
-                   style="width:100%; padding:9px 11px; border-radius:8px; border:1px solid rgba(255,255,255,.2); background:rgba(0,0,0,.2); color:#fff; font-size:13px;">
+            <label class="cb-label">Website <span class="cb-dim">(optional)</span></label>
+            <input id="cbSite" class="cb-input" type="text" placeholder="www.jaaguar.co.in" oninput="onCustomBrandInput()">
           </div>
         </div>
         <div style="margin-top:12px;">
-          <label style="display:block; font-size:11px; opacity:.75; margin-bottom:5px;">Logo <span style="opacity:.6;">(optional — khaali chhoda to company name text aayega)</span></label>
-          <div style="display:flex; gap:10px; align-items:center;">
-            <input id="cbLogo" type="text" placeholder="Logo URL paste karo, ya file chuno \u2192"
-                   oninput="onCustomBrandInput()"
-                   style="flex:1; padding:9px 11px; border-radius:8px; border:1px solid rgba(255,255,255,.2); background:rgba(0,0,0,.2); color:#fff; font-size:13px;">
-            <input id="cbLogoFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                   onchange="onLogoFilePicked(this)" style="display:none;">
-            <button type="button" onclick="document.getElementById('cbLogoFile').click()"
-                    style="padding:9px 14px; border-radius:8px; border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.1); color:#fff; font-size:12px; cursor:pointer; white-space:nowrap;">
-              Upload file
-            </button>
-            <div id="cbLogoBox" style="width:104px; height:44px; border-radius:8px; background:rgba(255,255,255,.9); display:flex; align-items:center; justify-content:center; font-size:10px; color:#888; overflow:hidden; flex:none;">
-              no logo
-            </div>
+          <label class="cb-label">Logo <span class="cb-dim">(optional \u2014 khaali chhoda to company name text aayega)</span></label>
+          <div class="cb-logo-row">
+            <input id="cbLogo" class="cb-input" type="text" placeholder="Logo URL paste karo, ya file chuno \u2192" oninput="onCustomBrandInput()">
+            <input id="cbLogoFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onchange="onLogoFilePicked(this)" style="display:none;">
+            <button type="button" class="cb-btn" onclick="document.getElementById('cbLogoFile').click()">Upload file</button>
+            <div id="cbLogoBox" class="cb-logo-box">no logo</div>
           </div>
-          <div id="cbLogoMsg" style="font-size:11px; margin-top:6px; opacity:.8;"></div>
+          <div id="cbLogoMsg" class="cb-msg"></div>
         </div>
-        <div style="margin-top:12px; display:flex; gap:10px; align-items:center;">
-          <button class="btn btn-primary" style="padding:8px 14px; font-size:12px;" onclick="saveCustomBrandToCampaign()">
-            Campaign mein save karo
-          </button>
-          <span style="font-size:11px; opacity:.7;">Save karoge to agli baar apne aap bhar jayega</span>
+        <div class="cb-actions">
+          <button class="cb-save" onclick="saveCustomBrandToCampaign()">Campaign mein save karo</button>
+          <span class="cb-dim">Save karoge to agli baar apne aap bhar jayega</span>
         </div>
       </div>
 
@@ -1256,7 +1277,7 @@ function renderLogoBox(dataUrl, msg, isErr) {
   }
   if (m) {
     m.textContent = msg || '';
-    m.style.color = isErr ? '#ff9f9f' : '#9fe8d5';
+    m.classList.toggle('err', !!isErr);
   }
 }
 
