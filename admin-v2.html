@@ -1056,7 +1056,15 @@ label {
 .assign-row .status-pill.unassigned { background: var(--bg); color: var(--text-3); }
 
 /* ═══ Daily Assignments upgrade ═══ */
-.assign-row { grid-template-columns: auto auto 1.5fr 2fr auto; }
+.assign-row { grid-template-columns: auto auto 1.5fr 2fr 96px auto; }
+.da-target {
+  width: 88px; padding: 8px 10px; font-size: 13px; text-align: center;
+  border: 1px solid var(--border); border-radius: 7px; background: var(--card);
+  font-family: 'JetBrains Mono', monospace; outline: none;
+}
+.da-target:focus { border-color: var(--accent); }
+.da-target.empty { border-color: var(--warning, #BA7517); background: #FFFDF6; }
+.da-target:disabled { background: var(--bg); color: var(--text-3); cursor: not-allowed; }
 .assign-row .da-check { width: 17px; height: 17px; cursor: pointer; accent-color: var(--accent); }
 .da-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
 .da-stat { background: var(--card); border: 1px solid var(--border); border-radius: var(--r-md); padding: 11px 14px; border-top: 3px solid var(--border); }
@@ -3335,6 +3343,15 @@ label {
           <input type="date" id="assignDate" style="width:160px;" onchange="loadAssignments()">
           <button class="btn btn-ghost btn-sm" onclick="loadAssignments()">
             <i class="ti ti-refresh"></i> Refresh
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="downloadWorkPlanJPEG()">
+            <i class="ti ti-download"></i> Work plan JPEG
+          </button>
+          <button class="btn btn-ghost btn-sm" onclick="copyWorkPlanText()">
+            <i class="ti ti-brand-whatsapp"></i> Copy for WhatsApp
+          </button>
+          <button class="btn btn-ghost btn-sm" onclick="downloadEveningReport()">
+            <i class="ti ti-moon"></i> Evening report
           </button>
         </div>
       </div>
@@ -8883,6 +8900,12 @@ function loadAssignments() {
                     'onchange="daPickCampaign(this)" onfocus="this.select()">' +
                   (current ? '<button class="da-clear" title="Remove assignment" onclick="daClearAssign(\'' + m.phone + '\',\'' + date + '\')">\u00d7</button>' : '') +
                 '</div>' +
+                '<input class="da-target' + (current && !current.quantity ? ' empty' : '') + '" type="number" min="0" step="5" ' +
+                  'placeholder="target" title="Aaj ka rickshaw target" ' +
+                  'value="' + (current && current.quantity ? current.quantity : '') + '" ' +
+                  'data-phone="' + escapeHtml(m.phone) + '" data-date="' + escapeHtml(date) + '" ' +
+                  (current ? '' : 'disabled ') +
+                  'onchange="daSaveTarget(this)">' +
                 statusPill +
               '</div>';
     });
@@ -8926,6 +8949,532 @@ function filterAssignments() {
   } else if (existing) {
     existing.remove();
   }
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// DAILY WORK PLAN — JPEG + WhatsApp text
+// Both are generated from trial_daily_assignments, so the image and
+// the message can never disagree with what the field app will show.
+// Previously the plan was hand-typed in WhatsApp while the app read
+// the table, and the two drifted (people on the message with no row,
+// rows with nobody told).
+// ══════════════════════════════════════════════════════════════
+function buildWorkPlanRows() {
+  var st = (typeof p_daState !== 'undefined') ? p_daState : {};
+  var members = st.members || [];
+  var campaigns = st.campaigns || [];
+  var map = st.assignMap || {};
+  var byKey = {};
+  campaigns.forEach(function (c) { byKey[c.key] = c; });
+
+  var rows = [];
+  members.forEach(function (m) {
+    var a = map[m.phone];
+    if (!a || !a.campaign_key) return;
+    var c = byKey[a.campaign_key];
+    rows.push({
+      name: m.name || '—',
+      phone: m.phone || '',
+      campaign: (c && (c.name || c.campaign_name)) || a.campaign_key,
+      qty: a.quantity,
+      area: a.area || '',
+      vendor: a.vendor || '',
+      done: 0,
+      gps: ''
+    });
+  });
+  rows.sort(function (a, b) { return (b.qty || 0) - (a.qty || 0); });
+  return rows;
+}
+
+function workPlanDateLabel() {
+  var st = (typeof p_daState !== 'undefined') ? p_daState : {};
+  var d = st.date || (($('assignDate') && $('assignDate').value) || '');
+  if (!d) return '';
+  var p = d.split('-');
+  if (p.length !== 3) return d;
+  var mn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return p[2] + ' ' + mn[parseInt(p[1], 10) - 1] + ' ' + p[0];
+}
+
+function copyWorkPlanText() {
+  var rows = buildWorkPlanRows();
+  if (!rows.length) { showToast('Is date pe koi assignment nahi', 'error'); return; }
+  var total = rows.reduce(function (s, r) { return s + (r.qty || 0); }, 0);
+  var out = '*Today plan — ' + workPlanDateLabel() + '*\n\n';
+  rows.forEach(function (r, i) {
+    var bits = [];
+    if (r.qty) bits.push(r.qty);
+    bits.push(r.campaign);
+    if (r.area) bits.push('(' + r.area + ')');
+    if (r.vendor) bits.push('[' + r.vendor + ']');
+    out += (i + 1) + '. ' + r.name + ' — ' + bits.join(' ') + '\n';
+  });
+  out += '\n' + rows.length + ' members · ' + total + ' rickshaw target';
+  var miss = rows.filter(function (r) { return !r.qty || !r.area; });
+  if (miss.length) {
+    out += '\n\n_Pending detail: ' + miss.map(function (r) { return r.name; }).join(', ') + '_';
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(out)
+      .then(function () { showToast('WhatsApp text copy ho gaya', 'success'); })
+      .catch(function () { showToast('Copy nahi hua', 'error'); });
+  } else {
+    showToast('Browser copy support nahi karta', 'error');
+  }
+}
+
+function downloadWorkPlanJPEG() {
+  var rows = buildWorkPlanRows();
+  if (!rows.length) { showToast('Is date pe koi assignment nahi', 'error'); return; }
+  showToast('Live data la raha hoon…', 'success');
+  daFetchLiveDone().then(function (live) {
+    rows.forEach(function (r) {
+      var l = live[r.phone];
+      if (l) { r.done = l.done; r.gps = l.gps; }
+    });
+    renderWorkPlanCanvas(rows);
+  });
+}
+
+function renderWorkPlanCanvas(rows) {
+
+  var W = 1080, PAD = 48, ROW_H = 92, HEAD = 260, FOOT = 110;
+  var incomplete = rows.filter(function (r) { return !r.qty || !r.area; });
+  var warnH = incomplete.length ? 96 : 0;
+  var H = HEAD + rows.length * ROW_H + warnH + FOOT;
+
+  var cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  var x = cv.getContext('2d');
+
+  var INK = '#0B1957', TEAL = '#0E9F8E', MUTE = '#6B7280', LINE = '#E4E9F0';
+
+  x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, W, H);
+  x.fillStyle = INK; x.fillRect(0, 0, W, 8);
+
+  var total = rows.reduce(function (s, r) { return s + (r.qty || 0); }, 0);
+
+  x.fillStyle = INK;
+  x.font = '600 44px Georgia, serif';
+  x.fillText('Daily work plan', PAD, 92);
+  var now = new Date();
+  var hh = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+
+  x.fillStyle = MUTE;
+  x.font = '400 26px Arial, sans-serif';
+  x.fillText(workPlanDateLabel() + '   ·   as of ' + hh, PAD, 134);
+
+  var doneAll = rows.reduce(function (s, r) { return s + (r.done || 0); }, 0);
+  var pctAll = total ? Math.round((doneAll / total) * 100) : 0;
+  x.fillStyle = pctAll >= 80 ? TEAL : (pctAll >= 50 ? '#BA7517' : '#E24B4A');
+  x.font = '600 30px Arial, sans-serif';
+  var summary = doneAll + ' / ' + total + ' rickshaw' + (total ? '   ·   ' + pctAll + '%' : '') +
+                '   ·   ' + rows.length + ' members';
+  x.fillText(summary, PAD, 186);
+
+  x.strokeStyle = LINE; x.lineWidth = 2;
+  x.beginPath(); x.moveTo(PAD, 214); x.lineTo(W - PAD, 214); x.stroke();
+
+  function clip(text, max) {
+    var t = String(text || '');
+    if (x.measureText(t).width <= max) return t;
+    while (t.length > 1 && x.measureText(t + '…').width > max) t = t.slice(0, -1);
+    return t + '…';
+  }
+
+  var y = HEAD;
+  rows.forEach(function (r, i) {
+    if (i % 2 === 1) { x.fillStyle = '#F7F9FC'; x.fillRect(PAD - 16, y - 46, W - 2 * PAD + 32, ROW_H - 8); }
+
+    x.fillStyle = MUTE;
+    x.font = '400 24px Arial, sans-serif';
+    x.fillText(String(i + 1).padStart(2, '0'), PAD, y);
+
+    x.fillStyle = INK;
+    x.font = '600 30px Arial, sans-serif';
+    x.fillText(clip(r.name, 300), PAD + 52, y);
+
+    // done / target, live. Colour by how close the day is running.
+    if (r.qty) {
+      var pc = Math.round((r.done / r.qty) * 100);
+      x.fillStyle = pc >= 80 ? TEAL : (pc >= 50 ? '#BA7517' : '#E24B4A');
+      x.font = '600 32px Arial, sans-serif';
+      var q = r.done + ' / ' + r.qty;
+      x.fillText(q, W - PAD - x.measureText(q).width, y);
+
+      var bw = 190, bx = W - PAD - bw, by = y + 14;
+      x.fillStyle = '#EEF2F8'; x.fillRect(bx, by, bw, 9);
+      x.fillStyle = pc >= 80 ? TEAL : (pc >= 50 ? '#BA7517' : '#E24B4A');
+      x.fillRect(bx, by, Math.max(3, bw * Math.min(1, pc / 100)), 9);
+    } else {
+      x.fillStyle = '#E24B4A';
+      x.font = '400 22px Arial, sans-serif';
+      var w = r.done ? (r.done + ' done · no target') : 'target pending';
+      x.fillText(w, W - PAD - x.measureText(w).width, y);
+    }
+
+    x.fillStyle = '#3d4453';
+    x.font = '400 25px Arial, sans-serif';
+    x.fillText(clip(r.campaign, 420), PAD + 52, y + 32);
+
+    var meta = [];
+    if (r.area) meta.push(r.area + (r.gps ? ' \u2192 ' + r.gps : ''));
+    else if (r.gps) meta.push('GPS: ' + r.gps);
+    if (r.vendor) meta.push(r.vendor);
+    if (meta.length) {
+      x.fillStyle = MUTE;
+      x.font = '400 23px Arial, sans-serif';
+      x.fillText(clip(meta.join('  ·  '), 560), PAD + 500, y + 32);
+    }
+
+    x.strokeStyle = LINE; x.lineWidth = 1;
+    x.beginPath(); x.moveTo(PAD, y + 46); x.lineTo(W - PAD, y + 46); x.stroke();
+
+    y += ROW_H;
+  });
+
+  if (incomplete.length) {
+    x.fillStyle = '#FCEBEB';
+    x.fillRect(PAD - 16, y - 34, W - 2 * PAD + 32, 72);
+    x.fillStyle = '#A32D2D';
+    x.font = '600 24px Arial, sans-serif';
+    x.fillText('Detail pending: ' + clip(incomplete.map(function (r) { return r.name; }).join(', '), W - 2 * PAD - 260), PAD, y + 8);
+    y += warnH;
+  }
+
+  x.fillStyle = MUTE;
+  x.font = '400 22px Arial, sans-serif';
+  x.fillText('Prajapati Advertising  ·  generated from admin panel', PAD, H - 46);
+
+  cv.toBlob(function (blob) {
+    if (!blob) { showToast('JPEG banane mein dikkat', 'error'); return; }
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'work-plan-' + ((p_daState && p_daState.date) || 'today') + '.jpg';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+    showToast('Work plan JPEG download ho gaya', 'success');
+  }, 'image/jpeg', 0.92);
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// EVENING REPORT — target vs actual
+// Target comes from trial_daily_assignments (set in the morning).
+// Actual comes from trial_photos captured today: distinct
+// vehicle_number per member, plus the city GPS actually recorded.
+// Planned area is typed by a human; GPS city is not — so when the
+// two disagree, somebody is working the wrong patch.
+// ══════════════════════════════════════════════════════════════
+function eveningPct(r) {
+  if (!r.target) return null;
+  return Math.round((r.done / r.target) * 100);
+}
+
+function areaMismatch() { return false; }
+
+// ══════════════════════════════════════════════════════════════
+// EVENING REPORT — ranked, and deliberately fair.
+//
+// Two things this guards against, both measured on real data:
+//
+// 1. Rank by % of target, never by raw count. Targets differ (20 vs 50),
+//    areas differ. Raw count would just crown whoever got the big area.
+//
+// 2. Compare a part-finished day against yesterday AT THE SAME CLOCK TIME.
+//    At 14:04 the team had 192 vs yesterday's full-day 332 — that reads as
+//    a collapse. Against yesterday-by-14:04 it was 184, i.e. slightly
+//    ahead. Full-day comparison would brand everyone a failure most of
+//    the day, every day.
+//
+// Bottom performers are listed but never ranked-as-losers and never
+// captioned. Public shame in a WhatsApp group costs more than it earns.
+// ══════════════════════════════════════════════════════════════
+function fetchEveningData() {
+  var st = (typeof p_daState !== 'undefined') ? p_daState : {};
+  var date = st.date || (($('assignDate') && $('assignDate').value) || '');
+  if (!date) return Promise.reject(new Error('date select karo'));
+
+  var d0 = new Date(date + 'T00:00:00+05:30');
+  var histFrom = new Date(d0.getTime() - 7 * 86400000);
+  var fromIso = histFrom.toISOString().slice(0, 10) + 'T00:00:00+05:30';
+  var toIso   = date + 'T23:59:59+05:30';
+
+  var q = '/rest/v1/trial_photos?deleted_at=is.null' +
+          '&captured_at=gte.' + encodeURIComponent(fromIso) +
+          '&captured_at=lte.' + encodeURIComponent(toIso) +
+          '&select=member_phone,member_name,vehicle_number,city,captured_at' +
+          '&limit=40000';
+
+  return api(q).then(function (photos) {
+    var today = new Date();
+    var isToday = (date === new Date(today.getTime() + (330 + today.getTimezoneOffset()) * 60000)
+                            .toISOString().slice(0, 10));
+    // minutes since IST midnight, used as the like-for-like cutoff
+    var cutoff = isToday
+      ? (function () {
+          var ist = new Date(today.getTime() + (330 + today.getTimezoneOffset()) * 60000);
+          return ist.getHours() * 60 + ist.getMinutes();
+        })()
+      : 24 * 60;
+
+    var perDay = {};   // phone -> day -> {veh:{}, cities:{}}
+    (photos || []).forEach(function (p) {
+      if (!p.member_phone || !p.captured_at) return;
+      var t = new Date(p.captured_at);
+      var ist = new Date(t.getTime() + (330 + t.getTimezoneOffset()) * 60000);
+      var day = ist.toISOString().slice(0, 10);
+      var mins = ist.getHours() * 60 + ist.getMinutes();
+      if (!perDay[p.member_phone]) perDay[p.member_phone] = {};
+      if (!perDay[p.member_phone][day]) perDay[p.member_phone][day] = { veh: {}, vehCut: {}, cities: {} };
+      var slot = perDay[p.member_phone][day];
+      if (p.vehicle_number) {
+        slot.veh[p.vehicle_number] = 1;
+        if (mins <= cutoff) slot.vehCut[p.vehicle_number] = 1;
+      }
+      if (p.city && day === date) slot.cities[p.city] = (slot.cities[p.city] || 0) + 1;
+    });
+
+    var yDate = new Date(d0.getTime() - 86400000).toISOString().slice(0, 10);
+    var members = st.members || [];
+    var campaigns = st.campaigns || [];
+    var map = st.assignMap || {};
+    var byKey = {};
+    campaigns.forEach(function (c) { byKey[c.key] = c; });
+
+    var rows = [];
+    members.forEach(function (m) {
+      var a = map[m.phone];
+      var days = perDay[m.phone] || {};
+      var todaySlot = days[date];
+      var done = todaySlot ? Object.keys(todaySlot.veh).length : 0;
+      if (!a && !done) return;
+
+      // yesterday, truncated to the same clock time
+      var ySlot = days[yDate];
+      var yPace = ySlot ? Object.keys(ySlot.vehCut).length : 0;
+
+      // personal best + average over prior full days only
+      var best = 0, sum = 0, cnt = 0;
+      Object.keys(days).forEach(function (dk) {
+        if (dk === date) return;
+        var v = Object.keys(days[dk].veh).length;
+        if (v > best) best = v;
+        sum += v; cnt++;
+      });
+
+      var cities = todaySlot ? Object.keys(todaySlot.cities).sort(function (x, y) {
+        return todaySlot.cities[y] - todaySlot.cities[x];
+      }) : [];
+
+      var c = a ? byKey[a.campaign_key] : null;
+      rows.push({
+        name: m.name || '—',
+        campaign: (c && (c.name || c.campaign_name)) || (a ? a.campaign_key : '—'),
+        target: a ? a.quantity : null,
+        plannedArea: a ? (a.area || '') : '',
+        done: done,
+        yPace: yPace,
+        best: best,
+        avg: cnt ? (sum / cnt) : 0,
+        gps: cities.slice(0, 2).join(', '),
+        unplanned: !a
+      });
+    });
+
+    rows.forEach(function (r) {
+      r.pct = r.target ? Math.round((r.done / r.target) * 100) : null;
+      r.delta = r.done - r.yPace;
+      r.newBest = r.best > 0 && r.done > r.best;
+      r.aboveAvg = r.avg > 0 && r.done > r.avg;
+    });
+
+    // Ranked = has a target. Everyone else is shown, unranked.
+    var ranked = rows.filter(function (r) { return r.pct !== null; })
+                     .sort(function (a, b) { return b.pct - a.pct || b.done - a.done; });
+    var unranked = rows.filter(function (r) { return r.pct === null; })
+                       .sort(function (a, b) { return b.done - a.done; });
+
+    // Most-improved deliberately skips anyone already on the podium, so the
+    // award spreads recognition instead of stacking it on one person.
+    var top3 = {};
+    ranked.slice(0, 3).forEach(function (r) { top3[r.name] = 1; });
+    var improved = rows.slice()
+                       .filter(function (r) { return r.delta > 0 && !top3[r.name]; })
+                       .sort(function (a, b) { return b.delta - a.delta; })[0] || null;
+
+    return {
+      date: date, cutoff: cutoff, partial: isToday && cutoff < 20 * 60,
+      ranked: ranked, unranked: unranked, improved: improved,
+      teamDone: rows.reduce(function (s, r) { return s + r.done; }, 0),
+      teamTarget: rows.reduce(function (s, r) { return s + (r.target || 0); }, 0),
+      teamYPace: rows.reduce(function (s, r) { return s + r.yPace; }, 0)
+    };
+  });
+}
+
+function downloadEveningReport() {
+  showToast('Report ban raha hai…', 'success');
+  fetchEveningData().then(function (D) {
+    var all = D.ranked.concat(D.unranked);
+    if (!all.length) { showToast('Is date ka koi data nahi', 'error'); return; }
+
+    var W = 1080, PAD = 48, ROW_H = 88, HEAD = 300, FOOT = 130;
+    var podium = Math.min(3, D.ranked.length);
+    var podH = podium ? 190 : 0;
+    var impH = D.improved && D.improved.delta > 0 ? 84 : 0;
+    var H = HEAD + podH + impH + all.length * ROW_H + FOOT;
+
+    var cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    var x = cv.getContext('2d');
+    var INK='#0B1957', TEAL='#0E9F8E', MUTE='#6B7280', LINE='#E4E9F0',
+        RED='#E24B4A', AMB='#BA7517', GOLD='#C9992B';
+
+    x.fillStyle = '#FFFFFF'; x.fillRect(0,0,W,H);
+    x.fillStyle = INK; x.fillRect(0,0,W,8);
+
+    function clip(t, max) {
+      t = String(t || '');
+      if (x.measureText(t).width <= max) return t;
+      while (t.length > 1 && x.measureText(t + '…').width > max) t = t.slice(0,-1);
+      return t + '…';
+    }
+
+    var p = D.date.split('-');
+    var mn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var hh = String(Math.floor(D.cutoff/60)).padStart(2,'0') + ':' + String(D.cutoff%60).padStart(2,'0');
+
+    x.fillStyle = INK; x.font = '600 44px Georgia, serif';
+    x.fillText(D.partial ? 'Aaj ka scoreboard' : 'Din ka scoreboard', PAD, 92);
+
+    x.fillStyle = MUTE; x.font = '400 25px Arial, sans-serif';
+    x.fillText(p[2] + ' ' + mn[parseInt(p[1],10)-1] + ' ' + p[0] +
+               (D.partial ? '   ·   ' + hh + ' tak — din abhi chal raha hai' : '   ·   poora din'),
+               PAD, 132);
+
+    var tp = D.teamTarget ? Math.round((D.teamDone/D.teamTarget)*100) : 0;
+    x.fillStyle = tp >= 80 ? TEAL : (tp >= 50 ? AMB : RED);
+    x.font = '600 34px Arial, sans-serif';
+    x.fillText('Team: ' + D.teamDone + ' / ' + D.teamTarget + (D.teamTarget ? '   ·   ' + tp + '%' : ''), PAD, 186);
+
+    // Like-for-like pace line. This is what stops a half-day looking like a crash.
+    var dd = D.teamDone - D.teamYPace;
+    x.font = '400 25px Arial, sans-serif';
+    x.fillStyle = dd >= 0 ? TEAL : MUTE;
+    var paceTxt = dd >= 0
+      ? 'Kal isi time se ' + dd + ' aage'
+      : 'Kal isi time se ' + Math.abs(dd) + ' peeche';
+    x.fillText(paceTxt + '  (kal ' + D.teamYPace + ')', PAD, 224);
+
+    x.strokeStyle = LINE; x.lineWidth = 2;
+    x.beginPath(); x.moveTo(PAD, 252); x.lineTo(W-PAD, 252); x.stroke();
+
+    var y = HEAD;
+
+    if (podium) {
+      x.fillStyle = INK; x.font = '600 26px Arial, sans-serif';
+      x.fillText('Aaj ke top performers', PAD, y - 12);
+      var boxW = (W - 2*PAD - 24) / 3;
+      for (var i = 0; i < podium; i++) {
+        var r = D.ranked[i];
+        var bx = PAD + i * (boxW + 12);
+        x.fillStyle = i === 0 ? '#FFFBF0' : '#F7F9FC';
+        x.fillRect(bx, y + 6, boxW, 130);
+        x.strokeStyle = i === 0 ? GOLD : LINE; x.lineWidth = i === 0 ? 2 : 1;
+        x.strokeRect(bx, y + 6, boxW, 130);
+
+        x.fillStyle = i === 0 ? GOLD : MUTE;
+        x.font = '600 22px Arial, sans-serif';
+        x.fillText(['1st','2nd','3rd'][i], bx + 16, y + 38);
+
+        x.fillStyle = INK; x.font = '600 27px Arial, sans-serif';
+        x.fillText(clip(r.name, boxW - 32), bx + 16, y + 76);
+
+        x.fillStyle = r.pct >= 80 ? TEAL : AMB;
+        x.font = '600 30px Arial, sans-serif';
+        x.fillText(r.pct + '%', bx + 16, y + 114);
+
+        x.fillStyle = MUTE; x.font = '400 21px Arial, sans-serif';
+        var sub = r.done + '/' + r.target + (r.newBest ? '  · new best' : '');
+        x.fillText(clip(sub, boxW - 90), bx + 74, y + 114);
+      }
+      y += podH;
+    }
+
+    if (impH) {
+      var im = D.improved;
+      x.fillStyle = '#E1F5EE'; x.fillRect(PAD, y - 26, W - 2*PAD, 60);
+      x.fillStyle = '#0F6E56'; x.font = '600 25px Arial, sans-serif';
+      x.fillText('Sabse zyada sudhaar — ' + im.name + ':  kal isi time se +' + im.delta, PAD + 18, y + 12);
+      y += impH;
+    }
+
+    x.fillStyle = INK; x.font = '600 26px Arial, sans-serif';
+    x.fillText('Poori team', PAD, y - 10);
+    y += 26;
+
+    all.forEach(function (r, i) {
+      if (i % 2 === 1) { x.fillStyle = '#F9FAFC'; x.fillRect(PAD-16, y-44, W-2*PAD+32, ROW_H-8); }
+
+      x.fillStyle = MUTE; x.font = '400 23px Arial, sans-serif';
+      x.fillText(r.pct !== null ? String(i+1).padStart(2,'0') : '—', PAD, y);
+
+      x.fillStyle = INK; x.font = '600 29px Arial, sans-serif';
+      x.fillText(clip(r.name, 260), PAD + 48, y);
+
+      var badges = [];
+      if (r.newBest) badges.push('personal best');
+      else if (r.aboveAvg) badges.push('apne average se upar');
+      if (r.delta > 0) badges.push('+' + r.delta + ' vs kal');
+      if (badges.length) {
+        x.fillStyle = TEAL; x.font = '400 20px Arial, sans-serif';
+        x.fillText(clip(badges.join('  ·  '), 300), PAD + 48, y + 26);
+      } else {
+        x.fillStyle = MUTE; x.font = '400 22px Arial, sans-serif';
+        x.fillText(clip(r.campaign, 300), PAD + 48, y + 26);
+      }
+
+      var right = r.target ? (r.done + ' / ' + r.target) : (r.done + ' / —');
+      x.fillStyle = r.pct === null ? MUTE : (r.pct >= 80 ? TEAL : (r.pct >= 50 ? AMB : RED));
+      x.font = '600 30px Arial, sans-serif';
+      x.fillText(right, W - PAD - x.measureText(right).width, y);
+
+      if (r.pct !== null) {
+        var bw = 180, bx2 = W - PAD - bw, by2 = y + 14;
+        x.fillStyle = '#EEF2F8'; x.fillRect(bx2, by2, bw, 9);
+        x.fillStyle = r.pct >= 80 ? TEAL : (r.pct >= 50 ? AMB : RED);
+        x.fillRect(bx2, by2, Math.max(3, bw * Math.min(1, r.pct/100)), 9);
+      } else {
+        x.fillStyle = MUTE; x.font = '400 19px Arial, sans-serif';
+        var nt = 'target set nahi tha';
+        x.fillText(nt, W - PAD - x.measureText(nt).width, y + 24);
+      }
+
+      x.strokeStyle = LINE; x.lineWidth = 1;
+      x.beginPath(); x.moveTo(PAD, y+44); x.lineTo(W-PAD, y+44); x.stroke();
+      y += ROW_H;
+    });
+
+    x.fillStyle = MUTE; x.font = '400 21px Arial, sans-serif';
+    x.fillText('Rank = target ka %, count ka nahi — taaki chhota target bhi barabar gine.', PAD, H - 68);
+    x.fillText('Prajapati Advertising  ·  GPS verified, apne aap bana', PAD, H - 38);
+
+    cv.toBlob(function (blob) {
+      if (!blob) { showToast('JPEG banane mein dikkat', 'error'); return; }
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = 'scoreboard-' + D.date + '.jpg';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+      showToast('Scoreboard download ho gaya', 'success');
+    }, 'image/jpeg', 0.92);
+  }).catch(function (e) {
+    showToast('Report fail: ' + (e && e.message ? e.message : 'unknown'), 'error');
+  });
 }
 
 // ═══ SEARCHABLE CAMPAIGN PICKER (Daily assignments) ═══════════
