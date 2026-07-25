@@ -1343,6 +1343,34 @@ async function saveEmp(btn){
 function numOrNull(id){ const el=document.getElementById(id); if(!el||!el.value.trim())return null; const n=parseFloat(el.value); return isNaN(n)?null:n; }
 // WhatsApp notify (silent — fail hone pe app normal chalega)
 const EXPENSE_ADMIN_PHONES = ['9922138138','8484861631','8484838138']; // Shivam, Ravi, Rajendra
+
+// ══════════════════════════════════════════════════════════════
+// EXPENSE VISIBILITY
+// HR admin ko sirf staff/people wale expenses dikhte hain. Office aur
+// execution wale (production, wall wrap, printing, parcel) sirf owner /
+// admin ko. Category ka naam free text hai, isliye match lowercase +
+// substring pe hota hai — nayi spelling apne aap sahi bucket mein girti hai.
+// Category ko idhar-udhar karna ho to bas ye list badlo.
+// ══════════════════════════════════════════════════════════════
+const HR_EXPENSE_CATEGORIES = [
+  'advance', 'salary', 'other',
+  'food', 'ot food', 'ot work',
+  'sales team', 'transport',
+  'fuel', 'birthday', 'festival'
+];
+function isHrExpense(cat){
+  const c = String(cat || '').toLowerCase().trim();
+  if (!c) return true;                      // uncategorised -> show, warna chhup jayega
+  if (c.indexOf('transportation') !== -1) return false;   // logistics, not staff travel
+  if (c.indexOf('execution') !== -1) return false;
+  return HR_EXPENSE_CATEGORIES.some(k => c.indexOf(k) !== -1);
+}
+// Owner/admin sab dekhte hain; hr_role wale sirf HR bucket.
+function isExpenseOwner(){
+  const r = String(USER.role || '').toLowerCase();
+  return r === 'owner' || r === 'admin';
+}
+let EXP_TAB = 'todo';   // todo | mine | all
 async function notifyWhatsApp(toPhone, toName, templateName, params, ctxType){
   if(!toPhone) return;
   try {
@@ -2080,13 +2108,15 @@ async function advReject(id){
 
 // ══════════ EXPENSES ══════════
 let EXP_RECEIPT_URL = '';
+let EXP_RECEIPT_STATE = 'none';   // none | uploading | done | failed
 async function renderExpenses(root){
   try {
     const admin = isAdmin();
+    const owner = isExpenseOwner();
     // employee sees own; admin sees all (recent 60)
     // HR app sirf INTERNAL/office expenses dikhata hai — field/campaign wale nahi
     const filter = admin ? '' : '&team_member_phone=eq.'+USER.phone;
-    const exps = await api('/prajapati_expenses?select=id,expense_date,expense_type,internal_category,total_amount,payment_status,approval_status,receipt_url,team_member_name,remark,other_description,food_amount,hotel_amount,transport_amount,other_amount&expense_type=eq.internal&order=created_at.desc&limit=60'+filter);
+    let exps = await api('/prajapati_expenses?select=id,expense_date,expense_type,internal_category,total_amount,payment_status,approval_status,receipt_url,team_member_name,remark,other_description,food_amount,hotel_amount,transport_amount,other_amount&expense_type=eq.internal&order=created_at.desc&limit=60'+filter);
 
     let h = '<div class="sechead"><i class="ti ti-receipt"></i>Expenses</div>';
 
@@ -2112,12 +2142,44 @@ async function renderExpenses(root){
     h += '<label style="font-size:12px;color:var(--muted)">Receipt photo (optional)</label>';
     h += '<input type="file" id="expReceipt" accept="image/*" onchange="onExpReceipt(this)" style="margin-bottom:6px">';
     h += '<div id="expReceiptLbl" style="font-size:11px;color:var(--muted);margin-bottom:10px"></div>';
-    h += '<button class="btn-primary" style="width:100%;height:44px;font-weight:600" onclick="submitExpense(this)">Submit Expense</button>';
+    h += '<button class="btn-primary" style="width:100%;height:44px;font-weight:600" id="expSubmitBtn" onclick="submitExpense(this)">Submit Expense</button>';
     h += '<div id="expErr" style="color:var(--red);font-size:12px;text-align:center;margin-top:8px"></div>';
     h += '</div>';
 
     // ── LIST ──
-    h += '<div class="sechead" style="margin-top:16px"><i class="ti ti-list"></i>'+(admin?'Sab expenses':'Mere expenses')+'</div>';
+    // ── scope + tabs ──
+    let visible = exps;
+    if (admin && !owner){
+      // HR admin: office/execution wale bilkul nahi
+      visible = exps.filter(x => isHrExpense(x.internal_category || x.other_description));
+    }
+    const mine = visible.filter(x => x.team_member_phone === USER.phone);
+    const todo = visible.filter(x => (x.approval_status||'pending') === 'pending'
+                                  || ((x.approval_status==='approved') && (x.payment_status||'pending') !== 'paid'));
+
+    let list = visible;
+    if (admin){
+      if (EXP_TAB === 'mine') list = mine;
+      else if (EXP_TAB === 'todo') list = todo;
+      const tab = (id,label,count) =>
+        '<button onclick="expTab(\''+id+'\')" style="flex:1;height:36px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;'+
+        (EXP_TAB===id ? 'background:var(--teal);color:#fff' : 'background:var(--s1);color:var(--sec)')+'">'+
+        label+' <span style="opacity:.75">'+count+'</span></button>';
+      h += '<div class="sechead" style="margin-top:16px"><i class="ti ti-list"></i>Expenses</div>';
+      h += '<div style="display:flex;gap:6px;margin-bottom:10px">'+
+             tab('todo','Kaam baaki',todo.length)+
+             tab('mine','Mere',mine.length)+
+             tab('all', owner?'Sab':'HR/Staff', visible.length)+
+           '</div>';
+      if (!owner){
+        h += '<div style="font-size:11px;color:var(--muted);margin:-4px 0 10px">'+
+             'Office aur execution wale expenses owner ke paas jaate hain</div>';
+      }
+    } else {
+      h += '<div class="sechead" style="margin-top:16px"><i class="ti ti-list"></i>Mere expenses</div>';
+    }
+    exps = list;
+
     if (!exps.length){
       h += '<div class="card" style="text-align:center;color:var(--muted);padding:30px">Abhi tak koi expense nahi</div>';
     } else {
@@ -2130,8 +2192,11 @@ async function renderExpenses(root){
         const pay = (x.payment_status||'pending');
         h += '<div class="row-item" style="flex-wrap:wrap">';
         h += '<div style="flex:1;min-width:60%"><div style="font-size:13px;font-weight:500">'+esc(cat)+' · '+inr(amt)+'</div>';
-        h += '<div style="font-size:11px;color:var(--muted)">'+esc(x.expense_date||'')+(admin&&x.team_member_name?' · '+esc(x.team_member_name):'')+(x.remark?' · '+esc(x.remark):'')+'</div></div>';
+        var who = x.team_member_name ? esc(x.team_member_name)
+                : (x.created_by_name ? esc(x.created_by_name)+' (entry)' : '<span style="color:var(--red)">party name missing</span>');
+        h += '<div style="font-size:11px;color:var(--muted)">'+esc(x.expense_date||'')+(admin?' · '+who:'')+(x.remark?' · '+esc(x.remark):'')+'</div></div>';
         if (x.receipt_url) h += '<span class="pill pill-blue" style="cursor:pointer" onclick="viewImg(\''+esc(x.receipt_url)+'\')">Receipt</span>';
+        else if (pay === 'paid') h += '<span class="pill pill-red" title="Paid but no receipt on file">no receipt</span>';
         h += '<span class="pill '+aprPill+'">'+esc(apr)+'</span>';
         if (pay==='paid') h += '<span class="pill pill-green">paid</span>';
         // admin actions
@@ -2152,6 +2217,7 @@ async function renderExpenses(root){
     }
     root.innerHTML = h;
     EXP_RECEIPT_URL = '';
+    EXP_RECEIPT_STATE = 'none';
 
     // admin: load members into dropdown
     if (admin){
@@ -2164,14 +2230,25 @@ async function renderExpenses(root){
     root.innerHTML = '<div class="card" style="color:var(--red)">Load fail: '+esc(e.message)+'</div>';
   }
 }
+function expTab(t){ EXP_TAB = t; nav('expenses'); }
+
 async function onExpReceipt(input){
   const f = input.files[0]; if(!f) return;
   const lbl = document.getElementById('expReceiptLbl');
+  const sub = document.getElementById('expSubmitBtn');
   lbl.textContent = 'Uploading...';
+  EXP_RECEIPT_STATE = 'uploading';
+  EXP_RECEIPT_URL = '';
+  if (sub){ sub.disabled = true; sub.textContent = 'Receipt upload ho raha hai...'; }
   try {
     EXP_RECEIPT_URL = await uploadFile(f, USER.phone, 'receipt');
+    EXP_RECEIPT_STATE = 'done';
     lbl.innerHTML = '<span style="color:var(--green)">Receipt added ✓</span>';
-  } catch(e){ lbl.innerHTML = '<span style="color:var(--red)">Upload fail</span>'; EXP_RECEIPT_URL=''; }
+  } catch(e){
+    EXP_RECEIPT_STATE = 'failed'; EXP_RECEIPT_URL='';
+    lbl.innerHTML = '<span style="color:var(--red)">Upload fail — dobara try karo</span>';
+  }
+  if (sub){ sub.disabled = false; sub.textContent = 'Submit Expense'; }
 }
 async function submitExpense(btn){
   const err = document.getElementById('expErr'); err.textContent='';
@@ -2181,9 +2258,13 @@ async function submitExpense(btn){
   const remark = document.getElementById('expRemark').value.trim();
   if (!amt || amt<=0){ err.textContent='Amount daalo'; return; }
   if (!date){ err.textContent='Date daalo'; return; }
+  // Never let a chosen receipt be silently dropped.
+  if (EXP_RECEIPT_STATE === 'uploading'){ err.textContent='Receipt upload ho raha hai, ruko'; return; }
+  if (EXP_RECEIPT_STATE === 'failed' &&
+      !confirm('Receipt upload fail hua tha.\n\nBina receipt ke save karein?')){ return; }
   let phone=USER.phone, name=USER.name;
   const memSel = document.getElementById('expMember');
-  if (memSel){ const parts=memSel.value.split('|'); phone=parts[0]; name=parts[1]||''; }
+  if (memSel){ const parts=memSel.value.split('|'); phone=parts[0]; name=parts[1]||USER.name; }
   btn=btn||(typeof event!=="undefined"&&event.target); if(btn){btn.disabled=true;btn.textContent='Saving...';}
   try {
     const row = {
