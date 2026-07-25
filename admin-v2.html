@@ -8890,15 +8890,19 @@ function daSaveTarget(el) {
   });
 }
 
+// Uses the existing apiAll() helper, which pages around the ~1000-row
+// gateway cap. A plain api() call here silently returned the first 1000
+// of 1165 photos and the reports under-counted by ~53 rickshaw.
 function daFetchLiveDone() {
   var st = (typeof p_daState !== 'undefined') ? p_daState : {};
   var date = st.date || (($('assignDate') && $('assignDate').value) || '');
   if (!date) return Promise.resolve({});
+  // order is required for stable paging
   var q = '/rest/v1/trial_photos?deleted_at=is.null' +
           '&captured_at=gte.' + encodeURIComponent(date + 'T00:00:00+05:30') +
           '&captured_at=lte.' + encodeURIComponent(date + 'T23:59:59+05:30') +
-          '&select=member_phone,vehicle_number,city&limit=20000';
-  return api(q).then(function (photos) {
+          '&select=member_phone,member_name,vehicle_number,city&order=id.asc';
+  return apiAll(q).then(function (photos) {
     var by = {};
     (photos || []).forEach(function (p) {
       if (!p.member_phone) return;
@@ -9466,9 +9470,9 @@ function fetchEveningData() {
   var q = '/rest/v1/trial_photos?deleted_at=is.null' +
           '&captured_at=gte.' + encodeURIComponent(fromIso) +
           '&captured_at=lte.' + encodeURIComponent(toIso) +
-          '&select=member_phone,vehicle_number,city,captured_at&limit=40000';
+          '&select=member_phone,member_name,vehicle_number,city,captured_at&order=id.asc';
 
-  return api(q).then(function (photos) {
+  return apiAll(q).then(function (photos) {
     var perDay = {};
     (photos || []).forEach(function (p) {
       if (!p.member_phone || !p.captured_at) return;
