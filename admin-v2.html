@@ -8689,6 +8689,152 @@ function saveCampaignOverrides(campaignKey) {
 // ═══ Daily Assignments dashboard state + helpers ═══
 var p_daState = { members: [], campaigns: [], assignMap: {}, date: '', filter: 'all' };
 
+// ══════════════════════════════════════════════════════════════
+// REPORT HELPERS
+// Date maths runs on the STRING, never on a UTC timestamp.
+// new Date('2026-07-25T00:00:00+05:30') is 2026-07-24T18:30Z, so
+// subtracting a day and calling toISOString() gave 2026-07-23 — every
+// "vs kal" number was measured against the wrong day and came back 0.
+// ══════════════════════════════════════════════════════════════
+function istDayKey(iso) {
+  var t = new Date(iso);
+  if (isNaN(t)) return '';
+  var d = new Date(t.getTime() + 330 * 60000);
+  return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') +
+         '-' + String(d.getUTCDate()).padStart(2, '0');
+}
+function istMinutes(iso) {
+  var t = new Date(iso);
+  if (isNaN(t)) return 0;
+  var d = new Date(t.getTime() + 330 * 60000);
+  return d.getUTCHours() * 60 + d.getUTCMinutes();
+}
+function dayShift(dateStr, days) {
+  var p = dateStr.split('-');
+  var d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]));
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') +
+         '-' + String(d.getUTCDate()).padStart(2, '0');
+}
+function istNowParts() {
+  var d = new Date(Date.now() + 330 * 60000);
+  return {
+    date: d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') +
+          '-' + String(d.getUTCDate()).padStart(2, '0'),
+    mins: d.getUTCHours() * 60 + d.getUTCMinutes()
+  };
+}
+function hhmm(m) { return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); }
+
+// A field day runs roughly 09:00-19:00. Judging half a day against a
+// whole day's target paints everyone red until evening, so compare
+// against what should be done BY NOW instead.
+var DAY_START = 9 * 60, DAY_END = 19 * 60;
+function expectedFraction(mins, partial) {
+  if (!partial) return 1;
+  if (mins <= DAY_START) return 0.02;
+  if (mins >= DAY_END) return 1;
+  return (mins - DAY_START) / (DAY_END - DAY_START);
+}
+function paceColour(done, target, expFrac) {
+  if (!target) return '#6B7280';
+  var ratio = done / Math.max(1, target * expFrac);
+  if (ratio >= 0.95) return '#0E9F8E';
+  if (ratio >= 0.65) return '#BA7517';
+  return '#E24B4A';
+}
+function makeCanvas(W, H) {
+  var DPR = 2;
+  var cv = document.createElement('canvas');
+  cv.width = W * DPR; cv.height = H * DPR;
+  var x = cv.getContext('2d');
+  x.scale(DPR, DPR);
+  x.textBaseline = 'alphabetic';
+  return { cv: cv, x: x };
+}
+function fitText(x, t, max) {
+  t = String(t == null ? '' : t);
+  if (x.measureText(t).width <= max) return t;
+  while (t.length > 1 && x.measureText(t + '\u2026').width > max) t = t.slice(0, -1);
+  return t + '\u2026';
+}
+function saveJpeg(cv, name) {
+  cv.toBlob(function (blob) {
+    if (!blob) { showToast('JPEG banane mein dikkat', 'error'); return; }
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+    showToast('Download ho gaya', 'success');
+  }, 'image/jpeg', 0.94);
+}
+
+// ══════════════════════════════════════════════════════════════
+// TARGET + LIVE ACTUALS
+// Kept up here with the other daily-assignment functions on purpose:
+// they used to sit next to the report renderers and were twice wiped
+// out when those blocks were rewritten.
+// ══════════════════════════════════════════════════════════════
+function daSaveTarget(el) {
+  var phone = el.dataset.phone, date = el.dataset.date;
+  var raw = String(el.value || '').trim();
+  var qty = raw === '' ? null : parseInt(raw, 10);
+  if (qty !== null && (isNaN(qty) || qty < 0)) { showToast('Target sirf number', 'error'); return; }
+  el.classList.toggle('empty', qty === null);
+
+  fetch(CONFIG.supabaseUrl + '/rest/v1/trial_daily_assignments?member_phone=eq.' +
+        encodeURIComponent(phone) + '&assignment_date=eq.' + date, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: CONFIG.supabaseKey,
+      Authorization: 'Bearer ' + CONFIG.supabaseKey,
+      Prefer: 'return=representation'
+    },
+    body: JSON.stringify({ quantity: qty })
+  }).then(function (r) {
+    return r.text().then(function (t) {
+      if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + t.slice(0, 160));
+      return t;
+    });
+  }).then(function () {
+    if (p_daState && p_daState.assignMap && p_daState.assignMap[phone]) {
+      p_daState.assignMap[phone].quantity = qty;
+    }
+    if (typeof daRenderStats === 'function') daRenderStats();
+    showToast(qty === null ? 'Target hataya' : 'Target ' + qty + ' set', 'success');
+  }).catch(function (e) {
+    console.error('[target]', e);
+    showToast('Target save fail: ' + e.message, 'error');
+  });
+}
+
+function daFetchLiveDone() {
+  var st = (typeof p_daState !== 'undefined') ? p_daState : {};
+  var date = st.date || (($('assignDate') && $('assignDate').value) || '');
+  if (!date) return Promise.resolve({});
+  var q = '/rest/v1/trial_photos?deleted_at=is.null' +
+          '&captured_at=gte.' + encodeURIComponent(date + 'T00:00:00+05:30') +
+          '&captured_at=lte.' + encodeURIComponent(date + 'T23:59:59+05:30') +
+          '&select=member_phone,vehicle_number,city&limit=20000';
+  return api(q).then(function (photos) {
+    var by = {};
+    (photos || []).forEach(function (p) {
+      if (!p.member_phone) return;
+      if (!by[p.member_phone]) by[p.member_phone] = { veh: {}, cities: {} };
+      if (p.vehicle_number) by[p.member_phone].veh[p.vehicle_number] = 1;
+      if (p.city) by[p.member_phone].cities[p.city] = (by[p.member_phone].cities[p.city] || 0) + 1;
+    });
+    var out = {};
+    Object.keys(by).forEach(function (k) {
+      var c = Object.keys(by[k].cities).sort(function (a, b) { return by[k].cities[b] - by[k].cities[a]; });
+      out[k] = { done: Object.keys(by[k].veh).length, gps: c.slice(0, 2).join(', ') };
+    });
+    return out;
+  }).catch(function (e) { console.error('[live]', e); return {}; });
+}
+
 function daRenderStats() {
   var total = p_daState.members.length;
   var assigned = 0;
@@ -9042,139 +9188,112 @@ function downloadWorkPlanJPEG() {
 }
 
 function renderWorkPlanCanvas(rows) {
+  var np = istNowParts();
+  var date = (p_daState && p_daState.date) || np.date;
+  var partial = (date === np.date);
+  var expFrac = expectedFraction(np.mins, partial);
 
-  var W = 1080, PAD = 48, ROW_H = 92, HEAD = 260, FOOT = 110;
-  var incomplete = rows.filter(function (r) { return !r.qty || !r.area; });
-  var warnH = incomplete.length ? 96 : 0;
+  var W = 1100, PAD = 56, ROW_H = 86, HEAD = 250, FOOT = 96;
+  // Fixed column grid — the previous version drew the progress bar at a
+  // right offset that ran straight through the location text.
+  var COL_NAME = PAD + 54, W_NAME = 330;
+  var COL_META = PAD + 400, W_META = 320;
+  var RIGHT    = W - PAD;          // numbers right-align here
+  var BAR_W    = 150;
+
+  var incomplete = rows.filter(function (r) { return !r.qty; });
+  var warnH = incomplete.length ? 84 : 0;
   var H = HEAD + rows.length * ROW_H + warnH + FOOT;
 
-  var cv = document.createElement('canvas');
-  cv.width = W; cv.height = H;
-  var x = cv.getContext('2d');
-
-  var INK = '#0B1957', TEAL = '#0E9F8E', MUTE = '#6B7280', LINE = '#E4E9F0';
+  var M = makeCanvas(W, H), cv = M.cv, x = M.x;
+  var INK='#0B1957', SLATE='#3d4453', MUTE='#8A93A2', LINE='#E8ECF2', TEAL='#0E9F8E';
 
   x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, W, H);
-  x.fillStyle = INK; x.fillRect(0, 0, W, 8);
+  x.fillStyle = INK; x.fillRect(0, 0, W, 6);
 
-  var total = rows.reduce(function (s, r) { return s + (r.qty || 0); }, 0);
-
-  x.fillStyle = INK;
-  x.font = '600 44px Georgia, serif';
-  x.fillText('Daily work plan', PAD, 92);
-  var now = new Date();
-  var hh = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
-
-  x.fillStyle = MUTE;
-  x.font = '400 26px Arial, sans-serif';
-  x.fillText(workPlanDateLabel() + '   ·   as of ' + hh, PAD, 134);
-
-  var doneAll = rows.reduce(function (s, r) { return s + (r.done || 0); }, 0);
+  var total = rows.reduce(function (s2, r) { return s2 + (r.qty || 0); }, 0);
+  var doneAll = rows.reduce(function (s2, r) { return s2 + (r.done || 0); }, 0);
   var pctAll = total ? Math.round((doneAll / total) * 100) : 0;
-  x.fillStyle = pctAll >= 80 ? TEAL : (pctAll >= 50 ? '#BA7517' : '#E24B4A');
-  x.font = '600 30px Arial, sans-serif';
-  var summary = doneAll + ' / ' + total + ' rickshaw' + (total ? '   ·   ' + pctAll + '%' : '') +
-                '   ·   ' + rows.length + ' members';
-  x.fillText(summary, PAD, 186);
 
-  x.strokeStyle = LINE; x.lineWidth = 2;
-  x.beginPath(); x.moveTo(PAD, 214); x.lineTo(W - PAD, 214); x.stroke();
+  x.fillStyle = INK; x.font = '600 40px Georgia, serif';
+  x.fillText('Daily work plan', PAD, 84);
 
-  function clip(text, max) {
-    var t = String(text || '');
-    if (x.measureText(t).width <= max) return t;
-    while (t.length > 1 && x.measureText(t + '…').width > max) t = t.slice(0, -1);
-    return t + '…';
+  var p = date.split('-');
+  var mn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  x.fillStyle = MUTE; x.font = '400 22px Arial, sans-serif';
+  x.fillText(p[2] + ' ' + mn[+p[1]-1] + ' ' + p[0] + (partial ? '   \u00b7   ' + hhmm(np.mins) + ' tak' : ''), PAD, 118);
+
+  x.fillStyle = INK; x.font = '600 30px Arial, sans-serif';
+  x.fillText(doneAll + ' / ' + total + ' rickshaw', PAD, 166);
+  var wNum = x.measureText(doneAll + ' / ' + total + ' rickshaw').width;
+  x.fillStyle = MUTE; x.font = '400 22px Arial, sans-serif';
+  x.fillText('\u00b7   ' + pctAll + '%   \u00b7   ' + rows.length + ' members', PAD + wNum + 16, 166);
+
+  if (partial) {
+    x.fillStyle = MUTE; x.font = '400 20px Arial, sans-serif';
+    x.fillText('Is waqt tak lagbhag ' + Math.round(expFrac * 100) + '% hona chahiye', PAD, 198);
   }
+
+  x.strokeStyle = LINE; x.lineWidth = 1.5;
+  x.beginPath(); x.moveTo(PAD, 222); x.lineTo(W - PAD, 222); x.stroke();
 
   var y = HEAD;
   rows.forEach(function (r, i) {
-    if (i % 2 === 1) { x.fillStyle = '#F7F9FC'; x.fillRect(PAD - 16, y - 46, W - 2 * PAD + 32, ROW_H - 8); }
+    if (i % 2 === 1) { x.fillStyle = '#FAFBFD'; x.fillRect(PAD - 18, y - 42, W - 2*PAD + 36, ROW_H - 6); }
 
-    x.fillStyle = MUTE;
-    x.font = '400 24px Arial, sans-serif';
+    x.fillStyle = MUTE; x.font = '400 20px Arial, sans-serif';
     x.fillText(String(i + 1).padStart(2, '0'), PAD, y);
 
-    x.fillStyle = INK;
-    x.font = '600 30px Arial, sans-serif';
-    x.fillText(clip(r.name, 300), PAD + 52, y);
+    x.fillStyle = INK; x.font = '600 26px Arial, sans-serif';
+    x.fillText(fitText(x, r.name, W_NAME), COL_NAME, y);
 
-    // done / target, live. Colour by how close the day is running.
-    if (r.qty) {
-      var pc = Math.round((r.done / r.qty) * 100);
-      x.fillStyle = pc >= 80 ? TEAL : (pc >= 50 ? '#BA7517' : '#E24B4A');
-      x.font = '600 32px Arial, sans-serif';
-      var q = r.done + ' / ' + r.qty;
-      x.fillText(q, W - PAD - x.measureText(q).width, y);
+    x.fillStyle = SLATE; x.font = '400 21px Arial, sans-serif';
+    x.fillText(fitText(x, r.campaign, W_NAME), COL_NAME, y + 27);
 
-      var bw = 190, bx = W - PAD - bw, by = y + 14;
-      x.fillStyle = '#EEF2F8'; x.fillRect(bx, by, bw, 9);
-      x.fillStyle = pc >= 80 ? TEAL : (pc >= 50 ? '#BA7517' : '#E24B4A');
-      x.fillRect(bx, by, Math.max(3, bw * Math.min(1, pc / 100)), 9);
-    } else {
-      x.fillStyle = '#E24B4A';
-      x.font = '400 22px Arial, sans-serif';
-      var w = r.done ? (r.done + ' done · no target') : 'target pending';
-      x.fillText(w, W - PAD - x.measureText(w).width, y);
+    x.fillStyle = MUTE; x.font = '400 20px Arial, sans-serif';
+    var meta = r.area ? (r.area + (r.gps ? '  \u2192  ' + r.gps : '')) : (r.gps ? 'GPS: ' + r.gps : '');
+    if (meta) x.fillText(fitText(x, meta, W_META), COL_META, y);
+    if (r.vendor) {
+      x.fillStyle = '#A3ABB8'; x.font = '400 19px Arial, sans-serif';
+      x.fillText(fitText(x, r.vendor, W_META), COL_META, y + 27);
     }
 
-    x.fillStyle = '#3d4453';
-    x.font = '400 25px Arial, sans-serif';
-    x.fillText(clip(r.campaign, 420), PAD + 52, y + 32);
-
-    var meta = [];
-    if (r.area) meta.push(r.area + (r.gps ? ' \u2192 ' + r.gps : ''));
-    else if (r.gps) meta.push('GPS: ' + r.gps);
-    if (r.vendor) meta.push(r.vendor);
-    if (meta.length) {
-      x.fillStyle = MUTE;
-      x.font = '400 23px Arial, sans-serif';
-      x.fillText(clip(meta.join('  ·  '), 560), PAD + 500, y + 32);
+    if (r.qty) {
+      var col = paceColour(r.done, r.qty, expFrac);
+      x.fillStyle = col; x.font = '600 28px Arial, sans-serif';
+      var lbl = r.done + ' / ' + r.qty;
+      x.fillText(lbl, RIGHT - x.measureText(lbl).width, y);
+      var bx = RIGHT - BAR_W, by = y + 16;
+      x.fillStyle = '#EDF1F6'; x.fillRect(bx, by, BAR_W, 8);
+      x.fillStyle = col;
+      x.fillRect(bx, by, Math.max(3, BAR_W * Math.min(1, r.done / r.qty)), 8);
+    } else {
+      x.fillStyle = MUTE; x.font = '400 20px Arial, sans-serif';
+      var w2 = r.done ? (r.done + ' done') : 'target pending';
+      x.fillText(w2, RIGHT - x.measureText(w2).width, y);
+      if (r.done) {
+        x.fillStyle = '#C2C9D4'; x.font = '400 17px Arial, sans-serif';
+        var nt = 'no target';
+        x.fillText(nt, RIGHT - x.measureText(nt).width, y + 24);
+      }
     }
 
     x.strokeStyle = LINE; x.lineWidth = 1;
-    x.beginPath(); x.moveTo(PAD, y + 46); x.lineTo(W - PAD, y + 46); x.stroke();
-
+    x.beginPath(); x.moveTo(PAD, y + 42); x.lineTo(W - PAD, y + 42); x.stroke();
     y += ROW_H;
   });
 
-  if (incomplete.length) {
-    x.fillStyle = '#FCEBEB';
-    x.fillRect(PAD - 16, y - 34, W - 2 * PAD + 32, 72);
-    x.fillStyle = '#A32D2D';
-    x.font = '600 24px Arial, sans-serif';
-    x.fillText('Detail pending: ' + clip(incomplete.map(function (r) { return r.name; }).join(', '), W - 2 * PAD - 260), PAD, y + 8);
+  if (warnH) {
+    x.fillStyle = '#FFF8E8'; x.fillRect(PAD - 18, y - 30, W - 2*PAD + 36, 60);
+    x.fillStyle = '#8A5B0B'; x.font = '600 21px Arial, sans-serif';
+    x.fillText(fitText(x, 'Target set nahi: ' + incomplete.map(function (r) { return r.name; }).join(', '), W - 2*PAD - 40), PAD, y + 8);
     y += warnH;
   }
 
-  x.fillStyle = MUTE;
-  x.font = '400 22px Arial, sans-serif';
-  x.fillText('Prajapati Advertising  ·  generated from admin panel', PAD, H - 46);
+  x.fillStyle = '#B4BBC6'; x.font = '400 19px Arial, sans-serif';
+  x.fillText('Prajapati Advertising   \u00b7   admin panel se apne aap bana   \u00b7   GPS verified', PAD, H - 38);
 
-  cv.toBlob(function (blob) {
-    if (!blob) { showToast('JPEG banane mein dikkat', 'error'); return; }
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = 'work-plan-' + ((p_daState && p_daState.date) || 'today') + '.jpg';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
-    showToast('Work plan JPEG download ho gaya', 'success');
-  }, 'image/jpeg', 0.92);
-}
-
-
-// ══════════════════════════════════════════════════════════════
-// EVENING REPORT — target vs actual
-// Target comes from trial_daily_assignments (set in the morning).
-// Actual comes from trial_photos captured today: distinct
-// vehicle_number per member, plus the city GPS actually recorded.
-// Planned area is typed by a human; GPS city is not — so when the
-// two disagree, somebody is working the wrong patch.
-// ══════════════════════════════════════════════════════════════
-function eveningPct(r) {
-  if (!r.target) return null;
-  return Math.round((r.done / r.target) * 100);
+  saveJpeg(cv, 'work-plan-' + date + '.jpg');
 }
 
 function areaMismatch() { return false; }
@@ -9201,36 +9320,24 @@ function fetchEveningData() {
   var date = st.date || (($('assignDate') && $('assignDate').value) || '');
   if (!date) return Promise.reject(new Error('date select karo'));
 
-  var d0 = new Date(date + 'T00:00:00+05:30');
-  var histFrom = new Date(d0.getTime() - 7 * 86400000);
-  var fromIso = histFrom.toISOString().slice(0, 10) + 'T00:00:00+05:30';
+  var np = istNowParts();
+  var partial = (date === np.date);
+  var cutoff = partial ? np.mins : 24 * 60;
+  var yDate = dayShift(date, -1);
+  var fromIso = dayShift(date, -7) + 'T00:00:00+05:30';
   var toIso   = date + 'T23:59:59+05:30';
 
   var q = '/rest/v1/trial_photos?deleted_at=is.null' +
           '&captured_at=gte.' + encodeURIComponent(fromIso) +
           '&captured_at=lte.' + encodeURIComponent(toIso) +
-          '&select=member_phone,member_name,vehicle_number,city,captured_at' +
-          '&limit=40000';
+          '&select=member_phone,vehicle_number,city,captured_at&limit=40000';
 
   return api(q).then(function (photos) {
-    var today = new Date();
-    var isToday = (date === new Date(today.getTime() + (330 + today.getTimezoneOffset()) * 60000)
-                            .toISOString().slice(0, 10));
-    // minutes since IST midnight, used as the like-for-like cutoff
-    var cutoff = isToday
-      ? (function () {
-          var ist = new Date(today.getTime() + (330 + today.getTimezoneOffset()) * 60000);
-          return ist.getHours() * 60 + ist.getMinutes();
-        })()
-      : 24 * 60;
-
-    var perDay = {};   // phone -> day -> {veh:{}, cities:{}}
+    var perDay = {};
     (photos || []).forEach(function (p) {
       if (!p.member_phone || !p.captured_at) return;
-      var t = new Date(p.captured_at);
-      var ist = new Date(t.getTime() + (330 + t.getTimezoneOffset()) * 60000);
-      var day = ist.toISOString().slice(0, 10);
-      var mins = ist.getHours() * 60 + ist.getMinutes();
+      var day = istDayKey(p.captured_at);
+      var mins = istMinutes(p.captured_at);
       if (!perDay[p.member_phone]) perDay[p.member_phone] = {};
       if (!perDay[p.member_phone][day]) perDay[p.member_phone][day] = { veh: {}, vehCut: {}, cities: {} };
       var slot = perDay[p.member_phone][day];
@@ -9241,26 +9348,19 @@ function fetchEveningData() {
       if (p.city && day === date) slot.cities[p.city] = (slot.cities[p.city] || 0) + 1;
     });
 
-    var yDate = new Date(d0.getTime() - 86400000).toISOString().slice(0, 10);
-    var members = st.members || [];
-    var campaigns = st.campaigns || [];
-    var map = st.assignMap || {};
-    var byKey = {};
-    campaigns.forEach(function (c) { byKey[c.key] = c; });
+    var members = st.members || [], campaigns = st.campaigns || [], map = st.assignMap || {};
+    var byKey = {}; campaigns.forEach(function (c) { byKey[c.key] = c; });
 
     var rows = [];
     members.forEach(function (m) {
-      var a = map[m.phone];
-      var days = perDay[m.phone] || {};
+      var a = map[m.phone], days = perDay[m.phone] || {};
       var todaySlot = days[date];
       var done = todaySlot ? Object.keys(todaySlot.veh).length : 0;
       if (!a && !done) return;
 
-      // yesterday, truncated to the same clock time
       var ySlot = days[yDate];
       var yPace = ySlot ? Object.keys(ySlot.vehCut).length : 0;
 
-      // personal best + average over prior full days only
       var best = 0, sum = 0, cnt = 0;
       Object.keys(days).forEach(function (dk) {
         if (dk === date) return;
@@ -9269,283 +9369,202 @@ function fetchEveningData() {
         sum += v; cnt++;
       });
 
-      var cities = todaySlot ? Object.keys(todaySlot.cities).sort(function (x, y) {
-        return todaySlot.cities[y] - todaySlot.cities[x];
+      var cities = todaySlot ? Object.keys(todaySlot.cities).sort(function (p1, p2) {
+        return todaySlot.cities[p2] - todaySlot.cities[p1];
       }) : [];
 
       var c = a ? byKey[a.campaign_key] : null;
       rows.push({
-        name: m.name || '—',
-        campaign: (c && (c.name || c.campaign_name)) || (a ? a.campaign_key : '—'),
+        name: m.name || '\u2014',
+        campaign: (c && (c.name || c.campaign_name)) || (a ? a.campaign_key : '\u2014'),
         target: a ? a.quantity : null,
-        plannedArea: a ? (a.area || '') : '',
-        done: done,
-        yPace: yPace,
-        best: best,
+        done: done, yPace: yPace, best: best, histDays: cnt,
         avg: cnt ? (sum / cnt) : 0,
         gps: cities.slice(0, 2).join(', '),
         unplanned: !a
       });
     });
 
+    var expFrac = expectedFraction(np.mins, partial);
     rows.forEach(function (r) {
       r.pct = r.target ? Math.round((r.done / r.target) * 100) : null;
       r.delta = r.done - r.yPace;
-      r.newBest = r.best > 0 && r.done > r.best;
-      r.aboveAvg = r.avg > 0 && r.done > r.avg;
+      // A "personal best" needs a real history to beat, and must clear it
+      // by a margin. Loosely defined, the badge lands on half the team on
+      // an ordinary day and stops meaning anything.
+      r.newBest = r.histDays >= 3 && r.best > 0 && r.done > r.best && !partial;
+      r.onPace = r.target ? (r.done >= r.target * expFrac * 0.95) : false;
     });
 
-    // Ranked = has a target. Everyone else is shown, unranked.
     var ranked = rows.filter(function (r) { return r.pct !== null; })
-                     .sort(function (a, b) { return b.pct - a.pct || b.done - a.done; });
+                     .sort(function (p1, p2) { return p2.pct - p1.pct || p2.done - p1.done; });
     var unranked = rows.filter(function (r) { return r.pct === null; })
-                       .sort(function (a, b) { return b.done - a.done; });
+                       .sort(function (p1, p2) { return p2.done - p1.done; });
 
-    // Most-improved deliberately skips anyone already on the podium, so the
-    // award spreads recognition instead of stacking it on one person.
-    var top3 = {};
-    ranked.slice(0, 3).forEach(function (r) { top3[r.name] = 1; });
+    var top3 = {}; ranked.slice(0, 3).forEach(function (r) { top3[r.name] = 1; });
     var improved = rows.slice()
-                       .filter(function (r) { return r.delta > 0 && !top3[r.name]; })
-                       .sort(function (a, b) { return b.delta - a.delta; })[0] || null;
+      .filter(function (r) { return r.delta > 0 && !top3[r.name] && r.yPace > 0; })
+      .sort(function (p1, p2) { return p2.delta - p1.delta; })[0] || null;
 
     return {
-      date: date, cutoff: cutoff, partial: isToday && cutoff < 20 * 60,
+      date: date, mins: np.mins, partial: partial, expFrac: expFrac,
       ranked: ranked, unranked: unranked, improved: improved,
-      teamDone: rows.reduce(function (s, r) { return s + r.done; }, 0),
-      teamTarget: rows.reduce(function (s, r) { return s + (r.target || 0); }, 0),
-      teamYPace: rows.reduce(function (s, r) { return s + r.yPace; }, 0)
+      teamDone: rows.reduce(function (a2, r) { return a2 + r.done; }, 0),
+      teamTarget: rows.reduce(function (a2, r) { return a2 + (r.target || 0); }, 0),
+      teamYPace: rows.reduce(function (a2, r) { return a2 + r.yPace; }, 0)
     };
   });
 }
 
 function downloadEveningReport() {
-  showToast('Report ban raha hai…', 'success');
+  showToast('Report ban raha hai\u2026', 'success');
   fetchEveningData().then(function (D) {
     var all = D.ranked.concat(D.unranked);
     if (!all.length) { showToast('Is date ka koi data nahi', 'error'); return; }
 
-    var W = 1080, PAD = 48, ROW_H = 88, HEAD = 300, FOOT = 130;
+    var W = 1100, PAD = 56, ROW_H = 78, FOOT = 104;
+    var COL_NAME = PAD + 50, W_NAME = 420;
+    var RIGHT = W - PAD, BAR_W = 150;
+
     var podium = Math.min(3, D.ranked.length);
-    var podH = podium ? 190 : 0;
-    var impH = D.improved && D.improved.delta > 0 ? 84 : 0;
-    var H = HEAD + podH + impH + all.length * ROW_H + FOOT;
+    var HEAD = D.partial ? 250 : 226;
+    var podH = podium ? 214 : 0;
+    var impH = D.improved ? 78 : 0;
+    var H = HEAD + podH + impH + 44 + all.length * ROW_H + FOOT;
 
-    var cv = document.createElement('canvas');
-    cv.width = W; cv.height = H;
-    var x = cv.getContext('2d');
-    var INK='#0B1957', TEAL='#0E9F8E', MUTE='#6B7280', LINE='#E4E9F0',
-        RED='#E24B4A', AMB='#BA7517', GOLD='#C9992B';
+    var M = makeCanvas(W, H), cv = M.cv, x = M.x;
+    var INK='#0B1957', SLATE='#3d4453', MUTE='#8A93A2', LINE='#E8ECF2',
+        TEAL='#0E9F8E', GOLD='#B8891F';
 
-    x.fillStyle = '#FFFFFF'; x.fillRect(0,0,W,H);
-    x.fillStyle = INK; x.fillRect(0,0,W,8);
-
-    function clip(t, max) {
-      t = String(t || '');
-      if (x.measureText(t).width <= max) return t;
-      while (t.length > 1 && x.measureText(t + '…').width > max) t = t.slice(0,-1);
-      return t + '…';
-    }
+    x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, W, H);
+    x.fillStyle = INK; x.fillRect(0, 0, W, 6);
 
     var p = D.date.split('-');
     var mn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    var hh = String(Math.floor(D.cutoff/60)).padStart(2,'0') + ':' + String(D.cutoff%60).padStart(2,'0');
 
-    x.fillStyle = INK; x.font = '600 44px Georgia, serif';
-    x.fillText(D.partial ? 'Aaj ka scoreboard' : 'Din ka scoreboard', PAD, 92);
+    x.fillStyle = INK; x.font = '600 40px Georgia, serif';
+    x.fillText(D.partial ? 'Aaj ka scoreboard' : 'Din ka scoreboard', PAD, 84);
 
-    x.fillStyle = MUTE; x.font = '400 25px Arial, sans-serif';
-    x.fillText(p[2] + ' ' + mn[parseInt(p[1],10)-1] + ' ' + p[0] +
-               (D.partial ? '   ·   ' + hh + ' tak — din abhi chal raha hai' : '   ·   poora din'),
-               PAD, 132);
+    x.fillStyle = MUTE; x.font = '400 22px Arial, sans-serif';
+    x.fillText(p[2] + ' ' + mn[+p[1]-1] + ' ' + p[0] +
+               (D.partial ? '   \u00b7   ' + hhmm(D.mins) + ' tak' : '   \u00b7   poora din'), PAD, 118);
 
-    var tp = D.teamTarget ? Math.round((D.teamDone/D.teamTarget)*100) : 0;
-    x.fillStyle = tp >= 80 ? TEAL : (tp >= 50 ? AMB : RED);
-    x.font = '600 34px Arial, sans-serif';
-    x.fillText('Team: ' + D.teamDone + ' / ' + D.teamTarget + (D.teamTarget ? '   ·   ' + tp + '%' : ''), PAD, 186);
+    var tp = D.teamTarget ? Math.round((D.teamDone / D.teamTarget) * 100) : 0;
+    x.fillStyle = INK; x.font = '600 30px Arial, sans-serif';
+    var teamLbl = 'Team  ' + D.teamDone + ' / ' + D.teamTarget;
+    x.fillText(teamLbl, PAD, 166);
+    x.fillStyle = paceColour(D.teamDone, D.teamTarget, D.expFrac);
+    x.font = '600 24px Arial, sans-serif';
+    x.fillText(tp + '%', PAD + x.measureText(teamLbl).width + 18, 166);
 
-    // Like-for-like pace line. This is what stops a half-day looking like a crash.
-    var dd = D.teamDone - D.teamYPace;
-    x.font = '400 25px Arial, sans-serif';
-    x.fillStyle = dd >= 0 ? TEAL : MUTE;
-    var paceTxt = dd >= 0
-      ? 'Kal isi time se ' + dd + ' aage'
-      : 'Kal isi time se ' + Math.abs(dd) + ' peeche';
-    x.fillText(paceTxt + '  (kal ' + D.teamYPace + ')', PAD, 224);
+    if (D.partial) {
+      x.fillStyle = MUTE; x.font = '400 20px Arial, sans-serif';
+      x.fillText('Is waqt tak lagbhag ' + Math.round(D.expFrac * 100) + '% hona chahiye', PAD, 196);
+    }
+    if (D.teamYPace > 0) {
+      var dd = D.teamDone - D.teamYPace;
+      x.fillStyle = dd >= 0 ? TEAL : '#B0563F'; x.font = '400 21px Arial, sans-serif';
+      x.fillText((dd >= 0 ? 'Kal isi time se ' + dd + ' aage' : 'Kal isi time se ' + Math.abs(dd) + ' peeche') +
+                 '   (kal ' + D.teamYPace + ')', PAD, D.partial ? 226 : 196);
+    }
 
-    x.strokeStyle = LINE; x.lineWidth = 2;
-    x.beginPath(); x.moveTo(PAD, 252); x.lineTo(W-PAD, 252); x.stroke();
+    x.strokeStyle = LINE; x.lineWidth = 1.5;
+    x.beginPath(); x.moveTo(PAD, HEAD - 30); x.lineTo(W - PAD, HEAD - 30); x.stroke();
 
     var y = HEAD;
 
     if (podium) {
-      x.fillStyle = INK; x.font = '600 26px Arial, sans-serif';
-      x.fillText('Aaj ke top performers', PAD, y - 12);
-      var boxW = (W - 2*PAD - 24) / 3;
+      x.fillStyle = INK; x.font = '600 23px Arial, sans-serif';
+      x.fillText('Aaj ke top performers', PAD, y);
+      var bw = (W - 2*PAD - 24) / 3;
       for (var i = 0; i < podium; i++) {
-        var r = D.ranked[i];
-        var bx = PAD + i * (boxW + 12);
-        x.fillStyle = i === 0 ? '#FFFBF0' : '#F7F9FC';
-        x.fillRect(bx, y + 6, boxW, 130);
+        var r = D.ranked[i], bx = PAD + i * (bw + 12), by = y + 18;
+        x.fillStyle = i === 0 ? '#FFFBF1' : '#FAFBFD';
+        x.fillRect(bx, by, bw, 138);
         x.strokeStyle = i === 0 ? GOLD : LINE; x.lineWidth = i === 0 ? 2 : 1;
-        x.strokeRect(bx, y + 6, boxW, 130);
+        x.strokeRect(bx, by, bw, 138);
 
-        x.fillStyle = i === 0 ? GOLD : MUTE;
-        x.font = '600 22px Arial, sans-serif';
-        x.fillText(['1st','2nd','3rd'][i], bx + 16, y + 38);
+        x.fillStyle = i === 0 ? GOLD : MUTE; x.font = '600 19px Arial, sans-serif';
+        x.fillText(['1st','2nd','3rd'][i], bx + 18, by + 32);
 
-        x.fillStyle = INK; x.font = '600 27px Arial, sans-serif';
-        x.fillText(clip(r.name, boxW - 32), bx + 16, y + 76);
+        x.fillStyle = INK; x.font = '600 24px Arial, sans-serif';
+        x.fillText(fitText(x, r.name, bw - 36), bx + 18, by + 68);
 
-        x.fillStyle = r.pct >= 80 ? TEAL : AMB;
-        x.font = '600 30px Arial, sans-serif';
-        x.fillText(r.pct + '%', bx + 16, y + 114);
+        // stacked, never side by side — the old layout printed 50/50 on top of 100%
+        x.fillStyle = paceColour(r.done, r.target, D.expFrac);
+        x.font = '600 32px Arial, sans-serif';
+        x.fillText(r.pct + '%', bx + 18, by + 108);
 
-        x.fillStyle = MUTE; x.font = '400 21px Arial, sans-serif';
-        var sub = r.done + '/' + r.target + (r.newBest ? '  · new best' : '');
-        x.fillText(clip(sub, boxW - 90), bx + 74, y + 114);
+        x.fillStyle = MUTE; x.font = '400 19px Arial, sans-serif';
+        x.fillText(r.done + ' / ' + r.target, bx + 18, by + 130);
+        if (r.newBest) {
+          x.fillStyle = TEAL; x.font = '400 18px Arial, sans-serif';
+          var nb = 'new best';
+          x.fillText(nb, bx + bw - 18 - x.measureText(nb).width, by + 130);
+        }
       }
       y += podH;
     }
 
     if (impH) {
-      var im = D.improved;
-      x.fillStyle = '#E1F5EE'; x.fillRect(PAD, y - 26, W - 2*PAD, 60);
-      x.fillStyle = '#0F6E56'; x.font = '600 25px Arial, sans-serif';
-      x.fillText('Sabse zyada sudhaar — ' + im.name + ':  kal isi time se +' + im.delta, PAD + 18, y + 12);
+      x.fillStyle = '#E8F6F1'; x.fillRect(PAD, y - 26, W - 2*PAD, 56);
+      x.fillStyle = '#0B6B54'; x.font = '600 22px Arial, sans-serif';
+      x.fillText('Sabse zyada sudhaar \u2014 ' + D.improved.name + ' \u00b7 kal isi time se +' + D.improved.delta,
+                 PAD + 20, y + 10);
       y += impH;
     }
 
-    x.fillStyle = INK; x.font = '600 26px Arial, sans-serif';
-    x.fillText('Poori team', PAD, y - 10);
-    y += 26;
+    x.fillStyle = INK; x.font = '600 23px Arial, sans-serif';
+    x.fillText('Poori team', PAD, y);
+    y += 44;
 
     all.forEach(function (r, i) {
-      if (i % 2 === 1) { x.fillStyle = '#F9FAFC'; x.fillRect(PAD-16, y-44, W-2*PAD+32, ROW_H-8); }
+      if (i % 2 === 1) { x.fillStyle = '#FAFBFD'; x.fillRect(PAD - 18, y - 38, W - 2*PAD + 36, ROW_H - 6); }
 
-      x.fillStyle = MUTE; x.font = '400 23px Arial, sans-serif';
-      x.fillText(r.pct !== null ? String(i+1).padStart(2,'0') : '—', PAD, y);
+      x.fillStyle = MUTE; x.font = '400 20px Arial, sans-serif';
+      x.fillText(r.pct !== null ? String(i + 1).padStart(2, '0') : '\u2014', PAD, y);
 
-      x.fillStyle = INK; x.font = '600 29px Arial, sans-serif';
-      x.fillText(clip(r.name, 260), PAD + 48, y);
+      x.fillStyle = INK; x.font = '600 26px Arial, sans-serif';
+      x.fillText(fitText(x, r.name, W_NAME), COL_NAME, y);
 
-      var badges = [];
-      if (r.newBest) badges.push('personal best');
-      else if (r.aboveAvg) badges.push('apne average se upar');
-      if (r.delta > 0) badges.push('+' + r.delta + ' vs kal');
-      if (badges.length) {
-        x.fillStyle = TEAL; x.font = '400 20px Arial, sans-serif';
-        x.fillText(clip(badges.join('  ·  '), 300), PAD + 48, y + 26);
+      var bits = [];
+      if (r.newBest) bits.push('personal best');
+      if (r.delta > 0 && r.yPace > 0) bits.push('+' + r.delta + ' vs kal');
+      if (!bits.length) bits.push(r.campaign);
+      x.fillStyle = (r.newBest || (r.delta > 0 && r.yPace > 0)) ? TEAL : MUTE;
+      x.font = '400 19px Arial, sans-serif';
+      x.fillText(fitText(x, bits.join('   \u00b7   '), W_NAME), COL_NAME, y + 24);
+
+      if (r.target) {
+        var col = paceColour(r.done, r.target, D.expFrac);
+        x.fillStyle = col; x.font = '600 27px Arial, sans-serif';
+        var lbl = r.done + ' / ' + r.target;
+        x.fillText(lbl, RIGHT - x.measureText(lbl).width, y);
+        var bx2 = RIGHT - BAR_W, by2 = y + 15;
+        x.fillStyle = '#EDF1F6'; x.fillRect(bx2, by2, BAR_W, 8);
+        x.fillStyle = col; x.fillRect(bx2, by2, Math.max(3, BAR_W * Math.min(1, r.done / r.target)), 8);
       } else {
-        x.fillStyle = MUTE; x.font = '400 22px Arial, sans-serif';
-        x.fillText(clip(r.campaign, 300), PAD + 48, y + 26);
-      }
-
-      var right = r.target ? (r.done + ' / ' + r.target) : (r.done + ' / —');
-      x.fillStyle = r.pct === null ? MUTE : (r.pct >= 80 ? TEAL : (r.pct >= 50 ? AMB : RED));
-      x.font = '600 30px Arial, sans-serif';
-      x.fillText(right, W - PAD - x.measureText(right).width, y);
-
-      if (r.pct !== null) {
-        var bw = 180, bx2 = W - PAD - bw, by2 = y + 14;
-        x.fillStyle = '#EEF2F8'; x.fillRect(bx2, by2, bw, 9);
-        x.fillStyle = r.pct >= 80 ? TEAL : (r.pct >= 50 ? AMB : RED);
-        x.fillRect(bx2, by2, Math.max(3, bw * Math.min(1, r.pct/100)), 9);
-      } else {
-        x.fillStyle = MUTE; x.font = '400 19px Arial, sans-serif';
+        x.fillStyle = SLATE; x.font = '600 27px Arial, sans-serif';
+        x.fillText(String(r.done), RIGHT - x.measureText(String(r.done)).width, y);
+        x.fillStyle = '#C2C9D4'; x.font = '400 17px Arial, sans-serif';
         var nt = 'target set nahi tha';
-        x.fillText(nt, W - PAD - x.measureText(nt).width, y + 24);
+        x.fillText(nt, RIGHT - x.measureText(nt).width, y + 22);
       }
 
       x.strokeStyle = LINE; x.lineWidth = 1;
-      x.beginPath(); x.moveTo(PAD, y+44); x.lineTo(W-PAD, y+44); x.stroke();
+      x.beginPath(); x.moveTo(PAD, y + 38); x.lineTo(W - PAD, y + 38); x.stroke();
       y += ROW_H;
     });
 
-    x.fillStyle = MUTE; x.font = '400 21px Arial, sans-serif';
-    x.fillText('Rank = target ka %, count ka nahi — taaki chhota target bhi barabar gine.', PAD, H - 68);
-    x.fillText('Prajapati Advertising  ·  GPS verified, apne aap bana', PAD, H - 38);
+    x.fillStyle = '#B4BBC6'; x.font = '400 19px Arial, sans-serif';
+    x.fillText('Rank = target ka %, count ka nahi \u2014 taaki chhota target bhi barabar gine.', PAD, H - 62);
+    x.fillText('Prajapati Advertising   \u00b7   GPS verified, apne aap bana', PAD, H - 36);
 
-    cv.toBlob(function (blob) {
-      if (!blob) { showToast('JPEG banane mein dikkat', 'error'); return; }
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement('a');
-      a.href = url; a.download = 'scoreboard-' + D.date + '.jpg';
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
-      showToast('Scoreboard download ho gaya', 'success');
-    }, 'image/jpeg', 0.92);
+    saveJpeg(cv, 'scoreboard-' + D.date + '.jpg');
   }).catch(function (e) {
+    console.error('[scoreboard]', e);
     showToast('Report fail: ' + (e && e.message ? e.message : 'unknown'), 'error');
   });
-}
-
-
-// ══════════════════════════════════════════════════════════════
-// TARGET — saved per member per day on trial_daily_assignments.
-// Disabled until a campaign is picked, because a target without a
-// campaign has nothing to be a target of.
-// ══════════════════════════════════════════════════════════════
-function daSaveTarget(el) {
-  var phone = el.dataset.phone, date = el.dataset.date;
-  var raw = String(el.value || '').trim();
-  var qty = raw === '' ? null : parseInt(raw, 10);
-  if (qty !== null && (isNaN(qty) || qty < 0)) { showToast('Target sirf number', 'error'); return; }
-
-  el.classList.toggle('empty', qty === null);
-
-  fetch(CONFIG.supabaseUrl + '/rest/v1/trial_daily_assignments?member_phone=eq.' +
-        encodeURIComponent(phone) + '&assignment_date=eq.' + date, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      apikey: CONFIG.supabaseKey,
-      Authorization: 'Bearer ' + CONFIG.supabaseKey,
-      Prefer: 'return=representation'
-    },
-    body: JSON.stringify({ quantity: qty })
-  }).then(function (r) {
-    return r.text().then(function (t) {
-      if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + t.slice(0, 160));
-      return t;
-    });
-  }).then(function () {
-    if (p_daState && p_daState.assignMap && p_daState.assignMap[phone]) {
-      p_daState.assignMap[phone].quantity = qty;
-    }
-    if (typeof daRenderStats === 'function') daRenderStats();
-    showToast(qty === null ? 'Target hataya' : 'Target ' + qty + ' set', 'success');
-  }).catch(function (e) {
-    console.error('[target]', e);
-    showToast('Target save fail: ' + e.message, 'error');
-  });
-}
-
-// Live actuals for the selected date. Same source the scoreboard uses,
-// so a mid-day JPEG and the evening JPEG can never disagree.
-function daFetchLiveDone() {
-  var st = (typeof p_daState !== 'undefined') ? p_daState : {};
-  var date = st.date || (($('assignDate') && $('assignDate').value) || '');
-  if (!date) return Promise.resolve({});
-  var q = '/rest/v1/trial_photos?deleted_at=is.null' +
-          '&captured_at=gte.' + encodeURIComponent(date + 'T00:00:00+05:30') +
-          '&captured_at=lte.' + encodeURIComponent(date + 'T23:59:59+05:30') +
-          '&select=member_phone,vehicle_number,city&limit=20000';
-  return api(q).then(function (photos) {
-    var by = {};
-    (photos || []).forEach(function (p) {
-      if (!p.member_phone) return;
-      if (!by[p.member_phone]) by[p.member_phone] = { veh: {}, cities: {} };
-      if (p.vehicle_number) by[p.member_phone].veh[p.vehicle_number] = 1;
-      if (p.city) by[p.member_phone].cities[p.city] = (by[p.member_phone].cities[p.city] || 0) + 1;
-    });
-    var out = {};
-    Object.keys(by).forEach(function (k) {
-      var c = Object.keys(by[k].cities).sort(function (a, b) { return by[k].cities[b] - by[k].cities[a]; });
-      out[k] = { done: Object.keys(by[k].veh).length, gps: c.slice(0, 2).join(', ') };
-    });
-    return out;
-  }).catch(function (e) { console.error('[live]', e); return {}; });
 }
 
 // ═══ SEARCHABLE CAMPAIGN PICKER (Daily assignments) ═══════════
