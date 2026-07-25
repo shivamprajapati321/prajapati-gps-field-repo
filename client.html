@@ -1134,6 +1134,43 @@ body::before {
   </div>
 </div>
 
+<!-- ─────────── OTP LOGIN SCREEN ─────────── -->
+<div class="screen" id="otpScreen" style="display:none;">
+  <div class="screen-content">
+    <div class="screen-icon" id="otpIcon">&#8226;</div>
+    <div class="screen-kicker" id="otpKicker"></div>
+    <h1 class="screen-title" id="otpTitle">Verify to continue</h1>
+    <p class="screen-msg" id="otpMsg">Ye report private hai. Aage badhne ke liye WhatsApp OTP verify karein.</p>
+
+    <div id="otpStep1">
+      <p class="screen-msg" style="margin-bottom:14px;">
+        OTP is link ke registered WhatsApp number <b id="otpPhone">—</b> par jayega.
+      </p>
+      <button id="otpSendBtn" onclick="otpSend()"
+        style="padding:12px 26px; border:none; border-radius:6px; background:var(--ink); color:var(--paper); font-size:14px; cursor:pointer;">
+        Send OTP on WhatsApp
+      </button>
+    </div>
+
+    <div id="otpStep2" style="display:none;">
+      <p class="screen-msg" id="otpSentTo" style="margin-bottom:12px;"></p>
+      <input id="otpCode" type="tel" inputmode="numeric" maxlength="6" placeholder="6-digit OTP"
+        style="padding:12px; width:190px; text-align:center; letter-spacing:6px; font-size:20px; font-family:'JetBrains Mono',monospace; border:1px solid var(--gold); border-radius:6px;">
+      <div style="margin-top:14px;">
+        <button id="otpVerifyBtn" onclick="otpVerify()"
+        style="padding:12px 26px; border:none; border-radius:6px; background:var(--ink); color:var(--paper); font-size:14px; cursor:pointer;">
+          Verify &amp; open report
+        </button>
+      </div>
+      <div style="margin-top:10px;">
+        <a href="#" onclick="otpBack();return false;" style="font-size:12px; color:var(--ink-mute);">Dobara bhejein</a>
+      </div>
+    </div>
+
+    <p id="otpErr" style="margin-top:14px; font-size:13px; color:#b3261e; min-height:18px;"></p>
+  </div>
+</div>
+
 <!-- ─────────── MAIN CONTENT (hidden until loaded) ─────────── -->
 <div class="wrap" id="mainContent" style="display:none;">
 
@@ -1429,6 +1466,7 @@ const state = {
   link: null,
   photos: [],
   totalPhotos: 0,
+  truncated: false,
   filteredPhotos: [],
   currentFilter: 'all',
   customFrom: null,
@@ -1526,6 +1564,99 @@ function showGate(title, msg, iconChar, detail) {
 }
 
 // ─── INIT ───
+
+// ══════════════════════════════════════════════════════════════
+// OTP GATE
+// The phone is never sent from the browser — the Edge Function reads
+// it server-side from the link row. So holding the URL is not enough;
+// you must control the WhatsApp number the link was issued to.
+// ══════════════════════════════════════════════════════════════
+const FN_URL = CONFIG.supabaseUrl + '/functions/v1/client-report-auth';
+
+function sessKey(t) { return 'client_report_sess_' + t; }
+
+function fnCall(body) {
+  return fetch(FN_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: CONFIG.supabaseKey,
+      Authorization: 'Bearer ' + CONFIG.supabaseKey
+    },
+    body: JSON.stringify(body)
+  }).then(function (r) { return r.json(); });
+}
+
+async function otpHasSession(t) {
+  var s = '';
+  try { s = localStorage.getItem(sessKey(t)) || ''; } catch (e) { s = ''; }
+  if (!s) return false;
+  try {
+    var r = await fnCall({ action: 'check', token: t, session: s });
+    if (!r || !r.valid) { try { localStorage.removeItem(sessKey(t)); } catch (e) {} return false; }
+    return true;
+  } catch (e) {
+    return false;   // network issue → ask for OTP rather than letting it through
+  }
+}
+
+function showOtpScreen() {
+  $('loadingScreen').style.display = 'none';
+  $('otpKicker').textContent = (typeof BRAND !== 'undefined' && BRAND.name) ? BRAND.name : '';
+  $('otpPhone').textContent = state.link.masked_phone || 'registered number';
+  $('otpScreen').style.display = 'flex';
+}
+
+function otpErr(m) { $('otpErr').textContent = m || ''; }
+
+async function otpSend() {
+  var b = $('otpSendBtn');
+  otpErr(''); b.disabled = true; b.textContent = 'Sending…';
+  try {
+    var r = await fnCall({ action: 'send', token: state.token });
+    if (!r || !r.success) {
+      otpErr((r && r.error) || 'OTP bhejne mein dikkat. Dobara try karein.');
+      b.disabled = false; b.textContent = 'Send OTP on WhatsApp'; return;
+    }
+    $('otpSentTo').innerHTML = 'OTP bheja gaya <b>' + (r.masked_phone || '') + '</b> par WhatsApp pe';
+    $('otpStep1').style.display = 'none';
+    $('otpStep2').style.display = 'block';
+    $('otpCode').focus();
+  } catch (e) {
+    otpErr('Network issue. Dobara try karein.');
+    b.disabled = false; b.textContent = 'Send OTP on WhatsApp';
+  }
+}
+
+async function otpVerify() {
+  var code = ($('otpCode').value || '').replace(/\D/g, '');
+  if (code.length !== 6) { otpErr('6-digit OTP daalein'); return; }
+  var b = $('otpVerifyBtn');
+  otpErr(''); b.disabled = true; b.textContent = 'Verifying…';
+  try {
+    var r = await fnCall({ action: 'verify', token: state.token, code: code });
+    if (!r || !r.success) {
+      otpErr((r && r.error) || 'OTP galat hai');
+      b.disabled = false; b.textContent = 'Verify & open report'; return;
+    }
+    try { localStorage.setItem(sessKey(state.token), r.session_token); } catch (e) {}
+    $('otpScreen').style.display = 'none';
+    $('loadingScreen').style.display = 'flex';
+    init();
+  } catch (e) {
+    otpErr('Network issue. Dobara try karein.');
+    b.disabled = false; b.textContent = 'Verify & open report';
+  }
+}
+
+function otpBack() {
+  $('otpStep2').style.display = 'none';
+  $('otpStep1').style.display = 'block';
+  $('otpSendBtn').disabled = false;
+  $('otpSendBtn').textContent = 'Send OTP on WhatsApp';
+  otpErr('');
+}
+
 async function init() {
   const params = new URLSearchParams(location.search);
   const t = params.get('t') || params.get('token');
@@ -1540,17 +1671,37 @@ async function init() {
   try {
     $('loadingMsg').textContent = 'Authenticating access…';
     
-    // Step 1: validate token
-    const links = await api('/rest/v1/trial_client_links?token=eq.' + encodeURIComponent(t) + '&active=eq.true&select=*');
+    // Step 1: validate token via SECURITY DEFINER rpc.
+    // The old `?token=eq.x&select=*` worked only because trial_client_links
+    // had a USING(true) policy — the same policy also allowed `?select=*`
+    // with no filter, i.e. dumping every share token. The rpc can only ever
+    // return the single row whose token matches.
+    const links = await api('/rest/v1/rpc/client_link_open', {
+      method: 'POST', body: { p_token: t }
+    });
     if (!links || !links.length) {
       showGate('Link Expired', 'This report link is no longer active. Please contact your account manager for a fresh link.', 'X');
       return;
     }
-    state.link = links[0];
+    state.link = { id: links[0].link_id, campaign_key: links[0].campaign_key,
+                   view_count: links[0].view_count, needs_otp: links[0].needs_otp,
+                   masked_phone: links[0].masked_phone };
+
+    // Step 1b: OTP gate
+    if (state.link.needs_otp) {
+      const okSession = await otpHasSession(t);
+      if (!okSession) { showOtpScreen(); return; }
+    }
     
     // Step 2: load campaign
     $('loadingMsg').textContent = 'Loading campaign details…';
-    const camps = await api('/rest/v1/trial_campaigns?key=eq.' + encodeURIComponent(state.link.campaign_key) + '&select=*');
+    // Whitelist. trial_campaigns has 97 columns including rate_per_unit,
+    // discount, base_amount, gst_amount, total_amount, advance_paid,
+    // balance_due and client contact details — select=* was sending your
+    // pricing and margin to the client's (or reselling agency's) browser.
+    const CAMP_COLS = 'key,name,client_name,active,target_count,hood_photo_count,' +
+                      'branding_mode,custom_brand_name,custom_logo_url,custom_website';
+    const camps = await api('/rest/v1/trial_campaigns?key=eq.' + encodeURIComponent(state.link.campaign_key) + '&select=' + CAMP_COLS);
     if (!camps || !camps.length) {
       showGate('Campaign Not Found', 'This campaign no longer exists in our system.', '?');
       return;
@@ -1570,14 +1721,9 @@ async function init() {
     await loadPhotos();
     
     // Step 4: increment view count (fire-and-forget)
-    api('/rest/v1/trial_client_links?id=eq.' + state.link.id, {
-      method: 'PATCH',
-      headers: { 'Prefer': 'return=representation' },
-      body: {
-        view_count: (state.link.view_count || 0) + 1,
-        last_viewed_at: new Date().toISOString()
-      }
-    }).then(rows => { if (rows && rows[0]) state.link = rows[0]; updateFooterViews(); }).catch(() => {});
+    api('/rest/v1/rpc/client_link_touch', { method: 'POST', body: { p_token: state.token } })
+      .then(() => { state.link.view_count = (state.link.view_count || 0) + 1; updateFooterViews(); })
+      .catch(() => {});
     
     // Step 5: setup realtime
     setupRealtime();
@@ -1608,21 +1754,55 @@ async function init() {
 
 // ─── Load photos ───
 async function loadPhotos() {
-  const qs = '/rest/v1/trial_photos?campaign_key=eq.' + encodeURIComponent(state.campaign.key) +
-             '&deleted_at=is.null&select=*&order=captured_at.desc&limit=2000';
-  
-  const r = await fetch(CONFIG.supabaseUrl + qs, {
-    headers: {
-      apikey: CONFIG.supabaseKey,
-      Authorization: 'Bearer ' + CONFIG.supabaseKey,
-      'Prefer': 'count=exact'
+  // Only the columns the report actually renders. The table has 66;
+  // select=* was shipping member_phone, owner_name/address/contact_number,
+  // real_latitude/longitude, edit + QC history to the client browser.
+  const COLS = 'id,vehicle_number,city,mode,public_url,member_name,' +
+               'latitude,longitude,is_verified,captured_at';
+
+  const PAGE = 1000;
+  const HARD_CAP = 30000;   // safety valve, ~10k vehicles
+  const base = '/rest/v1/trial_photos?campaign_key=eq.' + encodeURIComponent(state.campaign.key) +
+               '&deleted_at=is.null&select=' + COLS + '&order=captured_at.desc';
+
+  let all = [];
+  let offset = 0;
+  state.totalPhotos = 0;
+
+  // Paginate. The old code took a flat limit=2000, so a 1000-rickshaw
+  // campaign (3 photos each = 3000) silently lost a third of its work
+  // and the client saw an incomplete report with no warning.
+  while (offset < HARD_CAP) {
+    const r = await fetch(CONFIG.supabaseUrl + base + '&limit=' + PAGE + '&offset=' + offset, {
+      headers: {
+        apikey: CONFIG.supabaseKey,
+        Authorization: 'Bearer ' + CONFIG.supabaseKey,
+        'Prefer': 'count=exact'
+      }
+    });
+    if (!r.ok) throw new Error('Failed to load photos: ' + r.status);
+
+    if (offset === 0) {
+      const cr = r.headers.get('Content-Range') || '';
+      state.totalPhotos = parseInt(cr.split('/').pop()) || 0;
     }
-  });
-  if (!r.ok) throw new Error('Failed to load photos: ' + r.status);
-  const cr = r.headers.get('Content-Range') || '';
-  state.totalPhotos = parseInt(cr.split('/').pop()) || 0;
-  state.photos = await r.json();
-  
+
+    const batch = await r.json();
+    all = all.concat(batch);
+
+    if (batch.length < PAGE) break;
+    offset += PAGE;
+
+    if (state.totalPhotos) {
+      const pct = Math.min(99, Math.round((all.length / state.totalPhotos) * 100));
+      const el = $('loadingMsg');
+      if (el) el.textContent = 'Loading photos… ' + pct + '%';
+    }
+  }
+
+  state.photos = all;
+  state.truncated = state.totalPhotos > all.length;
+
   applyFilter();
 }
 
@@ -1695,20 +1875,20 @@ function aggregateStats() {
       cityMap[p.city] = (cityMap[p.city] || 0) + 1;
     }
     
-    if (p.member_phone) {
-      if (!memberMap[p.member_phone]) {
-        memberMap[p.member_phone] = {
-          phone: p.member_phone,
-          name: p.member_name || 'Unknown',
+    if (p.member_name) {
+      const mk = p.member_name;
+      if (!memberMap[mk]) {
+        memberMap[mk] = {
+          name: mk,
           total: 0,
           today: 0,
           verified: 0,
           location: p.city || ''
         };
       }
-      memberMap[p.member_phone].total++;
-      if (p.is_verified) memberMap[p.member_phone].verified++;
-      if (p.captured_at >= todayUtcStart) memberMap[p.member_phone].today++;
+      memberMap[mk].total++;
+      if (p.is_verified) memberMap[mk].verified++;
+      if (p.captured_at >= todayUtcStart) memberMap[mk].today++;
     }
   });
   
@@ -1892,21 +2072,38 @@ function renderAll() {
   document.title = 'Field Report · ' + tabClientName + (BRAND.show ? ' · ' + BRAND.name : '');
   
   // Stat band
-  $('statTotal').textContent = fmtNum(stats.total);
+  // serverTotal comes from the Content-Range header, so it is the real
+  // row count even if the client array is short. It was computed before
+  // but never rendered anywhere.
+  $('statTotal').textContent = fmtNum(stats.serverTotal || stats.total);
+  if (state.truncated) {
+    const st = $('statTotal');
+    if (st && st.parentNode && !$('truncNote')) {
+      const w = document.createElement('div');
+      w.id = 'truncNote';
+      w.style.cssText = 'font-size:11px;color:#b3261e;margin-top:2px;';
+      w.textContent = 'showing ' + fmtNum(stats.total);
+      st.parentNode.appendChild(w);
+    }
+  }
   $('statTodayDelta').textContent = '+' + fmtNum(stats.todayCount) + ' today';
   if (stats.todayCount === 0) $('statTodayDelta').style.display = 'none';
   $('statVehicles').textContent = fmtNum(stats.vehicles);
   $('statVerified').innerHTML = stats.verifiedPct + '<small>%</small>';
   $('statCities').textContent = stats.cities;
   
-  // Progress card
+  // Progress card.
+  // target_count is a RICKSHAW target; stats.total is a PHOTO count and
+  // each rickshaw yields ~3 photos, so the old photos/target ratio
+  // over-reported progress roughly 3x. Compare vehicles to vehicles.
   const target = c.target_count || 0;
-  $('progressNum').textContent = fmtNum(stats.total);
-  $('progressTarget').textContent = target ? '/' + fmtNum(target) : '';
-  const pct = target ? Math.min(100, Math.round((stats.total / target) * 100)) : 100;
+  const done = stats.vehicles;
+  $('progressNum').textContent = fmtNum(done);
+  $('progressTarget').textContent = target ? '/' + fmtNum(target) + ' vehicles' : ' vehicles';
+  const pct = target ? Math.min(100, Math.round((done / target) * 100)) : 100;
   $('progressBar').style.width = pct + '%';
-  $('progressPct').textContent = (target ? pct + '% complete' : fmtNum(stats.total) + ' delivered');
-  $('progressRem').textContent = target ? (fmtNum(Math.max(0, target - stats.total)) + ' remaining') : 'No target set';
+  $('progressPct').textContent = (target ? pct + '% complete' : fmtNum(done) + ' delivered');
+  $('progressRem').textContent = target ? (fmtNum(Math.max(0, target - done)) + ' remaining') : 'No target set';
   
   // Cities list
   renderCities();
@@ -2306,7 +2503,7 @@ async function generatePPT() {
     const s2 = pptx.addSlide();
     s2.background = { color: 'FAF7F0' };
     s2.addText('Campaign at a glance', { x: 0.5, y: 0.4, w: 9, h: 0.6, fontSize: 28, color: '0B1957', fontFace: 'Georgia' });
-    s2.addText([{ text: fmtNum(stats.total), options: { fontSize: 60, color: '0B1957', bold: false, fontFace: 'Georgia' } }],
+    s2.addText([{ text: fmtNum(stats.serverTotal || stats.total), options: { fontSize: 60, color: '0B1957', bold: false, fontFace: 'Georgia' } }],
                { x: 0.5, y: 1.5, w: 4, h: 1.2 });
     s2.addText('TOTAL PHOTOS', { x: 0.5, y: 2.7, w: 4, h: 0.3, fontSize: 10, color: '7B7F92', charSpacing: 6 });
     s2.addText([{ text: fmtNum(stats.vehicles), options: { fontSize: 60, color: '0B1957', fontFace: 'Georgia' } }],
