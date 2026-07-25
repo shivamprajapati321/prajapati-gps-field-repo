@@ -4061,6 +4061,38 @@ label {
             <div class="helper">Lowercase, numbers, underscores only</div>
           </div>
         </div>
+        <div class="form-section" style="margin-bottom:14px;">
+          <div class="form-section-title"><i class="ti ti-briefcase"></i> Ye kaam kiske liye hai? *</div>
+          <div class="mode-grid">
+            <div class="mode-option selected" data-ctype="direct" onclick="selectClientType(this)">
+              <div class="mode-label">Direct Client</div>
+              <div class="mode-desc">Client seedha hamara. Report + photos pe Prajapati branding dikhegi.</div>
+            </div>
+            <div class="mode-option" data-ctype="agency" onclick="selectClientType(this)">
+              <div class="mode-label">Agency (white-label)</div>
+              <div class="mode-desc">Agency apne client ko forward karegi. Prajapati kahin nahi dikhega.</div>
+            </div>
+          </div>
+          <div id="agencyFields" style="display:none; margin-top:10px;">
+            <div class="field-row cols-2">
+              <div class="field">
+                <label>Agency ka naam</label>
+                <input type="text" id="cBrand2" placeholder="Jaaguar Media Solutions">
+                <div class="helper">Khaali chhoda to report bilkul blank rahegi (koi naam nahi)</div>
+              </div>
+              <div class="field">
+                <label>Agency website</label>
+                <input type="text" id="cWebsite2" placeholder="www.agency.co.in">
+              </div>
+            </div>
+            <div class="field">
+              <label>Agency logo URL</label>
+              <input type="text" id="cLogo" placeholder="https://... (optional)">
+              <div class="helper">Logo load na ho to naam ka badge apne aap aa jaayega</div>
+            </div>
+          </div>
+        </div>
+
         <div class="field-row cols-2">
           <div class="field">
             <label>Client name</label>
@@ -4126,8 +4158,10 @@ label {
         </button>
       </div>
 
-      <!-- Branding -->
-      <div class="form-section">
+      <!-- Branding — driven by the "kiske liye" toggle above.
+           Kept in the DOM (hidden) because saveCampaign() reads
+           .mode-option.selected[data-mode] from here. -->
+      <div class="form-section" id="brandingSection" style="display:none;">
         <div class="form-section-title"><i class="ti ti-palette"></i> Branding mode</div>
         <div class="mode-grid">
           <div class="mode-option selected" data-mode="full" onclick="selectBrandingMode(this)">
@@ -7383,6 +7417,13 @@ function openCampaignForm(id) {
       el.classList.toggle('selected', el.dataset.mode === mode);
     });
     $('customFields').style.display = mode === 'custom' ? 'block' : 'none';
+
+    // Galat choose ho gaya tha? Edit mein wahi toggle dobara dikhega,
+    // stored mode se derive karke.
+    $('cBrand2').value   = c.custom_brand_name || '';
+    $('cWebsite2').value = c.custom_website || '';
+    $('cLogo').value     = c.custom_logo_url || '';
+    applyClientType(mode === 'full' ? 'direct' : 'agency');
     
     // Load existing cities + overrides
     loadCampaignCities(c.key, c.id);
@@ -7401,6 +7442,10 @@ function openCampaignForm(id) {
       el.classList.toggle('selected', el.dataset.mode === 'full');
     });
     $('customFields').style.display = 'none';
+    $('cBrand2').value = '';
+    $('cWebsite2').value = '';
+    $('cLogo').value = '';
+    applyClientType('direct');
     renderCampaignCities();
     renderCampaignOverrides();
   }
@@ -7419,6 +7464,45 @@ function selectBrandingMode(el) {
   document.querySelectorAll('.mode-option[data-mode]').forEach(function(o){ o.classList.remove('selected'); });
   el.classList.add('selected');
   $('customFields').style.display = el.dataset.mode === 'custom' ? 'block' : 'none';
+}
+
+// ══════════════════════════════════════════════════════════════
+// CLIENT TYPE  →  branding_mode
+//   direct                    -> 'full'   (Prajapati branding)
+//   agency + agency name      -> 'custom' (agency naam/logo/site)
+//   agency + no name          -> 'clean'  (bilkul blank)
+// Ek hi sawaal, business language mein. Purana Full/Clean/Custom
+// picker hidden hai par DOM mein hai — hum usi ko programmatically
+// set karte hain taaki saveCampaign() ka query kabhi null na ho.
+// ══════════════════════════════════════════════════════════════
+function applyClientType(ctype) {
+  document.querySelectorAll('.mode-option[data-ctype]').forEach(function(o){
+    o.classList.toggle('selected', o.dataset.ctype === ctype);
+  });
+  var isAgency = ctype === 'agency';
+  var af = $('agencyFields');
+  if (af) af.style.display = isAgency ? 'block' : 'none';
+
+  var mode = 'full';
+  if (isAgency) {
+    var nm = $('cBrand2') ? $('cBrand2').value.trim() : '';
+    mode = nm ? 'custom' : 'clean';
+  }
+  // mirror into the hidden legacy picker
+  document.querySelectorAll('.mode-option[data-mode]').forEach(function(o){
+    o.classList.toggle('selected', o.dataset.mode === mode);
+  });
+  if ($('customFields')) $('customFields').style.display = 'none';
+  return mode;
+}
+
+function selectClientType(el) {
+  applyClientType(el.dataset.ctype);
+}
+
+function currentClientType() {
+  var sel = document.querySelector('.mode-option.selected[data-ctype]');
+  return sel ? sel.dataset.ctype : 'direct';
 }
 
 function loadCampaignCities(campaignKey, campaignId) {
@@ -8411,8 +8495,17 @@ function saveCampaign() {
   var hoodCount = (mediaType === 'hood' || mediaType === 'both') ? 3 : 0;
   var backCount = (mediaType === 'back_panel' || mediaType === 'both') ? 1 : 0;
   
-  var selectedMode = document.querySelector('.mode-option.selected[data-mode]').dataset.mode;
-  
+  // Client-type toggle sach hai; wo hidden picker ko set karta hai.
+  var selectedMode = applyClientType(currentClientType());
+  var agencyName = $('cBrand2').value.trim();
+  var agencySite = $('cWebsite2').value.trim();
+  var agencyLogo = $('cLogo').value.trim();
+  var isAgency = selectedMode !== 'full';
+
+  if (isAgency && !agencyName && !confirm('Agency ka naam khaali hai.\n\nReport bilkul blank dikhegi (koi naam/logo nahi).\n\nAage badhein?')) {
+    return;
+  }
+
   var data = {
     name: name,
     client_name: client || null,
@@ -8421,8 +8514,9 @@ function saveCampaign() {
     before_photo: $('cBeforePhoto').checked,
     target_count: p2state.campaignCities.reduce(function(s,c){ return s + (parseInt(c.target_quantity) || 0); }, 0) || 100,
     branding_mode: selectedMode,
-    custom_brand_name: selectedMode === 'custom' ? $('cBrand').value.trim() || null : null,
-    custom_website: selectedMode === 'custom' ? $('cWebsite').value.trim() || null : null,
+    custom_brand_name: isAgency ? (agencyName || null) : null,
+    custom_website:    isAgency ? (agencySite || null) : null,
+    custom_logo_url:   isAgency ? (agencyLogo || null) : null,
     active: true
   };
   
