@@ -2116,7 +2116,7 @@ async function renderExpenses(root){
     // employee sees own; admin sees all (recent 60)
     // HR app sirf INTERNAL/office expenses dikhata hai — field/campaign wale nahi
     const filter = admin ? '' : '&team_member_phone=eq.'+USER.phone;
-    let exps = await api('/prajapati_expenses?select=id,expense_date,expense_type,internal_category,total_amount,payment_status,approval_status,receipt_url,team_member_name,remark,other_description,food_amount,hotel_amount,transport_amount,other_amount&expense_type=eq.internal&order=created_at.desc&limit=60'+filter);
+    let exps = await api('/prajapati_expenses?select=id,expense_date,expense_type,internal_category,total_amount,payment_status,approval_status,receipt_url,team_member_name,team_member_phone,created_by,created_by_name,remark,other_description,food_amount,hotel_amount,transport_amount,other_amount&expense_type=eq.internal&order=created_at.desc&limit=60'+filter);
 
     let h = '<div class="sechead"><i class="ti ti-receipt"></i>Expenses</div>';
 
@@ -2153,7 +2153,8 @@ async function renderExpenses(root){
       // HR admin: office/execution wale bilkul nahi
       visible = exps.filter(x => isHrExpense(x.internal_category || x.other_description));
     }
-    const mine = visible.filter(x => x.team_member_phone === USER.phone);
+    const mine = visible.filter(x => x.team_member_phone === USER.phone
+                                 || x.created_by === USER.phone);
     const todo = visible.filter(x => (x.approval_status||'pending') === 'pending'
                                   || ((x.approval_status==='approved') && (x.payment_status||'pending') !== 'paid'));
 
@@ -2172,8 +2173,18 @@ async function renderExpenses(root){
              tab('all', owner?'Sab':'HR/Staff', visible.length)+
            '</div>';
       if (!owner){
-        h += '<div style="font-size:11px;color:var(--muted);margin:-4px 0 10px">'+
+        h += '<div style="font-size:11px;color:var(--muted);margin:-4px 0 6px">'+
              'Office aur execution wale expenses owner ke paas jaate hain</div>';
+      }
+      const gapName = visible.filter(x => !x.team_member_name).length;
+      const gapRcpt = visible.filter(x => !x.receipt_url).length;
+      if (gapName || gapRcpt){
+        h += '<div style="background:var(--amber-bg);color:var(--amber);font-size:12px;'+
+             'padding:9px 12px;border-radius:8px;margin-bottom:10px">'+
+             (gapName ? '<b>'+gapName+'</b> entries me naam nahi' : '')+
+             (gapName && gapRcpt ? '  ·  ' : '')+
+             (gapRcpt ? '<b>'+gapRcpt+'</b> me receipt nahi' : '')+
+             ' — row pe peela button daba ke abhi theek karo</div>';
       }
     } else {
       h += '<div class="sechead" style="margin-top:16px"><i class="ti ti-list"></i>Mere expenses</div>';
@@ -2192,11 +2203,16 @@ async function renderExpenses(root){
         const pay = (x.payment_status||'pending');
         h += '<div class="row-item" style="flex-wrap:wrap">';
         h += '<div style="flex:1;min-width:60%"><div style="font-size:13px;font-weight:500">'+esc(cat)+' · '+inr(amt)+'</div>';
-        var who = x.team_member_name ? esc(x.team_member_name)
-                : (x.created_by_name ? esc(x.created_by_name)+' (entry)' : '<span style="color:var(--red)">party name missing</span>');
+        var who;
+        if (x.team_member_name) who = esc(x.team_member_name);
+        else if (admin) who = '<button onclick="expSetParty(\''+x.id+'\')" style="border:none;background:var(--amber-bg);color:var(--amber);'+
+                              'font-size:11px;padding:2px 8px;border-radius:5px;cursor:pointer">+ Naam daalo</button>'+
+                              (x.created_by_name ? ' <span style="color:var(--muted)">entry: '+esc(x.created_by_name)+'</span>' : '');
+        else who = '';
         h += '<div style="font-size:11px;color:var(--muted)">'+esc(x.expense_date||'')+(admin?' · '+who:'')+(x.remark?' · '+esc(x.remark):'')+'</div></div>';
         if (x.receipt_url) h += '<span class="pill pill-blue" style="cursor:pointer" onclick="viewImg(\''+esc(x.receipt_url)+'\')">Receipt</span>';
-        else if (pay === 'paid') h += '<span class="pill pill-red" title="Paid but no receipt on file">no receipt</span>';
+        else if (admin) h += '<span class="pill" style="background:var(--amber-bg);color:var(--amber);cursor:pointer" onclick="expAddReceipt(\''+x.id+'\')">+ Receipt</span>';
+        else if (pay === 'paid') h += '<span class="pill pill-red">no receipt</span>';
         h += '<span class="pill '+aprPill+'">'+esc(apr)+'</span>';
         if (pay==='paid') h += '<span class="pill pill-green">paid</span>';
         // admin actions
@@ -2230,6 +2246,84 @@ async function renderExpenses(root){
     root.innerHTML = '<div class="card" style="color:var(--red)">Load fail: '+esc(e.message)+'</div>';
   }
 }
+// ══════════════════════════════════════════════════════════════
+// FIX-IT CTAs
+// 186 of 190 expenses have no party name and 23 paid ones have no
+// receipt. Flagging that is useless on its own — the person looking at
+// the row is the one who can fix it, so let them fix it right there.
+// ══════════════════════════════════════════════════════════════
+async function expSetParty(id){
+  const m = document.getElementById('modalRoot');
+  m.innerHTML = '<div class="modal-bg" onclick="if(event.target===this)this.remove()">'+
+    '<div class="modal" onclick="event.stopPropagation()">'+
+      '<div style="font-size:15px;font-weight:600;margin-bottom:4px">Ye expense kiska hai?</div>'+
+      '<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Naam daalne se salary aur advance ka hisaab sahi rahega</div>'+
+      '<select id="epMember" style="width:100%"><option value="">Loading...</option></select>'+
+      '<div id="epErr" style="color:var(--red);font-size:12px;min-height:16px;margin-top:6px"></div>'+
+      '<div style="display:flex;gap:8px;margin-top:8px">'+
+        '<button class="btn-ghost" style="flex:1;height:40px" onclick="document.getElementById(\'modalRoot\').innerHTML=\'\'">Cancel</button>'+
+        '<button id="epSave" class="btn-green" style="flex:1;height:40px" onclick="expSavePartyGo(\''+id+'\')">Save</button>'+
+      '</div>'+
+    '</div></div>';
+  try {
+    const ms = await api('/trial_team_members?select=name,phone&active=eq.true&order=name');
+    const sel = document.getElementById('epMember');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">— chuno —</option>';
+    (ms||[]).forEach(function(x){
+      const o=document.createElement('option');
+      o.value = x.phone+'|'+x.name; o.textContent = x.name;
+      sel.appendChild(o);
+    });
+  } catch(e){
+    const el=document.getElementById('epErr'); if(el) el.textContent='Team list load fail: '+e.message;
+  }
+}
+
+async function expSavePartyGo(id){
+  const sel = document.getElementById('epMember');
+  const err = document.getElementById('epErr');
+  const btn = document.getElementById('epSave');
+  if (!sel || !sel.value){ if(err) err.textContent='Pehle naam chuno'; return; }
+  const parts = sel.value.split('|');
+  if (btn){ btn.disabled=true; btn.textContent='Saving...'; }
+  try {
+    await api('/prajapati_expenses?id=eq.'+id, {
+      method:'PATCH', headers:{'Prefer':'return=minimal'},
+      body: JSON.stringify({ team_member_phone: parts[0], team_member_name: parts[1]||'' })
+    });
+    document.getElementById('modalRoot').innerHTML='';
+    toast('Naam save ho gaya ✓');
+    nav('expenses');
+  } catch(e){
+    if(err) err.textContent='Save fail: '+e.message;
+    if(btn){ btn.disabled=false; btn.textContent='Save'; }
+  }
+}
+
+function expAddReceipt(id){
+  const inp = document.createElement('input');
+  inp.type='file'; inp.accept='image/*,application/pdf';
+  inp.style.display='none';
+  document.body.appendChild(inp);
+  inp.onchange = async function(){
+    const f = inp.files && inp.files[0];
+    document.body.removeChild(inp);
+    if (!f) return;
+    toast('Receipt upload ho raha hai...');
+    try {
+      const url = await uploadFile(f, USER.phone, 'receipt');
+      await api('/prajapati_expenses?id=eq.'+id, {
+        method:'PATCH', headers:{'Prefer':'return=minimal'},
+        body: JSON.stringify({ receipt_url: url })
+      });
+      toast('Receipt add ho gayi ✓');
+      nav('expenses');
+    } catch(e){ toast('Receipt fail: '+e.message); }
+  };
+  inp.click();
+}
+
 function expTab(t){ EXP_TAB = t; nav('expenses'); }
 
 async function onExpReceipt(input){
