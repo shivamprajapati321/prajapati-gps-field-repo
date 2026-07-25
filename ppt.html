@@ -445,6 +445,41 @@ body {
           <div class="opt-desc">Agency with their own logo</div>
         </div>
       </div>
+      <div class="custom-brand-fields" id="customBrandFields" style="display:none; margin-top:14px; padding:14px; background:rgba(255,255,255,.06); border-radius:10px;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div>
+            <label style="display:block; font-size:11px; opacity:.75; margin-bottom:5px;">Company name</label>
+            <input id="cbName" type="text" placeholder="Jaaguar Media Solutions"
+                   oninput="onCustomBrandInput()"
+                   style="width:100%; padding:9px 11px; border-radius:8px; border:1px solid rgba(255,255,255,.2); background:rgba(0,0,0,.2); color:#fff; font-size:13px;">
+          </div>
+          <div>
+            <label style="display:block; font-size:11px; opacity:.75; margin-bottom:5px;">Website</label>
+            <input id="cbSite" type="text" placeholder="www.jaaguar.co.in"
+                   oninput="onCustomBrandInput()"
+                   style="width:100%; padding:9px 11px; border-radius:8px; border:1px solid rgba(255,255,255,.2); background:rgba(0,0,0,.2); color:#fff; font-size:13px;">
+          </div>
+        </div>
+        <div style="margin-top:12px;">
+          <label style="display:block; font-size:11px; opacity:.75; margin-bottom:5px;">Logo URL <span style="opacity:.6;">(optional — khaali chhoda to company name text aayega)</span></label>
+          <div style="display:flex; gap:10px; align-items:center;">
+            <input id="cbLogo" type="text" placeholder="https://…/logo.png"
+                   oninput="onCustomBrandInput()"
+                   style="flex:1; padding:9px 11px; border-radius:8px; border:1px solid rgba(255,255,255,.2); background:rgba(0,0,0,.2); color:#fff; font-size:13px;">
+            <div id="cbLogoBox" style="width:104px; height:44px; border-radius:8px; background:rgba(255,255,255,.9); display:flex; align-items:center; justify-content:center; font-size:10px; color:#888; overflow:hidden; flex:none;">
+              no logo
+            </div>
+          </div>
+          <div id="cbLogoMsg" style="font-size:11px; margin-top:6px; opacity:.8;"></div>
+        </div>
+        <div style="margin-top:12px; display:flex; gap:10px; align-items:center;">
+          <button class="btn btn-primary" style="padding:8px 14px; font-size:12px;" onclick="saveCustomBrandToCampaign()">
+            Campaign mein save karo
+          </button>
+          <span style="font-size:11px; opacity:.7;">Save karoge to agli baar apne aap bhar jayega</span>
+        </div>
+      </div>
+
       <div class="branding-info">
         <strong>Selected:</strong> <span id="brandingModeName">—</span>
         <span id="brandingTag"></span>
@@ -533,9 +568,10 @@ let state = {
   savedBrandingMode: 'full',
   activeBrandingMode: 'full',
   isOverride: false,
-  customLogo: null,
-  customBrand: 'PRAJAPATI',
-  customWebsite: 'prajapatiadvertising.co.in',
+  customLogo: '',
+  customBrand: '',
+  customWebsite: '',
+  customLogoData: null,
   vehicles: [],
   userRole: 'guest',         // 'admin' | 'owner' | 'data_entry' | 'client' | 'guest'
   clientToken: null,
@@ -1073,9 +1109,14 @@ async function onCampaignsChanged() {
       state.savedBrandingMode = campaign.branding_mode || 'full';
       state.activeBrandingMode = state.savedBrandingMode;
       state.isOverride = false;
-      state.customLogo = campaign.custom_logo_url || null;
-      state.customBrand = campaign.custom_brand_name || 'PRAJAPATI';
-      state.customWebsite = campaign.custom_website || 'prajapatiadvertising.co.in';
+      // No Prajapati fallback here. Custom mode exists to hide Prajapati,
+      // so defaulting to it made the panel read "Custom Branding (PRAJAPATI)"
+      // and would have shipped Prajapati branding on an agency deck.
+      state.customLogo = campaign.custom_logo_url || '';
+      state.customBrand = campaign.custom_brand_name || '';
+      state.customWebsite = campaign.custom_website || '';
+      state.customLogoData = null;
+      fillCustomBrandFields();
       document.getElementById('brandingControl').style.display = 'block';
       selectBranding(state.savedBrandingMode);
     }
@@ -1109,6 +1150,124 @@ async function onCampaignsChanged() {
   }
 }
 
+
+// ══════════════════════════════════════════════════════════════
+// CUSTOM BRANDING FIELDS
+// The logo is fetched and converted to a data URL here, because
+// PptxGenJS embeds image bytes into the .pptx — a bare URL would
+// leave the deck depending on that host staying up forever.
+// ══════════════════════════════════════════════════════════════
+function fillCustomBrandFields() {
+  var n = document.getElementById('cbName');
+  var s = document.getElementById('cbSite');
+  var l = document.getElementById('cbLogo');
+  if (!n) return;
+  n.value = state.customBrand || '';
+  s.value = state.customWebsite || '';
+  l.value = state.customLogo || '';
+  if (state.customLogo) loadCustomLogo(state.customLogo);
+  else renderLogoBox(null, '');
+}
+
+function renderLogoBox(dataUrl, msg, isErr) {
+  var box = document.getElementById('cbLogoBox');
+  var m = document.getElementById('cbLogoMsg');
+  if (box) {
+    box.innerHTML = dataUrl
+      ? '<img src="' + dataUrl + '" style="max-width:96px;max-height:38px;object-fit:contain;">'
+      : 'no logo';
+  }
+  if (m) {
+    m.textContent = msg || '';
+    m.style.color = isErr ? '#ff9f9f' : '#9fe8d5';
+  }
+}
+
+var _logoTimer = null;
+function onCustomBrandInput() {
+  state.customBrand = (document.getElementById('cbName').value || '').trim();
+  state.customWebsite = (document.getElementById('cbSite').value || '').trim();
+  var url = (document.getElementById('cbLogo').value || '').trim();
+
+  if (url !== state.customLogo) {
+    state.customLogo = url;
+    state.customLogoData = null;
+    clearTimeout(_logoTimer);
+    if (url) {
+      renderLogoBox(null, 'Logo load ho raha hai\u2026');
+      _logoTimer = setTimeout(function () { loadCustomLogo(url); }, 600);
+    } else {
+      renderLogoBox(null, '');
+    }
+  }
+  selectBranding('custom');
+}
+
+function loadCustomLogo(url) {
+  if (!url) return;
+  var img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = function () {
+    try {
+      var maxW = 400, sc = Math.min(1, maxW / img.width);
+      var c = document.createElement('canvas');
+      c.width = Math.round(img.width * sc);
+      c.height = Math.round(img.height * sc);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      state.customLogoData = c.toDataURL('image/png');
+      state.customLogoRatio = img.width / img.height;
+      renderLogoBox(state.customLogoData, 'Logo ready \u2014 PPT mein aayega');
+    } catch (e) {
+      // Cross-origin images taint the canvas and cannot be exported.
+      state.customLogoData = null;
+      renderLogoBox(null, 'Ye logo doosre server se aa raha hai, PPT mein embed nahi ho sakta. Logo apne Supabase storage pe daalo.', true);
+    }
+  };
+  img.onerror = function () {
+    state.customLogoData = null;
+    renderLogoBox(null, 'Logo URL khul nahi raha \u2014 link check karo', true);
+  };
+  img.src = url;
+}
+
+function saveCustomBrandToCampaign() {
+  var c = state.selectedCampaign;
+  if (!c) { showToast('Pehle ek campaign select karo', 'error'); return; }
+  if (!state.customBrand) { showToast('Company name bharo', 'error'); return; }
+
+  fetch(CONFIG.supabaseUrl + '/rest/v1/trial_campaigns?key=eq.' + encodeURIComponent(c.key), {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: CONFIG.supabaseKey,
+      Authorization: 'Bearer ' + CONFIG.supabaseKey,
+      Prefer: 'return=representation'
+    },
+    body: JSON.stringify({
+      branding_mode: 'custom',
+      custom_brand_name: state.customBrand,
+      custom_website: state.customWebsite || null,
+      custom_logo_url: state.customLogo || null
+    })
+  }).then(function (r) {
+    return r.text().then(function (t) {
+      if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + t.slice(0, 160));
+      return t;
+    });
+  }).then(function () {
+    state.savedBrandingMode = 'custom';
+    c.branding_mode = 'custom';
+    c.custom_brand_name = state.customBrand;
+    c.custom_website = state.customWebsite;
+    c.custom_logo_url = state.customLogo;
+    selectBranding('custom');
+    showToast('Campaign mein save ho gaya \u2014 client report pe bhi lagega', 'success');
+  }).catch(function (e) {
+    console.error('[brand-save]', e);
+    showToast('Save fail: ' + e.message, 'error');
+  });
+}
+
 function selectBranding(mode) {
   state.activeBrandingMode = mode;
   state.isOverride = (mode !== state.savedBrandingMode);
@@ -1128,9 +1287,16 @@ function selectBranding(mode) {
     nameEl.textContent = 'White Label / Clean';
     descEl.textContent = 'Koi branding nahi - Agency ko bhejne ke liye safe';
   } else if (mode === 'custom') {
-    nameEl.textContent = 'Custom Branding (' + state.customBrand + ')';
-    descEl.textContent = 'Custom branding · ' + state.customWebsite;
+    nameEl.textContent = state.customBrand
+      ? 'Custom Branding (' + state.customBrand + ')'
+      : 'Custom Branding \u2014 naam bharo';
+    descEl.textContent = state.customWebsite
+      ? 'Custom branding \u00b7 ' + state.customWebsite
+      : 'Neeche company name, website aur logo bharo';
   }
+
+  var cbf = document.getElementById('customBrandFields');
+  if (cbf) cbf.style.display = (mode === 'custom') ? 'block' : 'none';
   
   tagEl.innerHTML = state.isOverride 
     ? '<span class="override-tag">⚠ Override (DB has: ' + state.savedBrandingMode + ')</span>'
@@ -1891,10 +2057,12 @@ function getBrandingConfig(mode) {
     return {
       mode: 'custom', primaryColor: '534AB7', accentColor: '7F77DD',
       showLogo: true, showFooter: true,
-      brandName: state.customBrand,
-      logoText: state.customBrand,
-      footerText: 'Verified by ' + state.customBrand,
-      footerWebsite: state.customWebsite
+      brandName: state.customBrand || '',
+      logoText: state.customBrand || '',
+      logoData: state.customLogoData || null,
+      logoRatio: state.customLogoRatio || 3,
+      footerText: state.customBrand ? ('Verified by ' + state.customBrand) : '',
+      footerWebsite: state.customWebsite || ''
     };
   } else {
     return {
@@ -2033,7 +2201,11 @@ function addHoodSlide(pptx, vehicle, photoData, campaign, brand) {
   });
   
   // Brand label (left)
-  if (brand.showLogo && brand.logoText) {
+  if (brand.showLogo && brand.logoData) {
+    // Real logo when we have embeddable bytes, text otherwise.
+    var lh = 0.30, lw = Math.min(1.5, lh * (brand.logoRatio || 3));
+    slide.addImage({ data: brand.logoData, x: 0.4, y: 0.16, w: lw, h: lh });
+  } else if (brand.showLogo && brand.logoText) {
     slide.addText(brand.logoText, {
       x: 0.4, y: 0.18, w: 1.5, h: 0.3,
       fontSize: 9, fontFace: 'Plus Jakarta Sans',
@@ -2201,7 +2373,11 @@ function addBackPanelSlide(pptx, vehicle, photoData, campaign, brand) {
     line: { color: brand.primaryColor, width: 0 }
   });
   
-  if (brand.showLogo && brand.logoText) {
+  if (brand.showLogo && brand.logoData) {
+    // Real logo when we have embeddable bytes, text otherwise.
+    var lh = 0.30, lw = Math.min(1.5, lh * (brand.logoRatio || 3));
+    slide.addImage({ data: brand.logoData, x: 0.4, y: 0.16, w: lw, h: lh });
+  } else if (brand.showLogo && brand.logoText) {
     slide.addText(brand.logoText, {
       x: 0.4, y: 0.18, w: 1.5, h: 0.3,
       fontSize: 9, fontFace: 'Plus Jakarta Sans',
