@@ -1056,7 +1056,15 @@ label {
 .assign-row .status-pill.unassigned { background: var(--bg); color: var(--text-3); }
 
 /* ═══ Daily Assignments upgrade ═══ */
-.assign-row { grid-template-columns: auto auto 1.5fr 2fr 96px auto; }
+.assign-row { grid-template-columns: auto auto 1.4fr 1.9fr 132px 92px auto; }
+.da-vendor {
+  width: 126px; padding: 8px 8px; font-size: 12px;
+  border: 1px solid var(--border); border-radius: 7px; background: var(--card);
+  outline: none; color: var(--text-1);
+}
+.da-vendor:focus { border-color: var(--accent); }
+.da-vendor:disabled { background: var(--bg); color: var(--text-3); cursor: not-allowed; }
+.da-vendor.unset { color: var(--text-3); }
 .da-target {
   width: 88px; padding: 8px 10px; font-size: 13px; text-align: center;
   border: 1px solid var(--border); border-radius: 7px; background: var(--card);
@@ -8690,6 +8698,78 @@ function saveCampaignOverrides(campaignKey) {
 var p_daState = { members: [], campaigns: [], assignMap: {}, date: '', filter: 'all' };
 
 // ══════════════════════════════════════════════════════════════
+// RICKSHAW VENDOR
+// Was free text, so the same supplier arrived as "Haridas auto" and
+// "Haridas kaka auto" and never grouped. Fixed list + an escape hatch.
+// ══════════════════════════════════════════════════════════════
+var DA_VENDORS = ['Hari Das', 'Shivaji Ubhe', 'Self'];
+
+function daVendorSelect(phone, date, current) {
+  var v = (current && current.vendor) ? String(current.vendor) : '';
+  var known = DA_VENDORS.indexOf(v) !== -1;
+  var opts = '<option value="">supplier\u2026</option>';
+  DA_VENDORS.forEach(function (o) {
+    opts += '<option value="' + escapeHtml(o) + '"' + (v === o ? ' selected' : '') + '>' + escapeHtml(o) + '</option>';
+  });
+  if (v && !known) {
+    opts += '<option value="' + escapeHtml(v) + '" selected>' + escapeHtml(v) + '</option>';
+  }
+  opts += '<option value="__other">Other\u2026</option>';
+  return '<select class="da-vendor' + (v ? '' : ' unset') + '"' +
+         ' data-phone="' + escapeHtml(phone) + '" data-date="' + escapeHtml(date) + '"' +
+         ' data-prev="' + escapeHtml(v) + '"' +
+         (current ? '' : ' disabled') +
+         ' onchange="daSaveVendor(this)">' + opts + '</select>';
+}
+
+function daSaveVendor(el) {
+  var phone = el.dataset.phone, date = el.dataset.date;
+  var val = el.value;
+
+  if (val === '__other') {
+    var typed = prompt('Supplier ka naam?', el.dataset.prev || '');
+    if (typed === null) { el.value = el.dataset.prev || ''; return; }
+    typed = typed.trim();
+    if (!typed) { el.value = el.dataset.prev || ''; return; }
+    // keep the typed name selectable so the row still shows it
+    var o = document.createElement('option');
+    o.value = typed; o.textContent = typed; o.selected = true;
+    el.insertBefore(o, el.options[el.options.length - 1]);
+    val = typed;
+  }
+
+  var send = val === '' ? null : val;
+  el.classList.toggle('unset', send === null);
+
+  fetch(CONFIG.supabaseUrl + '/rest/v1/trial_daily_assignments?member_phone=eq.' +
+        encodeURIComponent(phone) + '&assignment_date=eq.' + date, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: CONFIG.supabaseKey,
+      Authorization: 'Bearer ' + CONFIG.supabaseKey,
+      Prefer: 'return=representation'
+    },
+    body: JSON.stringify({ vendor: send })
+  }).then(function (r) {
+    return r.text().then(function (t) {
+      if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + t.slice(0, 160));
+      return t;
+    });
+  }).then(function () {
+    el.dataset.prev = send || '';
+    if (p_daState && p_daState.assignMap && p_daState.assignMap[phone]) {
+      p_daState.assignMap[phone].vendor = send;
+    }
+    showToast(send ? 'Supplier: ' + send : 'Supplier hataya', 'success');
+  }).catch(function (e) {
+    console.error('[vendor]', e);
+    el.value = el.dataset.prev || '';
+    showToast('Supplier save fail: ' + e.message, 'error');
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
 // REPORT HELPERS
 // Date maths runs on the STRING, never on a UTC timestamp.
 // new Date('2026-07-25T00:00:00+05:30') is 2026-07-24T18:30Z, so
@@ -9046,6 +9126,7 @@ function loadAssignments() {
                     'onchange="daPickCampaign(this)" onfocus="this.select()">' +
                   (current ? '<button class="da-clear" title="Remove assignment" onclick="daClearAssign(\'' + m.phone + '\',\'' + date + '\')">\u00d7</button>' : '') +
                 '</div>' +
+                daVendorSelect(m.phone, date, current) +
                 '<input class="da-target' + (current && !current.quantity ? ' empty' : '') + '" type="number" min="0" step="5" ' +
                   'placeholder="target" title="Aaj ka rickshaw target" ' +
                   'value="' + (current && current.quantity ? current.quantity : '') + '" ' +
@@ -9193,105 +9274,160 @@ function renderWorkPlanCanvas(rows) {
   var partial = (date === np.date);
   var expFrac = expectedFraction(np.mins, partial);
 
-  var W = 1100, PAD = 56, ROW_H = 86, HEAD = 250, FOOT = 96;
-  // Fixed column grid — the previous version drew the progress bar at a
-  // right offset that ran straight through the location text.
-  var COL_NAME = PAD + 54, W_NAME = 330;
-  var COL_META = PAD + 400, W_META = 320;
-  var RIGHT    = W - PAD;          // numbers right-align here
-  var BAR_W    = 150;
+  // Column grid. Area and GPS now stack on two lines instead of running
+  // together on one, which is what forced "Pimpri-C…" and "Anand…".
+  var W = 1240, PAD = 60, ROW_H = 74, HEAD = 296, FOOT = 78;
+  var C_RANK = PAD;
+  var C_NAME = PAD + 34,  W_NAME = 300;
+  var C_AREA = PAD + 358, W_AREA = 268;
+  var C_VEND = PAD + 646, W_VEND = 150;
+  var RIGHT  = W - PAD,   BAR_W  = 132;
 
-  var incomplete = rows.filter(function (r) { return !r.qty; });
-  var warnH = incomplete.length ? 84 : 0;
-  var H = HEAD + rows.length * ROW_H + warnH + FOOT;
-
+  var H = HEAD + rows.length * ROW_H + FOOT;
   var M = makeCanvas(W, H), cv = M.cv, x = M.x;
-  var INK='#0B1957', SLATE='#3d4453', MUTE='#8A93A2', LINE='#E8ECF2', TEAL='#0E9F8E';
 
-  x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, W, H);
-  x.fillStyle = INK; x.fillRect(0, 0, W, 6);
+  var NAVY='#132A5E', SLATE='#5A6472', MUTE='#8A93A2', FAINT='#A3ABB8',
+      HAIR='#F2F5F8', RULE='#E8ECF2', TRACK='#EDF1F6',
+      TEAL='#0E8F79', AMBER='#B87A14', RED='#C0392B';
 
-  var total = rows.reduce(function (s2, r) { return s2 + (r.qty || 0); }, 0);
-  var doneAll = rows.reduce(function (s2, r) { return s2 + (r.done || 0); }, 0);
-  var pctAll = total ? Math.round((doneAll / total) * 100) : 0;
-
-  x.fillStyle = INK; x.font = '600 40px Georgia, serif';
-  x.fillText('Daily work plan', PAD, 84);
-
-  var p = date.split('-');
-  var mn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  x.fillStyle = MUTE; x.font = '400 22px Arial, sans-serif';
-  x.fillText(p[2] + ' ' + mn[+p[1]-1] + ' ' + p[0] + (partial ? '   \u00b7   ' + hhmm(np.mins) + ' tak' : ''), PAD, 118);
-
-  x.fillStyle = INK; x.font = '600 30px Arial, sans-serif';
-  x.fillText(doneAll + ' / ' + total + ' rickshaw', PAD, 166);
-  var wNum = x.measureText(doneAll + ' / ' + total + ' rickshaw').width;
-  x.fillStyle = MUTE; x.font = '400 22px Arial, sans-serif';
-  x.fillText('\u00b7   ' + pctAll + '%   \u00b7   ' + rows.length + ' members', PAD + wNum + 16, 166);
-
-  if (partial) {
-    x.fillStyle = MUTE; x.font = '400 20px Arial, sans-serif';
-    x.fillText('Is waqt tak lagbhag ' + Math.round(expFrac * 100) + '% hona chahiye', PAD, 198);
+  function tone(r) {
+    if (!r.qty) return MUTE;
+    var c = paceColour(r.done, r.qty, expFrac);
+    return c === '#0E9F8E' ? TEAL : (c === '#BA7517' ? AMBER : RED);
   }
 
-  x.strokeStyle = LINE; x.lineWidth = 1.5;
-  x.beginPath(); x.moveTo(PAD, 222); x.lineTo(W - PAD, 222); x.stroke();
+  x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, W, H);
+  x.fillStyle = NAVY; x.fillRect(0, 0, W, 5);
+
+  var total = rows.reduce(function (a, r) { return a + (r.qty || 0); }, 0);
+  var doneAll = rows.reduce(function (a, r) { return a + (r.done || 0); }, 0);
+  var pctAll = total ? Math.round((doneAll / total) * 100) : 0;
+
+  // ── masthead: title left, the number that matters on the right
+  x.fillStyle = NAVY; x.font = '600 38px Georgia, serif';
+  x.fillText('Daily work plan', PAD, 74);
+
+  var p = date.split('-');
+  var mn = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  x.fillStyle = MUTE; x.font = '400 17px Arial, sans-serif';
+  x.fillText(p[2] + ' ' + mn[+p[1]-1] + ' ' + p[0] + (partial ? '   \u00b7   ' + hhmm(np.mins) + ' TAK' : '   \u00b7   POORA DIN'), PAD, 100);
+
+  x.font = '500 36px Arial, sans-serif';
+  var wD = x.measureText(String(doneAll)).width;
+  x.font = '400 24px Arial, sans-serif';
+  var wT = x.measureText(' / ' + total).width;
+  x.fillStyle = NAVY; x.font = '500 36px Arial, sans-serif';
+  x.fillText(String(doneAll), RIGHT - wD - wT, 76);
+  x.fillStyle = '#B4BBC6'; x.font = '400 24px Arial, sans-serif';
+  x.fillText(' / ' + total, RIGHT - wT, 76);
+  x.fillStyle = MUTE; x.font = '400 17px Arial, sans-serif';
+  var sub = pctAll + '%' + (partial ? '   \u00b7   target ' + Math.round(expFrac * 100) + '% tak' : '');
+  x.fillText(sub, RIGHT - x.measureText(sub).width, 102);
+
+  // ── summary strip: read the day without reading every row
+  var nOn = 0, nMid = 0, nLow = 0;
+  rows.forEach(function (r) {
+    if (!r.qty) return;
+    var c = paceColour(r.done, r.qty, expFrac);
+    if (c === '#0E9F8E') nOn++; else if (c === '#BA7517') nMid++; else nLow++;
+  });
+  var cards = [
+    { l: 'ON PACE',      v: nOn,  bg: '#EAF6F2', fg: '#0B6B54' },
+    { l: 'THODA PEECHE', v: nMid, bg: '#FBF3E4', fg: '#8A5B0B' },
+    { l: 'DHYAN DENA',   v: nLow, bg: '#FBECEC', fg: '#9E3535' }
+  ];
+  var cw = (W - 2*PAD - 20) / 3;
+  cards.forEach(function (c, i) {
+    var bx = PAD + i * (cw + 10);
+    x.fillStyle = c.bg; x.fillRect(bx, 132, cw, 58);
+    x.fillStyle = c.fg; x.font = '400 13px Arial, sans-serif';
+    x.fillText(c.l, bx + 16, 154);
+    x.font = '500 25px Arial, sans-serif';
+    x.fillText(String(c.v), bx + 16, 181);
+  });
+
+  // ── column headers
+  var HY = 232;
+  x.fillStyle = FAINT; x.font = '400 12px Arial, sans-serif';
+  x.fillText('MEMBER & CAMPAIGN', C_NAME, HY);
+  x.fillText('AREA \u2192 GPS', C_AREA, HY);
+  x.fillText('RICKSHAW SE', C_VEND, HY);
+  var hd = 'DONE';
+  x.fillText(hd, RIGHT - x.measureText(hd).width, HY);
+  x.strokeStyle = RULE; x.lineWidth = 1;
+  x.beginPath(); x.moveTo(PAD, HY + 14); x.lineTo(W - PAD, HY + 14); x.stroke();
 
   var y = HEAD;
   rows.forEach(function (r, i) {
-    if (i % 2 === 1) { x.fillStyle = '#FAFBFD'; x.fillRect(PAD - 18, y - 42, W - 2*PAD + 36, ROW_H - 6); }
+    if (i % 2 === 1) { x.fillStyle = '#FBFCFD'; x.fillRect(PAD - 20, y - 34, W - 2*PAD + 40, ROW_H - 6); }
+    var col = tone(r);
 
-    x.fillStyle = MUTE; x.font = '400 20px Arial, sans-serif';
-    x.fillText(String(i + 1).padStart(2, '0'), PAD, y);
+    x.fillStyle = '#B4BBC6'; x.font = '400 16px Arial, sans-serif';
+    x.fillText(String(i + 1).padStart(2, '0'), C_RANK, y);
 
-    x.fillStyle = INK; x.font = '600 26px Arial, sans-serif';
-    x.fillText(fitText(x, r.name, W_NAME), COL_NAME, y);
+    x.fillStyle = NAVY; x.font = '500 21px Arial, sans-serif';
+    x.fillText(fitText(x, r.name, W_NAME), C_NAME, y);
+    x.fillStyle = MUTE; x.font = '400 16px Arial, sans-serif';
+    x.fillText(fitText(x, r.campaign, W_NAME), C_NAME, y + 21);
 
-    x.fillStyle = SLATE; x.font = '400 21px Arial, sans-serif';
-    x.fillText(fitText(x, r.campaign, W_NAME), COL_NAME, y + 27);
+    if (r.area) {
+      x.fillStyle = SLATE; x.font = '400 16px Arial, sans-serif';
+      x.fillText(fitText(x, r.area, W_AREA), C_AREA, y);
+      if (r.gps) {
+        x.fillStyle = FAINT; x.font = '400 16px Arial, sans-serif';
+        x.fillText(fitText(x, '\u2192 ' + r.gps, W_AREA), C_AREA, y + 21);
+      }
+    } else if (r.gps) {
+      x.fillStyle = FAINT; x.font = '400 16px Arial, sans-serif';
+      x.fillText(fitText(x, 'GPS: ' + r.gps, W_AREA), C_AREA, y);
+    }
 
-    x.fillStyle = MUTE; x.font = '400 20px Arial, sans-serif';
-    var meta = r.area ? (r.area + (r.gps ? '  \u2192  ' + r.gps : '')) : (r.gps ? 'GPS: ' + r.gps : '');
-    if (meta) x.fillText(fitText(x, meta, W_META), COL_META, y);
     if (r.vendor) {
-      x.fillStyle = '#A3ABB8'; x.font = '400 19px Arial, sans-serif';
-      x.fillText(fitText(x, r.vendor, W_META), COL_META, y + 27);
+      x.font = '400 14px Arial, sans-serif';
+      var vt = fitText(x, r.vendor, W_VEND - 20);
+      var vw = x.measureText(vt).width + 18;
+      x.fillStyle = '#EEF1F6';
+      x.fillRect(C_VEND, y - 15, vw, 24);
+      x.fillStyle = '#4A5568';
+      x.fillText(vt, C_VEND + 9, y + 1);
+    } else {
+      x.fillStyle = '#CBD2DB'; x.font = '400 14px Arial, sans-serif';
+      x.fillText('\u2014', C_VEND + 9, y + 1);
     }
 
     if (r.qty) {
-      var col = paceColour(r.done, r.qty, expFrac);
-      x.fillStyle = col; x.font = '600 28px Arial, sans-serif';
-      var lbl = r.done + ' / ' + r.qty;
-      x.fillText(lbl, RIGHT - x.measureText(lbl).width, y);
-      var bx = RIGHT - BAR_W, by = y + 16;
-      x.fillStyle = '#EDF1F6'; x.fillRect(bx, by, BAR_W, 8);
+      // tabular alignment: the slash sits in the same place on every row
+      x.font = '400 18px Arial, sans-serif';
+      var tw = x.measureText('/' + r.qty).width;
+      x.font = '500 22px Arial, sans-serif';
+      var dw = x.measureText(String(r.done)).width;
       x.fillStyle = col;
-      x.fillRect(bx, by, Math.max(3, BAR_W * Math.min(1, r.done / r.qty)), 8);
+      x.fillText(String(r.done), RIGHT - tw - dw, y);
+      x.fillStyle = '#C9CFD8'; x.font = '400 18px Arial, sans-serif';
+      x.fillText('/' + r.qty, RIGHT - tw, y);
+
+      var bx = RIGHT - BAR_W, by = y + 12;
+      x.fillStyle = TRACK; x.fillRect(bx, by, BAR_W, 5);
+      x.fillStyle = col;
+      x.fillRect(bx, by, Math.max(3, BAR_W * Math.min(1, r.done / r.qty)), 5);
     } else {
-      x.fillStyle = MUTE; x.font = '400 20px Arial, sans-serif';
-      var w2 = r.done ? (r.done + ' done') : 'target pending';
-      x.fillText(w2, RIGHT - x.measureText(w2).width, y);
-      if (r.done) {
-        x.fillStyle = '#C2C9D4'; x.font = '400 17px Arial, sans-serif';
-        var nt = 'no target';
-        x.fillText(nt, RIGHT - x.measureText(nt).width, y + 24);
-      }
+      x.fillStyle = SLATE; x.font = '500 22px Arial, sans-serif';
+      var dn = r.done ? String(r.done) : '\u2014';
+      x.fillText(dn, RIGHT - x.measureText(dn).width, y);
+      x.fillStyle = '#C9CFD8'; x.font = '400 13px Arial, sans-serif';
+      var nt = 'target nahi';
+      x.fillText(nt, RIGHT - x.measureText(nt).width, y + 20);
     }
 
-    x.strokeStyle = LINE; x.lineWidth = 1;
-    x.beginPath(); x.moveTo(PAD, y + 42); x.lineTo(W - PAD, y + 42); x.stroke();
+    x.strokeStyle = HAIR; x.lineWidth = 1;
+    x.beginPath(); x.moveTo(PAD, y + 34); x.lineTo(W - PAD, y + 34); x.stroke();
     y += ROW_H;
   });
 
-  if (warnH) {
-    x.fillStyle = '#FFF8E8'; x.fillRect(PAD - 18, y - 30, W - 2*PAD + 36, 60);
-    x.fillStyle = '#8A5B0B'; x.font = '600 21px Arial, sans-serif';
-    x.fillText(fitText(x, 'Target set nahi: ' + incomplete.map(function (r) { return r.name; }).join(', '), W - 2*PAD - 40), PAD, y + 8);
-    y += warnH;
-  }
-
-  x.fillStyle = '#B4BBC6'; x.font = '400 19px Arial, sans-serif';
-  x.fillText('Prajapati Advertising   \u00b7   admin panel se apne aap bana   \u00b7   GPS verified', PAD, H - 38);
+  x.strokeStyle = HAIR; x.lineWidth = 1;
+  x.beginPath(); x.moveTo(PAD, H - 46); x.lineTo(W - PAD, H - 46); x.stroke();
+  x.fillStyle = '#B4BBC6'; x.font = '400 13px Arial, sans-serif';
+  x.fillText('PRAJAPATI ADVERTISING   \u00b7   ADMIN PANEL SE APNE AAP BANA   \u00b7   GPS VERIFIED', PAD, H - 24);
 
   saveJpeg(cv, 'work-plan-' + date + '.jpg');
 }
@@ -9377,6 +9513,7 @@ function fetchEveningData() {
       rows.push({
         name: m.name || '\u2014',
         campaign: (c && (c.name || c.campaign_name)) || (a ? a.campaign_key : '\u2014'),
+        vendor: a ? (a.vendor || '') : '',
         target: a ? a.quantity : null,
         done: done, yPace: yPace, best: best, histDays: cnt,
         avg: cnt ? (sum / cnt) : 0,
@@ -9422,143 +9559,173 @@ function downloadEveningReport() {
     var all = D.ranked.concat(D.unranked);
     if (!all.length) { showToast('Is date ka koi data nahi', 'error'); return; }
 
-    var W = 1100, PAD = 56, ROW_H = 78, FOOT = 104;
-    var COL_NAME = PAD + 50, W_NAME = 420;
-    var RIGHT = W - PAD, BAR_W = 150;
+    var W = 1240, PAD = 60, ROW_H = 74, FOOT = 96;
+    var C_RANK = PAD, C_NAME = PAD + 34, W_NAME = 320;
+    var C_VEND = PAD + 646, W_VEND = 150;
+    var RIGHT = W - PAD, BAR_W = 132;
 
     var podium = Math.min(3, D.ranked.length);
-    var HEAD = D.partial ? 250 : 226;
-    var podH = podium ? 214 : 0;
-    var impH = D.improved ? 78 : 0;
-    var H = HEAD + podH + impH + 44 + all.length * ROW_H + FOOT;
+    var HEAD = 232;
+    var podH = podium ? 208 : 0;
+    var impH = D.improved ? 74 : 0;
+    var H = HEAD + podH + impH + 52 + all.length * ROW_H + FOOT;
 
     var M = makeCanvas(W, H), cv = M.cv, x = M.x;
-    var INK='#0B1957', SLATE='#3d4453', MUTE='#8A93A2', LINE='#E8ECF2',
-        TEAL='#0E9F8E', GOLD='#B8891F';
+    var NAVY='#132A5E', SLATE='#5A6472', MUTE='#8A93A2', FAINT='#A3ABB8',
+        HAIR='#F2F5F8', RULE='#E8ECF2', TRACK='#EDF1F6',
+        TEAL='#0E8F79', AMBER='#B87A14', RED='#C0392B', GOLD='#A87C1C';
+
+    function tone(done, target) {
+      if (!target) return MUTE;
+      var c = paceColour(done, target, D.expFrac);
+      return c === '#0E9F8E' ? TEAL : (c === '#BA7517' ? AMBER : RED);
+    }
 
     x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, W, H);
-    x.fillStyle = INK; x.fillRect(0, 0, W, 6);
+    x.fillStyle = NAVY; x.fillRect(0, 0, W, 5);
 
     var p = D.date.split('-');
-    var mn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var mn = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
 
-    x.fillStyle = INK; x.font = '600 40px Georgia, serif';
-    x.fillText(D.partial ? 'Aaj ka scoreboard' : 'Din ka scoreboard', PAD, 84);
-
-    x.fillStyle = MUTE; x.font = '400 22px Arial, sans-serif';
+    x.fillStyle = NAVY; x.font = '600 38px Georgia, serif';
+    x.fillText(D.partial ? 'Aaj ka scoreboard' : 'Din ka scoreboard', PAD, 74);
+    x.fillStyle = MUTE; x.font = '400 17px Arial, sans-serif';
     x.fillText(p[2] + ' ' + mn[+p[1]-1] + ' ' + p[0] +
-               (D.partial ? '   \u00b7   ' + hhmm(D.mins) + ' tak' : '   \u00b7   poora din'), PAD, 118);
+               (D.partial ? '   \u00b7   ' + hhmm(D.mins) + ' TAK' : '   \u00b7   POORA DIN'), PAD, 100);
 
     var tp = D.teamTarget ? Math.round((D.teamDone / D.teamTarget) * 100) : 0;
-    x.fillStyle = INK; x.font = '600 30px Arial, sans-serif';
-    var teamLbl = 'Team  ' + D.teamDone + ' / ' + D.teamTarget;
-    x.fillText(teamLbl, PAD, 166);
-    x.fillStyle = paceColour(D.teamDone, D.teamTarget, D.expFrac);
-    x.font = '600 24px Arial, sans-serif';
-    x.fillText(tp + '%', PAD + x.measureText(teamLbl).width + 18, 166);
+    x.font = '500 36px Arial, sans-serif';
+    var wD = x.measureText(String(D.teamDone)).width;
+    x.font = '400 24px Arial, sans-serif';
+    var wT = x.measureText(' / ' + D.teamTarget).width;
+    x.fillStyle = NAVY; x.font = '500 36px Arial, sans-serif';
+    x.fillText(String(D.teamDone), RIGHT - wD - wT, 76);
+    x.fillStyle = '#B4BBC6'; x.font = '400 24px Arial, sans-serif';
+    x.fillText(' / ' + D.teamTarget, RIGHT - wT, 76);
 
-    if (D.partial) {
-      x.fillStyle = MUTE; x.font = '400 20px Arial, sans-serif';
-      x.fillText('Is waqt tak lagbhag ' + Math.round(D.expFrac * 100) + '% hona chahiye', PAD, 196);
-    }
+    x.fillStyle = MUTE; x.font = '400 17px Arial, sans-serif';
+    var sub = tp + '%' + (D.partial ? '   \u00b7   target ' + Math.round(D.expFrac * 100) + '% tak' : '');
+    x.fillText(sub, RIGHT - x.measureText(sub).width, 102);
+
     if (D.teamYPace > 0) {
       var dd = D.teamDone - D.teamYPace;
-      x.fillStyle = dd >= 0 ? TEAL : '#B0563F'; x.font = '400 21px Arial, sans-serif';
-      x.fillText((dd >= 0 ? 'Kal isi time se ' + dd + ' aage' : 'Kal isi time se ' + Math.abs(dd) + ' peeche') +
-                 '   (kal ' + D.teamYPace + ')', PAD, D.partial ? 226 : 196);
+      x.fillStyle = dd >= 0 ? TEAL : '#A9603F'; x.font = '400 16px Arial, sans-serif';
+      var pl = (dd >= 0 ? 'Kal isi time se +' + dd : 'Kal isi time se \u2212' + Math.abs(dd)) + '  (kal ' + D.teamYPace + ')';
+      x.fillText(pl, RIGHT - x.measureText(pl).width, 126);
     }
 
-    x.strokeStyle = LINE; x.lineWidth = 1.5;
-    x.beginPath(); x.moveTo(PAD, HEAD - 30); x.lineTo(W - PAD, HEAD - 30); x.stroke();
+    x.strokeStyle = RULE; x.lineWidth = 1;
+    x.beginPath(); x.moveTo(PAD, 156); x.lineTo(W - PAD, 156); x.stroke();
 
     var y = HEAD;
 
     if (podium) {
-      x.fillStyle = INK; x.font = '600 23px Arial, sans-serif';
-      x.fillText('Aaj ke top performers', PAD, y);
-      var bw = (W - 2*PAD - 24) / 3;
+      x.fillStyle = FAINT; x.font = '400 12px Arial, sans-serif';
+      x.fillText('AAJ KE TOP PERFORMERS', PAD, y - 40);
+      var bw = (W - 2*PAD - 20) / 3;
       for (var i = 0; i < podium; i++) {
-        var r = D.ranked[i], bx = PAD + i * (bw + 12), by = y + 18;
-        x.fillStyle = i === 0 ? '#FFFBF1' : '#FAFBFD';
-        x.fillRect(bx, by, bw, 138);
-        x.strokeStyle = i === 0 ? GOLD : LINE; x.lineWidth = i === 0 ? 2 : 1;
-        x.strokeRect(bx, by, bw, 138);
+        var r = D.ranked[i], bx = PAD + i * (bw + 10), by = y - 22;
+        x.fillStyle = i === 0 ? '#FDFAF2' : '#FBFCFD';
+        x.fillRect(bx, by, bw, 150);
+        x.strokeStyle = i === 0 ? GOLD : RULE; x.lineWidth = i === 0 ? 1.5 : 1;
+        x.strokeRect(bx, by, bw, 150);
 
-        x.fillStyle = i === 0 ? GOLD : MUTE; x.font = '600 19px Arial, sans-serif';
-        x.fillText(['1st','2nd','3rd'][i], bx + 18, by + 32);
+        x.fillStyle = i === 0 ? GOLD : FAINT; x.font = '400 13px Arial, sans-serif';
+        x.fillText(['1ST','2ND','3RD'][i], bx + 20, by + 30);
 
-        x.fillStyle = INK; x.font = '600 24px Arial, sans-serif';
-        x.fillText(fitText(x, r.name, bw - 36), bx + 18, by + 68);
+        x.fillStyle = NAVY; x.font = '500 23px Arial, sans-serif';
+        x.fillText(fitText(x, r.name, bw - 40), bx + 20, by + 68);
 
-        // stacked, never side by side — the old layout printed 50/50 on top of 100%
-        x.fillStyle = paceColour(r.done, r.target, D.expFrac);
-        x.font = '600 32px Arial, sans-serif';
-        x.fillText(r.pct + '%', bx + 18, by + 108);
+        x.fillStyle = MUTE; x.font = '400 15px Arial, sans-serif';
+        x.fillText(fitText(x, r.campaign, bw - 40), bx + 20, by + 91);
 
-        x.fillStyle = MUTE; x.font = '400 19px Arial, sans-serif';
-        x.fillText(r.done + ' / ' + r.target, bx + 18, by + 130);
-        if (r.newBest) {
-          x.fillStyle = TEAL; x.font = '400 18px Arial, sans-serif';
-          var nb = 'new best';
-          x.fillText(nb, bx + bw - 18 - x.measureText(nb).width, by + 130);
-        }
+        // stacked, never side by side
+        x.fillStyle = tone(r.done, r.target); x.font = '500 34px Arial, sans-serif';
+        x.fillText(r.pct + '%', bx + 20, by + 129);
+        var pw = x.measureText(r.pct + '%').width;
+        x.fillStyle = '#B4BBC6'; x.font = '400 16px Arial, sans-serif';
+        x.fillText(r.done + ' / ' + r.target, bx + 20 + pw + 12, by + 129);
       }
       y += podH;
     }
 
     if (impH) {
-      x.fillStyle = '#E8F6F1'; x.fillRect(PAD, y - 26, W - 2*PAD, 56);
-      x.fillStyle = '#0B6B54'; x.font = '600 22px Arial, sans-serif';
-      x.fillText('Sabse zyada sudhaar \u2014 ' + D.improved.name + ' \u00b7 kal isi time se +' + D.improved.delta,
-                 PAD + 20, y + 10);
+      x.fillStyle = '#EAF6F2'; x.fillRect(PAD, y - 44, W - 2*PAD, 52);
+      x.fillStyle = '#0B6B54'; x.font = '400 13px Arial, sans-serif';
+      x.fillText('SABSE ZYADA SUDHAAR', PAD + 20, y - 24);
+      x.font = '500 20px Arial, sans-serif';
+      x.fillText(D.improved.name + '  \u00b7  kal isi time se +' + D.improved.delta, PAD + 20, y - 2);
       y += impH;
     }
 
-    x.fillStyle = INK; x.font = '600 23px Arial, sans-serif';
-    x.fillText('Poori team', PAD, y);
-    y += 44;
+    x.fillStyle = FAINT; x.font = '400 12px Arial, sans-serif';
+    x.fillText('POORI TEAM', C_NAME, y);
+    x.fillText('RICKSHAW SE', C_VEND, y);
+    var hd = 'DONE';
+    x.fillText(hd, RIGHT - x.measureText(hd).width, y);
+    x.strokeStyle = RULE; x.lineWidth = 1;
+    x.beginPath(); x.moveTo(PAD, y + 14); x.lineTo(W - PAD, y + 14); x.stroke();
+    y += 52;
 
     all.forEach(function (r, i) {
-      if (i % 2 === 1) { x.fillStyle = '#FAFBFD'; x.fillRect(PAD - 18, y - 38, W - 2*PAD + 36, ROW_H - 6); }
+      if (i % 2 === 1) { x.fillStyle = '#FBFCFD'; x.fillRect(PAD - 20, y - 34, W - 2*PAD + 40, ROW_H - 6); }
 
-      x.fillStyle = MUTE; x.font = '400 20px Arial, sans-serif';
-      x.fillText(r.pct !== null ? String(i + 1).padStart(2, '0') : '\u2014', PAD, y);
+      x.fillStyle = '#B4BBC6'; x.font = '400 16px Arial, sans-serif';
+      x.fillText(r.pct !== null ? String(i + 1).padStart(2, '0') : '\u2014', C_RANK, y);
 
-      x.fillStyle = INK; x.font = '600 26px Arial, sans-serif';
-      x.fillText(fitText(x, r.name, W_NAME), COL_NAME, y);
+      x.fillStyle = NAVY; x.font = '500 21px Arial, sans-serif';
+      x.fillText(fitText(x, r.name, W_NAME), C_NAME, y);
 
       var bits = [];
       if (r.newBest) bits.push('personal best');
       if (r.delta > 0 && r.yPace > 0) bits.push('+' + r.delta + ' vs kal');
-      if (!bits.length) bits.push(r.campaign);
-      x.fillStyle = (r.newBest || (r.delta > 0 && r.yPace > 0)) ? TEAL : MUTE;
-      x.font = '400 19px Arial, sans-serif';
-      x.fillText(fitText(x, bits.join('   \u00b7   '), W_NAME), COL_NAME, y + 24);
+      var win = bits.length > 0;
+      if (!win) bits.push(r.campaign);
+      x.fillStyle = win ? TEAL : MUTE; x.font = '400 16px Arial, sans-serif';
+      x.fillText(fitText(x, bits.join('   \u00b7   '), W_NAME), C_NAME, y + 21);
 
-      if (r.target) {
-        var col = paceColour(r.done, r.target, D.expFrac);
-        x.fillStyle = col; x.font = '600 27px Arial, sans-serif';
-        var lbl = r.done + ' / ' + r.target;
-        x.fillText(lbl, RIGHT - x.measureText(lbl).width, y);
-        var bx2 = RIGHT - BAR_W, by2 = y + 15;
-        x.fillStyle = '#EDF1F6'; x.fillRect(bx2, by2, BAR_W, 8);
-        x.fillStyle = col; x.fillRect(bx2, by2, Math.max(3, BAR_W * Math.min(1, r.done / r.target)), 8);
+      if (r.vendor) {
+        x.font = '400 14px Arial, sans-serif';
+        var vt = fitText(x, r.vendor, W_VEND - 20);
+        var vw = x.measureText(vt).width + 18;
+        x.fillStyle = '#EEF1F6'; x.fillRect(C_VEND, y - 15, vw, 24);
+        x.fillStyle = '#4A5568'; x.fillText(vt, C_VEND + 9, y + 1);
       } else {
-        x.fillStyle = SLATE; x.font = '600 27px Arial, sans-serif';
-        x.fillText(String(r.done), RIGHT - x.measureText(String(r.done)).width, y);
-        x.fillStyle = '#C2C9D4'; x.font = '400 17px Arial, sans-serif';
-        var nt = 'target set nahi tha';
-        x.fillText(nt, RIGHT - x.measureText(nt).width, y + 22);
+        x.fillStyle = '#CBD2DB'; x.font = '400 14px Arial, sans-serif';
+        x.fillText('\u2014', C_VEND + 9, y + 1);
       }
 
-      x.strokeStyle = LINE; x.lineWidth = 1;
-      x.beginPath(); x.moveTo(PAD, y + 38); x.lineTo(W - PAD, y + 38); x.stroke();
+      if (r.target) {
+        var col = tone(r.done, r.target);
+        x.font = '400 18px Arial, sans-serif';
+        var tw = x.measureText('/' + r.target).width;
+        x.font = '500 22px Arial, sans-serif';
+        var dw = x.measureText(String(r.done)).width;
+        x.fillStyle = col; x.fillText(String(r.done), RIGHT - tw - dw, y);
+        x.fillStyle = '#C9CFD8'; x.font = '400 18px Arial, sans-serif';
+        x.fillText('/' + r.target, RIGHT - tw, y);
+        var bx2 = RIGHT - BAR_W, by2 = y + 12;
+        x.fillStyle = TRACK; x.fillRect(bx2, by2, BAR_W, 5);
+        x.fillStyle = col; x.fillRect(bx2, by2, Math.max(3, BAR_W * Math.min(1, r.done / r.target)), 5);
+      } else {
+        x.fillStyle = SLATE; x.font = '500 22px Arial, sans-serif';
+        x.fillText(String(r.done), RIGHT - x.measureText(String(r.done)).width, y);
+        x.fillStyle = '#C9CFD8'; x.font = '400 13px Arial, sans-serif';
+        var nt = 'target nahi tha';
+        x.fillText(nt, RIGHT - x.measureText(nt).width, y + 20);
+      }
+
+      x.strokeStyle = HAIR; x.lineWidth = 1;
+      x.beginPath(); x.moveTo(PAD, y + 34); x.lineTo(W - PAD, y + 34); x.stroke();
       y += ROW_H;
     });
 
-    x.fillStyle = '#B4BBC6'; x.font = '400 19px Arial, sans-serif';
-    x.fillText('Rank = target ka %, count ka nahi \u2014 taaki chhota target bhi barabar gine.', PAD, H - 62);
-    x.fillText('Prajapati Advertising   \u00b7   GPS verified, apne aap bana', PAD, H - 36);
+    x.strokeStyle = HAIR; x.lineWidth = 1;
+    x.beginPath(); x.moveTo(PAD, H - 62); x.lineTo(W - PAD, H - 62); x.stroke();
+    x.fillStyle = FAINT; x.font = '400 14px Arial, sans-serif';
+    x.fillText('Rank = target ka %, count ka nahi \u2014 taaki chhota target bhi barabar gine.', PAD, H - 40);
+    x.fillStyle = '#B4BBC6'; x.font = '400 13px Arial, sans-serif';
+    x.fillText('PRAJAPATI ADVERTISING   \u00b7   GPS VERIFIED, APNE AAP BANA', PAD, H - 18);
 
     saveJpeg(cv, 'scoreboard-' + D.date + '.jpg');
   }).catch(function (e) {
