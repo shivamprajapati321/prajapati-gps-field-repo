@@ -2780,6 +2780,129 @@ async function saveBulkRow(i, btn){
     if (this.value.replace(/\D/g,'').length === 6) verifyOtp();
   });
 })();
+
+// ══════════════════════════════════════════════════════════════
+// PWA — service worker + install prompt
+// hr.html linked /hr-manifest.json but never registered a service
+// worker and never handled beforeinstallprompt, so Chrome had no
+// reason to offer an install and the event was silently dropped.
+// ══════════════════════════════════════════════════════════════
+(function () {
+  var deferred = null;
+  var SNOOZE_KEY = 'hr_pwa_snoozed_until';
+  var SNOOZE_MS  = 24 * 60 * 60 * 1000;   // re-ask next day, not "never"
+
+  function isStandalone() {
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+        || window.navigator.standalone === true;
+  }
+  function isIOS() {
+    return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+  }
+  function snoozed() {
+    try {
+      var t = parseInt(localStorage.getItem(SNOOZE_KEY) || '0', 10);
+      return t && Date.now() < t;
+    } catch (e) { return false; }
+  }
+  function show(iosMode) {
+    if (isStandalone() || snoozed()) return;
+    var w = document.getElementById('pwaWrap');
+    if (!w) return;
+    if (iosMode) {
+      document.getElementById('pwaSteps').style.display = 'block';
+      document.getElementById('pwaGo').style.display = 'none';
+      document.getElementById('pwaLater').textContent = 'Theek hai';
+      document.getElementById('pwaBody').textContent =
+        'Home screen se seedha khulega. Safari mein 3 step lagenge:';
+    }
+    w.classList.add('show');
+  }
+
+  window.pwaLater = function () {
+    var w = document.getElementById('pwaWrap');
+    if (w) w.classList.remove('show');
+    try { localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_MS)); } catch (e) {}
+  };
+
+  window.pwaInstall = function () {
+    if (!deferred) {
+      if (typeof toast === 'function') toast('Browser menu se "Add to home screen" use karo');
+      return;
+    }
+    deferred.prompt();
+    deferred.userChoice.then(function (c) {
+      deferred = null;
+      var w = document.getElementById('pwaWrap');
+      if (w) w.classList.remove('show');
+      if (c && c.outcome !== 'accepted') {
+        try { localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_MS)); } catch (e) {}
+      }
+    });
+  };
+
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferred = e;
+    show(false);
+  });
+
+  window.addEventListener('appinstalled', function () {
+    deferred = null;
+    var w = document.getElementById('pwaWrap');
+    if (w) w.classList.remove('show');
+    try { localStorage.removeItem(SNOOZE_KEY); } catch (e) {}
+    if (typeof toast === 'function') toast('Install ho gaya — ab home screen se kholo');
+  });
+
+  // iOS Safari never fires beforeinstallprompt, so show manual steps instead.
+  if (isIOS()) setTimeout(function () { show(true); }, 1200);
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('/sw-hr.js')
+        .then(function (r) { console.log('[HR] SW registered:', r.scope); })
+        .catch(function (e) { console.warn('[HR] SW register failed:', e); });
+    });
+  }
+})();
 </script>
+<!-- ═══════════ PWA INSTALL SHEET ═══════════ -->
+<style>
+  #pwaWrap{position:fixed;inset:0;z-index:9999;display:none;align-items:flex-end;
+    background:rgba(10,16,30,.55);backdrop-filter:blur(2px);}
+  #pwaWrap.show{display:flex;}
+  #pwaSheet{width:100%;background:var(--card);border-radius:18px 18px 0 0;
+    padding:22px 20px calc(20px + env(safe-area-inset-bottom));
+    box-shadow:0 -8px 40px rgba(0,0,0,.25);animation:pwaUp .28s ease-out;}
+  @keyframes pwaUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  #pwaSheet .ic{width:54px;height:54px;border-radius:14px;background:var(--teal);
+    color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:14px;}
+  #pwaSheet h3{margin:0 0 6px;font-size:18px;color:var(--ink);}
+  #pwaSheet p{margin:0 0 16px;font-size:13.5px;line-height:1.55;color:var(--muted);}
+  #pwaSheet ol{margin:0 0 16px;padding-left:20px;font-size:13.5px;color:var(--sec);line-height:1.9;}
+  #pwaSheet .row{display:flex;gap:10px;}
+  #pwaSheet button{flex:1;padding:13px;border-radius:var(--radius);font-size:14.5px;
+    font-weight:600;cursor:pointer;border:none;}
+  #pwaGo{background:var(--teal);color:#fff;}
+  #pwaLater{background:var(--s1);color:var(--sec);}
+</style>
+<div id="pwaWrap" role="dialog" aria-modal="true" aria-labelledby="pwaTitle">
+  <div id="pwaSheet">
+    <div class="ic"><i class="ti ti-device-mobile-down"></i></div>
+    <h3 id="pwaTitle">HR app install kar lo</h3>
+    <p id="pwaBody">Home screen se seedha khulega, har baar link kholne ki zarurat nahi.
+      Attendance punch aur GPS bhi zyada bharosemand chalega.</p>
+    <ol id="pwaSteps" style="display:none;">
+      <li>Neeche <b>Share</b> button dabao</li>
+      <li><b>Add to Home Screen</b> chuno</li>
+      <li><b>Add</b> pe tap karo</li>
+    </ol>
+    <div class="row">
+      <button id="pwaLater" onclick="pwaLater()">Baad mein</button>
+      <button id="pwaGo" onclick="pwaInstall()">Install karo</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
