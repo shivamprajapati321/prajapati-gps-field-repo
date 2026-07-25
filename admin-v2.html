@@ -9035,6 +9035,9 @@ function downloadWorkPlanJPEG() {
       if (l) { r.done = l.done; r.gps = l.gps; }
     });
     renderWorkPlanCanvas(rows);
+  }).catch(function (e) {
+    console.error('[workplan]', e);
+    showToast('JPEG fail: ' + (e && e.message ? e.message : 'unknown'), 'error');
   });
 }
 
@@ -9475,6 +9478,74 @@ function downloadEveningReport() {
   }).catch(function (e) {
     showToast('Report fail: ' + (e && e.message ? e.message : 'unknown'), 'error');
   });
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// TARGET — saved per member per day on trial_daily_assignments.
+// Disabled until a campaign is picked, because a target without a
+// campaign has nothing to be a target of.
+// ══════════════════════════════════════════════════════════════
+function daSaveTarget(el) {
+  var phone = el.dataset.phone, date = el.dataset.date;
+  var raw = String(el.value || '').trim();
+  var qty = raw === '' ? null : parseInt(raw, 10);
+  if (qty !== null && (isNaN(qty) || qty < 0)) { showToast('Target sirf number', 'error'); return; }
+
+  el.classList.toggle('empty', qty === null);
+
+  fetch(CONFIG.supabaseUrl + '/rest/v1/trial_daily_assignments?member_phone=eq.' +
+        encodeURIComponent(phone) + '&assignment_date=eq.' + date, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: CONFIG.supabaseKey,
+      Authorization: 'Bearer ' + CONFIG.supabaseKey,
+      Prefer: 'return=representation'
+    },
+    body: JSON.stringify({ quantity: qty })
+  }).then(function (r) {
+    return r.text().then(function (t) {
+      if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + t.slice(0, 160));
+      return t;
+    });
+  }).then(function () {
+    if (p_daState && p_daState.assignMap && p_daState.assignMap[phone]) {
+      p_daState.assignMap[phone].quantity = qty;
+    }
+    if (typeof daRenderStats === 'function') daRenderStats();
+    showToast(qty === null ? 'Target hataya' : 'Target ' + qty + ' set', 'success');
+  }).catch(function (e) {
+    console.error('[target]', e);
+    showToast('Target save fail: ' + e.message, 'error');
+  });
+}
+
+// Live actuals for the selected date. Same source the scoreboard uses,
+// so a mid-day JPEG and the evening JPEG can never disagree.
+function daFetchLiveDone() {
+  var st = (typeof p_daState !== 'undefined') ? p_daState : {};
+  var date = st.date || (($('assignDate') && $('assignDate').value) || '');
+  if (!date) return Promise.resolve({});
+  var q = '/rest/v1/trial_photos?deleted_at=is.null' +
+          '&captured_at=gte.' + encodeURIComponent(date + 'T00:00:00+05:30') +
+          '&captured_at=lte.' + encodeURIComponent(date + 'T23:59:59+05:30') +
+          '&select=member_phone,vehicle_number,city&limit=20000';
+  return api(q).then(function (photos) {
+    var by = {};
+    (photos || []).forEach(function (p) {
+      if (!p.member_phone) return;
+      if (!by[p.member_phone]) by[p.member_phone] = { veh: {}, cities: {} };
+      if (p.vehicle_number) by[p.member_phone].veh[p.vehicle_number] = 1;
+      if (p.city) by[p.member_phone].cities[p.city] = (by[p.member_phone].cities[p.city] || 0) + 1;
+    });
+    var out = {};
+    Object.keys(by).forEach(function (k) {
+      var c = Object.keys(by[k].cities).sort(function (a, b) { return by[k].cities[b] - by[k].cities[a]; });
+      out[k] = { done: Object.keys(by[k].veh).length, gps: c.slice(0, 2).join(', ') };
+    });
+    return out;
+  }).catch(function (e) { console.error('[live]', e); return {}; });
 }
 
 // ═══ SEARCHABLE CAMPAIGN PICKER (Daily assignments) ═══════════
