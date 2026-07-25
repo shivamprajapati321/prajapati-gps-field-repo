@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Field Report · Prajapati Advertising</title>
+<title>Field Report</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -120,8 +120,9 @@ body::before {
   align-items: center;
   gap: 12px;
 }
+.brand-mark.no-badge::before { display: none !important; }
 .brand-mark::before {
-  content: 'P';
+  content: var(--brand-initial, 'P');
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1112,8 +1113,8 @@ body::before {
 <!-- ─────────── LOADING SCREEN ─────────── -->
 <div class="screen" id="loadingScreen">
   <div class="screen-content">
-    <div class="screen-icon">P</div>
-    <div class="screen-kicker">Prajapati Advertising</div>
+    <div class="screen-icon" id="loadIcon"></div>
+    <div class="screen-kicker" id="loadKicker"></div>
     <div class="screen-spinner"></div>
     <div class="screen-title" style="font-size:24px;">Loading Field Report…</div>
     <p class="screen-msg" id="loadingMsg">Authenticating access · Fetching latest data</p>
@@ -1124,11 +1125,11 @@ body::before {
 <div class="screen" id="gateScreen" style="display:none;">
   <div class="screen-content">
     <div class="screen-icon" id="gateIcon">!</div>
-    <div class="screen-kicker">Prajapati Advertising</div>
+    <div class="screen-kicker" id="gateKicker"></div>
     <h1 class="screen-title" id="gateTitle">Access Issue</h1>
     <p class="screen-msg" id="gateMsg">Please check the link you received.</p>
-    <p style="font-size:13px; color:var(--ink-mute); font-family:'JetBrains Mono',monospace; letter-spacing:1px;">
-      Need help? Call <a href="tel:9922138138" style="color:var(--ink); border-bottom:1px solid var(--gold);">+91 99 22 138 138</a>
+    <p id="gateHelp" style="display:none; font-size:13px; color:var(--ink-mute); font-family:'JetBrains Mono',monospace; letter-spacing:1px;">
+      Need help? Call <a id="gateHelpTel" href="tel:9922138138" style="color:var(--ink); border-bottom:1px solid var(--gold);">+91 99 22 138 138</a>
     </p>
   </div>
 </div>
@@ -1145,16 +1146,14 @@ body::before {
     <div class="topbar-right">
       <a href="#" class="topbar-link" onclick="shareLink(event)"><i class="ti ti-share"></i> Share</a>
       <a href="#" class="topbar-link" onclick="window.print();return false;"><i class="ti ti-printer"></i> Print</a>
-      <a href="https://www.prajapatiadvertising.com" target="_blank" class="topbar-link"><i class="ti ti-help"></i> Help</a>
+      <a id="topHelp" href="https://www.prajapatiadvertising.com" target="_blank" class="topbar-link" style="display:none;"><i class="ti ti-help"></i> Help</a>
     </div>
   </div>
 
   <!-- Masthead -->
   <header class="masthead">
     <div class="masthead-top">
-      <div class="brand-mark">
-        Prajapati Advertising
-      </div>
+      <div class="brand-mark" id="brandMark"></div>
       <div class="report-meta">
         Field Report · <span id="reportVol">Vol. — · No. —</span><br/>
         <strong id="reportDate">Loading...</strong>
@@ -1358,12 +1357,10 @@ body::before {
   <!-- Footer -->
   <footer class="footer">
     <div>
-      <div class="footer-brand">Prajapati Advertising</div>
-      <p class="footer-tag">
-        India's first GPS-verified out-of-home advertising network. Every photo timestamped, geo-tagged, and verified by hand before reaching this report.
-      </p>
+      <div class="footer-brand" id="footerBrand"></div>
+      <p class="footer-tag" id="footerTag"></p>
     </div>
-    <div class="footer-block">
+    <div class="footer-block" id="footerContact" style="display:none;">
       <h5>Contact</h5>
       <p>
         <a href="tel:9922138138">+91 99 22 138 138</a><br/>
@@ -1383,7 +1380,7 @@ body::before {
   </footer>
 
   <div class="copyright">
-    <span>© 2026 Prajapati Advertising · Confidential</span>
+    <span id="copyLine">© 2026 · Confidential</span>
     <span>Report ID · <span id="reportId">—</span></span>
   </div>
 
@@ -1559,6 +1556,7 @@ async function init() {
       return;
     }
     state.campaign = camps[0];
+    applyBranding();
     // active can be NULL for older campaigns — only an explicit `false` OR a
     // completed campaign should show as paused/closed. (Known rule: active=null
     // must NOT hide a live campaign.)
@@ -1752,6 +1750,121 @@ function aggregateStats() {
 }
 
 // ─── Render all ───
+
+// ══════════════════════════════════════════════════════════════
+// WHITE-LABEL BRANDING
+// branding_mode: 'full'   -> Prajapati Advertising (default)
+//                'clean'  -> agency work, zero Prajapati anywhere
+//                'custom' -> agency's own name/logo/website
+// ══════════════════════════════════════════════════════════════
+var DEFAULT_TAGLINE = "India's first GPS-verified out-of-home advertising network. Every photo timestamped, geo-tagged, and verified by hand before reaching this report.";
+var BRAND = {
+  mode: 'full', show: true,
+  name: 'Prajapati Advertising',
+  initial: 'P', logo: '', website: '', websiteLabel: '', tel: '',
+  tagline: "India's first GPS-verified out-of-home advertising network. Every photo timestamped, geo-tagged, and verified by hand before reaching this report."
+};
+
+function applyBranding() {
+  var c = state.campaign || {};
+  var mode = (c.branding_mode || 'full').toLowerCase();
+  // tolerate legacy/alias values
+  if (mode === 'full_prajapati') mode = 'full';
+  if (mode === 'white_label' || mode === 'none' || mode === 'blank') mode = 'clean';
+
+  BRAND.mode = mode;
+
+  if (mode === 'full') {
+    BRAND.show = true;
+    BRAND.name = 'Prajapati Advertising';
+    BRAND.tagline = DEFAULT_TAGLINE;
+    BRAND.logo = '';
+    BRAND.website = 'https://www.prajapatiadvertising.com';
+    BRAND.websiteLabel = 'prajapatiadvertising.com';
+    BRAND.tel = '9922138138';
+  } else if (mode === 'custom') {
+    BRAND.show = true;
+    BRAND.name = c.custom_brand_name || c.client_name || 'Field Report';
+    BRAND.logo = c.custom_logo_url || '';
+    BRAND.website = c.custom_website || '';
+    BRAND.websiteLabel = (c.custom_website || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+    BRAND.tel = '';
+    BRAND.tagline = '';
+  } else { // clean
+    BRAND.show = false;
+    BRAND.name = c.custom_brand_name || c.client_name || '';
+    BRAND.logo = '';
+    BRAND.website = '';
+    BRAND.websiteLabel = '';
+    BRAND.tel = '';
+    BRAND.tagline = '';
+  }
+  BRAND.initial = (BRAND.name || 'F').trim().charAt(0).toUpperCase();
+
+  // ---- paint the page ----
+  document.documentElement.style.setProperty('--brand-initial', "'" + BRAND.initial + "'");
+
+  var set = function (id, txt) { var el = $(id); if (el) el.textContent = txt; };
+  var showEl = function (id, on) { var el = $(id); if (el) el.style.display = on ? '' : 'none'; };
+
+  set('loadKicker', BRAND.name);
+  set('gateKicker', BRAND.name);
+  set('brandMark', BRAND.name);
+  set('footerBrand', BRAND.name);
+  set('footerTag', BRAND.tagline);
+  showEl('footerTag', !!BRAND.tagline);
+
+  // logo image in masthead (custom mode only)
+  var bm = $('brandMark');
+  if (bm && BRAND.logo) {
+    bm.classList.add('no-badge');
+    var img = document.createElement('img');
+    img.alt = BRAND.name;
+    img.style.cssText = 'height:38px;width:auto;object-fit:contain;';
+    // If the logo fails to load (Drive link revoked, hotlink blocked, offline),
+    // drop the <img> and fall back to the text/initial badge — never show a
+    // broken-image icon on a client-facing report.
+    img.onerror = function () {
+      if (img.parentNode) img.parentNode.removeChild(img);
+      bm.classList.remove('no-badge');
+    };
+    img.src = BRAND.logo;
+    var span = document.createElement('span');
+    span.textContent = BRAND.name;
+    bm.innerHTML = '';
+    bm.appendChild(img);
+    bm.appendChild(span);
+  }
+
+  // Prajapati-only chrome. In white-label modes these nodes are DELETED from the
+  // DOM (not just hidden) so nothing leaks via View Source / Ctrl+U.
+  var chrome = ['footerContact', 'topHelp', 'gateHelp'];
+  for (var i = 0; i < chrome.length; i++) {
+    var el = $(chrome[i]);
+    if (!el) continue;
+    if (mode === 'full') el.style.display = '';
+    else el.parentNode && el.parentNode.removeChild(el);
+  }
+
+  // custom mode: rebuild a contact block from the agency's own website
+  if (mode === 'custom' && BRAND.website) {
+    var fb = $('footerBrand');
+    if (fb && fb.parentNode && fb.parentNode.parentNode) {
+      var blk = document.createElement('div');
+      blk.className = 'footer-block';
+      blk.innerHTML = '<h5>Contact</h5><p><a href="' + BRAND.website + '" target="_blank" rel="noopener">'
+                    + escapeHtml(BRAND.websiteLabel) + '</a></p>';
+      fb.parentNode.parentNode.appendChild(blk);
+    }
+  }
+
+  var cp = $('copyLine');
+  if (cp) cp.textContent = '© ' + new Date().getFullYear() + (BRAND.name ? ' ' + BRAND.name : '') + ' · Confidential';
+
+  document.title = 'Field Report' + (BRAND.show && BRAND.name ? ' · ' + BRAND.name : '');
+}
+
+
 function renderAll() {
   const stats = aggregateStats();
   const c = state.campaign;
@@ -1776,7 +1889,7 @@ function renderAll() {
   
   // ⚡ Update browser tab title dynamically based on campaign
   const tabClientName = c.client_name || c.name || 'Campaign';
-  document.title = 'Field Report · ' + tabClientName + ' · Prajapati Advertising';
+  document.title = 'Field Report · ' + tabClientName + (BRAND.show ? ' · ' + BRAND.name : '');
   
   // Stat band
   $('statTotal').textContent = fmtNum(stats.total);
@@ -2166,15 +2279,13 @@ async function generatePPT() {
     const pptx = new PPT();
     pptx.layout = 'LAYOUT_16x9';
     pptx.title = (state.campaign.name || state.campaign.key) + ' — Field Report';
-    pptx.author = 'Prajapati Advertising';
+    pptx.author = BRAND.show ? BRAND.name : (state.campaign.client_name || 'Field Report');
     
     const photos = state.filteredPhotos.length ? state.filteredPhotos : state.photos;
     
     // Branding mode handling
-    const brandMode = state.campaign.branding_mode || 'full_prajapati';
-    const showBrand = brandMode !== 'white_label';
-    const customBrand = state.campaign.custom_brand_name;
-    const brandName = brandMode === 'custom' && customBrand ? customBrand : (showBrand ? 'Prajapati Advertising' : '');
+    const showBrand = BRAND.show;
+    const brandName = BRAND.name;
     
     // Slide 1: Cover
     const cover = pptx.addSlide();
