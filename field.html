@@ -306,36 +306,13 @@ button,input{font-family:inherit}input{font-size:16px}
   <h2 style="color:#ff6b6b">GPS Block Hai</h2>
   <p class="sub">Permission permanently block hai. 3 tareeke hain fix karne ke — koi bhi try karo:</p>
   
-  <div class="why-box" style="background:rgba(245,184,0,0.1);border-color:rgba(245,184,0,0.4);">
+  <div class="why-box" id="tsWhy" style="background:rgba(245,184,0,0.1);border-color:rgba(245,184,0,0.4);">
     <strong>⚠️ Yeh kyun hua?</strong>
     Kabhi galti se "Block" daba diya tha. Ab phone ko bolna padega "Allow" karne ke liye.
   </div>
   
   <div class="steps">
-    <div class="step" style="background:rgba(38,208,206,0.08);border-left:3px solid #26d0ce;padding-left:10px;">
-      <span class="step-num" style="background:#26d0ce;color:#0B1957">A</span>
-      <span class="step-txt"><strong>Chrome Menu Method (Best)</strong><br>
-      1️⃣ Chrome ke top-right me <strong>⋮ 3-dots</strong> tap karo<br>
-      2️⃣ <strong>Settings</strong> tap karo<br>
-      3️⃣ <strong>Site Settings</strong> tap karo<br>
-      4️⃣ <strong>Location</strong> tap karo<br>
-      5️⃣ "Blocked" section me <strong>prajapati-gps-field-repo.vercel.app</strong> dhundo<br>
-      6️⃣ Site pe tap karke <strong>Allow</strong> karo<br>
-      7️⃣ Wapas aake "GPS Allow Karo" daba
-      </span>
-    </div>
-    
-    <div class="step" style="background:rgba(245,184,0,0.08);border-left:3px solid #ffb800;padding-left:10px;margin-top:10px;">
-      <span class="step-num" style="background:#ffb800;color:#0B1957">B</span>
-      <span class="step-txt"><strong>Phone Settings Method</strong><br>
-      1️⃣ Phone <strong>Settings</strong> kholo (gear icon)<br>
-      2️⃣ <strong>Apps</strong> ya <strong>App Management</strong><br>
-      3️⃣ <strong>Chrome</strong> dhundo → tap<br>
-      4️⃣ <strong>Permissions</strong> → <strong>Location</strong><br>
-      5️⃣ <strong>"Allow only while using"</strong> select<br>
-      6️⃣ Chrome restart → URL fresh me kholo
-      </span>
-    </div>
+    <div id="tsSteps"></div>
     
     <div class="step" style="background:rgba(220,38,38,0.08);border-left:3px solid #ff6b6b;padding-left:10px;margin-top:10px;">
       <span class="step-num" style="background:#ff6b6b;color:#fff">C</span>
@@ -526,5 +503,97 @@ button,input{font-family:inherit}input{font-size:16px}
 </script>
 
 <script src="/app.js?v=15.5.3-2026-06-17"></script>
+
+
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// GPS TROUBLESHOOT — environment aware
+//
+// The old screen only ever explained Chrome: "⋮ 3-dots → Settings →
+// Site Settings". Inside the Mars GPS APK none of that exists — there
+// is no Chrome menu to open — so field staff on the app were following
+// steps they could not perform. Detect where we actually are and show
+// only the steps that exist there.
+// ══════════════════════════════════════════════════════════════
+(function () {
+  var APP_NAME = 'Mars GPS';
+
+  function env() {
+    var ua = navigator.userAgent || '';
+    var ref = document.referrer || '';
+    // Trusted Web Activity hands the page over with an android-app:// referrer
+    if (ref.indexOf('android-app://') === 0) return 'apk';
+    // Plain WebView wrapper reports "; wv)" in the UA
+    if (/;\s*wv\)/.test(ua)) return 'apk';
+    var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+    if (standalone && /Android/i.test(ua)) return 'apk';
+    if (/iPhone|iPad|iPod/i.test(ua)) return 'ios';
+    return 'browser';
+  }
+
+  function step(letter, colour, title, lines) {
+    return '<div class="step" style="background:' + colour.bg + ';border-left:3px solid ' + colour.line +
+           ';padding-left:10px;margin-top:10px;">' +
+           '<span class="step-num" style="background:' + colour.line + ';color:' + colour.num + '">' + letter + '</span>' +
+           '<span class="step-txt"><strong>' + title + '</strong><br>' + lines + '</span></div>';
+  }
+
+  var TEAL = { bg: 'rgba(38,208,206,0.08)', line: '#26d0ce', num: '#0B1957' };
+  var AMBER = { bg: 'rgba(245,184,0,0.08)', line: '#ffb800', num: '#0B1957' };
+
+  function render() {
+    var box = document.getElementById('tsSteps');
+    if (!box) return;
+    var e = env();
+    var host = location.hostname || 'is site';
+    var html = '';
+
+    if (e === 'apk') {
+      html += step('A', TEAL, 'App Permission (yahi karo)',
+        '1️⃣ Phone <strong>Settings</strong> kholo<br>' +
+        '2️⃣ <strong>Apps</strong> ya <strong>App Management</strong><br>' +
+        '3️⃣ <strong>' + APP_NAME + '</strong> dhundo → tap<br>' +
+        '4️⃣ <strong>Permissions</strong> → <strong>Location</strong><br>' +
+        '5️⃣ <strong>"Allow only while using app"</strong> chuno<br>' +
+        '6️⃣ App band karke dobara kholo');
+      html += step('B', AMBER, 'App info se seedha',
+        '1️⃣ Home screen pe <strong>' + APP_NAME + '</strong> icon ko <strong>der tak dabao</strong><br>' +
+        '2️⃣ <strong>App info</strong> (ⓘ) tap karo<br>' +
+        '3️⃣ <strong>Permissions</strong> → <strong>Location</strong> → <strong>Allow</strong>');
+    } else if (e === 'ios') {
+      html += step('A', TEAL, 'iPhone Settings',
+        '1️⃣ <strong>Settings</strong> kholo<br>' +
+        '2️⃣ <strong>Privacy &amp; Security</strong> → <strong>Location Services</strong><br>' +
+        '3️⃣ <strong>Safari Websites</strong> → <strong>While Using the App</strong><br>' +
+        '4️⃣ Safari band karke page dobara kholo');
+    } else {
+      html += step('A', TEAL, 'Sabse aasan — address bar se',
+        '1️⃣ URL bar ke <strong>left</strong> me 🔒 ya ⚙️ icon tap karo<br>' +
+        '2️⃣ <strong>Permissions</strong> tap karo<br>' +
+        '3️⃣ <strong>Location</strong> → <strong>Allow</strong><br>' +
+        '4️⃣ Page refresh karo');
+      html += step('B', AMBER, 'Chrome Settings se',
+        '1️⃣ Chrome ke top-right me <strong>⋮ 3-dots</strong><br>' +
+        '2️⃣ <strong>Settings</strong> → <strong>Site Settings</strong><br>' +
+        '3️⃣ <strong>Location</strong> tap karo<br>' +
+        '4️⃣ "Blocked" me <strong>' + host + '</strong> dhundo<br>' +
+        '5️⃣ Tap karke <strong>Allow</strong> karo');
+    }
+    box.innerHTML = html;
+
+    var why = document.getElementById('tsWhy');
+    if (why) {
+      why.innerHTML = (e === 'apk')
+        ? '<strong>⚠️ Yeh kyun hua?</strong> App ko location ki permission nahi mili. Ek baar Allow kar do, phir dobara nahi poochega.'
+        : '<strong>⚠️ Yeh kyun hua?</strong> Kabhi galti se "Block" daba diya tha. Ab phone ko bolna padega "Allow" karne ke liye.';
+    }
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', render);
+  else render();
+  window.renderGpsTroubleshoot = render;
+})();
+</script>
 </body>
 </html>
