@@ -2116,7 +2116,7 @@ async function renderExpenses(root){
     // employee sees own; admin sees all (recent 60)
     // HR app sirf INTERNAL/office expenses dikhata hai — field/campaign wale nahi
     const filter = admin ? '' : '&team_member_phone=eq.'+USER.phone;
-    let exps = await api('/prajapati_expenses?select=id,expense_date,expense_type,internal_category,total_amount,payment_status,approval_status,receipt_url,team_member_name,team_member_phone,created_by,created_by_name,remark,other_description,food_amount,hotel_amount,transport_amount,other_amount&expense_type=eq.internal&order=created_at.desc&limit=60'+filter);
+    let exps = await api('/prajapati_expenses?select=id,expense_date,expense_type,internal_category,total_amount,payment_status,approval_status,receipt_url,payment_receipt_url,team_member_name,team_member_phone,internal_party,internal_details,created_by,created_by_name,remark,other_description,food_amount,hotel_amount,transport_amount,other_amount&expense_type=eq.internal&order=created_at.desc&limit=60'+filter);
 
     let h = '<div class="sechead"><i class="ti ti-receipt"></i>Expenses</div>';
 
@@ -2176,8 +2176,8 @@ async function renderExpenses(root){
         h += '<div style="font-size:11px;color:var(--muted);margin:-4px 0 6px">'+
              'Office aur execution wale expenses owner ke paas jaate hain</div>';
       }
-      const gapName = visible.filter(x => !x.team_member_name).length;
-      const gapRcpt = visible.filter(x => !x.receipt_url).length;
+      const gapName = visible.filter(x => !x.team_member_name && !x.internal_party).length;
+      const gapRcpt = visible.filter(x => !x.receipt_url && !x.payment_receipt_url).length;
       if (gapName || gapRcpt){
         h += '<div style="background:var(--amber-bg);color:var(--amber);font-size:12px;'+
              'padding:9px 12px;border-radius:8px;margin-bottom:10px">'+
@@ -2203,16 +2203,23 @@ async function renderExpenses(root){
         const pay = (x.payment_status||'pending');
         h += '<div class="row-item" style="flex-wrap:wrap">';
         h += '<div style="flex:1;min-width:60%"><div style="font-size:13px;font-weight:500">'+esc(cat)+' · '+inr(amt)+'</div>';
+        var party = x.team_member_name || x.internal_party || '';
+        var detail = x.remark || x.internal_details || '';
         var who;
-        if (x.team_member_name) who = esc(x.team_member_name);
+        if (party) who = esc(party);
         else if (admin) who = '<button onclick="expSetParty(\''+x.id+'\')" style="border:none;background:var(--amber-bg);color:var(--amber);'+
-                              'font-size:11px;padding:2px 8px;border-radius:5px;cursor:pointer">+ Naam daalo</button>'+
-                              (x.created_by_name ? ' <span style="color:var(--muted)">entry: '+esc(x.created_by_name)+'</span>' : '');
+                              'font-size:11px;padding:2px 8px;border-radius:5px;cursor:pointer">+ Naam daalo</button>';
         else who = '';
-        h += '<div style="font-size:11px;color:var(--muted)">'+esc(x.expense_date||'')+(admin?' · '+who:'')+(x.remark?' · '+esc(x.remark):'')+'</div></div>';
-        if (x.receipt_url) h += '<span class="pill pill-blue" style="cursor:pointer" onclick="viewImg(\''+esc(x.receipt_url)+'\')">Receipt</span>';
-        else if (admin) h += '<span class="pill" style="background:var(--amber-bg);color:var(--amber);cursor:pointer" onclick="expAddReceipt(\''+x.id+'\')">+ Receipt</span>';
-        else if (pay === 'paid') h += '<span class="pill pill-red">no receipt</span>';
+        var entry = (admin && x.created_by_name && x.created_by_name !== party)
+                    ? ' <span style="color:var(--muted)">· entry: '+esc(x.created_by_name)+'</span>' : '';
+        h += '<div style="font-size:11px;color:var(--muted)">'+esc(x.expense_date||'')+(admin?' · '+who:'')+
+             (detail?' · '+esc(detail):'')+entry+'</div></div>';
+        if (x.receipt_url) h += '<span class="pill pill-blue" style="cursor:pointer" onclick="viewImg(\''+esc(x.receipt_url)+'\')">Bill</span>';
+        if (x.payment_receipt_url) h += '<span class="pill pill-green" style="cursor:pointer" onclick="viewImg(\''+esc(x.payment_receipt_url)+'\')">Payment</span>';
+        if (!x.receipt_url && !x.payment_receipt_url){
+          if (admin) h += '<span class="pill" style="background:var(--amber-bg);color:var(--amber);cursor:pointer" onclick="expAddReceipt(\''+x.id+'\')">+ Receipt</span>';
+          else if (pay === 'paid') h += '<span class="pill pill-red">no receipt</span>';
+        }
         h += '<span class="pill '+aprPill+'">'+esc(apr)+'</span>';
         if (pay==='paid') h += '<span class="pill pill-green">paid</span>';
         // admin actions

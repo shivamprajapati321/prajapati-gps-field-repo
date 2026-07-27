@@ -1401,12 +1401,12 @@ function enterDetailsScreen(){
   }
   if (f.reqContact){
     html += '<div class="ve-field"><label>📞 Owner Contact</label>'+
-            '<input id="ve-contact" class="ve-inp" inputmode="numeric" maxlength="10" placeholder="10 digit number" autocomplete="off" value="'+escapeHtml(state.contactNumber||'')+'" oninput="veCleanContact(this);veOnInput()">'+
+            '<input id="ve-contact" class="ve-inp" inputmode="numeric" maxlength="10" placeholder="10 digit number" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="next" value="'+escapeHtml(state.contactNumber||'')+'" oninput="veCleanContact(this);veOnInput()">'+
             '<div class="ve-hint" id="ve-contact-hint">10 digit lock</div></div>';
   }
   if (f.reqNumber){
     html += '<div class="ve-field"><label>🛺 Vehicle Number</label>'+
-            '<input id="ve-num" class="ve-inp ve-mono" maxlength="14" placeholder="MH12AU1234" autocomplete="off" value="'+escapeHtml(state.vehicleNumber||'')+'" oninput="veCleanNum(this);veOnInput()">'+
+            '<input id="ve-num" class="ve-inp ve-mono" maxlength="14" placeholder="MH12AU1234" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="done" value="'+escapeHtml(state.vehicleNumber||'')+'" oninput="veCleanNum(this);veOnInput()">'+
             '<div class="ve-hint" id="ve-num-hint">Space hatega + UPPERCASE</div></div>';
   }
 
@@ -1459,6 +1459,24 @@ window.cancelEntry = function(){
 // Caret-safe cleanup: input.value set karte hi browser cursor ko END pe bhej deta hai.
 // Isliye value sirf tab likhte hain jab sach me badli ho, aur cursor wapas apni jagah rakhte hain.
 // (Warna beech me correction karte waqt agla akshar galat jagah jata tha — lagta tha akshar mit gaye.)
+// ══════════════════════════════════════════════════════════════
+// Android IME composition guard
+//
+// Rewriting el.value on every keystroke breaks GBoard. While the
+// keyboard is composing a word it holds its own idea of where the
+// composing region starts; when JS replaces the value underneath it,
+// the next keystroke makes the IME overwrite from ITS remembered
+// offset and the earlier characters vanish. Typing MH12AU1234 ended up
+// as 12 on the field team's phones — the "MH" was eaten every time.
+//
+// Fix: never touch the value mid-composition. Tidy up on
+// compositionend / blur instead, and let CSS (.ve-mono has
+// text-transform:uppercase) handle the visual casing while typing.
+// The value is normalised again when it is read for submit, so nothing
+// unclean can reach the database either way.
+// ══════════════════════════════════════════════════════════════
+var _veComposing = false;
+
 function _veSetCaretSafe(el, cleaned){
   if (!el || el.value === cleaned) return;
   var pos = el.selectionStart;
@@ -1470,12 +1488,42 @@ function _veSetCaretSafe(el, cleaned){
   } catch(e){}
 }
 
+// Attach once; works for inputs rendered later too.
+if (!window._veCompBound){
+  window._veCompBound = true;
+  document.addEventListener('compositionstart', function(e){
+    if (e.target && (e.target.id === 've-num' || e.target.id === 've-contact')) _veComposing = true;
+  }, true);
+  document.addEventListener('compositionend', function(e){
+    if (!e.target) return;
+    if (e.target.id !== 've-num' && e.target.id !== 've-contact') return;
+    _veComposing = false;
+    // now that the IME has committed, it is safe to normalise
+    if (e.target.id === 've-num') _veSetCaretSafe(e.target, cleanVehicleNumber(e.target.value));
+    else _veSetCaretSafe(e.target, String(e.target.value || '').replace(/[^0-9]/g, '').slice(0,10));
+    if (typeof window.veOnInput === 'function') window.veOnInput();
+  }, true);
+  document.addEventListener('blur', function(e){
+    if (!e.target) return;
+    if (e.target.id !== 've-num' && e.target.id !== 've-contact') return;
+    _veComposing = false;
+    if (e.target.id === 've-num') _veSetCaretSafe(e.target, cleanVehicleNumber(e.target.value));
+    else _veSetCaretSafe(e.target, String(e.target.value || '').replace(/[^0-9]/g, '').slice(0,10));
+  }, true);
+}
+
 window.veCleanContact = function(el){
+  if (_veComposing) return;
   _veSetCaretSafe(el, String(el.value || '').replace(/[^0-9]/g, '').slice(0,10));
 };
 
 window.veCleanNum = function(el){
-  _veSetCaretSafe(el, cleanVehicleNumber(el.value));
+  if (_veComposing) return;
+  // Only strip spaces while typing. Uppercasing mid-word is what made the
+  // IME re-compose, and CSS already renders this field uppercase.
+  var v = String(el.value || '');
+  var noSpace = v.replace(/\s+/g, '');
+  if (noSpace !== v) _veSetCaretSafe(el, noSpace);
 };
 
 var _veDupTimer = null;
