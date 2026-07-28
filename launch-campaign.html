@@ -292,6 +292,40 @@ a{color:inherit;text-decoration:none}
           </div>
         </div>
       </div>
+
+      <div class="row">
+        <div class="field">
+          <div class="label">Ye kaam kiske liye hai? <span class="req">*</span>
+            <span class="hint">Report aur PPT ki branding isi se tay hoti hai</span></div>
+          <div class="ct-grid">
+            <div class="ct-opt selected" id="ctDirect" onclick="pickClientType('direct')">
+              <div class="ct-title">🏢 Direct Client</div>
+              <div class="ct-desc">Client seedha hamara. Report + PPT pe Prajapati branding.</div>
+            </div>
+            <div class="ct-opt" id="ctAgency" onclick="pickClientType('agency')">
+              <div class="ct-title">🤝 Agency (white-label)</div>
+              <div class="ct-desc">Agency apne client ko forward karegi. Prajapati kahin nahi.</div>
+            </div>
+          </div>
+          <div id="agencyFields" style="display:none;margin-top:12px;">
+            <div class="row">
+              <div class="field">
+                <div class="label">Agency ka naam</div>
+                <input class="input" id="cbBrand" placeholder="Jaaguar Media Solutions" oninput="syncAgencyMode()">
+              </div>
+              <div class="field">
+                <div class="label">Website <span class="hint">optional</span></div>
+                <input class="input" id="cbSite" placeholder="www.agency.co.in">
+              </div>
+            </div>
+            <div class="field" style="margin-top:8px">
+              <div class="label">Logo URL <span class="hint">optional — khaali chhoda to naam text aayega</span></div>
+              <input class="input" id="cbLogo" placeholder="https://…/logo.png">
+            </div>
+            <div class="ct-note" id="ctNote">Naam khaali chhoda to report bilkul blank rahegi (koi naam/logo nahi).</div>
+          </div>
+        </div>
+      </div>
       
       <div class="row">
         <div class="field">
@@ -465,6 +499,20 @@ a{color:inherit;text-decoration:none}
   <button class="btn btn-gold" onclick="submitCampaign()" id="submitBtn">Submit for Operations →</button>
 </div>
 
+<style>
+.ct-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.ct-opt {
+  border:1.5px solid #dfe5ee; border-radius:10px; padding:12px 14px;
+  cursor:pointer; background:#fff; transition:border-color .15s, background .15s;
+}
+.ct-opt:hover { border-color:#b9c6d8; }
+.ct-opt.selected { border-color:#0E9F8E; background:#f2fbf9; }
+.ct-title { font-size:14px; font-weight:600; color:#0B1957; }
+.ct-desc { font-size:11.5px; color:#6B7280; margin-top:3px; line-height:1.45; }
+.ct-note { font-size:11.5px; color:#8A5B0B; background:#FFF8E8;
+           padding:8px 11px; border-radius:7px; margin-top:10px; }
+@media (max-width:640px){ .ct-grid { grid-template-columns:1fr; } }
+</style>
 <script src="/lib/access-guard.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 
@@ -479,6 +527,63 @@ const user = AccessGuard.getUser();
 const SUPABASE_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_JhObe56x_zETygpy6y8-DQ_qpQXIz_j';
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ══════════════════════════════════════════════════════════════
+// toggleSwitch was referenced by four onclick handlers on this page but
+// never defined anywhere — not here, not in access-guard.js. Every
+// toggle (Self-Sale, Urgent, Client Preview, Notify) threw a
+// ReferenceError and did nothing, so those flags always saved at
+// whatever the markup started with.
+// ══════════════════════════════════════════════════════════════
+function toggleSwitch(el){
+  if (!el) return;
+  el.classList.toggle('on');
+}
+
+// ══════════════════════════════════════════════════════════════
+// CLIENT TYPE -> branding_mode
+//   direct                 -> 'full'
+//   agency + agency name   -> 'custom'
+//   agency + no name       -> 'clean'
+// This page had no branding field at all, so every campaign launched
+// here defaulted to full Prajapati branding — including ones sold to
+// agencies, whose end clients then saw whose work it really was.
+// ══════════════════════════════════════════════════════════════
+var CLIENT_TYPE = 'direct';
+
+function pickClientType(t){
+  CLIENT_TYPE = t;
+  var d = document.getElementById('ctDirect');
+  var a = document.getElementById('ctAgency');
+  if (d) d.classList.toggle('selected', t === 'direct');
+  if (a) a.classList.toggle('selected', t === 'agency');
+  var f = document.getElementById('agencyFields');
+  if (f) f.style.display = (t === 'agency') ? 'block' : 'none';
+  syncAgencyMode();
+}
+
+function syncAgencyMode(){
+  var note = document.getElementById('ctNote');
+  if (!note) return;
+  var nm = (document.getElementById('cbBrand') || {}).value || '';
+  note.style.display = nm.trim() ? 'none' : 'block';
+}
+
+function brandingFromClientType(){
+  if (CLIENT_TYPE !== 'agency') {
+    return { branding_mode: 'full', custom_brand_name: null,
+             custom_website: null, custom_logo_url: null };
+  }
+  var nm = ((document.getElementById('cbBrand') || {}).value || '').trim();
+  var st = ((document.getElementById('cbSite')  || {}).value || '').trim();
+  var lg = ((document.getElementById('cbLogo')  || {}).value || '').trim();
+  return {
+    branding_mode: nm ? 'custom' : 'clean',
+    custom_brand_name: nm || null,
+    custom_website: st || null,
+    custom_logo_url: lg || null
+  };
+}
 
 let jobTypes = [], selectedJobType = null;
 let allSales = [], selectedSales = null;
@@ -628,6 +733,13 @@ async function loadCampaignForEdit(campId) {
       var el = document.getElementById(id);
       if (el){ if (on) el.classList.add('on'); else el.classList.remove('on'); }
     }
+    var bm = camp.branding_mode || 'full';
+    pickClientType(bm === 'full' ? 'direct' : 'agency');
+    var _b = document.getElementById('cbBrand'); if (_b) _b.value = camp.custom_brand_name || '';
+    var _s = document.getElementById('cbSite');  if (_s) _s.value = camp.custom_website || '';
+    var _l = document.getElementById('cbLogo');  if (_l) _l.value = camp.custom_logo_url || '';
+    syncAgencyMode();
+
     setToggle('selfSaleToggle', !!camp.is_self_sale);
     setToggle('urgentToggle', !!camp.is_urgent);
     setToggle('notifyToggle', camp.notify_whatsapp !== false);  // default ON agar undefined
@@ -1547,6 +1659,10 @@ async function _submitCampaignInner(targetStatus = 'pending_execution_plan') {
       status: targetStatus,
       created_by: user.id
     };
+
+    // branding travels with the campaign, so client.html and the PPT
+    // generator both pick it up without anyone setting it twice
+    Object.assign(campaignPayload, brandingFromClientType());
 
     // EDIT FIX: agar re-selection fail hua par edit mode hai, purane campaign ke
     // sales/client/job_type rakho (warna update inhe null kar dega).

@@ -1173,7 +1173,17 @@ async function onCampaignsChanged() {
       return { value: idv, label: members[idv], sub: (idv.indexOf('name:') === 0 ? '' : idv) };
     }).sort(function(a,b){ return String(a.label).localeCompare(String(b.label)); }));
   } catch (err) {
-    console.warn('Cities/members load failed:', err);
+    // This used to only console.warn, so a failed load looked identical to
+    // "this campaign genuinely has no members" — the dropdown just said
+    // "No matches" and the real reason was invisible.
+    console.error('[ppt] cities/members load failed:', err);
+    var msg = (err && err.message) ? err.message : String(err);
+    showToast('Cities/members load fail: ' + msg, 'error');
+    msSetOptions('member', []);
+    msSetOptions('city', []);
+    var dd = document.getElementById('memberList');
+    if (dd) dd.innerHTML = '<div class="ms-empty" style="color:#b91c1c">Load fail \u2014 ' +
+                           (msg || 'unknown').slice(0,80) + '</div>';
   }
 }
 
@@ -1414,6 +1424,7 @@ async function loadVehicles() {
   if (!fromDate || !toDate) { showToast('Date range select karo (preset ya custom)', 'error'); return; }
 
   showToast('Loading vehicles...', '');
+  console.log('[ppt] loadVehicles start', { campaignKeys: campaignKeys, from: fromDate, to: toDate, modes: modes, cities: cityVals.length, members: memberVals.length });
 
   try {
     const range = dateRangeUTC(fromDate, toDate);

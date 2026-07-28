@@ -2125,8 +2125,10 @@ function renderHistoryTab() {
           <div class="vt ${state.histView === 'master' ? 'active' : ''}" onclick="state.histView = 'master'; renderTab()">👤 By Master</div>
           <div class="vt ${state.histView === 'campaign' ? 'active' : ''}" onclick="state.histView = 'campaign'; renderTab()">🎯 By Campaign</div>
           <div class="vt ${state.histView === 'date' ? 'active' : ''}" onclick="state.histView = 'date'; renderTab()">📅 By Date</div>
+          <div class="vt ${state.histView === 'dealer' ? 'active' : ''}" onclick="state.histView = 'dealer'; renderTab()">🏪 By Dealer</div>
         </div>
         <div class="toolbar-spacer"></div>
+        <button class="btn btn-secondary sm" onclick="dealerReportJPEG()" title="Dealer wise report JPEG">🖼️ Dealer JPEG</button>
         <button class="btn btn-secondary sm" onclick="exportHistory('csv')" title="Download Excel-compatible CSV">⬇️ Export CSV</button>
         <button class="btn btn-secondary sm" onclick="window.print()" title="Print current view">🖨️ Print</button>
       </div>
@@ -2148,6 +2150,166 @@ function setHistPeriod(p) {
     state.histToDate = today;
   }
   renderTab();
+}
+
+// ══════════════════════════════════════════════════════════════
+// DEALER WISE REPORT
+// dealer_name lives on each stitching row, but it is only ever filled
+// when the campaign's designs carry a dealer — so campaigns set up
+// without dealers simply have nothing to group by. The view says so
+// out loud instead of rendering an empty table.
+// ══════════════════════════════════════════════════════════════
+function dealerRollup(entries){
+  const by = {};
+  (entries || []).forEach(e => {
+    const d = (e.dealer_name || '').trim();
+    if (!d) return;
+    if (!by[d]) by[d] = { dealer: d, qty: 0, amount: 0, dates: {}, masters: {} };
+    by[d].qty += Number(e.quantity || 0);
+    by[d].amount += Number(e.total_amount || 0);
+    if (e.log_date) by[d].dates[e.log_date] = 1;
+    const m = state.masters.find(x => x.id === e.master_id);
+    if (m && m.name) by[d].masters[m.name] = 1;
+    else if (e.master_name) by[d].masters[e.master_name] = 1;
+  });
+  return Object.keys(by).map(k => {
+    const r = by[k];
+    const ds = Object.keys(r.dates).sort();
+    return { dealer: r.dealer, qty: r.qty, amount: r.amount,
+             days: ds.length, first: ds[0] || '\u2014', last: ds[ds.length-1] || '\u2014',
+             masters: Object.keys(r.masters).sort() };
+  }).sort((a,b) => b.qty - a.qty || a.dealer.localeCompare(b.dealer));
+}
+
+function dealerReportJPEG(){
+  const entries = getFilteredEntries();
+  const rows = dealerRollup(entries);
+  if (!rows.length){ alert('In filters mein koi dealer wali entry nahi mili.'); return; }
+
+  // campaign label from the filter, else whatever the rows share
+  let camp = '';
+  if (state.histCampaignId){
+    const c = state.campaigns.find(x => x.id === state.histCampaignId);
+    camp = c ? (c.campaign_name || c.name || '') : '';
+  }
+  if (!camp){
+    const names = {};
+    entries.forEach(e => {
+      const c = state.campaigns.find(x => x.id === e.campaign_id);
+      const nm = c ? (c.campaign_name || c.name) : (e.campaign_name || '');
+      if (nm) names[nm] = 1;
+    });
+    const list = Object.keys(names);
+    camp = list.length === 1 ? list[0] : (list.length + ' campaigns');
+  }
+
+  const dates = {};
+  entries.forEach(e => { if (e.dealer_name && e.log_date) dates[e.log_date] = 1; });
+  const ds = Object.keys(dates).sort();
+  const period = ds.length ? (fmtDay(ds[0]) + ' \u2013 ' + fmtDay(ds[ds.length-1])) : '';
+
+  const totQ = rows.reduce((s,r) => s + r.qty, 0);
+  const totA = rows.reduce((s,r) => s + r.amount, 0);
+
+  const W = 1240, PAD = 60, ROW_H = 62, HEAD = 250, FOOT = 84;
+  const H = HEAD + rows.length * ROW_H + FOOT;
+  const DPR = 2;
+  const cv = document.createElement('canvas');
+  cv.width = W * DPR; cv.height = H * DPR;
+  const x = cv.getContext('2d');
+  x.scale(DPR, DPR);
+
+  const NAVY='#132A5E', SLATE='#5A6472', MUTE='#8A93A2', FAINT='#A3ABB8',
+        HAIR='#F2F5F8', RULE='#E8ECF2', TEAL='#0E8F79';
+
+  function fit(t, max){
+    t = String(t == null ? '' : t);
+    if (x.measureText(t).width <= max) return t;
+    while (t.length > 1 && x.measureText(t + '\u2026').width > max) t = t.slice(0, -1);
+    return t + '\u2026';
+  }
+
+  x.fillStyle = '#FFFFFF'; x.fillRect(0,0,W,H);
+  x.fillStyle = NAVY; x.fillRect(0,0,W,5);
+
+  x.fillStyle = NAVY; x.font = '600 38px Georgia, serif';
+  x.fillText('Stitching \u2014 dealer wise', PAD, 74);
+  x.fillStyle = MUTE; x.font = '400 17px Arial, sans-serif';
+  x.fillText(fit(camp.toUpperCase() + (period ? '   \u00b7   ' + period : ''), W - 2*PAD - 300), PAD, 100);
+
+  const RIGHT = W - PAD;
+  x.font = '500 36px Arial, sans-serif';
+  const wq = x.measureText(String(totQ)).width;
+  x.font = '400 22px Arial, sans-serif';
+  const wl = x.measureText(' pcs').width;
+  x.fillStyle = NAVY; x.font = '500 36px Arial, sans-serif';
+  x.fillText(String(totQ), RIGHT - wq - wl, 76);
+  x.fillStyle = '#B4BBC6'; x.font = '400 22px Arial, sans-serif';
+  x.fillText(' pcs', RIGHT - wl, 76);
+  x.fillStyle = MUTE; x.font = '400 17px Arial, sans-serif';
+  const sub = rows.length + ' dealers   \u00b7   \u20b9' + totA.toLocaleString('en-IN');
+  x.fillText(sub, RIGHT - x.measureText(sub).width, 102);
+
+  const HY = 190;
+  x.fillStyle = FAINT; x.font = '400 12px Arial, sans-serif';
+  x.fillText('DEALER', PAD + 34, HY);
+  x.fillText('DIN', PAD + 470, HY);
+  x.fillText('MASTERS', PAD + 610, HY);
+  const hq = 'QTY';
+  x.fillText(hq, RIGHT - x.measureText(hq).width, HY);
+  x.strokeStyle = RULE; x.lineWidth = 1;
+  x.beginPath(); x.moveTo(PAD, HY + 14); x.lineTo(W - PAD, HY + 14); x.stroke();
+
+  let y = HEAD;
+  rows.forEach((r, i) => {
+    if (i % 2 === 1){ x.fillStyle = '#FBFCFD'; x.fillRect(PAD-20, y-32, W-2*PAD+40, ROW_H-6); }
+
+    x.fillStyle = '#B4BBC6'; x.font = '400 15px Arial, sans-serif';
+    x.fillText(String(i+1).padStart(2,'0'), PAD, y);
+
+    x.fillStyle = NAVY; x.font = '500 21px Arial, sans-serif';
+    x.fillText(fit(r.dealer, 400), PAD + 34, y);
+
+    x.fillStyle = SLATE; x.font = '400 15px Arial, sans-serif';
+    x.fillText(r.days + (r.days === 1 ? ' din' : ' din'), PAD + 470, y);
+    x.fillStyle = FAINT; x.font = '400 13px Arial, sans-serif';
+    x.fillText(fmtDay(r.first) + (r.first !== r.last ? ' \u2013 ' + fmtDay(r.last) : ''), PAD + 470, y + 18);
+
+    x.fillStyle = MUTE; x.font = '400 14px Arial, sans-serif';
+    x.fillText(fit(r.masters.join(', '), 380), PAD + 610, y + 4);
+
+    x.fillStyle = TEAL; x.font = '500 24px Arial, sans-serif';
+    const q = String(r.qty);
+    x.fillText(q, RIGHT - x.measureText(q).width, y);
+    x.fillStyle = '#C9CFD8'; x.font = '400 14px Arial, sans-serif';
+    const am = '\u20b9' + r.amount.toLocaleString('en-IN');
+    x.fillText(am, RIGHT - x.measureText(am).width, y + 20);
+
+    x.strokeStyle = HAIR; x.lineWidth = 1;
+    x.beginPath(); x.moveTo(PAD, y+30); x.lineTo(W-PAD, y+30); x.stroke();
+    y += ROW_H;
+  });
+
+  x.fillStyle = '#B4BBC6'; x.font = '400 13px Arial, sans-serif';
+  x.fillText('PRAJAPATI ADVERTISING   \u00b7   STITCHING MODULE SE APNE AAP BANA', PAD, H - 26);
+
+  cv.toBlob(function(blob){
+    if (!blob){ alert('JPEG banane mein dikkat'); return; }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'stitching-dealer-' + (camp.replace(/[^a-zA-Z0-9]+/g,'-').toLowerCase() || 'report') + '.jpg';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }, 'image/jpeg', 0.94);
+}
+
+function fmtDay(iso){
+  if (!iso) return '\u2014';
+  const p = String(iso).split('-');
+  if (p.length !== 3) return iso;
+  const mn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return p[2] + ' ' + mn[parseInt(p[1],10)-1];
 }
 
 function getFilteredEntries() {
@@ -2286,6 +2448,40 @@ function renderHistoryView() {
     `;
   }
   
+  if (state.histView === 'dealer') {
+    const rows = dealerRollup(getFilteredEntries());
+    if (!rows.length) {
+      return '<div class="empty-state">In filters mein koi dealer wali entry nahi mili.<br>' +
+             '<span style="font-size:12px;opacity:.75">Dealer naam campaign ke designs se aata hai \u2014 ' +
+             'jis campaign ke designs mein dealer set nahi, uski entries yahan nahi aayengi.</span></div>';
+    }
+    const totQ = rows.reduce((s, r) => s + r.qty, 0);
+    const totA = rows.reduce((s, r) => s + r.amount, 0);
+    let out = '<table class="data-table"><thead><tr>' +
+              '<th>#</th><th>Dealer</th><th class="num">Qty</th><th class="num">Din</th>' +
+              '<th>Pehla</th><th>Aakhri</th><th class="num">Amount</th><th>Masters</th>' +
+              '</tr></thead><tbody>';
+    rows.forEach((r, i) => {
+      out += '<tr>' +
+        '<td>' + (i + 1) + '</td>' +
+        '<td><strong>' + escapeHtml(r.dealer) + '</strong></td>' +
+        '<td class="num"><strong>' + fmtNum(r.qty) + '</strong></td>' +
+        '<td class="num">' + r.days + '</td>' +
+        '<td>' + r.first + '</td>' +
+        '<td>' + r.last + '</td>' +
+        '<td class="num">\u20b9' + fmtNum(r.amount) + '</td>' +
+        '<td style="font-size:12px;opacity:.8">' + escapeHtml(r.masters.join(', ')) + '</td>' +
+        '</tr>';
+    });
+    out += '</tbody><tfoot><tr>' +
+           '<td colspan="2"><strong>TOTAL</strong></td>' +
+           '<td class="num"><strong>' + fmtNum(totQ) + '</strong></td>' +
+           '<td colspan="3"></td>' +
+           '<td class="num"><strong>\u20b9' + fmtNum(totA) + '</strong></td><td></td>' +
+           '</tr></tfoot></table>';
+    return out;
+  }
+
   if (state.histView === 'campaign') {
     // Group by campaign
     const byCamp = {};
