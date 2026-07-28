@@ -1880,13 +1880,15 @@ function aggregateStats() {
       if (!memberMap[mk]) {
         memberMap[mk] = {
           name: mk,
-          total: 0,
+          total: 0,          // photos
           today: 0,
           verified: 0,
+          vehicles: {},      // unique plates — the number the client is buying
           location: p.city || ''
         };
       }
       memberMap[mk].total++;
+      if (p.vehicle_number) memberMap[mk].vehicles[p.vehicle_number] = 1;
       if (p.is_verified) memberMap[mk].verified++;
       if (p.captured_at >= todayUtcStart) memberMap[mk].today++;
     }
@@ -1896,9 +1898,15 @@ function aggregateStats() {
     .map(c => ({ name: c, count: cityMap[c] }))
     .sort((a, b) => b.count - a.count);
   
+  // Rank on unique vehicles — that is the deliverable. Photo count just
+  // reflects how many angles were shot per vehicle.
   state.members = Object.values(memberMap)
     .filter(m => m.today > 0 || m.total > 0)
-    .sort((a, b) => b.today - a.today || b.total - a.total);
+    .map(m => { m.vehicleCount = Object.keys(m.vehicles || {}).length; return m; })
+    .sort((a, b) => b.vehicleCount - a.vehicleCount || b.total - a.total)
+    // Field staff names are internal. The client is buying coverage, not
+    // a staff list, and naming people lets an agency approach them directly.
+    .map((m, i) => { m.label = 'Team ' + (i + 1); return m; });
   
   // Daily 14-day data
   const daily = {};
@@ -2192,7 +2200,7 @@ function photoCardHtml(p, idx) {
            '<img src="' + escapeHtml(p.public_url || '') + '" alt="" loading="lazy">' +
            '<div class="photo-info">' +
              '<div class="pi-row">' +
-               '<span class="pi-member">' + escapeHtml(p.member_name || '—') + '</span>' +
+               '<span class="pi-member">' + escapeHtml(teamLabelFor(p.member_name)) + '</span>' +
                '<span class="pi-time">' + escapeHtml(timeStr) + '</span>' +
              '</div>' +
              (p.city ? '<div class="pi-city"><i class="ti ti-map-pin"></i>' + escapeHtml(p.city) + '</div>' : '') +
@@ -2232,7 +2240,7 @@ function openLightbox(idx) {
   const p = state.filteredPhotos[idx];
   if (!p) return;
   $('lightboxImg').src = p.public_url;
-  $('lightboxMeta').innerHTML = `<strong>${escapeHtml(p.vehicle_number || '')}</strong> · ${escapeHtml(p.city || '')} · ${escapeHtml(fmtIST(p.captured_at))} · By ${escapeHtml(p.member_name || '')}`;
+  $('lightboxMeta').innerHTML = `<strong>${escapeHtml(p.vehicle_number || '')}</strong> · ${escapeHtml(p.city || '')} · ${escapeHtml(fmtIST(p.captured_at))} · ${escapeHtml(teamLabelFor(p.member_name))}`;
   $('lightbox').classList.add('open');
 }
 function closeLightbox(e) {
@@ -2293,6 +2301,14 @@ function renderMap() {
   $('mapIframe').src = url;
 }
 
+// Map a real staff name to its anonymous label. Falls back to a plain
+// dash rather than leaking the name if the member never made the list.
+function teamLabelFor(name) {
+  if (!name) return '—';
+  const m = (state.members || []).find(x => x.name === name);
+  return m && m.label ? m.label : 'Team';
+}
+
 // ─── Performers ───
 function renderPerformers() {
   const top = state.members.slice(0, 3);
@@ -2303,11 +2319,11 @@ function renderPerformers() {
   $('performersList').innerHTML = top.map((m, i) => `
     <div class="performer">
       <div class="performer-rank">${pad2(i + 1)}</div>
-      <div class="performer-name">${escapeHtml(m.name)}</div>
+      <div class="performer-name">${escapeHtml(m.label)}</div>
       <div class="performer-location">${escapeHtml(m.location || '—')}</div>
       <div class="performer-stats">
-        <div class="performer-stat"><div class="v">${fmtNum(m.today)}</div><div class="l">today</div></div>
-        <div class="performer-stat"><div class="v">${fmtNum(m.total)}</div><div class="l">total</div></div>
+        <div class="performer-stat"><div class="v">${fmtNum(m.vehicleCount)}</div><div class="l">vehicles</div></div>
+        <div class="performer-stat"><div class="v">${fmtNum(m.total)}</div><div class="l">photos</div></div>
         <div class="performer-stat"><div class="v">${m.total ? Math.round((m.verified/m.total)*100) : 0}<small style="font-size:14px;">%</small></div><div class="l">verified</div></div>
       </div>
     </div>
@@ -2524,7 +2540,7 @@ async function generatePPT() {
     const groups = {};
     photos.slice(0, maxPhotos).forEach(p => {
       const key = (p.vehicle_number || '?') + '_' + (p.mode || 'photo');
-      if (!groups[key]) groups[key] = { vehicle: p.vehicle_number, mode: p.mode, photos: [], city: p.city, member: p.member_name, captured: p.captured_at };
+      if (!groups[key]) groups[key] = { vehicle: p.vehicle_number, mode: p.mode, photos: [], city: p.city, member: teamLabelFor(p.member_name), captured: p.captured_at };
       groups[key].photos.push(p);
     });
     const groupKeys = Object.keys(groups);
