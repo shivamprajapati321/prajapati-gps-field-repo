@@ -137,6 +137,15 @@ body {
   background: #fff; font-family: inherit; color: #0B1957; outline: none;
 }
 .filter-group select:focus, .filter-group input:focus { border-color: #26d0ce; }
+.fld-chips { display:flex; flex-wrap:wrap; gap:8px; }
+.fld-chip {
+  display:inline-flex; align-items:center; gap:7px;
+  padding:8px 13px; border:1px solid #d7dee8; border-radius:8px;
+  background:#fff; font-size:13px; color:#334155; cursor:pointer; user-select:none;
+}
+.fld-chip:hover { border-color:#9fb3c8; }
+.fld-chip:has(input:checked) { border-color:#26d0ce; background:#effbfa; color:#0b4f4a; font-weight:600; }
+.fld-chip input { width:15px; height:15px; accent-color:#0E9F8E; cursor:pointer; margin:0; }
 
 /* ═══ MULTI-SELECT CHIPS ═══ */
 .ms-box { position: relative; }
@@ -434,6 +443,20 @@ body {
           <button type="button" class="mode-chip" data-mode="hood" onclick="toggleMode('hood')">Hood</button>
           <button type="button" class="mode-chip" data-mode="back_panel" onclick="toggleMode('back_panel')">Back Panel</button>
         </div>
+      </div>
+    </div>
+
+    <div class="filter-row" style="margin-top:14px;">
+      <div class="filter-group" style="flex:1; min-width:100%;">
+        <label>Slide pe kya dikhe <span style="font-weight:400;color:#94a3b8;">— jo tick hoga wahi PPT me aayega</span></label>
+        <div class="fld-chips" id="fieldChips">
+          <label class="fld-chip"><input type="checkbox" id="fldSerial"  checked onchange="saveFieldPrefs()"> Serial No</label>
+          <label class="fld-chip"><input type="checkbox" id="fldOwner"   checked onchange="saveFieldPrefs()"> Owner Name</label>
+          <label class="fld-chip"><input type="checkbox" id="fldContact" checked onchange="saveFieldPrefs()"> Contact</label>
+          <label class="fld-chip"><input type="checkbox" id="fldVehicle" checked onchange="saveFieldPrefs()"> Auto Number</label>
+          <label class="fld-chip"><input type="checkbox" id="fldLocation" checked onchange="saveFieldPrefs()"> Location</label>
+        </div>
+        <div id="fldHint" style="font-size:11.5px;color:#94a3b8;margin-top:6px;"></div>
       </div>
     </div>
 
@@ -1151,6 +1174,7 @@ async function onCampaignsChanged() {
     state.selectedCampaign = keys.length ? state.campaigns.find(function(c){ return c.key === keys[0]; }) : null;
     document.getElementById('brandingControl').style.display = keys.length ? 'block' : 'none';
     if (keys.length) selectBranding(state.activeBrandingMode || 'full');
+    loadFieldPrefs();
   }
   if (keys.length === 0) { msSetOptions('city', []); msSetOptions('member', []); return; }
 
@@ -1836,56 +1860,167 @@ async function getAllVehicleOwners() {
   showToast('✅ Done! Fetched: ' + success + ' · Failed: ' + failed, success > 0 ? '' : 'error');
 }
 // ⚡ OPTIMIZED: Fetch + compress image (1920px max) for faster PPT
+// ══════════════════════════════════════════════════════════════
+// IMAGE PIPELINE
+//
+// The old version decoded every photo into an <img>, drew it to a canvas
+// and re-encoded it as JPEG 0.85 — for ALL images, unconditionally.
+//
+// But field photos are already resized to 1600px and encoded at JPEG 0.88
+// by stampGps() before upload. 1600 is under the 1920 ceiling, so the
+// resize branch never ran, yet every image still paid for a full
+// decode + canvas + re-encode. Worse, re-encoding 0.88 material at 0.85
+// is a second lossy pass — the deck was slightly softer than the source.
+//
+// Now: read the dimensions straight out of the file header (no decode at
+// all) and, when the image is already small enough, hand the ORIGINAL
+// bytes to PptxGenJS. Faster and visibly sharper, because nothing is
+// recompressed. The resize path stays for oversized manual uploads and
+// encodes at 0.92 so it does not lose ground either.
+// ══════════════════════════════════════════════════════════════
+const PPT_MAX_DIM = 1920;
+
+// Dimensions from the file header. JPEG: walk the segment markers to the
+// SOF frame. PNG: IHDR sits at a fixed offset. Costs microseconds and
+// touches only the first few hundred bytes.
+function dimsFromHeader(buf) {
+  const v = new DataView(buf);
+  if (v.byteLength < 24) return null;
+
+  // PNG
+  if (v.getUint32(0) === 0x89504E47) {
+    return { w: v.getUint32(16), h: v.getUint32(20) };
+  }
+
+  // JPEG
+  if (v.getUint16(0) !== 0xFFD8) return null;
+  let off = 2;
+  while (off + 9 < v.byteLength) {
+    if (v.getUint8(off) !== 0xFF) { off++; continue; }
+    const marker = v.getUint8(off + 1);
+    // SOF0-SOF15 carry the frame size; C4/C8/CC are DHT/JPG/DAC, not SOF
+    if (marker >= 0xC0 && marker <= 0xCF &&
+        marker !== 0xC4 && marker !== 0xC8 && marker !== 0xCC) {
+      return { h: v.getUint16(off + 5), w: v.getUint16(off + 7) };
+    }
+    if (marker === 0xD8 || marker === 0x01 || (marker >= 0xD0 && marker <= 0xD7)) {
+      off += 2;
+    } else {
+      off += 2 + v.getUint16(off + 2);
+    }
+  }
+  return null;
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(new Error('read fail'));
+    r.readAsDataURL(blob);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// SLIDE FIELDS
+// Some clients want the deck to carry photos and nothing else; others
+// need the full record. The detail band is now driven by these
+// checkboxes instead of being fixed. Contact stays additionally gated by
+// canSeeContact() — a checkbox must not hand owner phone numbers to a
+// role that was never allowed to see them.
+// ══════════════════════════════════════════════════════════════
+var FIELD_KEYS = ['Serial', 'Owner', 'Contact', 'Vehicle', 'Location'];
+
+function fieldOn(key) {
+  var el = document.getElementById('fld' + key);
+  return el ? el.checked : true;   // default to showing if the UI is absent
+}
+
+function saveFieldPrefs() {
+  try {
+    var o = {};
+    FIELD_KEYS.forEach(function (k) { o[k] = fieldOn(k); });
+    localStorage.setItem('ppt_slide_fields', JSON.stringify(o));
+  } catch (e) {}
+  var on = FIELD_KEYS.filter(fieldOn);
+  var hint = document.getElementById('fldHint');
+  if (hint) {
+    hint.textContent = on.length
+      ? on.length + ' field slide pe aayenge'
+      : 'Sirf photos — koi detail nahi (auto number phir bhi header me rahega)';
+  }
+}
+
+function loadFieldPrefs() {
+  try {
+    var o = JSON.parse(localStorage.getItem('ppt_slide_fields') || 'null');
+    if (o) FIELD_KEYS.forEach(function (k) {
+      var el = document.getElementById('fld' + k);
+      if (el && typeof o[k] === 'boolean') el.checked = o[k];
+    });
+  } catch (e) {}
+  saveFieldPrefs();
+}
+
+// Shared by both slide layouts so they can never drift apart.
+function buildDetailsData(vehicle, ownerStr, contactStr, locationStr) {
+  var out = [];
+  var vSerial = vehicleSerial(vehicle);
+  if (vSerial && fieldOn('Serial')) out.push({ label: 'SERIAL NO.', value: vSerial, mono: true });
+  if (fieldOn('Owner'))    out.push({ label: 'VEHICLE OWNER', value: ownerStr });
+  if (fieldOn('Contact') && canSeeContact())
+                           out.push({ label: 'CONTACT', value: contactStr, mono: true });
+  if (fieldOn('Vehicle'))  out.push({ label: 'VEHICLE NO.', value: vehicle.vehicle_number, mono: true });
+  if (fieldOn('Location')) out.push({ label: 'LOCATION', value: locationStr });
+  return out;
+}
+
 async function fetchImageWithDims(url) {
   try {
     const res = await fetch(url, { mode: 'cors' });
     if (!res.ok) throw new Error('Image fetch failed');
-    const blob = await res.blob();
-    
-    // Convert to image first to compress
-    const imgObjectUrl = URL.createObjectURL(blob);
-    const img = await new Promise((resolve, reject) => {
-      const i = new Image();
-      i.onload = () => resolve(i);
-      i.onerror = reject;
-      i.src = imgObjectUrl;
-    });
-    
-    // ⚡ COMPRESS: Resize if larger than 1920px max dimension
-    const MAX_DIM = 1920;
-    let targetW = img.naturalWidth;
-    let targetH = img.naturalHeight;
-    
-    if (targetW > MAX_DIM || targetH > MAX_DIM) {
-      if (targetW > targetH) {
-        targetH = Math.round(targetH * (MAX_DIM / targetW));
-        targetW = MAX_DIM;
-      } else {
-        targetW = Math.round(targetW * (MAX_DIM / targetH));
-        targetH = MAX_DIM;
-      }
+    const buf = await res.arrayBuffer();
+
+    let dims = dimsFromHeader(buf);
+    const blob = new Blob([buf], { type: res.headers.get('content-type') || 'image/jpeg' });
+
+    // Header unreadable (odd format / progressive quirk) — decode just enough
+    // to learn the size. createImageBitmap decodes off the main thread.
+    let bmp = null;
+    if (!dims) {
+      bmp = await createImageBitmap(blob);
+      dims = { w: bmp.width, h: bmp.height };
     }
-    
-    // Draw to canvas (compresses + reduces memory)
-    const canvas = document.createElement('canvas');
-    canvas.width = targetW;
-    canvas.height = targetH;
+
+    // ⚡ Already within budget: no decode, no canvas, no re-encode.
+    // The original bytes go straight into the deck at full source quality.
+    if (dims.w <= PPT_MAX_DIM && dims.h <= PPT_MAX_DIM) {
+      if (bmp) bmp.close();
+      return { dataUrl: await blobToDataUrl(blob), w: dims.w, h: dims.h };
+    }
+
+    // Oversized (manual uploads, DSLR shots) — scale once, encode at 0.92
+    // so the downscale is the only quality cost.
+    if (!bmp) bmp = await createImageBitmap(blob);
+    const scale = PPT_MAX_DIM / Math.max(bmp.width, bmp.height);
+    const tw = Math.round(bmp.width * scale);
+    const th = Math.round(bmp.height * scale);
+
+    const canvas = (typeof OffscreenCanvas !== 'undefined')
+      ? new OffscreenCanvas(tw, th)
+      : Object.assign(document.createElement('canvas'), { width: tw, height: th });
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(img, 0, 0, targetW, targetH);
-    
-    // JPEG with 85% quality - perfect balance for PPT
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-    
-    // Cleanup
-    URL.revokeObjectURL(imgObjectUrl);
-    
-    return { 
-      dataUrl, 
-      w: img.naturalWidth, 
-      h: img.naturalHeight 
-    };
+    ctx.drawImage(bmp, 0, 0, tw, th);
+    const srcW = bmp.width, srcH = bmp.height;
+    bmp.close();
+
+    const outBlob = canvas.convertToBlob
+      ? await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.92 })
+      : await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.92));
+
+    return { dataUrl: await blobToDataUrl(outBlob), w: srcW, h: srcH };
   } catch (err) {
     console.warn('Image fetch failed:', url, err.message);
     return null;
@@ -2355,21 +2490,12 @@ function addHoodSlide(pptx, vehicle, photoData, campaign, brand) {
     line: { color: 'E5E7EB', width: 0.5 }
   });
   
-  // Build fields conditionally based on role
-  const detailsData = [];
-  var vSerial = vehicleSerial(vehicle);
-  if (vSerial) { detailsData.push({ label: 'SERIAL NO.', value: vSerial, mono: true }); }
-  detailsData.push({ label: 'VEHICLE OWNER', value: ownerStr });
+  // Fields come from the checkboxes; contact still respects role.
+  const detailsData = buildDetailsData(vehicle, ownerStr, contactStr, locationStr);
   
-  if (canSeeContact()) {
-    detailsData.push({ label: 'CONTACT', value: contactStr, mono: true });
-  }
-  
-  detailsData.push({ label: 'VEHICLE NO.', value: vehicle.vehicle_number, mono: true });
-  detailsData.push({ label: 'LOCATION', value: locationStr });
-  
-  const colCount = detailsData.length;  // 4 for admin/DEO, 3 for client
-  const colWidth = (W - 0.8) / colCount;
+  // Every field unticked = photos-only deck. Guard the divisor.
+  const colCount = detailsData.length;
+  const colWidth = colCount ? (W - 0.8) / colCount : (W - 0.8);
   const detailsY = 0.85;
   
   detailsData.forEach((item, idx) => {
@@ -2524,21 +2650,11 @@ function addBackPanelSlide(pptx, vehicle, photoData, campaign, brand) {
     line: { color: 'E5E7EB', width: 0.5 }
   });
   
-  // Build fields conditionally based on role
-  const detailsData = [];
-  var vSerial = vehicleSerial(vehicle);
-  if (vSerial) { detailsData.push({ label: 'SERIAL NO.', value: vSerial, mono: true }); }
-  detailsData.push({ label: 'VEHICLE OWNER', value: ownerStr });
-  
-  if (canSeeContact()) {
-    detailsData.push({ label: 'CONTACT', value: contactStr, mono: true });
-  }
-  
-  detailsData.push({ label: 'VEHICLE NO.', value: vehicle.vehicle_number, mono: true });
-  detailsData.push({ label: 'LOCATION', value: locationStr });
+  // Fields come from the checkboxes; contact still respects role.
+  const detailsData = buildDetailsData(vehicle, ownerStr, contactStr, locationStr);
   
   const colCount = detailsData.length;
-  const colWidth = (W - 0.8) / colCount;
+  const colWidth = colCount ? (W - 0.8) / colCount : (W - 0.8);
   const detailsY = 0.85;
   
   detailsData.forEach((item, idx) => {
