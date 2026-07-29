@@ -1401,12 +1401,12 @@ function enterDetailsScreen(){
   }
   if (f.reqContact){
     html += '<div class="ve-field"><label>📞 Owner Contact</label>'+
-            '<input id="ve-contact" class="ve-inp" inputmode="numeric" maxlength="10" placeholder="10 digit number" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="next" value="'+escapeHtml(state.contactNumber||'')+'" oninput="veCleanContact(this);veOnInput()">'+
+            '<input id="ve-contact" class="ve-inp" inputmode="numeric" maxlength="10" placeholder="10 digit number" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="next" value="'+escapeHtml(state.contactNumber||'')+'" oninput="veCleanContact(this,event);veOnInput()">'+
             '<div class="ve-hint" id="ve-contact-hint">10 digit lock</div></div>';
   }
   if (f.reqNumber){
     html += '<div class="ve-field"><label>🛺 Vehicle Number</label>'+
-            '<input id="ve-num" class="ve-inp ve-mono" maxlength="14" placeholder="MH12AU1234" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="done" value="'+escapeHtml(state.vehicleNumber||'')+'" oninput="veCleanNum(this);veOnInput()">'+
+            '<input id="ve-num" class="ve-inp ve-mono" maxlength="14" placeholder="MH12AU1234" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="done" value="'+escapeHtml(state.vehicleNumber||'')+'" oninput="veCleanNum(this,event);veOnInput()">'+
             '<div class="ve-hint" id="ve-num-hint">Space hatega + UPPERCASE</div></div>';
   }
 
@@ -1512,18 +1512,26 @@ if (!window._veCompBound){
   }, true);
 }
 
-window.veCleanContact = function(el){
-  if (_veComposing) return;
+// Some Android keyboards fire `input` before `compositionstart`, so the
+// flag alone can miss the first keystroke. InputEvent.isComposing is the
+// authoritative signal — check both.
+function _veBusy(ev){
+  return _veComposing || !!(ev && ev.isComposing);
+}
+
+window.veCleanContact = function(el, ev){
+  if (_veBusy(ev)) return;
   _veSetCaretSafe(el, String(el.value || '').replace(/[^0-9]/g, '').slice(0,10));
 };
 
-window.veCleanNum = function(el){
-  if (_veComposing) return;
-  // Only strip spaces while typing. Uppercasing mid-word is what made the
-  // IME re-compose, and CSS already renders this field uppercase.
-  var v = String(el.value || '');
-  var noSpace = v.replace(/\s+/g, '');
-  if (noSpace !== v) _veSetCaretSafe(el, noSpace);
+window.veCleanNum = function(el, ev){
+  // Outside composition it is safe to rewrite the value, so uppercase
+  // immediately — the field must always hold MH12AU1234, never mh12au1234.
+  // Mid-composition we leave it alone; compositionend uppercases it a
+  // moment later, and CSS shows caps throughout so the user sees no
+  // difference.
+  if (_veBusy(ev)) return;
+  _veSetCaretSafe(el, cleanVehicleNumber(el.value));
 };
 
 var _veDupTimer = null;

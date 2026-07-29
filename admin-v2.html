@@ -12670,22 +12670,27 @@ async function buildStaffReportData() {
     }
 
     var key = dateStr + '||' + name + '||' + work + '||' + loc;
-    if (!rows[key]) rows[key] = { date:dateStr, name:name, work:work, location:loc, mediaCounts:{}, hoodPhotos:0, backPhotos:0, beforeOn:false, _sortDate:(d?d.getTime():0) };
+    if (!rows[key]) rows[key] = { date:dateStr, name:name, work:work, location:loc, mediaCounts:{}, hoodPhotos:0, backPhotos:0, hoodVeh:{}, backVeh:{}, beforeOn:false, _sortDate:(d?d.getTime():0) };
     if (campBefore) rows[key].beforeOn = true;
-    if (isBack) rows[key].backPhotos += 1;
-    else rows[key].hoodPhotos += 1;
+    var plate = (p.vehicle_number || '').trim();
+    if (isBack) { rows[key].backPhotos += 1; if (plate) rows[key].backVeh[plate] = 1; }
+    else        { rows[key].hoodPhotos += 1; if (plate) rows[key].hoodVeh[plate] = 1; }
     rows[key].mediaCounts[media] = (rows[key].mediaCounts[media] || 0) + 1;
   });
 
   var arr = Object.keys(rows).map(function(k){
     var r = rows[k];
-    // before ON: hood 4 photos=1 (1before+3), back 2 photos=1 (1before+1)
-    // before OFF: hood 3 photos=1, back 1 photo=1
-    var hoodDiv = r.beforeOn ? 4 : 3;
-    var backDiv = r.beforeOn ? 2 : 1;
-    var hoodVehicles = Math.round((r.hoodPhotos||0) / hoodDiv);
-    var backVehicles = Math.round((r.backPhotos||0) / backDiv);
+    // Count the actual plates. The old code divided photo count by an
+    // assumed photos-per-vehicle (4 with before-photo, 3 without) — an
+    // estimate, not a count. Real shoots vary (3.89, 4.06 photos per
+    // vehicle on this campaign), so the estimate drifted from the PPT,
+    // which counts plates. Divide only when plates are genuinely missing.
+    var hoodVehicles = Object.keys(r.hoodVeh).length;
+    var backVehicles = Object.keys(r.backVeh).length;
+    if (!hoodVehicles && r.hoodPhotos) hoodVehicles = Math.round(r.hoodPhotos / (r.beforeOn ? 4 : 3));
+    if (!backVehicles && r.backPhotos) backVehicles = Math.round(r.backPhotos / (r.beforeOn ? 2 : 1));
     r.qty = hoodVehicles + backVehicles;
+    r.estimated = (!Object.keys(r.hoodVeh).length && r.hoodPhotos > 0);
     r.media = Object.keys(r.mediaCounts).sort(function(a,b){ return r.mediaCounts[b]-r.mediaCounts[a]; })[0] || 'AUTO HOOD';
     return r;
   });
@@ -12708,6 +12713,24 @@ async function buildStaffReportData() {
     total += r.qty;
     if (r.media === 'AUTO BACK') back += r.qty; else hood += r.qty;
   });
+
+  // Rows are per day+person, so a rickshaw shot across two days is counted
+  // in both — correct for the row, wrong for a headline. The header uses a
+  // true distinct count so it matches the PPT generator.
+  var allHood = {}, allBack = {};
+  photos.forEach(function(p){
+    var pl = (p.vehicle_number || '').trim();
+    if (!pl) return;
+    if (p.mode === 'back_panel') allBack[pl] = 1; else allHood[pl] = 1;
+  });
+  var uniqHood = Object.keys(allHood).length;
+  var uniqBack = Object.keys(allBack).length;
+  if (uniqHood || uniqBack) {
+    hood = uniqHood; back = uniqBack;
+    total = Object.keys(Object.assign({}, allHood, allBack)).length;
+  }
+  var rowSum = arr.reduce(function(s,r){ return s + r.qty; }, 0);
+  var repeatVisits = Math.max(0, rowSum - total);
 
   // ── OUTSTANDING (work quantity) — per campaign: target − done ──
   // Done = jitna field staff ne kaam kiya (report qty). Target = campaign launch quantity.
