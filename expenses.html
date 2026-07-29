@@ -1227,9 +1227,17 @@ function renderExpenseTable(){
     var rcParts = [];
     if (e.receipt_url) rcParts.push('<a href="'+esc(e.receipt_url)+'" target="_blank" title="Bill / Receipt" style="display:inline-block;line-height:0"><img src="'+esc(e.receipt_url)+'" style="width:34px;height:34px;object-fit:cover;border-radius:6px;border:2px solid #3b82f6;vertical-align:middle" onerror="this.replaceWith(document.createTextNode(\'📎\'))"></a>');
     if (e.payment_receipt_url) rcParts.push('<a href="'+esc(e.payment_receipt_url)+'" target="_blank" title="Payment Proof" style="display:inline-block;line-height:0"><img src="'+esc(e.payment_receipt_url)+'" style="width:34px;height:34px;object-fit:cover;border-radius:6px;border:2px solid #16a34a;vertical-align:middle" onerror="this.replaceWith(document.createTextNode(\'💰\'))"></a>');
+    // extra bills (2nd, 3rd ...) — receipt_url ek hi rakh sakta hai
+    expExtras(e).forEach(function(u, i){
+      rcParts.push('<a href="'+esc(u)+'" target="_blank" title="Bill '+(i+2)+'" style="display:inline-block;line-height:0"><img src="'+esc(u)+'" style="width:34px;height:34px;object-fit:cover;border-radius:6px;border:2px solid #3b82f6;vertical-align:middle" onerror="this.replaceWith(document.createTextNode(\'📎\'))"></a>');
+    });
     // paid hai par payment proof nahi -> upload karne ka option
     if (!IS_APPROVER_ONLY && e.payment_status==='paid' && !e.payment_receipt_url) {
       rcParts.push('<button class="btn btn-sm" style="padding:3px 7px;background:#FEF3C7;color:#92400E;border:1px solid #FCD34D" onclick="uploadPayProof(\''+e.id+'\')" title="Payment proof upload karo">⬆️ proof</button>');
+    }
+    // manage: add another bill, replace a wrong one, remove
+    if (!IS_APPROVER_ONLY) {
+      rcParts.push('<button class="btn btn-sm" style="padding:3px 7px;background:#F1F5F9;color:#475569;border:1px solid #CBD5E1" onclick="manageReceipts(\''+e.id+'\')" title="Receipt add / badlo / hatao">⚙️</button>');
     }
     var rc = rcParts.length ? '<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">'+rcParts.join('')+'</div>' : '—';
     // Approver ko pay/slip/voucher nahi — sirf approve/reject
@@ -1280,7 +1288,151 @@ function payReceiptPick(input){
 }
 
 // ── Payment proof baad me upload (agar pay ke waqt reh gaya) ──
-function uploadPayProof(id){
+// ══════════════════════════════════════════════════════════════
+// RECEIPT MANAGER
+// receipt_url and payment_receipt_url hold one file each. A second bill
+// had nowhere to go, and the payment-proof button only appeared while
+// payment_receipt_url was empty — so a wrong upload was permanent.
+// Extra bills go to extra_receipts (jsonb array); the two original
+// columns keep their meaning so other readers are unaffected.
+// ══════════════════════════════════════════════════════════════
+function expExtras(e){
+  var x = e && e.extra_receipts;
+  if (!x) return [];
+  if (typeof x === 'string'){ try { x = JSON.parse(x); } catch(err){ return []; } }
+  return Array.isArray(x) ? x.filter(Boolean) : [];
+}
+
+function findExpense(id){
+  return (state.expenses || []).find(function(x){ return String(x.id) === String(id); });
+}
+
+function manageReceipts(id){
+  var e = findExpense(id);
+  if (!e){ toast('Expense nahi mila — refresh karo'); return; }
+
+  var items = [];
+  if (e.receipt_url) items.push({ url:e.receipt_url, kind:'bill', label:'Bill' });
+  expExtras(e).forEach(function(u,i){ items.push({ url:u, kind:'extra', idx:i, label:'Bill '+(i+2) }); });
+  if (e.payment_receipt_url) items.push({ url:e.payment_receipt_url, kind:'payment', label:'Payment proof' });
+
+  var rows = items.map(function(r){
+    return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #eee">'+
+      '<a href="'+esc(r.url)+'" target="_blank" style="line-height:0"><img src="'+esc(r.url)+'" style="width:44px;height:44px;object-fit:cover;border-radius:7px;border:1px solid #ddd" onerror="this.replaceWith(document.createTextNode(\'📎\'))"></a>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:13px;font-weight:600">'+r.label+'</div>'+
+        '<div style="font-size:11px;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(String(r.url).split('/').pop())+'</div>'+
+      '</div>'+
+      '<button class="btn btn-sm btn-secondary" style="padding:3px 8px" onclick="replaceReceipt(\''+id+'\',\''+r.kind+'\','+(r.idx===undefined?-1:r.idx)+')">Badlo</button>'+
+      '<button class="btn btn-sm" style="padding:3px 8px;background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5" onclick="removeReceipt(\''+id+'\',\''+r.kind+'\','+(r.idx===undefined?-1:r.idx)+')">Hatao</button>'+
+    '</div>';
+  }).join('');
+
+  var wrap = document.getElementById('receiptMgr');
+  if (!wrap){
+    wrap = document.createElement('div');
+    wrap.id = 'receiptMgr';
+    document.body.appendChild(wrap);
+  }
+  wrap.innerHTML =
+    '<div style="position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)closeReceiptMgr()">'+
+      '<div style="background:#fff;border-radius:14px;max-width:460px;width:100%;max-height:85vh;overflow:auto;padding:18px 20px" onclick="event.stopPropagation()">'+
+        '<div style="font-size:15px;font-weight:700">Receipts</div>'+
+        '<div style="font-size:12px;color:#888;margin-bottom:10px">'+esc(e.internal_category||e.expense_type||'Expense')+' · ₹'+(e.total_amount||0)+'</div>'+
+        (rows || '<div style="font-size:12.5px;color:#888;padding:10px 0">Abhi koi receipt nahi</div>')+
+        '<div style="display:flex;gap:8px;margin-top:14px">'+
+          '<button class="btn btn-secondary" style="flex:1" onclick="closeReceiptMgr()">Band karo</button>'+
+          '<button class="btn btn-primary" style="flex:1" onclick="addBill(\''+id+'\')">+ Bill add karo</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+}
+
+function closeReceiptMgr(){
+  var w = document.getElementById('receiptMgr');
+  if (w) w.innerHTML = '';
+}
+
+async function uploadToStorage(id, f, prefix){
+  var safe = f.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  var path = prefix + '/' + id + '_' + Date.now() + '_' + safe;
+  var up = await db.storage.from('payment-receipts').upload(path, f, { upsert:true, contentType:f.type||'image/jpeg' });
+  if (up && up.error) throw new Error(up.error.message || 'upload fail');
+  var pub = db.storage.from('payment-receipts').getPublicUrl(path);
+  return (pub && pub.data && pub.data.publicUrl) ||
+         (SUPABASE_URL + '/storage/v1/object/public/payment-receipts/' + encodeURI(path));
+}
+
+function pickFile(cb){
+  var inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*,application/pdf'; inp.style.display = 'none';
+  document.body.appendChild(inp);
+  inp.onchange = async function(){
+    var f = inp.files && inp.files[0];
+    document.body.removeChild(inp);
+    if (f) await cb(f);
+  };
+  inp.click();
+}
+
+function addBill(id){
+  var e = findExpense(id);
+  if (!e) return;
+  pickFile(async function(f){
+    toast('⏳ Upload ho rahi hai…');
+    try {
+      var url = await uploadToStorage(id, f, 'bills');
+      var patch = e.receipt_url ? { extra_receipts: expExtras(e).concat([url]) }
+                                : { receipt_url: url };
+      await api('/prajapati_expenses?id=eq.'+id, { method:'PATCH', body: patch });
+      toast('✓ Bill add ho gaya');
+      closeReceiptMgr(); loadExpenses();
+    } catch(err){ toast('❌ Fail: '+err.message); }
+  });
+}
+
+function replaceReceipt(id, kind, idx){
+  var e = findExpense(id);
+  if (!e) return;
+  pickFile(async function(f){
+    toast('⏳ Badal raha hoon…');
+    try {
+      var url = await uploadToStorage(id, f, kind === 'payment' ? 'payment-proofs' : 'bills');
+      var patch = {};
+      if (kind === 'bill') patch.receipt_url = url;
+      else if (kind === 'payment') patch.payment_receipt_url = url;
+      else { var ex = expExtras(e); ex[idx] = url; patch.extra_receipts = ex; }
+      await api('/prajapati_expenses?id=eq.'+id, { method:'PATCH', body: patch });
+      toast('✓ Receipt badal gayi');
+      closeReceiptMgr(); loadExpenses();
+    } catch(err){ toast('❌ Fail: '+err.message); }
+  });
+}
+
+async function removeReceipt(id, kind, idx){
+  if (!confirm('Ye receipt hata dein?')) return;
+  var e = findExpense(id);
+  if (!e) return;
+  var patch = {};
+  if (kind === 'bill'){
+    // promote the next bill so the primary slot never sits empty while
+    // other bills still exist
+    var ex = expExtras(e);
+    patch.receipt_url = ex.length ? ex[0] : null;
+    patch.extra_receipts = ex.slice(1);
+  } else if (kind === 'payment'){
+    patch.payment_receipt_url = null;
+  } else {
+    var e2 = expExtras(e); e2.splice(idx,1); patch.extra_receipts = e2;
+  }
+  try {
+    await api('/prajapati_expenses?id=eq.'+id, { method:'PATCH', body: patch });
+    toast('✓ Receipt hata di');
+    closeReceiptMgr(); loadExpenses();
+  } catch(err){ toast('❌ Fail: '+err.message); }
+}
+
+async function uploadPayProof(id){
   var inp = document.createElement('input');
   inp.type='file'; inp.accept='image/*';
   inp.onchange = async function(){

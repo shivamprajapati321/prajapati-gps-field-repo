@@ -2109,6 +2109,7 @@ async function advReject(id){
 // ══════════ EXPENSES ══════════
 let EXP_RECEIPT_URL = '';
 let EXP_RECEIPT_STATE = 'none';   // none | uploading | done | failed
+let EXP_CACHE = [];               // rows currently on screen, for the receipt manager
 async function renderExpenses(root){
   try {
     const admin = isAdmin();
@@ -2116,7 +2117,7 @@ async function renderExpenses(root){
     // employee sees own; admin sees all (recent 60)
     // HR app sirf INTERNAL/office expenses dikhata hai — field/campaign wale nahi
     const filter = admin ? '' : '&team_member_phone=eq.'+USER.phone;
-    let exps = await api('/prajapati_expenses?select=id,expense_date,expense_type,internal_category,total_amount,payment_status,approval_status,receipt_url,payment_receipt_url,team_member_name,team_member_phone,internal_party,internal_details,created_by,created_by_name,remark,other_description,food_amount,hotel_amount,transport_amount,other_amount&expense_type=eq.internal&order=created_at.desc&limit=60'+filter);
+    let exps = await api('/prajapati_expenses?select=id,expense_date,expense_type,internal_category,total_amount,payment_status,approval_status,receipt_url,payment_receipt_url,extra_receipts,team_member_name,team_member_phone,internal_party,internal_details,created_by,created_by_name,remark,other_description,food_amount,hotel_amount,transport_amount,other_amount&expense_type=eq.internal&order=created_at.desc&limit=60'+filter);
 
     let h = '<div class="sechead"><i class="ti ti-receipt"></i>Expenses</div>';
 
@@ -2190,6 +2191,7 @@ async function renderExpenses(root){
       h += '<div class="sechead" style="margin-top:16px"><i class="ti ti-list"></i>Mere expenses</div>';
     }
     exps = list;
+    EXP_CACHE = visible;
 
     if (!exps.length){
       h += '<div class="card" style="text-align:center;color:var(--muted);padding:30px">Abhi tak koi expense nahi</div>';
@@ -2215,10 +2217,16 @@ async function renderExpenses(root){
         h += '<div style="font-size:11px;color:var(--muted)">'+esc(x.expense_date||'')+(admin?' · '+who:'')+
              (detail?' · '+esc(detail):'')+entry+'</div></div>';
         if (x.receipt_url) h += '<span class="pill pill-blue" style="cursor:pointer" onclick="viewImg(\''+esc(x.receipt_url)+'\')">Bill</span>';
+        var extras = expExtras(x);
+        extras.forEach(function(u, i){
+          h += '<span class="pill pill-blue" style="cursor:pointer" onclick="viewImg(\''+esc(u)+'\')">Bill '+(i+2)+'</span>';
+        });
         if (x.payment_receipt_url) h += '<span class="pill pill-green" style="cursor:pointer" onclick="viewImg(\''+esc(x.payment_receipt_url)+'\')">Payment</span>';
-        if (!x.receipt_url && !x.payment_receipt_url){
+        if (!x.receipt_url && !x.payment_receipt_url && !extras.length){
           if (admin) h += '<span class="pill" style="background:var(--amber-bg);color:var(--amber);cursor:pointer" onclick="expAddReceipt(\''+x.id+'\')">+ Receipt</span>';
           else if (pay === 'paid') h += '<span class="pill pill-red">no receipt</span>';
+        } else if (admin) {
+          h += '<span class="pill" style="background:var(--s1);color:var(--sec);cursor:pointer" title="Receipt add / hatao / badlo" onclick="expReceipts(\''+x.id+'\')">&#9881;</span>';
         }
         h += '<span class="pill '+aprPill+'">'+esc(apr)+'</span>';
         if (pay==='paid') h += '<span class="pill pill-green">paid</span>';
@@ -2308,7 +2316,93 @@ async function expSavePartyGo(id){
   }
 }
 
-function expAddReceipt(id){
+// ══════════════════════════════════════════════════════════════
+// RECEIPT MANAGER
+// receipt_url and payment_receipt_url hold one file each, so a second
+// bill had nowhere to go and a wrong upload could never be replaced —
+// the "+ Receipt" button vanished the moment any receipt existed.
+// Extra bills now live in extra_receipts (jsonb array); the two original
+// columns keep their meaning so other apps reading them still work.
+// ══════════════════════════════════════════════════════════════
+function expExtras(x){
+  var e = x && x.extra_receipts;
+  if (!e) return [];
+  if (typeof e === 'string'){ try { e = JSON.parse(e); } catch(err){ return []; } }
+  return Array.isArray(e) ? e.filter(Boolean) : [];
+}
+
+function expReceiptList(x){
+  var out = [];
+  if (x.receipt_url) out.push({ url: x.receipt_url, kind: 'bill',    label: 'Bill' });
+  expExtras(x).forEach(function(u,i){ out.push({ url: u, kind: 'extra', label: 'Bill ' + (i+2), idx: i }); });
+  if (x.payment_receipt_url) out.push({ url: x.payment_receipt_url, kind: 'payment', label: 'Payment proof' });
+  return out;
+}
+
+async function expReceipts(id){
+  var x = (EXP_CACHE || []).find(function(e){ return e.id === id; });
+  if (!x){ toast('Expense nahi mila — refresh karo'); return; }
+  var list = expReceiptList(x);
+
+  var rows = list.map(function(r){
+    return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--bd)">'+
+      '<img src="'+esc(r.url)+'" style="width:46px;height:46px;object-fit:cover;border-radius:7px;background:var(--s1)" '+
+        'onerror="this.style.display=\'none\'">'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:13px;font-weight:600">'+r.label+'</div>'+
+        '<div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+
+          esc(String(r.url).split('/').pop())+'</div>'+
+      '</div>'+
+      '<button class="btn-ghost" style="height:32px;padding:0 10px;font-size:12px" '+
+        'onclick="viewImg(\''+esc(r.url)+'\')">Dekho</button>'+
+      '<button class="btn-ghost" style="height:32px;padding:0 10px;font-size:12px;color:var(--red)" '+
+        'onclick="expRemoveReceipt(\''+id+'\',\''+r.kind+'\','+(r.idx===undefined?-1:r.idx)+')">Hatao</button>'+
+    '</div>';
+  }).join('');
+
+  document.getElementById('modalRoot').innerHTML =
+    '<div class="modal-bg" onclick="if(event.target===this)this.remove()">'+
+      '<div class="modal" onclick="event.stopPropagation()">'+
+        '<div style="font-size:15px;font-weight:600;margin-bottom:2px">Receipts</div>'+
+        '<div style="font-size:12px;color:var(--muted);margin-bottom:10px">'+
+          esc(x.internal_category||'Expense')+' \u00b7 \u20b9'+fmtNum(x.total_amount||0)+'</div>'+
+        (rows || '<div style="font-size:12.5px;color:var(--muted);padding:10px 0">Abhi koi receipt nahi</div>')+
+        '<div style="display:flex;gap:8px;margin-top:12px">'+
+          '<button class="btn-ghost" style="flex:1;height:40px" onclick="document.getElementById(\'modalRoot\').innerHTML=\'\'">Band karo</button>'+
+          '<button class="btn-green" style="flex:1;height:40px" onclick="expAddReceipt(\''+id+'\',true)">+ Receipt add karo</button>'+
+        '</div>'+
+      '</div></div>';
+}
+
+async function expRemoveReceipt(id, kind, idx){
+  if (!confirm('Ye receipt hata dein?')) return;
+  var x = (EXP_CACHE || []).find(function(e){ return e.id === id; });
+  if (!x) return;
+  var patch = {};
+  if (kind === 'bill'){
+    // promote the first extra so the primary slot never sits empty while
+    // other bills exist
+    var ex = expExtras(x);
+    patch.receipt_url = ex.length ? ex[0] : null;
+    patch.extra_receipts = ex.slice(1);
+  } else if (kind === 'payment'){
+    patch.payment_receipt_url = null;
+  } else {
+    var e2 = expExtras(x);
+    e2.splice(idx, 1);
+    patch.extra_receipts = e2;
+  }
+  try {
+    await api('/prajapati_expenses?id=eq.'+id, {
+      method:'PATCH', headers:{'Prefer':'return=minimal'}, body: JSON.stringify(patch)
+    });
+    document.getElementById('modalRoot').innerHTML='';
+    toast('Receipt hata di \u2713');
+    nav('expenses');
+  } catch(e){ toast('Hatane mein dikkat: '+e.message); }
+}
+
+function expAddReceipt(id, fromManager){
   const inp = document.createElement('input');
   inp.type='file'; inp.accept='image/*,application/pdf';
   inp.style.display='none';
@@ -2320,10 +2414,15 @@ function expAddReceipt(id){
     toast('Receipt upload ho raha hai...');
     try {
       const url = await uploadFile(f, USER.phone, 'receipt');
+      const x = (EXP_CACHE || []).find(function(e){ return e.id === id; }) || {};
+      const patch = x.receipt_url
+        ? { extra_receipts: expExtras(x).concat([url]) }   // second bill onwards
+        : { receipt_url: url };
       await api('/prajapati_expenses?id=eq.'+id, {
         method:'PATCH', headers:{'Prefer':'return=minimal'},
-        body: JSON.stringify({ receipt_url: url })
+        body: JSON.stringify(patch)
       });
+      if (fromManager) document.getElementById('modalRoot').innerHTML='';
       toast('Receipt add ho gayi ✓');
       nav('expenses');
     } catch(e){ toast('Receipt fail: '+e.message); }
