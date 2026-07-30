@@ -461,6 +461,31 @@ body {
     </div>
 
     <div class="filter-row" style="margin-top:14px;">
+      <div class="filter-group" style="flex:1; min-width:100%;">
+        <label>Photo resolution <span style="font-weight:400;color:#94a3b8;">— slide pe photo 4&quot; chaudi lagti hai</span></label>
+        <div class="fld-chips" id="resChips">
+          <label class="fld-chip"><input type="radio" name="pptRes" value="900" onchange="saveResPref()"> 900px &middot; print quality</label>
+          <label class="fld-chip"><input type="radio" name="pptRes" value="1200" checked onchange="saveResPref()"> 1200px &middot; recommended</label>
+          <label class="fld-chip"><input type="radio" name="pptRes" value="1920" onchange="saveResPref()"> Original &middot; sabse bhaari</label>
+        </div>
+        <div id="resHint" style="font-size:11.5px;color:#94a3b8;margin-top:6px;"></div>
+      </div>
+    </div>
+
+    <div class="filter-row" style="margin-top:14px;">
+      <div class="filter-group" style="flex:1; min-width:100%;">
+        <label>Ek file me kitne vehicles <span style="font-weight:400;color:#94a3b8;">— bada campaign tod ke banega</span></label>
+        <div class="fld-chips" id="splitChips">
+          <label class="fld-chip"><input type="radio" name="pptSplit" value="100" onchange="saveSplitPref()"> 100 per file</label>
+          <label class="fld-chip"><input type="radio" name="pptSplit" value="150" checked onchange="saveSplitPref()"> 150 &middot; recommended</label>
+          <label class="fld-chip"><input type="radio" name="pptSplit" value="250" onchange="saveSplitPref()"> 250 per file</label>
+          <label class="fld-chip"><input type="radio" name="pptSplit" value="0" onchange="saveSplitPref()"> Ek hi file &middot; risky</label>
+        </div>
+        <div id="splitHint" style="font-size:11.5px;color:#94a3b8;margin-top:6px;"></div>
+      </div>
+    </div>
+
+    <div class="filter-row" style="margin-top:14px;">
       <div class="filter-group" style="flex:1; min-width:240px;">
         <label>Location preference (PPT grouping)</label>
         <select id="locGroupPref">
@@ -515,9 +540,9 @@ body {
           </div>
         </div>
         <div style="margin-top:12px;">
-          <label class="cb-label">Logo <span class="cb-dim">(optional \u2014 khaali chhoda to company name text aayega)</span></label>
+          <label class="cb-label">Logo <span class="cb-dim">(optional &mdash; khaali chhoda to company name text aayega)</span></label>
           <div class="cb-logo-row">
-            <input id="cbLogo" class="cb-input" type="text" placeholder="Logo URL paste karo, ya file chuno \u2192" oninput="onCustomBrandInput()">
+            <input id="cbLogo" class="cb-input" type="text" placeholder="Logo URL paste karo, ya file chuno &rarr;" oninput="onCustomBrandInput()">
             <input id="cbLogoFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onchange="onLogoFilePicked(this)" style="display:none;">
             <button type="button" class="cb-btn" onclick="document.getElementById('cbLogoFile').click()">Upload file</button>
             <div id="cbLogoBox" class="cb-logo-box">no logo</div>
@@ -594,6 +619,14 @@ body {
     <h3 id="modalTitle">Generating PPT...</h3>
     <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
     <div class="progress-text" id="progressText">Starting...</div>
+    <div id="progMeta" style="display:flex;justify-content:space-between;gap:10px;margin-top:10px;font-size:12px;color:#94a3b8;">
+      <span id="progPct">0%</span>
+      <span id="progCount"></span>
+      <span id="progSize"></span>
+      <span id="progEta"></span>
+    </div>
+    <div id="progWarn" style="display:none;margin-top:10px;padding:9px 12px;border-radius:8px;
+         background:#FEF3C7;color:#92400E;font-size:12px;line-height:1.5;"></div>
   </div>
 </div>
 
@@ -1175,6 +1208,8 @@ async function onCampaignsChanged() {
     document.getElementById('brandingControl').style.display = keys.length ? 'block' : 'none';
     if (keys.length) selectBranding(state.activeBrandingMode || 'full');
     loadFieldPrefs();
+    loadResPref();
+    loadSplitPref();
   }
   if (keys.length === 0) { msSetOptions('city', []); msSetOptions('member', []); return; }
 
@@ -1878,7 +1913,7 @@ async function getAllVehicleOwners() {
 // recompressed. The resize path stays for oversized manual uploads and
 // encodes at 0.92 so it does not lose ground either.
 // ══════════════════════════════════════════════════════════════
-const PPT_MAX_DIM = 1920;
+// chosen per run from the resolution control
 
 // Dimensions from the file header. JPEG: walk the segment markers to the
 // SOF frame. PNG: IHDR sits at a fixed offset. Costs microseconds and
@@ -1975,6 +2010,92 @@ function buildDetailsData(vehicle, ownerStr, contactStr, locationStr) {
   return out;
 }
 
+// ══════════════════════════════════════════════════════════════
+// RESOLUTION
+//
+// The photo box on a slide is 3.98" x 4.9" (13.333" wide layout, 3 up).
+// A 1080p projector renders that at ~144 DPI = 576px; print at 200 DPI
+// = 800px. Field photos arrive at 1600px, i.e. ~400 DPI in that box —
+// pixels nobody can see, paid for in file size and memory.
+//
+// Measured on a real 1600px q88 field photo: 576 KB. At 1200px: 348 KB.
+// At 900px: 214 KB. For 500 vehicles x 3 photos that is 864 MB vs
+// 522 MB vs 321 MB — and base64 adds another third on top, in RAM,
+// before the zip even starts. Full resolution at that volume will
+// exhaust the tab.
+// ══════════════════════════════════════════════════════════════
+function pptMaxDim() {
+  var r = document.querySelector('input[name="pptRes"]:checked');
+  return r ? parseInt(r.value, 10) : 1200;
+}
+
+function saveResPref() {
+  try { localStorage.setItem('ppt_res', String(pptMaxDim())); } catch (e) {}
+  updateSizeEstimate();
+}
+
+function loadResPref() {
+  try {
+    var v = localStorage.getItem('ppt_res');
+    if (v) {
+      var el = document.querySelector('input[name="pptRes"][value="' + v + '"]');
+      if (el) el.checked = true;
+    }
+  } catch (e) {}
+  updateSizeEstimate();
+}
+
+// KB per photo, measured on real 1600px q88 field photos
+var KB_PER_PHOTO = { 900: 214, 1200: 348, 1920: 576 };
+
+function updateSizeEstimate() {
+  if (typeof updateSplitHint === 'function') try { updateSplitHint(); } catch (e) {}
+  var hint = document.getElementById('resHint');
+  if (!hint) return;
+  var vehicles = (state.vehicles || []).length;
+  var photos = (state.vehicles || []).reduce(function (s, v) { return s + (v.photos ? v.photos.length : 0); }, 0);
+  var per = KB_PER_PHOTO[pptMaxDim()] || 348;
+  if (!photos) { hint.textContent = 'Load Vehicles dabao to size ka andaza dikh jayega'; return; }
+  var mb = (photos * per) / 1024;
+  hint.innerHTML = photos + ' photos &middot; PPT lagbhag <b>' + mb.toFixed(0) + ' MB</b>' +
+    (mb > 500 ? ' &mdash; <span style="color:#b45309">itni badi file email/WhatsApp se nahi jayegi, resolution kam karo ya campaign tod ke banao</span>' : '');
+}
+
+// ── progress telemetry ──
+var PROG = { t0: 0, done: 0, total: 0, bytes: 0 };
+
+function progReset(total) {
+  PROG = { t0: Date.now(), done: 0, total: total, bytes: 0 };
+  var w = document.getElementById('progWarn');
+  if (w) w.style.display = 'none';
+}
+
+function progTick(bytes) {
+  PROG.done++;
+  PROG.bytes += (bytes || 0);
+  // repaint every 5th photo — updating on every one costs more than it shows
+  if (PROG.done % 5 && PROG.done !== PROG.total) return;
+
+  var frac = PROG.total ? PROG.done / PROG.total : 0;
+  var elapsed = (Date.now() - PROG.t0) / 1000;
+  var eta = frac > 0.02 ? Math.round(elapsed / frac - elapsed) : null;
+
+  var set = function (id, txt) { var e = document.getElementById(id); if (e) e.textContent = txt; };
+  set('progCount', PROG.done + ' / ' + PROG.total + ' photos');
+  set('progSize', (PROG.bytes / 1048576).toFixed(0) + ' MB');
+  set('progEta', eta === null ? '' : (eta > 90 ? Math.ceil(eta / 60) + ' min baaki' : eta + 's baaki'));
+
+  // Warn while there is still time to cancel, not after the tab dies.
+  if (PROG.bytes / 1048576 > 450) {
+    var w = document.getElementById('progWarn');
+    if (w && w.style.display === 'none') {
+      w.style.display = 'block';
+      w.innerHTML = '<b>File bahut badi ho rahi hai.</b> Browser hang ho sakta hai. ' +
+                    'Agli baar resolution kam karo ya campaign ko chhote hisson me tod ke banao.';
+    }
+  }
+}
+
 async function fetchImageWithDims(url) {
   try {
     const res = await fetch(url, { mode: 'cors' });
@@ -1994,15 +2115,18 @@ async function fetchImageWithDims(url) {
 
     // ⚡ Already within budget: no decode, no canvas, no re-encode.
     // The original bytes go straight into the deck at full source quality.
-    if (dims.w <= PPT_MAX_DIM && dims.h <= PPT_MAX_DIM) {
+    var MAXD = pptMaxDim();
+    if (dims.w <= MAXD && dims.h <= MAXD) {
       if (bmp) bmp.close();
-      return { dataUrl: await blobToDataUrl(blob), w: dims.w, h: dims.h };
+      var du = await blobToDataUrl(blob);
+      progTick(du.length * 0.75);          // base64 -> approx bytes
+      return { dataUrl: du, w: dims.w, h: dims.h };
     }
 
     // Oversized (manual uploads, DSLR shots) — scale once, encode at 0.92
     // so the downscale is the only quality cost.
     if (!bmp) bmp = await createImageBitmap(blob);
-    const scale = PPT_MAX_DIM / Math.max(bmp.width, bmp.height);
+    const scale = MAXD / Math.max(bmp.width, bmp.height);
     const tw = Math.round(bmp.width * scale);
     const th = Math.round(bmp.height * scale);
 
@@ -2020,7 +2144,9 @@ async function fetchImageWithDims(url) {
       ? await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.92 })
       : await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.92));
 
-    return { dataUrl: await blobToDataUrl(outBlob), w: srcW, h: srcH };
+    var du2 = await blobToDataUrl(outBlob);
+    progTick(du2.length * 0.75);
+    return { dataUrl: du2, w: srcW, h: srcH };
   } catch (err) {
     console.warn('Image fetch failed:', url, err.message);
     return null;
@@ -2059,6 +2185,8 @@ function hideModal() { document.getElementById('modal').classList.remove('show')
 function updateProgress(percent, text) {
   document.getElementById('progressFill').style.width = percent + '%';
   document.getElementById('progressText').textContent = text;
+  var p = document.getElementById('progPct');
+  if (p) p.textContent = Math.round(percent) + '%';
 }
 
 // Get serial number for a vehicle (from grouped value or any of its photos)
@@ -2143,12 +2271,90 @@ async function generateExcel() {
   }
 }
 
+// ══════════════════════════════════════════════════════════════
+// SPLITTING
+//
+// pptx.write() has to turn every embedded photo into one contiguous
+// blob. At 500 vehicles that is ~500 MB of image data in a single zip
+// and the tab stalls on "Compressing PPT file" — the step is neither
+// async nor chunked, so there is nothing to show progress against and
+// no way to recover once it is under way.
+//
+// Fixing it inside PptxGenJS is not on the table, so we keep each deck
+// small enough that the zip step stays trivial and hand out several
+// files instead. 150 vehicles is ~450 photos, ~155 MB at 1200px, which
+// packs in a few seconds.
+// ══════════════════════════════════════════════════════════════
+function pptSplitSize() {
+  var r = document.querySelector('input[name="pptSplit"]:checked');
+  return r ? parseInt(r.value, 10) : 150;
+}
+
+function saveSplitPref() {
+  try { localStorage.setItem('ppt_split', String(pptSplitSize())); } catch (e) {}
+  updateSplitHint();
+}
+
+function loadSplitPref() {
+  try {
+    var v = localStorage.getItem('ppt_split');
+    if (v !== null) {
+      var el = document.querySelector('input[name="pptSplit"][value="' + v + '"]');
+      if (el) el.checked = true;
+    }
+  } catch (e) {}
+  updateSplitHint();
+}
+
+function updateSplitHint() {
+  var hint = document.getElementById('splitHint');
+  if (!hint) return;
+  var total = (state.vehicles || []).length;
+  var per = pptSplitSize();
+  if (!total) { hint.textContent = 'Load Vehicles dabao'; return; }
+  if (!per) {
+    hint.innerHTML = total + ' vehicles ek hi file me' +
+      (total > 200 ? ' &mdash; <span style="color:#b45309">itne pe browser "Compressing" pe atak sakta hai</span>' : '');
+    return;
+  }
+  var parts = Math.ceil(total / per);
+  hint.textContent = parts === 1
+    ? total + ' vehicles \u2014 ek hi file banegi'
+    : total + ' vehicles \u2192 ' + parts + ' files (' + per + ' per file)';
+}
+
+// Wraps the single-deck generator. Each part gets its own pptx instance,
+// so memory is released between parts instead of piling up.
 async function generatePPT() {
   if (!window.PPTX_LIB_LOADED) { showToast('Library abhi load nahi hui', 'error'); return; }
-  if (state.vehicles.length === 0) { showToast('Koi vehicles nahi hain', 'error'); return; }
+  if (!state.vehicles || state.vehicles.length === 0) { showToast('Koi vehicles nahi hain', 'error'); return; }
+
+  var all = state.vehicles;
+  var per = pptSplitSize();
+  if (!per || all.length <= per) return generateOnePPT(0, 1);
+
+  var parts = Math.ceil(all.length / per);
+  if (!confirm(all.length + ' vehicles \u2014 ' + parts + ' alag PPT files banengi (' + per + ' per file).\n\n' +
+               'Har file alag download hogi. Aage badhein?')) return;
+
+  try {
+    for (var p = 0; p < parts; p++) {
+      state.vehicles = all.slice(p * per, (p + 1) * per);
+      await generateOnePPT(p, parts);
+      // let the browser reclaim the previous part before starting the next
+      await new Promise(function (r) { setTimeout(r, 1200); });
+    }
+    showToast('\u2713 Saari ' + parts + ' files ban gayi', 'success');
+  } finally {
+    state.vehicles = all;
+  }
+}
+
+async function generateOnePPT(partIdx, partCount) {
   
   const startTime = Date.now();
-  showModal('Generating PPT...', 'Preparing slides...');
+  const partTag = (partCount > 1) ? (' — Part ' + (partIdx + 1) + ' of ' + partCount) : '';
+  showModal('Generating PPT' + partTag + '...', 'Preparing slides...');
   
   try {
     const PptxLib = window.PptxGenJS || window.pptxgen;
@@ -2182,6 +2388,8 @@ async function generatePPT() {
     const BATCH_SIZE = 10; // Process 10 vehicles at a time (= ~30 photos parallel)
     const vehicleData = []; // Final data: [{vehicle, photoData[]}, ...]
     
+    progReset(state.vehicles.reduce(function(s,v){ return s + (v.photos ? v.photos.length : 0); }, 0));
+
     for (let i = 0; i < state.vehicles.length; i += BATCH_SIZE) {
       const batch = state.vehicles.slice(i, i + BATCH_SIZE);
       const batchEnd = Math.min(i + BATCH_SIZE, totalVehicles);
@@ -2242,7 +2450,8 @@ async function generatePPT() {
     // Yield to UI thread for progress update
     await new Promise(resolve => setTimeout(resolve, 50));
     
-    const filename = `${campaign.name.replace(/[^a-zA-Z0-9]/g, '_')}_${istDateStr()}.pptx`;
+    const partSuffix = (partCount > 1) ? `_part${partIdx + 1}of${partCount}` : '';
+    const filename = `${campaign.name.replace(/[^a-zA-Z0-9]/g, '_')}_${istDateStr()}${partSuffix}.pptx`;
     
     let blob;
     try {
@@ -2279,9 +2488,10 @@ async function generatePPT() {
     
     updateProgress(100, `Done in ${elapsed}s!`);
     
-    setTimeout(() => { 
-      hideModal(); 
-      showToast(`✓ PPT generated in ${elapsed}s — ${totalVehicles} vehicles, ${totalPhotos} photos, ${sizeMB}MB`, 'success'); 
+    setTimeout(() => {
+      hideModal();
+      const label = (partCount > 1) ? `Part ${partIdx + 1}/${partCount}` : 'PPT';
+      showToast(`✓ ${label} ready in ${elapsed}s — ${totalVehicles} vehicles, ${totalPhotos} photos, ${sizeMB}MB`, 'success');
     }, 500);
     
   } catch (err) {
