@@ -544,11 +544,12 @@ body {
     <div class="filter-row" style="margin-top:14px;">
       <div class="filter-group" style="flex:1; min-width:240px;">
         <label>Location preference (PPT grouping)</label>
-        <select id="locGroupPref">
+        <select id="locGroupPref" onchange="onGroupPrefChange()">
+          <option value="serial">Serial number wise</option>
           <option value="none">No grouping — chronological</option>
-          <option value="city">Group by City</option>
-          <option value="member">Group by Team Member</option>
-          <option value="campaign">Group by Campaign</option>
+          <option value="city">Group by City (serial ke andar)</option>
+          <option value="member">Group by Team Member (serial ke andar)</option>
+          <option value="campaign">Group by Campaign (serial ke andar)</option>
         </select>
       </div>
       <div class="filter-group" style="flex:1; min-width:240px;">
@@ -1629,6 +1630,11 @@ async function loadVehicles() {
     }
 
     // ─── Location preference: group/sort vehicles for the PPT ───
+    // Pick the sensible default before the first grouping pass: serial when
+    // the data has serials, chronological when it does not.
+    var gp = document.getElementById('locGroupPref');
+    if (gp && !gp.dataset.userSet) gp.value = hasSerials() ? 'serial' : 'none';
+
     applyLocationGrouping(state.vehicles);
 
     renderPreview();
@@ -1638,13 +1644,27 @@ async function loadVehicles() {
   }
 }
 
-// Sort/group vehicles per "Location preference" select
+// Sort/group vehicles per "Location preference" select.
+//
+// This function runs AFTER the vehicles are grouped, so whatever it does
+// wins. Previously 'none' — the default — sorted by captured_at, which
+// silently threw away any serial order applied earlier. That is why the
+// deck kept coming out chronological no matter what.
+//
+// Serial is now its own option and the default whenever the data has
+// serials, and it is the tiebreaker inside every grouped mode too, so
+// "Group by City" gives serial order within each city instead of
+// capture time.
 function applyLocationGrouping(vehicles) {
-  var pref = document.getElementById('locGroupPref') ? document.getElementById('locGroupPref').value : 'none';
+  var pref = document.getElementById('locGroupPref') ? document.getElementById('locGroupPref').value : 'serial';
+
+  if (pref === 'serial') { sortVehiclesBySerial(vehicles); return; }
+
   if (pref === 'none') {
     vehicles.sort(function(a,b){ return (a.captured_at||'') < (b.captured_at||'') ? -1 : 1; });
     return;
   }
+
   function keyOf(v) {
     if (pref === 'city') return (v.city || 'Unknown').toLowerCase();
     if (pref === 'member') return (v.member_name || 'Unknown').toLowerCase();
@@ -1654,8 +1674,27 @@ function applyLocationGrouping(vehicles) {
   vehicles.sort(function(a,b){
     var ka = keyOf(a), kb = keyOf(b);
     if (ka !== kb) return ka < kb ? -1 : 1;
+    var sa = serialNum(a), sb = serialNum(b);
+    if (sa !== null && sb !== null && sa !== sb) return sa - sb;
+    if (sa === null && sb !== null) return 1;
+    if (sb === null && sa !== null) return -1;
     return (a.captured_at||'') < (b.captured_at||'') ? -1 : 1;
   });
+}
+
+// True when the loaded data actually carries serials — used instead of the
+// campaign's serial_tracking flag, which is set on only 10 of 182 campaigns
+// even though the photos carry serials. The data is the reliable signal.
+function hasSerials() {
+  return (state.vehicles || []).some(function (v) { return serialNum(v) !== null; });
+}
+
+function onGroupPrefChange() {
+  var gp = document.getElementById('locGroupPref');
+  if (gp) gp.dataset.userSet = '1';   // stop auto-defaulting once chosen
+  if (!state.vehicles || !state.vehicles.length) return;
+  applyLocationGrouping(state.vehicles);
+  renderPreview();
 }
 
 // LocationIQ reverse-geocode for vehicles missing an address (has lat/lng)
@@ -2301,7 +2340,11 @@ async function generateExcel() {
     const campaignName = (state.selectedCampaign && (state.selectedCampaign.name || state.selectedCampaign.client_name)) || 'Report';
     const today = istDateStr();
 
-    const useSerial = state.selectedCampaign && state.selectedCampaign.serial_tracking;
+    // serial_tracking is true on only 10 of 182 campaigns while the photos
+    // carry serials far more widely, so the flag hid the column on reports
+    // that had perfectly good serial data. Go by what is actually loaded.
+    const useSerial = hasSerials() ||
+                      !!(state.selectedCampaign && state.selectedCampaign.serial_tracking);
     // Build rows — one per vehicle (quantity = unique vehicles)
     const rows = state.vehicles.map((v, i) => {
       const row = { 'Sr No': i + 1 };
@@ -2317,8 +2360,10 @@ async function generateExcel() {
       return row;
     });
     // Sort by serial (numeric) then city when serial tracking ON, else by city
+    // state.vehicles is already in the chosen order, and rows were built
+    // from it in that order — re-sorting here would put Excel out of step
+    // with the PPT. Just renumber Sr No to match.
     if (useSerial) {
-      rows.sort(function(a,b){ var sa=parseInt(a['Serial No'])||9999, sb=parseInt(b['Serial No'])||9999; if(sa!==sb)return sa-sb; return String(a.City).localeCompare(String(b.City)); });
       rows.forEach(function(r,i){ r['Sr No']=i+1; });
     }
 
