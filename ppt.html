@@ -477,9 +477,9 @@ body {
         <label>Ek file me kitne vehicles <span style="font-weight:400;color:#94a3b8;">— bada campaign tod ke banega</span></label>
         <div class="fld-chips" id="splitChips">
           <label class="fld-chip"><input type="radio" name="pptSplit" value="100" onchange="saveSplitPref()"> 100 per file</label>
-          <label class="fld-chip"><input type="radio" name="pptSplit" value="150" checked onchange="saveSplitPref()"> 150 &middot; recommended</label>
+          <label class="fld-chip"><input type="radio" name="pptSplit" value="150" onchange="saveSplitPref()"> 150 per file</label>
           <label class="fld-chip"><input type="radio" name="pptSplit" value="250" onchange="saveSplitPref()"> 250 per file</label>
-          <label class="fld-chip"><input type="radio" name="pptSplit" value="0" onchange="saveSplitPref()"> Ek hi file &middot; risky</label>
+          <label class="fld-chip"><input type="radio" name="pptSplit" value="0" checked onchange="saveSplitPref()"> Ek hi file &middot; default</label>
         </div>
         <div id="splitHint" style="font-size:11.5px;color:#94a3b8;margin-top:6px;"></div>
       </div>
@@ -2313,8 +2313,12 @@ function updateSplitHint() {
   var per = pptSplitSize();
   if (!total) { hint.textContent = 'Load Vehicles dabao'; return; }
   if (!per) {
-    hint.innerHTML = total + ' vehicles ek hi file me' +
-      (total > 200 ? ' &mdash; <span style="color:#b45309">itne pe browser "Compressing" pe atak sakta hai</span>' : '');
+    // peak memory ~ base64 of all photos + one batch; measured avg 518 KB/photo
+    var per_kb = { 900: 214, 1200: 348, 1920: 576 }[pptMaxDim()] || 348;
+    var photos = (state.vehicles || []).reduce(function (s, v) { return s + (v.photos ? v.photos.length : 0); }, 0);
+    var peak = (photos * per_kb / 1024) * 1.34;
+    hint.innerHTML = total + ' vehicles ek hi file me &middot; peak memory ~' + peak.toFixed(0) + ' MB' +
+      (peak > 1500 ? ' &mdash; <span style="color:#b45309">bahut zyada, resolution kam karo ya tod ke banao</span>' : '');
     return;
   }
   var parts = Math.ceil(total / per);
@@ -2383,10 +2387,10 @@ async function generateOnePPT(partIdx, partCount) {
     const totalPhotos = state.vehicles.reduce((s, v) => s + (v.photos?.length || 0), 0);
     
     // ⚡ PHASE 1: Fetch ALL images in PARALLEL BATCHES
-    updateProgress(5, `Fetching ${totalPhotos} photos in parallel...`);
+    updateProgress(5, `Fetching ${totalPhotos} photos and building slides...`);
     
     const BATCH_SIZE = 10; // Process 10 vehicles at a time (= ~30 photos parallel)
-    const vehicleData = []; // Final data: [{vehicle, photoData[]}, ...]
+    let builtCount = 0;     // slides added so far (vehicleData is no longer retained)
     
     progReset(state.vehicles.reduce(function(s,v){ return s + (v.photos ? v.photos.length : 0); }, 0));
 
@@ -2394,9 +2398,10 @@ async function generateOnePPT(partIdx, partCount) {
       const batch = state.vehicles.slice(i, i + BATCH_SIZE);
       const batchEnd = Math.min(i + BATCH_SIZE, totalVehicles);
       
+      // fetch + build now share one 5-90% span since they run together
       updateProgress(
-        5 + ((i / totalVehicles) * 70),
-        `Loading photos ${i + 1}-${batchEnd} of ${totalVehicles}...`
+        5 + ((i / totalVehicles) * 85),
+        `Vehicle ${i + 1}-${batchEnd} of ${totalVehicles} · ${builtCount} slides ready`
       );
       
       // Process this batch in parallel
@@ -2419,29 +2424,34 @@ async function generateOnePPT(partIdx, partCount) {
         })
       );
       
-      vehicleData.push(...batchResults);
+      // ⚡ Build this batch's slides NOW and release its base64.
+      //
+      // The old flow fetched all 1500 photos into vehicleData first, then
+      // built every slide. That kept TWO full copies of the base64 alive at
+      // once — ours in vehicleData plus PptxGenJS's internal copy. At 500
+      // vehicles (759 MB of photos measured, ~1 GB as base64) that is ~2 GB
+      // and the tab dies on "Compressing PPT file".
+      //
+      // Handing each batch straight to PptxGenJS and dropping our reference
+      // leaves one copy plus a single batch. Same images, same bytes, same
+      // quality — just not held twice.
+      for (const { vehicle, photoData } of batchResults) {
+        if (vehicle.mode === 'hood') {
+          addHoodSlide(pptx, vehicle, photoData, campaign, brand);
+        } else {
+          addBackPanelSlide(pptx, vehicle, photoData, campaign, brand);
+        }
+        // PptxGenJS has copied what it needs; drop ours so the GC can take it
+        for (const pd of photoData) { if (pd) pd.dataUrl = null; }
+      }
+      builtCount += batchResults.length;
+      batchResults.length = 0;
+
+      // hand the thread back so the GC can actually run between batches
+      await new Promise(r => setTimeout(r, 0));
     }
     
-    // ⚡ PHASE 2: Build all slides (fast - no network)
-    updateProgress(75, 'Building slides...');
-    
-    for (let i = 0; i < vehicleData.length; i++) {
-      const { vehicle, photoData } = vehicleData[i];
-      
-      if (i % 10 === 0 || i === vehicleData.length - 1) {
-        updateProgress(
-          75 + ((i / vehicleData.length) * 20),
-          `Building slide ${i + 1} of ${vehicleData.length}: ${vehicle.vehicle_number}`
-        );
-      }
-      
-      if (vehicle.mode === 'hood') {
-        addHoodSlide(pptx, vehicle, photoData, campaign, brand);
-      } else {
-        addBackPanelSlide(pptx, vehicle, photoData, campaign, brand);
-      }
-    }
-    
+    updateProgress(91, `${builtCount} slides ban gaye — summary jod raha hoon`);
     addSummarySlide(pptx, campaign, brand);
     
     // ⚡ PHASE 3: Save file via BLOB (more reliable than writeFile)
