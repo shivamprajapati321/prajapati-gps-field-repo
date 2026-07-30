@@ -24,31 +24,87 @@
 
 <script>
 window.PPTX_LIB_LOADED = false;
-function loadPptxLib() {
+
+// ══════════════════════════════════════════════════════════════
+// Load JSZip OURSELVES, then the non-bundle PptxGenJS build.
+//
+// pptxgen.bundle.js hides JSZip inside itself; pptxgen.min.js reads the
+// global one. That difference matters: PptxGenJS calls
+// zip.generateAsync({type}) with no second argument and no streamFiles,
+// so the "Compressing PPT file" step is a black box that buffers every
+// image at once. With our own JSZip on the page we can wrap that one
+// method — add streamFiles so it writes incrementally instead of holding
+// the whole archive, and pass JSZip's onUpdate callback so the step
+// finally reports progress instead of looking frozen.
+//
+// Falls back to the old bundle if JSZip does not load, so a CDN hiccup
+// degrades to previous behaviour rather than breaking export.
+// ══════════════════════════════════════════════════════════════
+function loadScript(urls) {
   return new Promise((resolve, reject) => {
-    const cdnUrls = [
+    let i = 0;
+    (function next() {
+      if (i >= urls.length) { reject(new Error('all CDNs failed')); return; }
+      const s = document.createElement('script');
+      s.src = urls[i++];
+      s.async = false;
+      s.onload = () => resolve(s.src);
+      s.onerror = () => { s.remove(); next(); };
+      document.head.appendChild(s);
+    })();
+  });
+}
+
+window.ZIP_PROGRESS = null;   // generatePPT sets this to a callback
+
+function patchJSZipForStreaming() {
+  if (!window.JSZip || window.JSZip.__patched) return false;
+  const proto = window.JSZip.prototype;
+  const orig = proto.generateAsync;
+  proto.generateAsync = function (options, onUpdate) {
+    const opts = Object.assign({ streamFiles: true }, options || {});
+    const cb = onUpdate || function (m) {
+      if (window.ZIP_PROGRESS) window.ZIP_PROGRESS(m);
+    };
+    return orig.call(this, opts, cb);
+  };
+  window.JSZip.__patched = true;
+  return true;
+}
+
+async function loadPptxLib() {
+  try {
+    await loadScript([
+      'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js',
+      'https://unpkg.com/jszip@3.10.1/dist/jszip.min.js'
+    ]);
+    if (!window.JSZip) throw new Error('JSZip global missing');
+    patchJSZipForStreaming();
+    await loadScript([
+      'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.min.js',
+      'https://unpkg.com/pptxgenjs@3.12.0/dist/pptxgen.min.js'
+    ]);
+    const lib = window.PptxGenJS || window.pptxgen || window.PptxGen;
+    if (!lib) throw new Error('PptxGenJS global missing');
+    window.PptxGenJS = lib;
+    window.PPTX_LIB_LOADED = true;
+    window.ZIP_STREAMING = true;
+    console.log('[Library] pptxgen.min + own JSZip (streaming zip enabled)');
+    return lib;
+  } catch (e) {
+    console.warn('[Library] streaming path failed, falling back to bundle:', e.message);
+    await loadScript([
       'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js',
       'https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js',
       'https://unpkg.com/pptxgenjs@3.12.0/dist/pptxgen.bundle.js'
-    ];
-    let attempt = 0;
-    function tryNext() {
-      if (attempt >= cdnUrls.length) { reject(new Error('All CDNs failed')); return; }
-      const url = cdnUrls[attempt++];
-      console.log('[Library] Trying:', url);
-      const script = document.createElement('script');
-      script.src = url;
-      script.async = false;
-      script.onload = () => {
-        const lib = window.PptxGenJS || window.pptxgen || window.PptxGen;
-        if (lib) { window.PPTX_LIB_LOADED = true; window.PptxGenJS = lib; resolve(lib); }
-        else { script.remove(); tryNext(); }
-      };
-      script.onerror = () => { script.remove(); tryNext(); };
-      document.head.appendChild(script);
-    }
-    tryNext();
-  });
+    ]);
+    const lib = window.PptxGenJS || window.pptxgen || window.PptxGen;
+    if (!lib) throw new Error('All CDNs failed');
+    window.PptxGenJS = lib;
+    window.PPTX_LIB_LOADED = true;
+    window.ZIP_STREAMING = false;
+    return lib;
+  }
 }
 const pptxLibPromise = loadPptxLib();
 
@@ -2466,10 +2522,28 @@ async function generateOnePPT(partIdx, partCount) {
     let blob;
     try {
       // Method 1: Modern API - generates blob (reliable, has progress)
-      updateProgress(96, 'Compressing PPT file...');
+      updateProgress(96, 'Packing PPT file...');
+      var pw = document.getElementById('progWarn');
+      if (pw) {
+        pw.style.display = 'block';
+        pw.innerHTML = '<b>Ye aakhri step hai.</b> ' + (window.ZIP_STREAMING ? '' : '(streaming off) ') +
+                       'Tab band mat karo \u2014 badi file me isme 2\u20135 minute lag sakte hain.';
+      }
       await new Promise(resolve => setTimeout(resolve, 50));
       
-      blob = await pptx.write({ outputType: 'blob' });
+      // The zip step used to sit silent for minutes. JSZip reports percent
+      // per file; feed it to the same bar so it is obvious work is happening.
+      var zipT0 = Date.now();
+      window.ZIP_PROGRESS = function (m) {
+        var pct = 96 + (m && m.percent ? (m.percent / 100) * 3 : 0);
+        var secs = Math.round((Date.now() - zipT0) / 1000);
+        updateProgress(pct, 'Packing PPT... ' + Math.round((m && m.percent) || 0) + '%  (' + secs + 's)');
+      };
+      try {
+        blob = await pptx.write({ outputType: 'blob' });
+      } finally {
+        window.ZIP_PROGRESS = null;
+      }
       
       updateProgress(98, 'Starting download...');
       await new Promise(resolve => setTimeout(resolve, 50));
