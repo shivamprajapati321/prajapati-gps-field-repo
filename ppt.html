@@ -1615,6 +1615,7 @@ async function loadVehicles() {
     
     state.vehicles = Object.values(grouped);
     state.vehicles.forEach(v => v.photos.sort((a, b) => (a.photo_number || 0) - (b.photo_number || 0)));
+    sortVehiclesBySerial(state.vehicles);
     
     // ─── ENRICH FROM SUREPASS CACHE (22-May-2026) ───
     // Pull owner_name + contact_number from prajapati_vehicle_lookup
@@ -2246,6 +2247,38 @@ function updateProgress(percent, text) {
 }
 
 // Get serial number for a vehicle (from grouped value or any of its photos)
+// ══════════════════════════════════════════════════════════════
+// SERIAL ORDER
+//
+// serial_number is a TEXT column (all pure digits, up to 3 chars, e.g.
+// "00", "07", "142"). Sorting it as text gives 1, 10, 100, 2 — so it has
+// to be compared numerically. Vehicles with no serial go last rather
+// than first, otherwise a handful of blanks would head the client's
+// report. Preview table, Excel and PPT all iterate state.vehicles, so
+// sorting it once puts every output in the same order.
+// ══════════════════════════════════════════════════════════════
+function serialNum(v) {
+  var s = vehicleSerial(v);
+  if (s === '' || s === null || s === undefined) return null;
+  var n = parseInt(String(s).replace(/\D/g, ''), 10);
+  return isNaN(n) ? null : n;
+}
+
+function sortVehiclesBySerial(list) {
+  list.sort(function (a, b) {
+    var sa = serialNum(a), sb = serialNum(b);
+    if (sa === null && sb === null) {
+      // no serial on either — keep it deterministic instead of arbitrary
+      return String(a.vehicle_number || '').localeCompare(String(b.vehicle_number || ''));
+    }
+    if (sa === null) return 1;    // blanks last
+    if (sb === null) return -1;
+    if (sa !== sb) return sa - sb;
+    return String(a.vehicle_number || '').localeCompare(String(b.vehicle_number || ''));
+  });
+  return list;
+}
+
 function vehicleSerial(v){
   if (v.serial_number) return v.serial_number;
   if (v.photos) { for (var i=0;i<v.photos.length;i++){ if(v.photos[i].serial_number) return v.photos[i].serial_number; } }
