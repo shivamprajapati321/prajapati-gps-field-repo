@@ -412,6 +412,38 @@ const HEADERS = {
   'Content-Type': 'application/json'
 };
 
+
+// ══════════════════════════════════════════════════════════════
+// PostgREST caps every response server-side (1000 rows on this project)
+// no matter how large a limit= the URL asks for, and it does so silently.
+// prajapati_stitching_log passed 1000 rows, so the newest ~218 entries
+// simply stopped arriving and campaigns showed 0 stitched against work
+// that had actually been done. Page through instead of trusting limit=.
+// ══════════════════════════════════════════════════════════════
+async function apiAll(path, pageSize) {
+  pageSize = pageSize || 1000;
+  var base = path
+    .replace(/([?&])limit=\d+/gi, '$1')
+    .replace(/([?&])offset=\d+/gi, '$1')
+    .replace(/([?&])&+/g, '$1')
+    .replace(/[?&]$/, '');
+  if (/[?&]order=/.test(base)) {
+    if (!/[?&]order=[^&]*\bid\b/.test(base)) base = base.replace(/([?&]order=[^&]*)/, '$1,id.asc');
+  } else {
+    base += (base.indexOf('?') === -1 ? '?' : '&') + 'order=id.asc';
+  }
+  var sep = base.indexOf('?') === -1 ? '?' : '&';
+  var all = [], offset = 0;
+  for (;;) {
+    var batch = await api(base + sep + 'limit=' + pageSize + '&offset=' + offset);
+    if (!batch || !batch.length) break;
+    all = all.concat(batch);
+    if (batch.length < pageSize) break;
+    offset += pageSize;
+  }
+  return all;
+}
+
 async function api(path, opts = {}) {
   const res = await fetch(SUPABASE_URL + path, { ...opts, headers: { ...HEADERS, ...(opts.headers || {}) } });
   if (!res.ok) throw new Error('API ' + res.status + ': ' + await res.text());
@@ -1026,10 +1058,10 @@ async function ensureProdData() {
   if (state.prodLoaded) return;
   try {
     var res = await Promise.all([
-      api('/rest/v1/trial_work_logs?stage=eq.printing&select=*&limit=20000').catch(function(){ return []; }),
-      api('/rest/v1/prajapati_stitching_log?select=*&limit=20000').catch(function(){ return []; }),
-      api('/rest/v1/execution_daily_log?select=*&limit=20000').catch(function(){ return []; }),
-      api('/rest/v1/trial_campaigns?select=*&limit=2000').catch(function(){ return []; })
+      apiAll('/rest/v1/trial_work_logs?stage=eq.printing&select=*').catch(function(){ return []; }),
+      apiAll('/rest/v1/prajapati_stitching_log?select=*').catch(function(){ return []; }),
+      apiAll('/rest/v1/execution_daily_log?select=*').catch(function(){ return []; }),
+      apiAll('/rest/v1/trial_campaigns?select=*').catch(function(){ return []; })
     ]);
     state.printLogs = res[0] || [];
     state.stitchLogs = res[1] || [];

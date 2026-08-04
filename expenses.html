@@ -676,6 +676,38 @@ function fmt(n){ return '₹' + Math.round(n||0).toLocaleString('en-IN'); }
 function toast(msg){ var t=$('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(function(){t.classList.remove('show');},2600); }
 function todayIST(){ return new Date(new Date().getTime()+5.5*3600*1000).toISOString().slice(0,10); }
 
+
+// ══════════════════════════════════════════════════════════════
+// PostgREST caps every response server-side (1000 rows on this project)
+// no matter how large a limit= the URL asks for, and it does so silently.
+// prajapati_stitching_log passed 1000 rows, so the newest ~218 entries
+// simply stopped arriving and campaigns showed 0 stitched against work
+// that had actually been done. Page through instead of trusting limit=.
+// ══════════════════════════════════════════════════════════════
+async function apiAll(path, pageSize) {
+  pageSize = pageSize || 1000;
+  var base = path
+    .replace(/([?&])limit=\d+/gi, '$1')
+    .replace(/([?&])offset=\d+/gi, '$1')
+    .replace(/([?&])&+/g, '$1')
+    .replace(/[?&]$/, '');
+  if (/[?&]order=/.test(base)) {
+    if (!/[?&]order=[^&]*\bid\b/.test(base)) base = base.replace(/([?&]order=[^&]*)/, '$1,id.asc');
+  } else {
+    base += (base.indexOf('?') === -1 ? '?' : '&') + 'order=id.asc';
+  }
+  var sep = base.indexOf('?') === -1 ? '?' : '&';
+  var all = [], offset = 0;
+  for (;;) {
+    var batch = await api(base + sep + 'limit=' + pageSize + '&offset=' + offset);
+    if (!batch || !batch.length) break;
+    all = all.concat(batch);
+    if (batch.length < pageSize) break;
+    offset += pageSize;
+  }
+  return all;
+}
+
 async function api(path, opts){
   opts = opts || {};
   var headers = { apikey:SUPABASE_KEY, Authorization:'Bearer '+SUPABASE_KEY, 'Content-Type':'application/json' };
@@ -2055,7 +2087,7 @@ async function exportExpensesPDF(){
 // ════════ ADVANCES (admin) ════════
 var _advances = [];
 function loadAdvancesAdmin(){
-  api('/prajapati_advances?select=*&order=requested_at.desc&limit=5000')
+  apiAll('/prajapati_advances?select=*&order=requested_at.desc')
     .then(function(rows){
       _advances = rows || [];
       renderAdvances();

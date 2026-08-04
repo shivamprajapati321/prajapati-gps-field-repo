@@ -4635,7 +4635,7 @@ window.__myCampKeys = null;
 window.__myCampSet = null;
 // Resolve campaigns owned by the current user (created_by === my id).
 function dashLoadMyCampaigns() {
-  return api('/rest/v1/trial_campaigns?select=*&limit=2000')
+  return apiAll('/rest/v1/trial_campaigns?select=*')
     .then(function(camps){
       camps = camps || [];
       var myId = String((state.admin && state.admin.id) || '');
@@ -5682,8 +5682,8 @@ function loadOutstandingSummary() {
     return;
   }
   Promise.all([
-    api('/rest/v1/execution_daily_log?select=member_name,member_phone,total_amount&limit=20000').catch(function(){ return []; }),
-    api('/rest/v1/execution_payments?select=member_phone,amount&limit=20000').catch(function(){ return []; })
+    apiAll('/rest/v1/execution_daily_log?select=member_name,member_phone,total_amount').catch(function(){ return []; }),
+    apiAll('/rest/v1/execution_payments?select=member_phone,amount').catch(function(){ return []; })
   ]).then(function(res){
     var logs = res[0] || [], pays = res[1] || [];
     var earned = {}, paid = {}, names = {};
@@ -5784,9 +5784,9 @@ function loadCampDetail(cid) {
 
   Promise.all([
     apiAll('/rest/v1/trial_photos?select=vehicle_number,mode&campaign_key=eq.' + encodeURIComponent(key) + '&deleted_at=is.null').catch(function(){ return []; }),
-    api('/rest/v1/prajapati_stitching_log?select=*&limit=20000').catch(function(){ return []; }),
-    api('/rest/v1/trial_work_logs?select=*&limit=20000').catch(function(){ return []; }),
-    api('/rest/v1/execution_daily_log?select=*&limit=20000').catch(function(){ return []; })
+    apiAll('/rest/v1/prajapati_stitching_log?select=*').catch(function(){ return []; }),
+    apiAll('/rest/v1/trial_work_logs?select=*').catch(function(){ return []; }),
+    apiAll('/rest/v1/execution_daily_log?select=*').catch(function(){ return []; })
   ]).then(function(res){
     var photos = res[0]||[], stitch = res[1]||[], print = res[2]||[], exec = res[3]||[];
     var stages = campStages(c);   // which stages this job type needs
@@ -5949,10 +5949,10 @@ function openCampaignDetail(campId, campKey) {
   Promise.all([
     apiAll('/rest/v1/trial_photos?select=vehicle_number,mode,city&campaign_key=eq.' + encodeURIComponent(campKey) + '&deleted_at=is.null').catch(function(){ return []; }),
     api('/rest/v1/trial_campaign_designs?select=*&campaign_id=eq.' + encodeURIComponent(campId)).catch(function(){ return []; }),
-    api('/rest/v1/prajapati_stitching_log?select=*&limit=20000').catch(function(){ return []; }),
-    api('/rest/v1/trial_work_logs?select=*&limit=20000').catch(function(){ return []; }),
-    api('/rest/v1/trial_team_members?select=id,name,phone&limit=2000').catch(function(){ return []; }),
-    api('/rest/v1/prajapati_dispatches?select=*&limit=20000').catch(function(){ return []; })
+    apiAll('/rest/v1/prajapati_stitching_log?select=*').catch(function(){ return []; }),
+    apiAll('/rest/v1/trial_work_logs?select=*').catch(function(){ return []; }),
+    apiAll('/rest/v1/trial_team_members?select=id,name,phone').catch(function(){ return []; }),
+    apiAll('/rest/v1/prajapati_dispatches?select=*').catch(function(){ return []; })
   ]).then(function(res){
     var photos = res[0]||[], designs = res[1]||[], stitch = res[2]||[], print = res[3]||[], members = res[4]||[], dispatches = res[5]||[];
     var idName = {};
@@ -6153,7 +6153,7 @@ function loadCampaignPulse() {
   var b = dashUtcBounds(R.from, R.to);
 
   Promise.all([
-    api('/rest/v1/trial_campaigns?select=*&limit=3000').catch(function(){ return []; }),
+    apiAll('/rest/v1/trial_campaigns?select=*').catch(function(){ return []; }),
     loadJobTypes()
   ]).then(function(res){
     var camps = (res[0] || []).filter(function(c){ return dashInScope(c.key || c.id); });
@@ -6192,7 +6192,7 @@ function loadCampaignPulse() {
     if (el) el.textContent = fmtShortINR(total);
   }).catch(function(){
     // Fallback: campaigns ke outstanding se
-    api('/rest/v1/trial_campaigns?select=outstanding,total_value,received&limit=3000').then(function(rows){
+    apiAll('/rest/v1/trial_campaigns?select=outstanding,total_value,received').then(function(rows){
       var total = (rows||[]).reduce(function(s,r){
         var o = Number(r.outstanding);
         if (!o && r.total_value) o = (Number(r.total_value)||0) - (Number(r.received)||0);
@@ -6331,7 +6331,7 @@ function loadDashStats() {
     });
 
   // ── New campaigns launched in range ──
-  api('/rest/v1/trial_campaigns?select=*&limit=2000')
+  apiAll('/rest/v1/trial_campaigns?select=*')
     .then(function(camps){
       camps = (camps || []).filter(function(c){ return dashInScope(c.key || c.campaign_key || c.id); });
       var inRange = camps.filter(function(c){
@@ -6500,7 +6500,7 @@ function loadTopPerformers() {
 
   } else if (mode === 'stitching') {
     // Stitching: prajapati_stitching_log grouped by master_name, sum quantity
-    api('/rest/v1/prajapati_stitching_log?select=*&limit=20000')
+    apiAll('/rest/v1/prajapati_stitching_log?select=*')
       .then(function(logs){
         logs = (logs||[]).filter(function(l){
           var raw = l.log_date || l.date || l.created_at || '';
@@ -6523,8 +6523,8 @@ function loadTopPerformers() {
   } else if (mode === 'printing') {
     // Printing: trial_work_logs grouped by operator. operator_id → name via team list.
     Promise.all([
-      api('/rest/v1/trial_work_logs?select=*&limit=20000').catch(function(){ return []; }),
-      api('/rest/v1/trial_team_members?select=id,name,phone&limit=2000').catch(function(){ return []; })
+      apiAll('/rest/v1/trial_work_logs?select=*').catch(function(){ return []; }),
+      apiAll('/rest/v1/trial_team_members?select=id,name,phone').catch(function(){ return []; })
     ]).then(function(res){
       var logs = res[0]||[], members = res[1]||[];
       var idName = {};
@@ -12168,7 +12168,7 @@ function handleBulkFile(file) {
       }
       
       // Fetch existing vehicles for duplicate detection
-      api('/rest/v1/prajapati_vehicle_lookup?select=vehicle_number&limit=20000').then(function(existing) {
+      apiAll('/rest/v1/prajapati_vehicle_lookup?select=vehicle_number').then(function(existing) {
         var existingSet = {};
         (existing || []).forEach(function(e){ existingSet[(e.vehicle_number || '').toUpperCase()] = true; });
         p4state.bulkExistingVehicles = existingSet;
@@ -12809,7 +12809,7 @@ async function downloadStaffReport() {
     // campaigns load karo taaki null-name photos ka naam key se resolve ho
     if (!state.campaigns || !state.campaigns.length) {
       try {
-        var camps = await api('/rest/v1/trial_campaigns?select=*&limit=2000');
+        var camps = await apiAll('/rest/v1/trial_campaigns?select=*');
         state.campaigns = (camps||[]).map(function(c){ c.key = c.key || c.campaign_key || c.id; return c; });
       } catch(ce){ console.warn('campaigns preload', ce); }
     }
