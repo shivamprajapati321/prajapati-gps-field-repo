@@ -1,94 +1,70 @@
-// /api/debug.js
-// Debug endpoint - shows raw Findr API response
-// Usage: /api/debug?plate=MH14GC3763
+// ═══════════════════════════════════════════════════════════════════════════
+// /api/debug.js — Diagnostic endpoint
+// Tests Findr API directly, shows exact response (helpful for IP whitelist issue)
+// Usage: /api/debug?plate=MH14HM8257
+// ═══════════════════════════════════════════════════════════════════════════
 
-const https = require('https');
-
-function cleanPlate(p) {
-  return String(p || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-}
-
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   
-  let plate = req.query.plate || '';
-  if (!plate && req.url) {
-    const match = req.url.match(/\/api\/debug\/([^?\/]+)/);
-    if (match) plate = match[1];
-  }
-  plate = cleanPlate(plate);
+  const plate = (req.query.plate || 'MH14HM8257').toString().toUpperCase().replace(/[^A-Z0-9]/g, '');
   
-  if (!plate || plate.length < 4) {
-    return res.status(400).json({
-      error: 'Use: /api/debug?plate=MH14GC3763'
-    });
-  }
+  const FINDR_TOKEN = process.env.FINDR_TOKEN;
   
-  const FINDR_URL = process.env.FINDR_URL || 'https://bifrost.unifers.ai/enrich/get-vehicle-details-v4';
-  const FINDR_TOKEN = process.env.FINDR_TOKEN || '';
+  const diagnostics = {
+    timestamp: new Date().toISOString(),
+    plate_tested: plate,
+    env_check: {
+      findr_token_configured: !!FINDR_TOKEN,
+      findr_token_length: FINDR_TOKEN ? FINDR_TOKEN.length : 0,
+      findr_token_preview: FINDR_TOKEN ? FINDR_TOKEN.substring(0, 20) + '...' : 'MISSING'
+    },
+    vercel_region: process.env.VERCEL_REGION || 'unknown',
+    findr_test: null
+  };
   
   if (!FINDR_TOKEN) {
-    return res.status(500).json({
-      error: 'FINDR_TOKEN not configured',
-      hint: 'Add FINDR_TOKEN env var in Vercel'
-    });
+    diagnostics.findr_test = { error: 'FINDR_TOKEN env var not set in Vercel dashboard' };
+    return res.status(200).json(diagnostics);
   }
   
-  const body = JSON.stringify({
-    Vehicle_Number: plate,
-    Concent_Text: 'I authorize the use of this data for verification purposes.',
-    Concent: 'Y'
-  });
-  
-  const url = new URL(FINDR_URL);
-  
-  const result = await new Promise((resolve) => {
-    const req2 = https.request({
-      hostname: url.hostname,
-      port: 443,
-      path: url.pathname,
+  try {
+    const startTime = Date.now();
+    const findrResp = await fetch('https://bifrost.unifers.ai/enrich/get-vehicle-details-v4', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': FINDR_TOKEN,
-        'Content-Length': body.length
+        'Authorization': FINDR_TOKEN
       },
-      timeout: 15000
-    }, (response) => {
-      let data = '';
-      response.on('data', (chunk) => data += chunk);
-      response.on('end', () => {
-        let parsed;
-        try { parsed = JSON.parse(data); } catch (e) { parsed = data; }
-        resolve({
-          status: response.statusCode,
-          headers: response.headers,
-          body: parsed
-        });
-      });
+      body: JSON.stringify({
+        Vehicle_Number: plate,
+        Concent_Text: 'Debug test',
+        Concent: 'Y'
+      })
     });
     
-    req2.on('error', (e) => resolve({ error: e.message }));
-    req2.on('timeout', () => {
-      req2.destroy();
-      resolve({ error: 'Request timeout' });
-    });
-    req2.write(body);
-    req2.end();
-  });
+    const text = await findrResp.text();
+    const duration = Date.now() - startTime;
+    
+    diagnostics.findr_test = {
+      status: findrResp.status,
+      ok: findrResp.ok,
+      duration_ms: duration,
+      headers: Object.fromEntries(findrResp.headers.entries()),
+      response_body: text.substring(0, 1000),
+      response_size: text.length
+    };
+    
+    // Common error detection
+    if (text.includes('not in allowlist') || text.includes('whitelist')) {
+      diagnostics.diagnosis = '⚠️ IP WHITELIST ISSUE — Vercel IP needs to be added to Findr allowlist. Contact Unifers.ai support.';
+    } else if (findrResp.ok) {
+      diagnostics.diagnosis = '✅ Findr API working from this Vercel deployment';
+    }
+    
+  } catch (err) {
+    diagnostics.findr_test = { error: err.message };
+  }
   
-  res.json({
-    debug: 'Findr API Direct Test',
-    plate: plate,
-    requestSentTo: FINDR_URL,
-    tokenPrefix: FINDR_TOKEN.substring(0, 30) + '...',
-    tokenLength: FINDR_TOKEN.length,
-    response: result,
-    parseAttempts: result.body ? {
-      'r.data.result.owner_details.name': result.body?.data?.result?.owner_details?.name,
-      'r.result.owner_details.name': result.body?.result?.owner_details?.name,
-      'r.owner_details.name': result.body?.owner_details?.name,
-      'r.data.owner_details.name': result.body?.data?.owner_details?.name
-    } : 'no body to parse'
-  });
-};
+  return res.status(200).json(diagnostics);
+}

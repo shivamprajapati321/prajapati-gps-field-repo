@@ -1,177 +1,129 @@
-// /api/vehicle.js
-// Vercel Serverless Function: Single Vehicle Lookup via Findr
-//
-// Usage:
-//   GET /api/vehicle?plate=MH14GC3763
-//   GET /api/vehicle/MH14GC3763 (with rewrite)
-//
-// Env vars needed in Vercel:
-//   FINDR_URL    - Findr API endpoint
-//   FINDR_TOKEN  - JWT token
+// ═══════════════════════════════════════════════════════════════════════════
+// /api/vehicle.js — Vercel Serverless Function
+// Proxies Findr API to fetch vehicle owner details
+// Hides JWT token (env var) + handles CORS
+// ═══════════════════════════════════════════════════════════════════════════
 
-const https = require('https');
-
-// In-memory cache (resets on cold start, but Vercel keeps warm)
-const cache = new Map();
-const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
-
-function cleanPlate(p) {
-  return String(p || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-}
-
-function isMasked(name) {
-  if (!name) return false;
-  return /[*X]{2,}/i.test(name);
-}
-
-function formatName(name) {
-  if (!name) return null;
-  return name.split(/\s+/).map(w => 
-    w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
-  ).join(' ');
-}
-
-// Call Findr API
-function callFindr(plate) {
-  const FINDR_URL = process.env.FINDR_URL || 'https://bifrost.unifers.ai/enrich/get-vehicle-details-v4';
-  const FINDR_TOKEN = process.env.FINDR_TOKEN || '';
-  const FINDR_CONSENT = process.env.FINDR_CONSENT || 'Y';
-  
-  return new Promise((resolve, reject) => {
-    const body = JSON.stringify({
-      Vehicle_Number: plate,
-      Concent_Text: 'I authorize the use of this data for verification purposes.',
-      Concent: FINDR_CONSENT
-    });
-    
-    const url = new URL(FINDR_URL);
-    const options = {
-      hostname: url.hostname,
-      port: 443,
-      path: url.pathname + url.search,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': FINDR_TOKEN,
-        'Content-Length': body.length
-      },
-      timeout: 15000
-    };
-    
-    const req = https.request(options, (res) => {
-      let data = '';
-      res.on('data', (chunk) => data += chunk);
-      res.on('end', () => {
-        try {
-          const parsed = JSON.parse(data);
-          resolve({ status: res.statusCode, data: parsed });
-        } catch (e) {
-          resolve({ status: res.statusCode, data: null, raw: data });
-        }
-      });
-    });
-    
-    req.on('error', reject);
-    req.on('timeout', () => {
-      req.destroy();
-      reject(new Error('Request timeout'));
-    });
-    
-    req.write(body);
-    req.end();
-  });
-}
-
-module.exports = async (req, res) => {
-  // CORS
+export default async function handler(req, res) {
+  // CORS — verifier.html browser se direct call kar sakega
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
   
-  // Get plate from query OR path
-  let plate = req.query.plate || '';
-  
-  // If using /api/vehicle/PLATE pattern (via rewrite)
-  if (!plate && req.url) {
-    const match = req.url.match(/\/api\/vehicle\/([^?\/]+)/);
-    if (match) plate = match[1];
+  if (req.method !== 'GET') {
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
   
-  plate = cleanPlate(plate);
+  // Plate number extract karo
+  // Format 1: /api/vehicle?plate=MH14GC3763
+  // Format 2: /api/vehicle/MH14GC3763 (works via Vercel rewrites)
+  let plate = (req.query.plate || '').toString().toUpperCase().trim();
+  
+  // Fallback — agar path se aaye
+  if (!plate && req.url) {
+    const urlParts = req.url.split('?')[0].split('/').filter(Boolean);
+    const last = urlParts[urlParts.length - 1];
+    if (last && last !== 'vehicle') plate = decodeURIComponent(last).toUpperCase().trim();
+  }
+  
+  // Clean — sirf A-Z aur 0-9
+  plate = plate.replace(/[^A-Z0-9]/g, '');
   
   if (!plate || plate.length < 4) {
-    return res.status(400).json({
-      success: false,
-      error: 'Invalid plate. Use: /api/vehicle?plate=MH14GC3763'
+    return res.status(400).json({ success: false, error: 'Invalid plate number' });
+  }
+  
+  const FINDR_TOKEN = process.env.FINDR_TOKEN;
+  if (!FINDR_TOKEN) {
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Server not configured: FINDR_TOKEN env var missing' 
     });
   }
   
-  // Check cache
-  const cached = cache.get(plate);
-  if (cached && (Date.now() - cached.ts) < CACHE_TTL) {
-    return res.json({ success: true, source: 'cache', data: cached.data });
-  }
-  
-  // Check token configured
-  if (!process.env.FINDR_TOKEN) {
-    return res.status(500).json({
-      success: false,
-      error: 'FINDR_TOKEN not configured in Vercel environment variables',
-      hint: 'Add FINDR_TOKEN in Vercel project settings'
-    });
-  }
-  
-  // Call Findr
   try {
-    const result = await callFindr(plate);
+    const findrResp = await fetch('https://bifrost.unifers.ai/enrich/get-vehicle-details-v4', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': FINDR_TOKEN  // Raw JWT, NO "Bearer " prefix
+      },
+      body: JSON.stringify({
+        Vehicle_Number: plate,
+        Concent_Text: 'I agree to fetch vehicle details for verification purposes',
+        Concent: 'Y'
+      })
+    });
     
-    if (result.status !== 200) {
-      return res.json({
+    const text = await findrResp.text();
+    
+    // Network/auth/whitelist error
+    if (!findrResp.ok) {
+      return res.status(200).json({
         success: false,
-        error: 'Findr API returned status ' + result.status,
-        httpStatus: result.status,
-        response: result.data || result.raw,
-        plate: plate
+        source: 'findr',
+        plate: plate,
+        status: findrResp.status,
+        error: `Findr API ${findrResp.status}: ${text.substring(0, 300)}`
       });
     }
     
-    // Try multiple response paths
-    const r = result.data;
-    const dataObj = r?.data?.result || r?.result || r?.data || r || {};
-    const owner = dataObj.owner_details || dataObj.ownerDetails || dataObj.owner || {};
-    const vehicle = dataObj.vehicle_details || dataObj.vehicleDetails || dataObj.vehicle || {};
-    const office = dataObj.office_details || dataObj.officeDetails || dataObj.rto_details || {};
+    // Parse JSON safely
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      return res.status(200).json({ 
+        success: false, 
+        source: 'findr', 
+        plate: plate,
+        error: 'Invalid JSON from Findr',
+        raw: text.substring(0, 300) 
+      });
+    }
     
-    const rawName = owner.name || owner.owner_name || owner.full_name || dataObj.owner_name || null;
-    const mobile = owner.mobile || owner.phone || owner.contact || owner.mobile_no || dataObj.mobile || null;
+    // Findr response wrapper unwrap karo — alag levels me data ho sakta hai
+    const result = data?.data || data?.result || data?.response || data;
     
-    const data = {
+    // Multiple possible field name variations (Findr APIs vary)
+    const ownerName = result.owner_name || result.ownerName || result.Owner_Name || 
+                      result.owner || result.ownername || null;
+    const mobile = result.mobile || result.phone || result.Mobile_Number || 
+                   result.mobile_number || result.contact || null;
+    const maker = result.maker || result.manufacturer || result.Maker || 
+                  result.vehicle_maker || null;
+    const model = result.model || result.Model || result.vehicle_model || null;
+    const rto = result.rto || result.RTO || result.registered_at || 
+                result.rto_name || null;
+    const regDate = result.registration_date || result.regDate || 
+                    result.Registration_Date || result.reg_date || null;
+    const isMasked = result.is_masked || result.isMasked || false;
+    
+    return res.status(200).json({
+      success: true,
+      source: 'findr',
       plate: plate,
-      ownerName: rawName ? (!isMasked(rawName) ? formatName(rawName) : rawName) : null,
-      mobile: mobile,
-      maker: vehicle.maker || vehicle.make || vehicle.manufacturer || null,
-      model: vehicle.model || vehicle.vehicle_model || null,
-      regDate: vehicle.registration_date || vehicle.reg_date || null,
-      fuelType: vehicle.fuel_type || vehicle.fuelType || null,
-      rto: office.rto || office.office_name || dataObj.rto || null,
-      isMasked: isMasked(rawName),
-      creditsUsed: r?.data?.creditUsed || r?.creditUsed || 0
-    };
-    
-    // Cache it
-    cache.set(plate, { data, ts: Date.now() });
-    
-    return res.json({ success: true, source: 'findr', data });
+      data: {
+        ownerName: ownerName,
+        mobile: mobile,
+        maker: maker,
+        model: model,
+        rto: rto,
+        regDate: regDate,
+        isMasked: isMasked
+      },
+      raw: data  // Full response for debugging
+    });
     
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      error: err.message,
-      plate: plate
+    return res.status(500).json({ 
+      success: false, 
+      plate: plate,
+      error: err.message 
     });
   }
-};
+}
