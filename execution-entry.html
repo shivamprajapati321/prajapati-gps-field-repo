@@ -1615,7 +1615,7 @@ async function loadData() {
     const [campaigns, members, rates] = await Promise.all([
       api('/rest/v1/trial_campaigns?active=eq.true&select=key,name,branding_mode&order=name.asc'),
       api('/rest/v1/trial_team_members?active=eq.true&select=phone,name,role&order=name.asc'),
-      api('/rest/v1/execution_member_rates?active=eq.true&select=member_phone,member_name,media_type,rate_per_unit&order=member_name.asc')
+      api('/rest/v1/execution_member_rates?active=eq.true&select=member_phone,member_name,media_type,rate_per_unit,expenses_included&order=member_name.asc')
     ]);
     
     state.campaigns = campaigns || [];
@@ -1987,6 +1987,7 @@ function renderRow(r, i) {
                  step="0.5"
                  oninput="updateNumber(${i}, 'rate', this.value)"
                  onkeydown="handleKey(event, ${i})">
+          <div style="font-size:11px;margin-top:3px;line-height:1.4">${rateHint(r)}</div>
         </div>
         
         <div class="entry-field">
@@ -2067,6 +2068,7 @@ function setMode(mode) {
 
 function setMedia(idx, mediaKey) {
   state.rows[idx].media = mediaKey;
+  applyMasterRate(idx);   // rate differs per media (auto_hood vs flex)
   renderTable();
   saveDraftSilent();
 }
@@ -2111,9 +2113,55 @@ function onExecDealer(idx, value) {
 function selectMember(idx, phone, name) {
   state.rows[idx].member = phone;
   state.rows[idx].memberName = name;
+  applyMasterRate(idx);
   closeAllDropdowns();
   renderTable();
   saveDraftSilent();
+}
+
+// ══════════════════════════════════════════════════════════════
+// RATE AUTO-FILL
+//
+// The rate box started empty on every row, so whoever was entering had to
+// remember each person's rate. Ankit's ₹85 went in as ₹50 on all 37 of his
+// entries (₹29,575 short) and two of Mubarak's ₹120 rows went in at ₹50.
+//
+// The agreed rate now lands in the box by itself — but stays editable,
+// because a genuine one-off does happen. What changes is that an edit is
+// now visible: the row marks itself overridden and the save records why,
+// instead of a wrong rate passing silently.
+// ══════════════════════════════════════════════════════════════
+function masterRateFor(memberPhone, mediaType) {
+  if (!memberPhone) return null;
+  return state.rates.find(r => r.member_phone === memberPhone
+                            && r.media_type === (mediaType || 'auto_hood')) || null;
+}
+
+function applyMasterRate(idx) {
+  const row = state.rows[idx];
+  const m = masterRateFor(row.member, row.media);
+  if (!m) { row.autoRate = null; return; }
+  // Only fill when untouched or still holding a previous auto value —
+  // never clobber a rate the user typed on purpose.
+  const cur = String(row.rate || '').trim();
+  if (cur === '' || cur === '0' || String(row.autoRate || '') === cur) {
+    row.rate = String(m.rate_per_unit);
+  }
+  row.autoRate = String(m.rate_per_unit);
+  row.expInc = !!m.expenses_included;
+}
+
+function rateHint(r) {
+  if (!r.member) return '';
+  const m = masterRateFor(r.member, r.media);
+  if (!m) return '<span style="color:#94a3b8">rate set nahi hai</span>';
+  const cur = parseFloat(r.rate);
+  const std = parseFloat(m.rate_per_unit);
+  const inc = m.expenses_included ? ' · expenses included' : '';
+  if (!isNaN(cur) && cur !== std) {
+    return '<span style="color:#b45309">badla gaya — normal \u20b9' + std + inc + '</span>';
+  }
+  return '<span style="color:#64748b">\u20b9' + std + ' set hai' + inc + '</span>';
 }
 
 function selectLocation(idx, locData) {
@@ -2374,6 +2422,10 @@ async function saveAll() {
     quantity: parseFloat(r.qty),
     rate_per_unit: parseFloat(r.rate),
     total_amount: parseFloat(r.qty) * parseFloat(r.rate),
+    rate_overridden: !!(r.autoRate && parseFloat(r.rate) !== parseFloat(r.autoRate)),
+    rate_override_reason: (r.autoRate && parseFloat(r.rate) !== parseFloat(r.autoRate))
+      ? ('Entered \u20b9' + r.rate + ' instead of set rate \u20b9' + r.autoRate)
+      : null,
     source: 'bulk',
     dealer_name: (r.dealerName && r.dealerName.trim()) ? r.dealerName.trim() : null,
     created_by: state.admin.phone,
