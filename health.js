@@ -1,20 +1,20 @@
-// /api/health.js
-// Health check endpoint for Findr server
+// ═══════════════════════════════════════════════════════════════════════════
+// /api/health.js — Findr server connectivity check
+// verifier.html ye endpoint hit karta hai pehle, taaki pata chale server up hai
+// ═══════════════════════════════════════════════════════════════════════════
 
-module.exports = (req, res) => {
+export default function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   
-  res.json({
-    status: 'ok',
-    server: 'Prajapati GPS - Findr API (Vercel Serverless)',
-    findr_configured: !!process.env.FINDR_TOKEN,
-    findr_url: process.env.FINDR_URL || 'default',
-    timestamp: new Date().toISOString(),
-    endpoints: {
-      single: '/api/vehicle?plate=MH14GC3763',
-      bulk: 'POST /api/vehicles {plates: [...]}',
-      debug: '/api/debug?plate=MH14GC3763',
-      health: '/api/health'
-    }
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
+  return res.status(200).json({ 
+    ok: true, 
+    service: 'prajapati-gps-findr-proxy',
+    time: new Date().toISOString(),
+    findr_configured: !!process.env.FINDR_TOKEN
   });
-};
+}
