@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0B1957">
+<title>Sales Trips · Prajapati Advertising</title>
+<script src="/lib/access-guard.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{
+  --navy:#0B1957; --teal:#0E9F8E; --amber:#BA7517; --amber-bg:#FAEEDA;
+  --red:#DC2626; --muted:#8A93A2; --sec:#5A6472; --bd:#E4E9F0;
+  --s0:#F6F8FB; --s1:#EEF2F7;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+     background:var(--s0);color:#1B2430;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1100px;margin:0 auto;padding:16px}
+.top{background:var(--navy);color:#fff;padding:16px 20px;display:flex;
+     justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.top h1{font-size:17px;font-weight:600}
+.top .who{font-size:12px;opacity:.75}
+.tabs{display:flex;gap:8px;margin:16px 0}
+.tab{flex:1;padding:10px;border:1px solid var(--bd);background:#fff;border-radius:9px;
+     font-size:13px;font-weight:600;color:var(--sec);cursor:pointer;text-align:center}
+.tab.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+.card{background:#fff;border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:14px}
+.btn{width:100%;border:none;padding:14px;border-radius:10px;font-size:15px;
+     font-weight:600;cursor:pointer;margin-bottom:9px}
+.btn-go{background:var(--teal);color:#fff}
+.btn-end{background:transparent;color:var(--sec);border:1px solid var(--bd)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.now{background:var(--s1);border-radius:10px;padding:13px;margin-bottom:12px}
+.now .lbl{font-size:11px;color:var(--muted);letter-spacing:.05em}
+.now .val{font-size:16px;font-weight:600;margin-top:2px}
+.now .sub{font-size:12px;color:var(--sec);margin-top:3px}
+input,select,textarea{width:100%;padding:11px;border:1px solid var(--bd);
+     border-radius:9px;font-size:14px;font-family:inherit;margin-bottom:10px}
+label{font-size:12px;color:var(--sec);display:block;margin-bottom:4px}
+.opt{font-weight:400;color:var(--muted)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:9px;margin-bottom:14px}
+.kpi{background:var(--s1);border-radius:9px;padding:11px}
+.kpi .l{font-size:11px;color:var(--sec)}
+.kpi .v{font-size:19px;font-weight:600;margin-top:2px}
+.tl{border-left:2px solid var(--bd);padding-left:16px;margin-left:6px}
+.stop{position:relative;padding-bottom:15px}
+.stop:before{content:'';position:absolute;left:-23px;top:4px;width:10px;height:10px;
+     border-radius:50%;background:var(--teal)}
+.stop.grey:before{background:var(--muted)}
+.stop.brk:before{background:var(--amber)}
+.stop .hd{display:flex;justify-content:space-between;gap:10px}
+.stop .nm{font-size:14px;font-weight:600}
+.stop .tm{font-size:13px;color:var(--sec);white-space:nowrap}
+.stop .mt{font-size:12px;color:var(--sec);margin-top:2px}
+.leg{font-size:11.5px;color:var(--muted);padding-bottom:9px}
+.note{background:var(--amber-bg);color:var(--amber);padding:10px 12px;
+      border-radius:9px;font-size:12.5px;line-height:1.55;margin-top:12px}
+.empty{text-align:center;color:var(--muted);padding:34px 16px;font-size:14px}
+.err{background:#FEE2E2;color:#991B1B;padding:10px 12px;border-radius:9px;
+     font-size:13px;margin-bottom:12px}
+.row{display:flex;gap:9px}.row>*{flex:1}
+.hide{display:none}
+@media(max-width:560px){.wrap{padding:11px}}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div><h1>Sales Trips</h1><div class="who" id="who">…</div></div>
+  <div style="font-size:12px;opacity:.75" id="today"></div>
+</div>
+
+<div class="wrap">
+  <div id="err"></div>
+
+  <div class="tabs">
+    <div class="tab on" id="tabDay"  onclick="show('day')">Aaj ka din</div>
+    <div class="tab"    id="tabHist" onclick="show('hist')">Purane din</div>
+  </div>
+
+  <!-- ── TODAY ── -->
+  <div id="vDay">
+    <div class="card" id="liveCard"></div>
+
+    <div class="card hide" id="formCard">
+      <div id="formTitle" style="font-size:15px;font-weight:600;margin-bottom:11px"></div>
+      <label>Kahan pahunche <span class="opt">— optional</span></label>
+      <input id="fPlace" placeholder="Sharma Motors, Kothrud" autocomplete="off">
+      <label>Client / kaam <span class="opt">— optional</span></label>
+      <input id="fClient" placeholder="Client ka naam ya kaam" autocomplete="off">
+      <label>Type</label>
+      <select id="fType">
+        <option value="meeting">Meeting</option>
+        <option value="break">Break / lunch</option>
+        <option value="other">Aur kuch</option>
+      </select>
+      <label>Note <span class="opt">— optional</span></label>
+      <textarea id="fNote" rows="2" placeholder=""></textarea>
+      <div class="row">
+        <button class="btn btn-end" onclick="closeForm()">Cancel</button>
+        <button class="btn btn-go"  id="fSave" onclick="saveStop()">Save</button>
+      </div>
+    </div>
+
+    <div class="card" id="dayCard"></div>
+  </div>
+
+  <!-- ── HISTORY ── -->
+  <div id="vHist" class="hide">
+    <div class="card">
+      <div class="row">
+        <div><label>Se</label><input type="date" id="hFrom"></div>
+        <div><label>Tak</label><input type="date" id="hTo"></div>
+      </div>
+      <div id="hMemberWrap" class="hide">
+        <label>Member</label>
+        <select id="hMember"></select>
+      </div>
+      <button class="btn btn-go" onclick="loadHistory()">Dikhao</button>
+    </div>
+    <div id="histOut"></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// SALES TRIPS
+//
+// Every point here is recorded by an explicit tap, not by background GPS.
+// The existing ping engine averages 1.8 pings per person per day (Vivek and
+// Ravi record none at all) because Android suspends the PWA — a route can
+// never be reconstructed from that. A tap always fires while the screen is
+// on, so the day survives whatever the OS does to the app afterwards.
+//
+// Trade-off, stated plainly: the road actually taken between two stops is
+// not captured, only the stops themselves. Distance is therefore a
+// straight-line estimate, inflated to approximate real roads (see ROAD_FACTOR).
+// ══════════════════════════════════════════════════════════════
+const SB_URL = 'https://fpbktcgtspqsqpaytslv.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwYmt0Y2d0c3Bxc3FwYXl0c2x2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0MjE5NTgsImV4cCI6MjA2NjAxNzk1OH0.O6P8mS5gTTB8gPMHYYYD3xZPa5RpZ_1-DHCCzL0-BEo';
+
+// Straight-line under-reads real driving by roughly a quarter in city traffic.
+// 1.3 is the usual correction; it keeps reimbursement fair without paying for
+// a routing API on every leg. Swap for a routing call later if disputes start.
+const ROAD_FACTOR = 1.3;
+
+let db, USER, STOPS = [], MEMBERS = [], pendingKind = null;
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,
+  c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function showErr(m){ $('err').innerHTML = '<div class="err">'+esc(m)+'</div>'; }
+function istToday(){
+  const d = new Date(Date.now() + (330 + new Date().getTimezoneOffset())*60000);
+  return d.toISOString().slice(0,10);
+}
+function hhmm(ts){
+  return new Date(ts).toLocaleTimeString('en-IN',
+    { hour:'2-digit', minute:'2-digit', hour12:false, timeZone:'Asia/Kolkata' });
+}
+function mins(a,b){ return Math.round((new Date(b) - new Date(a))/60000); }
+function dur(m){
+  if (m == null) return '';
+  const h = Math.floor(m/60), r = m%60;
+  return h ? (h+'h '+(r?r+'m':'')).trim() : r+'m';
+}
+
+// Haversine, then the road correction.
+function km(aLat,aLng,bLat,bLng){
+  if ([aLat,aLng,bLat,bLng].some(v => v == null)) return 0;
+  const R = 6371, rad = x => x*Math.PI/180;
+  const dLat = rad(bLat-aLat), dLng = rad(bLng-aLng);
+  const h = Math.sin(dLat/2)**2 +
+            Math.cos(rad(aLat))*Math.cos(rad(bLat))*Math.sin(dLng/2)**2;
+  return R * 2 * Math.asin(Math.sqrt(h)) * ROAD_FACTOR;
+}
+
+function getPos(){
+  return new Promise((res, rej) => {
+    if (!navigator.geolocation) return rej(new Error('Is device pe GPS nahi hai'));
+    navigator.geolocation.getCurrentPosition(
+      p => res({ lat:p.coords.latitude, lng:p.coords.longitude, acc:p.coords.accuracy }),
+      e => rej(new Error(e.code === 1
+              ? 'Location ki permission do — settings me app ko allow karo'
+              : 'Location nahi mili, dobara try karo')),
+      { enableHighAccuracy:true, timeout:15000, maximumAge:10000 });
+  });
+}
+
+async function init(){
+  const s = (window.AccessGuard && AccessGuard.getSession) ? AccessGuard.getSession() : null;
+  if (!s || !s.member){ location.href = '/app.html'; return; }
+  USER = s.member;
+  db = window.supabase.createClient(SB_URL, SB_KEY);
+  $('who').textContent = USER.name;
+  $('today').textContent = new Date().toLocaleDateString('en-IN',
+    { weekday:'short', day:'numeric', month:'short' });
+
+  const role = String(USER.role||'').toLowerCase();
+  if (role === 'owner' || role === 'admin' || role === 'operations_manager'){
+    $('hMemberWrap').classList.remove('hide');
+    const { data } = await db.from('trial_team_members')
+      .select('id,name').eq('active', true).order('name');
+    MEMBERS = data || [];
+    $('hMember').innerHTML = '<option value="">Sab</option>' +
+      MEMBERS.map(m => '<option value="'+m.id+'">'+esc(m.name)+'</option>').join('');
+  }
+  $('hFrom').value = istToday();
+  $('hTo').value   = istToday();
+  await loadToday();
+}
+
+async function loadToday(){
+  const { data, error } = await db.from('trial_hr_trips')
+    .select('*').eq('member_id', USER.id).eq('trip_date', istToday())
+    .order('start_time');
+  if (error){ showErr('Load fail: '+error.message); return; }
+  STOPS = data || [];
+  renderLive();
+  renderDay();
+}
+
+function renderLive(){
+  const open = STOPS.find(s => !s.end_time);
+  let h = '';
+  if (!STOPS.length){
+    h = '<div class="now"><div class="lbl">DIN SHURU NAHI HUA</div>'
+      + '<div class="sub">Office se nikalte waqt dabao</div></div>'
+      + '<button class="btn btn-go" onclick="startDay()">Din shuru karo</button>';
+  } else if (open){
+    h = '<div class="now"><div class="lbl">CHAL RAHE HAIN</div>'
+      + '<div class="val">' + esc(open.start_location_name || 'Raste me') + ' se</div>'
+      + '<div class="sub">nikle ' + hhmm(open.start_time)
+      + ' · ' + dur(mins(open.start_time, new Date())) + ' ho gaye</div></div>'
+      + '<button class="btn btn-go" onclick="openForm(\'arrive\')">Pahunch gaya</button>'
+      + '<button class="btn btn-end" onclick="endDay()">Din khatam · office wapas</button>';
+  } else {
+    const last = STOPS[STOPS.length-1];
+    if (last.purpose === 'day_end'){
+      h = '<div class="now"><div class="lbl">DIN KHATAM</div>'
+        + '<div class="val">' + hhmm(last.end_time) + '</div></div>';
+    } else {
+      h = '<div class="now"><div class="lbl">ABHI YAHAN</div>'
+        + '<div class="val">' + esc(last.end_location_name || 'Stop') + '</div>'
+        + '<div class="sub">pahunche ' + hhmm(last.end_time)
+        + ' · ' + dur(mins(last.end_time, new Date())) + ' se</div></div>'
+        + '<button class="btn btn-go" onclick="startLeg()">Nikal raha hoon</button>'
+        + '<button class="btn btn-end" onclick="endDay()">Din khatam · office wapas</button>';
+    }
+  }
+  const done = STOPS.filter(s => s.end_time);
+  if (done.length){
+    const tk = done.reduce((a,s) => a + Number(s.distance_km||0), 0);
+    h += '<div style="display:flex;justify-content:space-between;font-size:12px;'
+       + 'color:var(--sec);border-top:1px solid var(--bd);margin-top:12px;padding-top:11px">'
+       + '<span>Aaj tak</span><span><b>' + tk.toFixed(1) + ' km</b> · '
+       + done.filter(s => s.purpose !== 'day_end').length + ' stop</span></div>';
+  }
+  $('liveCard').innerHTML = h;
+}
+
+async function startDay(){ await beginLeg('Office se nikla'); }
+async function startLeg(){ await beginLeg(null); }
+
+async function beginLeg(label){
+  try {
+    const p = await getPos();
+    const prev = STOPS.filter(s => s.end_time).slice(-1)[0];
+    const { error } = await db.from('trial_hr_trips').insert({
+      member_id: USER.id,
+      trip_date: istToday(),
+      start_time: new Date().toISOString(),
+      start_lat: p.lat, start_lng: p.lng,
+      start_location_name: label || (prev ? prev.end_location_name : null),
+      petrol_rate_per_km: Number(USER.petrol_rate_per_km || 0),
+      status: 'running',
+      approval_status: 'pending'
+    });
+    if (error) throw error;
+    await loadToday();
+  } catch(e){ showErr(e.message); }
+}
+
+function openForm(kind){
+  pendingKind = kind;
+  $('formTitle').textContent = 'Pahunch gaye — kya karna hai?';
+  $('fPlace').value = ''; $('fClient').value = ''; $('fNote').value = '';
+  $('fType').value = 'meeting';
+  $('formCard').classList.remove('hide');
+  $('fPlace').focus();
+}
+function closeForm(){ $('formCard').classList.add('hide'); pendingKind = null; }
+
+async function saveStop(){
+  const btn = $('fSave');
+  btn.disabled = true; btn.textContent = 'Ruko…';
+  try {
+    const p = await getPos();
+    const open = STOPS.find(s => !s.end_time);
+    if (!open) throw new Error('Koi chalu trip nahi mili');
+    const d = km(open.start_lat, open.start_lng, p.lat, p.lng);
+    const m = mins(open.start_time, new Date());
+    const { error } = await db.from('trial_hr_trips').update({
+      end_time: new Date().toISOString(),
+      end_lat: p.lat, end_lng: p.lng,
+      end_location_name: $('fPlace').value.trim() || null,
+      client_name: $('fClient').value.trim() || null,
+      purpose: $('fType').value,
+      notes: $('fNote').value.trim() || null,
+      distance_km: Number(d.toFixed(2)),
+      duration_minutes: m,
+      petrol_amount: Number((d * Number(USER.petrol_rate_per_km || 0)).toFixed(2)),
+      status: 'done'
+    }).eq('id', open.id);
+    if (error) throw error;
+    closeForm();
+    await loadToday();
+  } catch(e){ showErr(e.message); }
+  btn.disabled = false; btn.textContent = 'Save';
+}
+
+async function endDay(){
+  if (!confirm('Din khatam karein?')) return;
+  try {
+    const p = await getPos();
+    const open = STOPS.find(s => !s.end_time);
+    if (open){
+      const d = km(open.start_lat, open.start_lng, p.lat, p.lng);
+      await db.from('trial_hr_trips').update({
+        end_time: new Date().toISOString(),
+        end_lat: p.lat, end_lng: p.lng,
+        end_location_name: 'Office wapas',
+        purpose: 'day_end',
+        distance_km: Number(d.toFixed(2)),
+        duration_minutes: mins(open.start_time, new Date()),
+        petrol_amount: Number((d * Number(USER.petrol_rate_per_km || 0)).toFixed(2)),
+        status: 'done'
+      }).eq('id', open.id);
+    }
+    await loadToday();
+  } catch(e){ showErr(e.message); }
+}
+
+function dayHtml(rows, title){
+  const done = rows.filter(s => s.end_time);
+  if (!done.length) return '<div class="empty">Is din koi trip nahi</div>';
+
+  const totKm = done.reduce((a,s) => a + Number(s.distance_km||0), 0);
+  const totPt = done.reduce((a,s) => a + Number(s.petrol_amount||0), 0);
+  const travel = done.reduce((a,s) => a + (s.duration_minutes||0), 0);
+
+  // Time at a stop = gap between arriving and setting off again.
+  let atStop = 0;
+  for (let i=0; i<done.length-1; i++){
+    if (done[i].end_time && done[i+1].start_time)
+      atStop += Math.max(0, mins(done[i].end_time, done[i+1].start_time));
+  }
+  const first = done[0].start_time, last = done[done.length-1].end_time;
+
+  let h = '';
+  if (title) h += '<div style="font-size:15px;font-weight:600;margin-bottom:3px">'+esc(title)+'</div>';
+  h += '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:13px">'
+     + '<div style="font-size:12px;color:var(--sec)">' + hhmm(first) + ' – ' + hhmm(last) + '</div>'
+     + '<div style="text-align:right"><div style="font-size:20px;font-weight:600">'
+     + totKm.toFixed(1) + ' km</div><div style="font-size:12px;color:var(--sec)">petrol \u20b9'
+     + Math.round(totPt) + '</div></div></div>';
+
+  h += '<div class="kpis">'
+     + '<div class="kpi"><div class="l">Stops</div><div class="v">'
+     + done.filter(s => s.purpose !== 'day_end').length + '</div></div>'
+     + '<div class="kpi"><div class="l">Stop pe</div><div class="v">' + dur(atStop) + '</div></div>'
+     + '<div class="kpi"><div class="l">Travel</div><div class="v">' + dur(travel) + '</div></div>'
+     + '<div class="kpi"><div class="l">Kul</div><div class="v">' + dur(mins(first,last)) + '</div></div>'
+     + '</div>';
+
+  h += '<div class="tl">';
+  h += '<div class="stop grey"><div class="hd"><span class="nm">'
+     + esc(done[0].start_location_name || 'Shuru') + '</span><span class="tm">'
+     + hhmm(done[0].start_time) + '</span></div><div class="mt">nikla</div></div>';
+
+  done.forEach((s,i) => {
+    h += '<div class="leg">\u2193 ' + Number(s.distance_km||0).toFixed(1)
+       + ' km · ' + dur(s.duration_minutes) + ' travel</div>';
+    const cls = s.purpose === 'break' ? 'brk' : (s.purpose === 'day_end' ? 'grey' : '');
+    const nxt = done[i+1];
+    const stay = (nxt && s.end_time && nxt.start_time)
+                 ? Math.max(0, mins(s.end_time, nxt.start_time)) : null;
+    h += '<div class="stop ' + cls + '"><div class="hd"><span class="nm">'
+       + esc(s.end_location_name || 'Stop') + '</span><span class="tm">' + hhmm(s.end_time)
+       + (stay != null ? ' – ' + hhmm(nxt.start_time) : '') + '</span></div>';
+    const bits = [];
+    if (s.client_name) bits.push(esc(s.client_name));
+    if (s.purpose && s.purpose !== 'day_end') bits.push(esc(s.purpose));
+    if (stay != null) bits.push('<b style="color:var(--teal)">' + dur(stay) + '</b>');
+    if (bits.length) h += '<div class="mt">' + bits.join(' · ') + '</div>';
+    if (s.notes) h += '<div class="mt" style="color:var(--muted)">' + esc(s.notes) + '</div>';
+    h += '</div>';
+  });
+  h += '</div>';
+
+  const rate = Number(done[0].petrol_rate_per_km || 0);
+  h += '<div class="note">Petrol \u20b9' + Math.round(totPt) + ' — ' + totKm.toFixed(1)
+     + ' km \u00d7 \u20b9' + rate + '/km. Seedhi doori se ' + ROAD_FACTOR
+     + '\u00d7 karke nikala gaya hai, isliye asli road km ke kareeb rehta hai.</div>';
+  return h;
+}
+
+function renderDay(){ $('dayCard').innerHTML = dayHtml(STOPS, null); }
+
+async function loadHistory(){
+  const from = $('hFrom').value, to = $('hTo').value;
+  if (!from || !to){ showErr('Dono date daalo'); return; }
+  let q = db.from('trial_hr_trips').select('*')
+            .gte('trip_date', from).lte('trip_date', to)
+            .order('trip_date', { ascending:false }).order('start_time');
+  const sel = $('hMember').value;
+  const role = String(USER.role||'').toLowerCase();
+  if (role === 'owner' || role === 'admin' || role === 'operations_manager'){
+    if (sel) q = q.eq('member_id', sel);
+  } else {
+    q = q.eq('member_id', USER.id);   // everyone else sees only their own
+  }
+  const { data, error } = await q;
+  if (error){ showErr('Load fail: '+error.message); return; }
+
+  const rows = data || [];
+  if (!rows.length){ $('histOut').innerHTML = '<div class="card"><div class="empty">Is range me koi trip nahi</div></div>'; return; }
+
+  const byKey = {};
+  rows.forEach(r => {
+    const k = r.trip_date + '||' + r.member_id;
+    (byKey[k] = byKey[k] || []).push(r);
+  });
+  const nameOf = id => (MEMBERS.find(m => m.id === id) || {}).name || '';
+  $('histOut').innerHTML = Object.keys(byKey).sort().reverse().map(k => {
+    const [d, mid] = k.split('||');
+    const who = nameOf(mid);
+    const label = new Date(d+'T00:00:00').toLocaleDateString('en-IN',
+                  { weekday:'short', day:'numeric', month:'short' })
+                  + (who && who !== USER.name ? ' · ' + who : '');
+    return '<div class="card">' + dayHtml(byKey[k], label) + '</div>';
+  }).join('');
+}
+
+function show(v){
+  $('vDay').classList.toggle('hide', v !== 'day');
+  $('vHist').classList.toggle('hide', v !== 'hist');
+  $('tabDay').classList.toggle('on', v === 'day');
+  $('tabHist').classList.toggle('on', v === 'hist');
+}
+
+init();
+</script>
+</body>
+</html>
