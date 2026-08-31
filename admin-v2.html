@@ -3402,6 +3402,7 @@ label {
       </div>
 
       <!-- Campaign-wise view -->
+      <div id="daClientOnField" style="display:none;"></div>
       <div class="da-campview" id="daCampView" style="display:none;">
         <h4><i class="ti ti-chart-bar"></i> Campaign-wise assignment (aaj kaun kis pe)</h4>
         <div id="daCampBars"></div>
@@ -8946,7 +8947,53 @@ function daRenderStats() {
   if ($('daCUnassigned')) $('daCUnassigned').textContent = unassigned;
 }
 
+// A campaign flagged client_on_field means someone from the client side will
+// be standing at the site. Storing that on the campaign is no use unless it
+// reaches whoever is handing out the day's work — so it surfaces here, on the
+// assignment screen, with a number that can be tapped.
+function daRenderClientOnField() {
+  var box = document.getElementById('daClientOnField');
+  if (!box) return;
+  var st = (typeof p_daState !== 'undefined') ? p_daState : {};
+  var camps = st.campaigns || [], map = st.assignMap || {}, members = st.members || [];
+
+  var byKey = {};
+  camps.forEach(function (c) { byKey[c.key] = c; });
+
+  var hits = {};
+  members.forEach(function (m) {
+    var a = map[m.phone];
+    if (!a || !a.campaign_key) return;
+    var c = byKey[a.campaign_key];
+    if (!c || !c.client_on_field) return;
+    if (!hits[c.key]) hits[c.key] = { c: c, who: [] };
+    hits[c.key].who.push(m.name || m.phone);
+  });
+
+  var keys = Object.keys(hits);
+  if (!keys.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+
+  box.style.display = 'block';
+  box.innerHTML = keys.map(function (k) {
+    var c = hits[k].c, who = hits[k].who;
+    var ph = c.client_field_contact_phone || '';
+    return '<div style="background:#E7F7F4;border:1px solid #0E9F8E;border-radius:9px;' +
+           'padding:11px 13px;margin-bottom:8px;">' +
+           '<div style="font-size:13px;font-weight:600;color:#0B5C52;margin-bottom:3px;">' +
+           '\uD83D\uDC40 Client site pe aayega — ' + escapeHtml(c.name || c.key) + '</div>' +
+           '<div style="font-size:13px;color:#0B5C52;">' +
+           escapeHtml(c.client_field_contact_name || 'Client') + ' · ' +
+           (ph ? '<a href="tel:' + escapeHtml(ph) + '" style="color:#0B5C52;font-weight:600">' +
+                 escapeHtml(ph) + '</a>' : '<span style="color:#b45309">number nahi hai</span>') +
+           '</div>' +
+           '<div style="font-size:11.5px;color:#3A7D74;margin-top:4px;">Aaj lage hain: ' +
+           escapeHtml(who.join(', ')) + ' — inhe ye number de dein</div>' +
+           '</div>';
+  }).join('');
+}
+
 function daRenderCampView() {
+  daRenderClientOnField();
   var counts = {};
   p_daState.members.forEach(function(m){
     var a = p_daState.assignMap[m.phone];

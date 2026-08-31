@@ -357,6 +357,41 @@ a{color:inherit;text-decoration:none}
         </div>
         <div class="toggle-switch" id="urgentToggle" onclick="toggleSwitch(this)"></div>
       </div>
+
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <div class="toggle-label">🔢 Serial Number (S.No)</div>
+          <div class="toggle-hint">Har unit ka serial track hoga — PPT aur Excel me Serial No column aayega</div>
+        </div>
+        <div class="toggle-switch" id="serialToggle" onclick="toggleSwitch(this)"></div>
+      </div>
+
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <div class="toggle-label">👀 Client field pe rahega</div>
+          <div class="toggle-hint">Live execution dekhne aayega — contact operations manager ko dikhega</div>
+        </div>
+        <div class="toggle-switch" id="clientFieldToggle" onclick="toggleClientField(this)"></div>
+      </div>
+
+      <div id="clientFieldBox" style="display:none;padding:12px 14px;background:#FFF8E8;border:1px solid #F0D9A8;border-radius:9px;margin-top:8px;">
+        <div style="font-size:12px;color:#8A5B0B;margin-bottom:9px;line-height:1.5;">
+          Ye contact operations manager aur field team ko dikhega, taaki client site pe aaye to unse baat ho sake.
+        </div>
+        <div class="row">
+          <div class="field">
+            <div class="label">Client ka naam <span class="hint">optional</span></div>
+            <input class="input" id="clientFieldName" placeholder="Amit Sharma" autocomplete="off">
+          </div>
+          <div class="field">
+            <div class="label">Contact number <span class="req">*</span></div>
+            <input class="input" id="clientFieldPhone" inputmode="numeric" maxlength="10"
+                   placeholder="10 digit" autocomplete="off"
+                   oninput="this.value=this.value.replace(/\D/g,'')">
+          </div>
+        </div>
+        <div id="clientFieldErr" style="color:#b91c1c;font-size:12px;min-height:15px"></div>
+      </div>
       
     </div>
   </div>
@@ -433,6 +468,35 @@ a{color:inherit;text-decoration:none}
         <div class="pricing-item"><div class="pricing-val" id="priceGst">₹0</div><div class="pricing-lbl">GST</div></div>
         <div class="pricing-item"><div class="pricing-val" id="priceDisc">₹0</div><div class="pricing-lbl">Discount</div></div>
         <div class="pricing-item"><div class="pricing-val" id="priceTotal">₹0</div><div class="pricing-lbl">Grand Total</div></div>
+      </div>
+
+      <div class="row" style="margin-top:14px">
+        <div class="field">
+          <div class="label">Advance / Part Payment (₹)</div>
+          <input class="input" type="number" id="advancePaid" value="0" min="0" oninput="calcBalance()">
+        </div>
+        <div class="field">
+          <div class="label">Outstanding (₹)</div>
+          <input class="input" id="balanceDue" value="₹0" readonly
+                 style="background:#F3F5F9;font-weight:600">
+        </div>
+        <div class="field">
+          <div class="label">Deadline</div>
+          <input class="input" type="date" id="deadlineDate">
+        </div>
+      </div>
+      <div class="field" style="margin-top:10px">
+        <div class="label">Payment Terms <span class="hint">order PDF pe chhapega</span></div>
+        <input class="input" id="paymentTerms" list="ptList"
+               placeholder="50% advance, balance on completion" autocomplete="off">
+        <datalist id="ptList">
+          <option value="50% advance, balance on completion">
+          <option value="100% advance">
+          <option value="Full payment on completion">
+          <option value="30% advance, 40% on production, 30% on completion">
+          <option value="Payment within 15 days of completion">
+          <option value="Payment within 30 days of completion">
+        </datalist>
       </div>
     </div>
   </div>
@@ -535,6 +599,270 @@ const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // ReferenceError and did nothing, so those flags always saved at
 // whatever the markup started with.
 // ══════════════════════════════════════════════════════════════
+// The flag is useless to the operations manager without someone to call,
+// so the number is required the moment the toggle goes on.
+
+// ══════════════════════════════════════════════════════════════
+// ORDER CONFIRMATION PDF
+//
+// Drawn with jsPDF's text API rather than html2canvas. The repo already
+// carries a note that html2canvas crashes on the modern CSS used on these
+// pages (oklch / color-mix / CSS variables), and a screenshot of a form is
+// a poor thing to email anyway — this produces real selectable text.
+// ══════════════════════════════════════════════════════════════
+function goAfterLaunch(){
+  var o = window.__lastOrder || {};
+  window.location.href = o.id ? ('/execution-plan.html?campaign=' + o.id) : '/sales-hub.html';
+}
+
+function loadJsPDF(){
+  return new Promise(function(res, rej){
+    if (window.jspdf && window.jspdf.jsPDF) return res(window.jspdf.jsPDF);
+    var s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.onload = function(){
+      if (window.jspdf && window.jspdf.jsPDF) res(window.jspdf.jsPDF);
+      else rej(new Error('jsPDF load nahi hui'));
+    };
+    s.onerror = function(){ rej(new Error('PDF library load nahi hui — internet check karo')); };
+    document.head.appendChild(s);
+  });
+}
+
+async function downloadOrderPDF(){
+  var o = window.__lastOrder || {};
+  if (!o.id){ alert('Order details nahi mile'); return; }
+  var btn = event && event.target;
+  if (btn){ btn.disabled = true; btn.textContent = 'Ban rahi hai…'; }
+  try {
+    var jsPDF = await loadJsPDF();
+
+    var { data: c } = await db.from('trial_campaigns')
+      .select('*, job_type:trial_campaign_job_types(name), sales:sales_member_id(name, phone)')
+      .eq('id', o.id).single();
+    if (!c) throw new Error('Campaign nahi mila');
+
+    var { data: ds } = await db.from('trial_campaign_designs')
+      .select('design_name, quantity, location_name, location_city, location_address')
+      .eq('campaign_id', o.id).order('sort_order');
+    ds = ds || [];
+
+    var logo = await loadLogoDataUrl();
+
+    var doc = new jsPDF({ unit:'mm', format:'a4' });
+    var W = 210, H = 297, M = 15, y = 0;
+    var num = function(v){ return Number(v || 0).toLocaleString('en-IN',
+      { minimumFractionDigits:2, maximumFractionDigits:2 }); };
+    var dt = function(d){ return d ? new Date(d + 'T00:00:00').toLocaleDateString('en-IN',
+      { day:'2-digit', month:'short', year:'numeric' }) : '—'; };
+
+    // ── header
+    doc.setFillColor(11,25,87); doc.rect(0,0,W,32,'F');
+    if (logo){ try { doc.addImage(logo,'PNG',M,7,17,17); } catch(e){} }
+    doc.setTextColor(255); doc.setFont('helvetica','bold'); doc.setFontSize(15);
+    doc.text('PRAJAPATI ADVERTISING', logo ? M+21 : M, 14);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8);
+    doc.text('Warje Malwadi, Pune 411058  |  www.marstechglobal.com', logo ? M+21 : M, 20);
+    doc.text('PAN India Out-of-Home Advertising', logo ? M+21 : M, 25);
+    doc.setFont('helvetica','bold'); doc.setFontSize(11);
+    doc.text('ORDER CONFIRMATION', W-M, 14, { align:'right' });
+    doc.setFont('helvetica','normal'); doc.setFontSize(8);
+    doc.text('Date: ' + new Date().toLocaleDateString('en-IN',
+      { day:'2-digit', month:'short', year:'numeric' }), W-M, 20, { align:'right' });
+
+    // ── order number band
+    y = 40;
+    doc.setFillColor(231,247,244); doc.rect(M, y-6, W-2*M, 12, 'F');
+    doc.setTextColor(11,92,82); doc.setFont('helvetica','bold'); doc.setFontSize(12);
+    doc.text('Order No: ' + String(c.order_no || ''), M+4, y+2);
+    y += 16;
+
+    // ── two columns: work + client
+    var col = function(x, label, lines){
+      doc.setTextColor(120); doc.setFont('helvetica','normal'); doc.setFontSize(8);
+      doc.text(label, x, y);
+      doc.setTextColor(20); doc.setFont('helvetica','bold'); doc.setFontSize(10);
+      var yy = y + 6;
+      lines.forEach(function(t){
+        doc.splitTextToSize(String(t), 80).forEach(function(seg){
+          doc.text(seg, x, yy); yy += 5;
+        });
+      });
+      return yy;
+    };
+    var yL = col(M, 'WORK', [
+      c.name || '—',
+      (c.job_type && c.job_type.name) || '',
+      (c.target_count ? c.target_count + ' units' : '')
+    ].filter(Boolean));
+    var yR = col(W/2, 'CLIENT', [
+      c.client_name || '—',
+      c.sales ? ('Sales: ' + c.sales.name) : 'Self-sale'
+    ]);
+    y = Math.max(yL, yR) + 6;
+
+    doc.setDrawColor(225); doc.line(M, y, W-M, y); y += 8;
+
+    // ── dates
+    doc.setTextColor(120); doc.setFont('helvetica','normal'); doc.setFontSize(8);
+    doc.text('START', M, y); doc.text('END', M+45, y); doc.text('DEADLINE', M+90, y);
+    doc.setTextColor(20); doc.setFont('helvetica','bold'); doc.setFontSize(10);
+    doc.text(dt(c.start_date), M, y+6);
+    doc.text(dt(c.end_date), M+45, y+6);
+    doc.setTextColor(c.deadline_date ? 186 : 20, c.deadline_date ? 68 : 20, c.deadline_date ? 15 : 20);
+    doc.text(dt(c.deadline_date), M+90, y+6);
+    y += 16;
+
+    // ── work details table
+    if (ds.length){
+      doc.setFillColor(11,25,87); doc.rect(M, y-5, W-2*M, 8, 'F');
+      doc.setTextColor(255); doc.setFont('helvetica','bold'); doc.setFontSize(8.5);
+      doc.text('DESIGN / MEDIA', M+3, y);
+      doc.text('LOCATION', M+68, y);
+      doc.text('CITY', M+128, y);
+      doc.text('QTY', W-M-3, y, { align:'right' });
+      y += 9;
+
+      doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(30);
+      var totQty = 0;
+      ds.forEach(function(d, i){
+        if (y > H - 70){ doc.addPage(); y = 25; }
+        if (i % 2 === 1){ doc.setFillColor(247,249,252); doc.rect(M, y-4.5, W-2*M, 7, 'F'); }
+        doc.text(doc.splitTextToSize(d.design_name || '—', 62)[0], M+3, y);
+        doc.text(doc.splitTextToSize(d.location_name || '—', 57)[0], M+68, y);
+        doc.text(doc.splitTextToSize(d.location_city || '—', 32)[0], M+128, y);
+        doc.text(String(d.quantity || 0), W-M-3, y, { align:'right' });
+        totQty += Number(d.quantity || 0);
+        y += 7;
+      });
+      doc.setDrawColor(200); doc.line(M, y-2, W-M, y-2);
+      doc.setFont('helvetica','bold'); doc.setFontSize(9.5);
+      doc.text('Total', M+3, y+4);
+      doc.text(String(totQty), W-M-3, y+4, { align:'right' });
+      y += 14;
+    }
+
+    if (y > H - 90){ doc.addPage(); y = 25; }
+
+    // ── client on site
+    if (c.client_on_field){
+      doc.setFillColor(231,247,244); doc.rect(M, y-4, W-2*M, 13, 'F');
+      doc.setTextColor(11,92,82); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+      doc.text('Client will be present on site during execution', M+4, y+1);
+      doc.setFont('helvetica','normal');
+      doc.text((c.client_field_contact_name || 'Contact') + '   ' +
+               (c.client_field_contact_phone || ''), M+4, y+6);
+      y += 18;
+    }
+
+    // ── money
+    var bx = W - M - 78;
+    var amt = function(label, value, opts){
+      opts = opts || {};
+      doc.setTextColor(opts.strong ? 20 : 105);
+      doc.setFont('helvetica', opts.strong ? 'bold' : 'normal');
+      doc.setFontSize(opts.strong ? 11 : 9.5);
+      doc.text(label, bx, y);
+      doc.text('Rs ' + num(value), W-M, y, { align:'right' });
+      y += opts.strong ? 8 : 6.5;
+    };
+    if (c.rate_per_unit) amt('Rate per unit', c.rate_per_unit);
+    amt('Base amount', c.base_amount);
+    if (Number(c.gst_pct) > 0) amt('GST (' + c.gst_pct + '%)',
+      Number(c.total_amount||0) - Number(c.base_amount||0));
+    doc.setDrawColor(200); doc.line(bx, y-3, W-M, y-3); y += 2;
+    amt('Grand Total', c.total_amount, { strong:true });
+
+    if (Number(c.advance_paid) > 0){
+      doc.setTextColor(11,120,90); doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
+      doc.text('Advance received', bx, y);
+      doc.text('- Rs ' + num(c.advance_paid), W-M, y, { align:'right' });
+      y += 7;
+    }
+    doc.setFillColor(255,247,232); doc.rect(bx-3, y-5, W-M-bx+3, 10, 'F');
+    doc.setTextColor(150,80,10); doc.setFont('helvetica','bold'); doc.setFontSize(11);
+    doc.text('Outstanding', bx, y+1);
+    doc.text('Rs ' + num(c.balance_due != null ? c.balance_due
+             : (Number(c.total_amount||0) - Number(c.advance_paid||0))), W-M, y+1, { align:'right' });
+    y += 14;
+
+    // ── terms
+    if (c.payment_terms){
+      doc.setTextColor(120); doc.setFont('helvetica','normal'); doc.setFontSize(8);
+      doc.text('PAYMENT TERMS', M, y);
+      doc.setTextColor(30); doc.setFontSize(9.5);
+      doc.splitTextToSize(String(c.payment_terms), W-2*M).forEach(function(t){
+        y += 5.5; doc.text(t, M, y);
+      });
+      y += 8;
+    }
+
+    // ── footer on every page
+    var pages = doc.getNumberOfPages();
+    for (var p = 1; p <= pages; p++){
+      doc.setPage(p);
+      doc.setDrawColor(225); doc.line(M, H-22, W-M, H-22);
+      doc.setTextColor(130); doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+      doc.text('System-generated order confirmation. Not a tax invoice.', M, H-16);
+      doc.text(String(c.order_no || ''), W/2, H-16, { align:'center' });
+      doc.text('Page ' + p + ' of ' + pages, W-M, H-16, { align:'right' });
+    }
+
+    doc.save(String(c.order_no || 'order').replace(/[^A-Za-z0-9]+/g,'_') + '.pdf');
+  } catch (e) {
+    console.error('[order pdf]', e);
+    alert('PDF nahi bani: ' + e.message);
+  } finally {
+    if (btn){ btn.disabled = false; btn.textContent = '\u{1F4C4} Order PDF download'; }
+  }
+}
+
+// Logo is fetched once and cached; a failed fetch must not stop the PDF.
+var __logoCache;
+async function loadLogoDataUrl(){
+  if (__logoCache !== undefined) return __logoCache;
+  try {
+    var r = await fetch('/logo-prajapati.png');
+    if (!r.ok) throw new Error('logo ' + r.status);
+    var blob = await r.blob();
+    __logoCache = await new Promise(function(res, rej){
+      var fr = new FileReader();
+      fr.onload = function(){ res(fr.result); };
+      fr.onerror = rej;
+      fr.readAsDataURL(blob);
+    });
+  } catch (e) {
+    console.warn('[order pdf] logo skip:', e.message);
+    __logoCache = null;
+  }
+  return __logoCache;
+}
+
+// Outstanding is always total minus advance — typing it by hand is how the
+// two drift apart. The database recomputes it on write too.
+function calcBalance(){
+  var totalEl = document.getElementById('priceTotal');
+  var total = parseFloat(String(totalEl ? totalEl.textContent : '0').replace(/[^0-9.]/g,'')) || 0;
+  var advEl = document.getElementById('advancePaid');
+  var adv = parseFloat(advEl ? advEl.value : 0) || 0;
+  if (adv > total) { adv = total; if (advEl) advEl.value = total; }
+  var bal = Math.max(total - adv, 0);
+  var out = document.getElementById('balanceDue');
+  if (out) out.value = '\u20b9' + bal.toLocaleString('en-IN');
+}
+
+function toggleClientField(el){
+  toggleSwitch(el);
+  var on = el.classList.contains('on');
+  var box = document.getElementById('clientFieldBox');
+  if (box) box.style.display = on ? 'block' : 'none';
+  if (!on){
+    var p = document.getElementById('clientFieldPhone'); if (p) p.value = '';
+    var n = document.getElementById('clientFieldName');  if (n) n.value = '';
+    var e = document.getElementById('clientFieldErr');   if (e) e.textContent = '';
+  }
+}
+
 function toggleSwitch(el){
   if (!el) return;
   el.classList.toggle('on');
@@ -742,6 +1070,20 @@ async function loadCampaignForEdit(campId) {
 
     setToggle('selfSaleToggle', !!camp.is_self_sale);
     setToggle('urgentToggle', !!camp.is_urgent);
+    setToggle('serialToggle', !!camp.serial_tracking);
+    var _ap = document.getElementById('advancePaid');
+    if (_ap) _ap.value = camp.advance_paid || 0;
+    var _dl = document.getElementById('deadlineDate');
+    if (_dl) _dl.value = camp.deadline_date || '';
+    var _pt = document.getElementById('paymentTerms');
+    if (_pt) _pt.value = camp.payment_terms || '';
+    setToggle('clientFieldToggle', !!camp.client_on_field);
+    var _cfb = document.getElementById('clientFieldBox');
+    if (_cfb) _cfb.style.display = camp.client_on_field ? 'block' : 'none';
+    var _cfn = document.getElementById('clientFieldName');
+    if (_cfn) _cfn.value = camp.client_field_contact_name || '';
+    var _cfp = document.getElementById('clientFieldPhone');
+    if (_cfp) _cfp.value = camp.client_field_contact_phone || '';
     setToggle('notifyToggle', camp.notify_whatsapp !== false);  // default ON agar undefined
     setToggle('clientPreviewToggle', !!camp.send_client_preview);
 
@@ -1518,6 +1860,8 @@ function calcPricing() {
   document.getElementById('priceGst').textContent = '₹' + Math.round(gst).toLocaleString('en-IN');
   document.getElementById('priceDisc').textContent = '₹' + Math.round(disc).toLocaleString('en-IN');
   document.getElementById('priceTotal').textContent = '₹' + Math.round(total).toLocaleString('en-IN');
+  // total just moved — outstanding has to follow, or it keeps the old figure
+  if (typeof calcBalance === 'function') calcBalance();
   
   const cities = new Set();
   designs.forEach(d => (d.locations || []).forEach(l => l.city && cities.add(l.city)));
@@ -1584,6 +1928,19 @@ async function _submitCampaignInner(targetStatus = 'pending_execution_plan') {
   // Edit mode mein design_url optional (purane campaign ka file na ho to bhi save ho)
   const validDesigns = designs.filter(d => d.design_name && (isEdit || d.design_url) && (d.locations || []).some(l => l.name && locQty(l) > 0));
   
+  // The DB refuses client_on_field without a contact, so catch it here and
+  // point at the field instead of surfacing a constraint error on save.
+  const cfOn = document.getElementById('clientFieldToggle').classList.contains('on');
+  const cfPhone = (document.getElementById('clientFieldPhone').value || '').trim();
+  const cfErr = document.getElementById('clientFieldErr');
+  if (cfErr) cfErr.textContent = '';
+  if (cfOn && cfPhone.length < 10) {
+    if (cfErr) cfErr.textContent = 'Client field pe aayega to 10 digit number zaroori hai';
+    document.getElementById('clientFieldBox').scrollIntoView({ behavior:'smooth', block:'center' });
+    document.getElementById('clientFieldPhone').focus();
+    return;
+  }
+
   if (targetStatus !== 'draft') {
     // Edit mode mein job_type optional (admin-v2 se bane campaigns ka job_type nahi hota)
     const jobTypeMissing = !isEdit && !selectedJobType;
@@ -1642,7 +1999,14 @@ async function _submitCampaignInner(targetStatus = 'pending_execution_plan') {
       job_type_code: selectedJobType?.code,
       sales_member_id: selectedSales?.id,
       is_self_sale: document.getElementById('selfSaleToggle').classList.contains('on'),
+      advance_paid:   parseFloat(document.getElementById('advancePaid').value) || 0,
+      deadline_date:  document.getElementById('deadlineDate').value || null,
+      payment_terms:  (document.getElementById('paymentTerms').value || '').trim() || null,
       is_urgent: document.getElementById('urgentToggle').classList.contains('on'),
+      serial_tracking: document.getElementById('serialToggle').classList.contains('on'),
+      client_on_field: document.getElementById('clientFieldToggle').classList.contains('on'),
+      client_field_contact_name:  (document.getElementById('clientFieldName').value || '').trim() || null,
+      client_field_contact_phone: (document.getElementById('clientFieldPhone').value || '').trim() || null,
       notify_whatsapp: document.getElementById('notifyToggle').classList.contains('on'),
       send_client_preview: document.getElementById('clientPreviewToggle').classList.contains('on'),
       rate_per_unit: rate,
@@ -1845,20 +2209,50 @@ async function _submitCampaignInner(targetStatus = 'pending_execution_plan') {
       }
     }
     
+    // The order number is generated by the database, so read it back rather
+    // than guessing it here — otherwise the PDF and the record could disagree.
+    let orderNo = campaign.order_no || '';
+    if (!orderNo && campaign.id) {
+      try {
+        const { data: fresh } = await db.from('trial_campaigns')
+          .select('order_no').eq('id', campaign.id).single();
+        orderNo = (fresh && fresh.order_no) || '';
+      } catch (e) { console.warn('[order_no] read back failed', e); }
+    }
+    window.__lastOrder = { id: campaign.id, order_no: orderNo, name: campaignName };
+
+    const isNewSubmit = !editingCampaign && targetStatus !== 'draft';
+
     document.getElementById('submitStatus').innerHTML = `
       <div class="callout success">
         <span class="callout-icon">✅</span>
         <div>
           <strong>${editingCampaign ? 'Campaign updated!' : (targetStatus === 'draft' ? 'Draft saved!' : 'Campaign submitted!')}</strong><br>
-          ${editingCampaign ? 'Changes save ho gaye. Redirecting…' : (targetStatus === 'draft' ? 'You can resume editing anytime.' : 'Operations team will assign teams. Redirecting…')}
+          ${orderNo ? `<div style="margin-top:8px;padding:10px 12px;background:#fff;border:1px solid #0E9F8E;border-radius:8px;">
+              <div style="font-size:11px;color:#5A6472;letter-spacing:.05em;">ORDER NUMBER</div>
+              <div style="font-size:18px;font-weight:700;color:#0B1957;font-family:ui-monospace,monospace;">${escapeHtml(orderNo)}</div>
+              <div style="font-size:11.5px;color:#5A6472;margin-top:3px;">Client ko isi number se batayein</div>
+            </div>` : ''}
+          ${isNewSubmit ? `<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+              <button type="button" class="btn" style="background:#0B1957;color:#fff"
+                      onclick="downloadOrderPDF()">📄 Order PDF download</button>
+              <button type="button" class="btn" onclick="goAfterLaunch()">Aage badho →</button>
+            </div>
+            <div style="font-size:11.5px;color:#5A6472;margin-top:7px;">
+              PDF le lein — email ke saath bhejne ke liye. Aage badhne pe ye screen chali jayegi.
+            </div>` : (editingCampaign ? 'Changes save ho gaye. Redirecting…' : 'You can resume editing anytime.')}
         </div>
       </div>
     `;
-    
-    setTimeout(() => {
-      if (editingCampaign) { window.location.href = '/app.html#v2'; return; }
-      window.location.href = targetStatus === 'draft' ? '/sales-hub.html' : '/execution-plan.html?campaign=' + campaign.id;
-    }, 1800);
+
+    // Auto-redirect only where there is nothing to collect. On a fresh submit
+    // the page waits, so the salesperson can take the PDF before it navigates.
+    if (!isNewSubmit) {
+      setTimeout(() => {
+        if (editingCampaign) { window.location.href = '/app.html#v2'; return; }
+        window.location.href = '/sales-hub.html';
+      }, 1800);
+    }
     
   } catch(e) {
     console.error(e);

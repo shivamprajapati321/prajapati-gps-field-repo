@@ -331,6 +331,7 @@ function renderCampaigns() {
         <div>
           <div class="cc-name">
             ${c.is_urgent ? '<span class="cc-urgent-flag">🚨 URGENT</span>' : ''}
+            ${c.client_on_field ? '<span class="cc-urgent-flag" style="background:#0E9F8E">👀 CLIENT ON SITE</span>' : ''}
             ${escapeHtml(c.campaign_name)}
           </div>
           <div class="cc-meta">
@@ -427,6 +428,20 @@ function renderDetail() {
             <div>🧑‍💼 ${escapeHtml(sales.name || 'Self-sale')}</div>
             <div>📅 Start: ${c.start_date || 'TBD'}</div>
           </div>
+          ${c.client_on_field ? `
+          <div style="margin-top:10px;padding:10px 12px;background:#E7F7F4;border:1px solid #0E9F8E;border-radius:8px;">
+            <div style="font-size:12px;color:#0B5C52;font-weight:600;margin-bottom:3px;">
+              👀 Client execution dekhne site pe aayega
+            </div>
+            <div style="font-size:13px;color:#0B5C52;">
+              ${escapeHtml(c.client_field_contact_name || 'Contact')} ·
+              <a href="tel:${escapeHtml(c.client_field_contact_phone || '')}"
+                 style="color:#0B5C52;font-weight:600;">${escapeHtml(c.client_field_contact_phone || '')}</a>
+            </div>
+            <div style="font-size:11.5px;color:#3A7D74;margin-top:4px;">
+              Team ko ye number pehle hi de dein — client site pe milega
+            </div>
+          </div>` : ''}
         </div>
         <div>
           <span class="status-pill ${isLocked ? 'done' : 'progress'}">${(c.status || 'pending').replace(/_/g, ' ').toUpperCase()}</span>
