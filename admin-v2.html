@@ -5908,7 +5908,16 @@ function openCampaignDetail(campId, campKey) {
   var camp = (state.campaignsAll || state.campaigns || []).filter(function(c){ return String(c.id)===String(campId) || String(c.key)===String(campKey); })[0] || { id: campId, key: campKey };
   var name = camp.name || camp.campaign_name || campKey;
   $('cdmTitle').textContent = name;
-  $('cdmSub').textContent = 'Key: ' + (campKey || '—');
+  // The order number is what appears on the client's email and PDF, so it
+  // leads. The internal key stays visible but small — support still needs it.
+  var _sub = $('cdmSub');
+  if (camp.order_no) {
+    _sub.innerHTML = '<span style="font-weight:700;color:var(--text-1);font-size:14px;">'
+      + escapeHtml(camp.order_no) + '</span>'
+      + '<span style="opacity:.55;margin-left:10px;">' + escapeHtml(campKey || '') + '</span>';
+  } else {
+    _sub.textContent = 'Key: ' + (campKey || '—');
+  }
 
   // ── SCOPE GUARD: scoped users (sales) can only open their OWN campaigns. ──
   // Defends against opening someone else's detail via a stale/guessed id.
@@ -6044,6 +6053,40 @@ function openCampaignDetail(campId, campKey) {
       } else if (measurable > 0) {
         html += '<div class="cdm-autocomplete pending"><i class="ti ti-clock"></i> Pending: ' + (pendingStages.join(', ') || '—') + '</div>';
       }
+    }
+
+    // Launch-time flags that the operations team needs in front of them:
+    // serial tracking changes what the field app must capture, and a client
+    // coming on site needs a number someone can actually ring.
+    var _flags = [];
+    if (camp.serial_tracking) {
+      _flags.push('<span style="display:inline-flex;align-items:center;gap:5px;background:#EEF2FF;'
+        + 'color:#3730A3;padding:5px 11px;border-radius:14px;font-size:12.5px;font-weight:600;">'
+        + '\uD83D\uDD22 S.No tracking ON</span>');
+    }
+    if (camp.is_urgent) {
+      _flags.push('<span style="display:inline-flex;align-items:center;gap:5px;background:#FEE2E2;'
+        + 'color:#991B1B;padding:5px 11px;border-radius:14px;font-size:12.5px;font-weight:600;">'
+        + '\uD83D\uDEA8 URGENT</span>');
+    }
+    if (_flags.length) {
+      html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;">' + _flags.join('') + '</div>';
+    }
+
+    if (camp.client_on_field) {
+      var _cfp = camp.client_field_contact_phone || '';
+      html += '<div style="margin:12px 0;padding:12px 14px;background:#E7F7F4;'
+            + 'border:1px solid #0E9F8E;border-radius:10px;">'
+            + '<div style="font-size:13px;font-weight:700;color:#0B5C52;margin-bottom:4px;">'
+            + '\uD83D\uDC40 Client execution dekhne site pe aayega</div>'
+            + '<div style="font-size:14px;color:#0B5C52;">'
+            + escapeHtml(camp.client_field_contact_name || 'Contact') + ' &middot; '
+            + (_cfp ? '<a href="tel:' + escapeHtml(_cfp) + '" style="color:#0B5C52;font-weight:700;">'
+                      + escapeHtml(_cfp) + '</a>'
+                    : '<span style="color:#B45309;">number nahi hai</span>')
+            + '</div>'
+            + '<div style="font-size:12px;color:#3A7D74;margin-top:5px;">'
+            + 'Field team ko ye number pehle hi de dein</div></div>';
     }
 
     // Location-wise quantity (from launcher designs)
