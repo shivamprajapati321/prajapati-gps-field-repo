@@ -100,7 +100,75 @@
   <!-- TABS -->
   <div class="mp-tabs">
     <div class="mp-tab active" data-mptab="entry" onclick="switchMpTab('entry')">✍️ Manual Entry</div>
+    <div class="mp-tab" data-mptab="bulk" onclick="switchMpTab('bulk')">⚡ Bulk Entry</div>
+    <div class="mp-tab" data-mptab="manage" onclick="switchMpTab('manage')">🗂️ Edit / Delete</div>
     <div class="mp-tab" data-mptab="report" onclick="switchMpTab('report')">📊 Printing Report</div>
+  </div>
+
+  <!-- ══════ BULK TAB ══════ -->
+  <div id="mpBulkTab" style="display:none;">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+        <div>
+          <div style="font-size:16px;font-weight:700;color:var(--navy);">Bulk Printing Entry</div>
+          <div style="font-size:12.5px;color:var(--text-dim);margin-top:2px;">
+            Ek saath kai rows — sab bhar ke ek baar me save
+          </div>
+        </div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;">
+          <button class="btn" onclick="bulkAddRow()">+ Row</button>
+          <button class="btn" onclick="bulkDuplicateLast()">⧉ Copy last</button>
+          <button class="btn" onclick="bulkClear()">Clear</button>
+        </div>
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;min-width:820px;font-size:13px;">
+          <thead>
+            <tr style="background:#F3F5F9;">
+              <th style="padding:9px 8px;text-align:left;font-size:11.5px;color:#5A6472;">DATE</th>
+              <th style="padding:9px 8px;text-align:left;font-size:11.5px;color:#5A6472;">OPERATOR</th>
+              <th style="padding:9px 8px;text-align:left;font-size:11.5px;color:#5A6472;">CAMPAIGN</th>
+              <th style="padding:9px 8px;text-align:left;font-size:11.5px;color:#5A6472;">DEALER</th>
+              <th style="padding:9px 8px;text-align:right;font-size:11.5px;color:#5A6472;">QTY</th>
+              <th style="padding:9px 8px;text-align:left;font-size:11.5px;color:#5A6472;">NOTES</th>
+              <th style="padding:9px 8px;"></th>
+            </tr>
+          </thead>
+          <tbody id="bulkRows"></tbody>
+        </table>
+      </div>
+
+      <div id="bulkSummary" style="margin-top:12px;padding:11px 13px;background:#F3F5F9;border-radius:8px;font-size:13px;"></div>
+      <div id="bulkErr" style="color:#b91c1c;font-size:13px;margin-top:8px;min-height:16px;"></div>
+
+      <button class="btn btn-primary" id="bulkSaveBtn" onclick="bulkSaveAll()"
+              style="margin-top:12px;width:100%;padding:13px;font-size:15px;">
+        💾 Sab rows save karo
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════ MANAGE TAB ══════ -->
+  <div id="mpManageTab" style="display:none;">
+    <div class="card">
+      <div style="display:flex;gap:9px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px;">
+        <div>
+          <div style="font-size:11.5px;color:#5A6472;margin-bottom:3px;">Se</div>
+          <input class="inp" type="date" id="mgFrom" style="width:150px;">
+        </div>
+        <div>
+          <div style="font-size:11.5px;color:#5A6472;margin-bottom:3px;">Tak</div>
+          <input class="inp" type="date" id="mgTo" style="width:150px;">
+        </div>
+        <div style="flex:1;min-width:170px;">
+          <div style="font-size:11.5px;color:#5A6472;margin-bottom:3px;">Operator</div>
+          <select class="inp" id="mgOperator"></select>
+        </div>
+        <button class="btn btn-primary" onclick="mgLoad()">Dikhao</button>
+      </div>
+      <div id="mgList"></div>
+    </div>
   </div>
 
   <!-- ══════ ENTRY TAB ══════ -->
@@ -578,11 +646,265 @@ function selectCampaign(cid){
 // ════════════════ REPORT TAB ════════════════
 var rpState = { logs:[], computed:null, tab:'detail', from:null, to:null, campMap:{}, opMap:{} };
 
+
+// ══════════════════════════════════════════════════════════════
+// BULK ENTRY
+//
+// The single-entry form upserts: an existing log for the same operator, date
+// and assignment is PATCHed with the new qty, so a second entry REPLACES the
+// first instead of adding to it. Two print runs in one day silently became one.
+// Bulk always INSERTs, and the manage tab below is where an existing row gets
+// corrected — deliberately, not by accident.
+// ══════════════════════════════════════════════════════════════
+var bulkState = { rows: [], seq: 0 };
+
+function bulkAddRow(pre){
+  pre = pre || {};
+  bulkState.rows.push({
+    _id: ++bulkState.seq,
+    date: pre.date || istToday(),
+    operator_id: pre.operator_id || '',
+    campaign_key: pre.campaign_key || '',
+    dealer: pre.dealer || '',
+    qty: pre.qty || '',
+    notes: pre.notes || ''
+  });
+  bulkRender();
+}
+
+function bulkDuplicateLast(){
+  var last = bulkState.rows[bulkState.rows.length - 1];
+  if (!last){ bulkAddRow(); return; }
+  // Carry the context, not the number — copying a quantity is how the same
+  // figure ends up entered twice by mistake.
+  bulkAddRow({ date:last.date, operator_id:last.operator_id,
+               campaign_key:last.campaign_key, dealer:last.dealer });
+}
+
+function bulkRemoveRow(id){
+  bulkState.rows = bulkState.rows.filter(function(r){ return r._id !== id; });
+  if (!bulkState.rows.length) bulkAddRow();
+  bulkRender();
+}
+
+function bulkClear(){
+  if (!confirm('Saari rows hata dein?')) return;
+  bulkState.rows = []; bulkState.seq = 0; bulkAddRow();
+}
+
+function bulkUpdate(id, field, val){
+  var r = bulkState.rows.filter(function(x){ return x._id === id; })[0];
+  if (!r) return;
+  r[field] = val;
+  if (field === 'qty') bulkSummary();
+}
+
+function bulkRender(){
+  var ops = '<option value="">— operator —</option>' + (state.operators || []).map(function(o){
+    return '<option value="' + o.id + '">' + esc(o.name) + '</option>'; }).join('');
+  var camps = '<option value="">— campaign —</option>' + (state.allCampaigns || []).map(function(c){
+    return '<option value="' + esc(c.key) + '">' + esc(c.name || c.key) + '</option>'; }).join('');
+
+  $('bulkRows').innerHTML = bulkState.rows.map(function(r){
+    return '<tr style="border-bottom:1px solid #E8EBF0;">' +
+      '<td style="padding:6px 8px;"><input class="inp" type="date" value="' + r.date +
+        '" style="width:140px;padding:7px;" onchange="bulkUpdate(' + r._id + ',\'date\',this.value)"></td>' +
+      '<td style="padding:6px 8px;"><select class="inp" style="min-width:140px;padding:7px;" ' +
+        'onchange="bulkUpdate(' + r._id + ',\'operator_id\',this.value)">' +
+        ops.replace('value="' + r.operator_id + '"', 'value="' + r.operator_id + '" selected') + '</select></td>' +
+      '<td style="padding:6px 8px;"><select class="inp" style="min-width:170px;padding:7px;" ' +
+        'onchange="bulkUpdate(' + r._id + ',\'campaign_key\',this.value)">' +
+        camps.replace('value="' + esc(r.campaign_key) + '"', 'value="' + esc(r.campaign_key) + '" selected') + '</select></td>' +
+      '<td style="padding:6px 8px;"><input class="inp" value="' + esc(r.dealer) +
+        '" placeholder="optional" style="width:120px;padding:7px;" ' +
+        'oninput="bulkUpdate(' + r._id + ',\'dealer\',this.value)"></td>' +
+      '<td style="padding:6px 8px;"><input class="inp" type="number" min="0" value="' + r.qty +
+        '" style="width:88px;padding:7px;text-align:right;" ' +
+        'oninput="bulkUpdate(' + r._id + ',\'qty\',this.value)"></td>' +
+      '<td style="padding:6px 8px;"><input class="inp" value="' + esc(r.notes) +
+        '" placeholder="optional" style="min-width:130px;padding:7px;" ' +
+        'oninput="bulkUpdate(' + r._id + ',\'notes\',this.value)"></td>' +
+      '<td style="padding:6px 8px;text-align:center;">' +
+        '<button class="btn" style="padding:5px 9px;color:#b91c1c;" ' +
+        'onclick="bulkRemoveRow(' + r._id + ')">✕</button></td>' +
+    '</tr>';
+  }).join('');
+  bulkSummary();
+}
+
+function bulkSummary(){
+  var filled = bulkState.rows.filter(function(r){ return Number(r.qty) > 0; });
+  var total = filled.reduce(function(s, r){ return s + Number(r.qty || 0); }, 0);
+  $('bulkSummary').innerHTML = '<b>' + filled.length + '</b> row' + (filled.length !== 1 ? 's' : '') +
+    ' bhari hain · total <b>' + total.toLocaleString('en-IN') + '</b> pcs' +
+    (bulkState.rows.length > filled.length
+      ? ' <span style="color:#B45309">(' + (bulkState.rows.length - filled.length) + ' khaali — skip hongi)</span>' : '');
+}
+
+async function bulkSaveAll(){
+  $('bulkErr').textContent = '';
+  var rows = bulkState.rows.filter(function(r){ return Number(r.qty) > 0; });
+  if (!rows.length){ $('bulkErr').textContent = 'Koi row nahi bhari'; return; }
+
+  var bad = [];
+  rows.forEach(function(r, i){
+    if (!r.operator_id) bad.push('Row ' + (i+1) + ': operator select karo');
+    if (!r.date)        bad.push('Row ' + (i+1) + ': date daalo');
+  });
+  if (bad.length){ $('bulkErr').innerHTML = bad.join('<br>'); return; }
+
+  var btn = $('bulkSaveBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  var ok = 0, fail = 0, errs = [];
+
+  for (var i = 0; i < rows.length; i++){
+    var r = rows[i];
+    try {
+      var camp = (state.allCampaigns || []).filter(function(c){ return c.key === r.campaign_key; })[0];
+      var extras = [];
+      if (r.notes) extras.push(r.notes);
+      extras.push('[Bulk entry by ' + ((user && user.name) || 'admin') + ']');
+      var payload = {
+        operator_id: r.operator_id,
+        stage: 'printing',
+        log_date: r.date,
+        qty_done: Number(r.qty),
+        notes: extras.join(' · '),
+        updated_at: new Date().toISOString()
+      };
+      if (camp && camp.id) payload.campaign_id = camp.id;
+      if (r.dealer) payload.dealer_name = r.dealer;
+      // always INSERT — never silently overwrite an earlier run
+      await api('/trial_work_logs', { method:'POST', prefer:'return=minimal', body: payload });
+      ok++;
+    } catch (e){
+      fail++;
+      errs.push('Row ' + (i+1) + ': ' + (e.message || 'fail'));
+    }
+  }
+
+  btn.disabled = false; btn.textContent = '💾 Sab rows save karo';
+  if (fail){
+    $('bulkErr').innerHTML = errs.join('<br>');
+    toast(ok + ' saved, ' + fail + ' fail', 'err');
+  } else {
+    toast('✅ ' + ok + ' entries saved', 'ok');
+    bulkState.rows = []; bulkState.seq = 0; bulkAddRow();
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// EDIT / DELETE
+// ══════════════════════════════════════════════════════════════
+var mgState = { loaded:false, rows:[] };
+
+function mgInit(){
+  var sel = $('mgOperator');
+  sel.innerHTML = '<option value="">— sab operators —</option>' +
+    (state.operators || []).map(function(o){
+      return '<option value="' + o.id + '">' + esc(o.name) + '</option>'; }).join('');
+  var d = new Date(); d.setDate(d.getDate() - 7);
+  $('mgFrom').value = d.toISOString().slice(0,10);
+  $('mgTo').value = istToday();
+  mgState.loaded = true;
+  mgLoad();
+}
+
+async function mgLoad(){
+  var from = $('mgFrom').value, to = $('mgTo').value, op = $('mgOperator').value;
+  if (!from || !to){ $('mgList').innerHTML = '<div class="empty">Dono date daalo</div>'; return; }
+  $('mgList').innerHTML = '<div class="empty">Load ho raha hai…</div>';
+  try {
+    var q = '/trial_work_logs?stage=eq.printing&log_date=gte.' + from + '&log_date=lte.' + to +
+            '&select=*&order=log_date.desc,created_at.desc&limit=500';
+    if (op) q += '&operator_id=eq.' + encodeURIComponent(op);
+    var rows = await api(q);
+    mgState.rows = rows || [];
+    mgRender();
+  } catch (e){
+    $('mgList').innerHTML = '<div class="empty">Load fail: ' + esc(e.message || '?') + '</div>';
+  }
+}
+
+function mgRender(){
+  if (!mgState.rows.length){
+    $('mgList').innerHTML = '<div class="empty">Is range me koi printing entry nahi</div>'; return;
+  }
+  var opMap = {}; (state.operators || []).forEach(function(o){ opMap[o.id] = o.name; });
+  var cMap  = {}; (state.allCampaigns || []).forEach(function(c){ cMap[c.id] = c.name; });
+  var total = mgState.rows.reduce(function(s, r){ return s + Number(r.qty_done || 0); }, 0);
+
+  var head = '<div style="padding:9px 12px;background:#F3F5F9;border-radius:8px;margin-bottom:10px;font-size:13px;">' +
+    '<b>' + mgState.rows.length + '</b> entries · total <b>' + total.toLocaleString('en-IN') + '</b> pcs</div>';
+
+  $('mgList').innerHTML = head + mgState.rows.map(function(r){
+    var manual = /Manual entry|Bulk entry/.test(r.notes || '');
+    return '<div style="border:1px solid #E8EBF0;border-radius:9px;padding:11px 13px;margin-bottom:8px;">' +
+      '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start;">' +
+        '<div style="flex:1;min-width:200px;">' +
+          '<div style="font-weight:600;font-size:14px;">' + esc(cMap[r.campaign_id] || 'No campaign') + '</div>' +
+          '<div style="font-size:12.5px;color:#5A6472;margin-top:2px;">' +
+            esc(opMap[r.operator_id] || 'Unknown') + ' · ' + esc(r.log_date) +
+            (r.dealer_name ? ' · ' + esc(r.dealer_name) : '') +
+            (manual ? ' · <span style="color:#B45309">manual</span>' : '') +
+          '</div>' +
+          (r.notes ? '<div style="font-size:11.5px;color:#8A93A2;margin-top:3px;">' + esc(r.notes) + '</div>' : '') +
+        '</div>' +
+        '<div style="text-align:right;">' +
+          '<div style="font-size:19px;font-weight:700;">' + Number(r.qty_done || 0).toLocaleString('en-IN') + '</div>' +
+          '<div style="font-size:11px;color:#8A93A2;">pcs</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:flex;gap:7px;margin-top:9px;">' +
+        '<button class="btn" style="padding:6px 12px;font-size:12.5px;" ' +
+          'onclick="mgEdit(\'' + r.id + '\')">✏️ Edit</button>' +
+        '<button class="btn" style="padding:6px 12px;font-size:12.5px;color:#b91c1c;" ' +
+          'onclick="mgDelete(\'' + r.id + '\')">🗑️ Delete</button>' +
+      '</div></div>';
+  }).join('');
+}
+
+async function mgEdit(id){
+  var r = mgState.rows.filter(function(x){ return String(x.id) === String(id); })[0];
+  if (!r) return;
+  var q = prompt('Quantity (pcs):', r.qty_done);
+  if (q === null) return;
+  var qty = Number(q);
+  if (!(qty > 0)){ toast('Quantity 0 se zyada honi chahiye', 'err'); return; }
+  var d = prompt('Date (YYYY-MM-DD):', r.log_date);
+  if (d === null) return;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)){ toast('Date format YYYY-MM-DD hona chahiye', 'err'); return; }
+  try {
+    await api('/trial_work_logs?id=eq.' + id, { method:'PATCH', prefer:'return=minimal',
+      body: { qty_done: qty, log_date: d,
+              notes: (r.notes || '') + ' · [edited ' + istToday() + ' by ' + ((user && user.name) || 'admin') + ']',
+              updated_at: new Date().toISOString() } });
+    toast('✅ Updated', 'ok');
+    mgLoad();
+  } catch (e){ toast('Update fail: ' + (e.message || '?'), 'err'); }
+}
+
+async function mgDelete(id){
+  var r = mgState.rows.filter(function(x){ return String(x.id) === String(id); })[0];
+  if (!r) return;
+  if (!confirm('Ye entry delete karni hai?\n\n' + r.log_date + ' · ' + (r.qty_done || 0) +
+               ' pcs\n\nWapas nahi aayegi.')) return;
+  try {
+    await api('/trial_work_logs?id=eq.' + id, { method:'DELETE', prefer:'return=minimal' });
+    toast('🗑️ Deleted', 'ok');
+    mgLoad();
+  } catch (e){ toast('Delete fail: ' + (e.message || '?'), 'err'); }
+}
+
 function switchMpTab(t){
   document.querySelectorAll('.mp-tab').forEach(function(el){ el.classList.toggle('active', el.getAttribute('data-mptab')===t); });
-  $('mpEntryTab').style.display = t==='entry' ? 'block' : 'none';
+  $('mpEntryTab').style.display  = t==='entry'  ? 'block' : 'none';
+  $('mpBulkTab').style.display   = t==='bulk'   ? 'block' : 'none';
+  $('mpManageTab').style.display = t==='manage' ? 'block' : 'none';
   $('mpReportTab').style.display = t==='report' ? 'block' : 'none';
   if(t==='report' && !rpState.computed){ initReport(); }
+  if(t==='bulk'   && !bulkState.rows.length){ bulkAddRow(); }
+  if(t==='manage' && !mgState.loaded){ mgInit(); }
 }
 
 function switchRpTab(t){
