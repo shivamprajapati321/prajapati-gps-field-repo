@@ -7429,10 +7429,51 @@ function markCampaignComplete(id, complete) {
     body: JSON.stringify(payload)
   }).then(function(r) {
     if (!r.ok) return r.text().then(function(t){ throw new Error(t); });
-    showToast(complete ? '✓ Completed' : '✓ Reopened — daily entry phir se chालू', 'success');
+    showToast(complete ? '✓ Completed' : '✓ Reopened — daily entry phir se chalu', 'success');
     loadCampaigns();
   }).catch(function(e) {
-    showToast('Update failed — CAMPAIGN_STATUS_COLUMN.sql chalao', 'error');
+    // The old handler showed one hardcoded line for every failure, which hid
+    // the real reason. The completion guard raises ASSIGNMENTS_OPEN when people
+    // are still assigned — that is answerable, so name the people and offer the
+    // deliberate override instead of a dead end.
+    var msg = String((e && e.message) || '');
+    if (msg.indexOf('ASSIGNMENTS_OPEN') !== -1) {
+      var who = '';
+      var m = msg.match(/assigned hain \(([^)]*)\)/);
+      if (m) who = m[1];
+      if (confirm('Is campaign pe abhi bhi log assigned hain' +
+                  (who ? ':\n\n' + who : '') +
+                  '\n\nPhir bhi complete karna hai?')) {
+        forceCampaignComplete(id);
+      }
+      return;
+    }
+    var detail = msg;
+    try { var j = JSON.parse(msg); detail = j.message || j.hint || msg; } catch (err) {}
+    showToast('Update failed — ' + detail.slice(0, 160), 'error');
+    console.error('[markCampaignComplete]', e);
+  });
+}
+
+// force_complete is consumed by the DB trigger in one shot: it lets this single
+// update through and resets itself, so the guard stays in place afterwards.
+function forceCampaignComplete(id) {
+  fetch(CONFIG.supabaseUrl + '/rest/v1/trial_campaigns?id=eq.' + id, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', apikey: CONFIG.supabaseKey,
+               Authorization: 'Bearer ' + CONFIG.supabaseKey },
+    body: JSON.stringify({ force_complete: true, completed: true,
+                           completed_at: new Date().toISOString() })
+  }).then(function(r) {
+    if (!r.ok) return r.text().then(function(t){ throw new Error(t); });
+    showToast('✓ Completed (assignments ke bawajood)', 'success');
+    loadCampaigns();
+  }).catch(function(e) {
+    var msg = String((e && e.message) || '');
+    var detail = msg;
+    try { var j = JSON.parse(msg); detail = j.message || msg; } catch (err) {}
+    showToast('Force complete fail — ' + detail.slice(0, 160), 'error');
+    console.error('[forceCampaignComplete]', e);
   });
 }
 
