@@ -498,6 +498,14 @@ a{color:inherit;text-decoration:none}
           <option value="Payment within 30 days of completion">
         </datalist>
       </div>
+
+      <div class="field" style="margin-top:10px">
+        <div class="label">Notes / Remarks <span class="hint">operations aur data entry ko dikhega</span></div>
+        <textarea class="input" id="campaignNotes" rows="3" maxlength="1000"
+                  placeholder="Koi khaas instruction? Jaise: dealer se pehle call karo, Sunday delivery nahi, hood size alag hai…"
+                  oninput="countNotes()"></textarea>
+        <div id="notesCount" style="font-size:11px;color:#8A93A2;text-align:right;margin-top:-4px"></div>
+      </div>
     </div>
   </div>
 
@@ -810,6 +818,20 @@ async function downloadOrderPDF(){
       y += 8;
     }
 
+    // ── notes written at launch
+    if (c.campaign_notes){
+      if (y > H - 55){ doc.addPage(); y = 25; }
+      doc.setTextColor(120); doc.setFont('helvetica','normal'); doc.setFontSize(8);
+      doc.text('NOTES', M, y);
+      doc.setTextColor(30); doc.setFontSize(9.5);
+      doc.splitTextToSize(String(c.campaign_notes), W - 2*M).forEach(function(t){
+        y += 5.5;
+        if (y > H - 30){ doc.addPage(); y = 25; }
+        doc.text(t, M, y);
+      });
+      y += 9;
+    }
+
     // ── terms & conditions
     if (terms){
       var clauses = Array.isArray(terms.clauses) ? terms.clauses : [];
@@ -897,6 +919,17 @@ async function loadLogoDataUrl(){
 
 // Outstanding is always total minus advance — typing it by hand is how the
 // two drift apart. The database recomputes it on write too.
+// A 1000-char cap is enforced on the input; show the remaining count so the
+// limit is visible before someone loses the end of a long instruction.
+function countNotes(){
+  var el = document.getElementById('campaignNotes');
+  var out = document.getElementById('notesCount');
+  if (!el || !out) return;
+  var n = (el.value || '').length;
+  out.textContent = n ? (n + ' / 1000') : '';
+  out.style.color = n > 900 ? '#b45309' : '#8A93A2';
+}
+
 function calcBalance(){
   var totalEl = document.getElementById('priceTotal');
   var total = parseFloat(String(totalEl ? totalEl.textContent : '0').replace(/[^0-9.]/g,'')) || 0;
@@ -1134,6 +1167,8 @@ async function loadCampaignForEdit(campId) {
     if (_dl) _dl.value = camp.deadline_date || '';
     var _pt = document.getElementById('paymentTerms');
     if (_pt) _pt.value = camp.payment_terms || '';
+    var _cn = document.getElementById('campaignNotes');
+    if (_cn) { _cn.value = camp.campaign_notes || ''; countNotes(); }
     setToggle('clientFieldToggle', !!camp.client_on_field);
     var _cfb = document.getElementById('clientFieldBox');
     if (_cfb) _cfb.style.display = camp.client_on_field ? 'block' : 'none';
@@ -2059,6 +2094,7 @@ async function _submitCampaignInner(targetStatus = 'pending_execution_plan') {
       advance_paid:   parseFloat(document.getElementById('advancePaid').value) || 0,
       deadline_date:  document.getElementById('deadlineDate').value || null,
       payment_terms:  (document.getElementById('paymentTerms').value || '').trim() || null,
+      campaign_notes: (document.getElementById('campaignNotes').value || '').trim() || null,
       is_urgent: document.getElementById('urgentToggle').classList.contains('on'),
       serial_tracking: document.getElementById('serialToggle').classList.contains('on'),
       client_on_field: document.getElementById('clientFieldToggle').classList.contains('on'),

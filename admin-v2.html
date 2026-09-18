@@ -4514,6 +4514,7 @@ label {
         <div id="cdmSub" style="font-size:12px;color:var(--text-2);margin-top:2px;"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
+        <button id="cdmWorkOrderBtn" class="btn btn-sm" style="display:none;" onclick="downloadWorkOrder()"><i class="ti ti-file-spreadsheet"></i> Work Order</button>
         <button id="cdmEditBtn" class="btn btn-sm btn-primary" style="display:none;"><i class="ti ti-pencil-plus"></i> Edit / Add Design</button>
         <button class="modal-close" onclick="closeCampaignDetail()">×</button>
       </div>
@@ -5899,6 +5900,147 @@ function cdItem(icon, label, val) {
 // ═══ CAMPAIGN DETAIL MODAL (Operations view) ═══
 // Shows Field/Printing/Stitching progress + location-wise quantity from launcher.
 // Billing/payment/outstanding visible to OWNER only.
+
+// ══════════════════════════════════════════════════════════════
+// WORK ORDER DOWNLOAD
+//
+// Operations and data entry were reading the campaign off a screen, which
+// meant re-deriving the scope every time: which artwork, how many per dealer,
+// who to call, what the special flags are. This writes it once, per team.
+//
+// Four tabs on purpose — printing, stitching and delivery each need a
+// different cut, and a single combined sheet gets printed and then ignored.
+// Built from the data the modal already loaded, so it cannot drift from what
+// the screen shows.
+// ══════════════════════════════════════════════════════════════
+function downloadWorkOrder() {
+  var d = window.__cdmWorkOrder;
+  if (!d || !d.designs || !d.designs.length) {
+    showToast('Is campaign me koi design/dealer nahi hai', 'error');
+    return;
+  }
+  if (typeof XLSX === 'undefined') {
+    showToast('Excel library load nahi hui — page refresh karo', 'error');
+    return;
+  }
+
+  var camp = d.camp || {}, designs = d.designs.slice();
+  designs.sort(function(a,b){ return (a.sort_order||0) - (b.sort_order||0); });
+
+  var totalQty = designs.reduce(function(s,x){ return s + Number(x.quantity||0); }, 0);
+  var dash = function(v){ return (v === null || v === undefined || v === '') ? '—' : v; };
+  var fileOf = function(x){ return x.design_file_name || (x.design_url ? 'uploaded' : 'MISSING'); };
+
+  var wb = XLSX.utils.book_new();
+
+  // ── 1. SCOPE — read this first
+  var scope = [
+    ['WORK ORDER'],
+    [],
+    ['Order No',        dash(camp.order_no)],
+    ['Campaign',        dash(camp.name || camp.campaign_name)],
+    ['Client',          dash(camp.client_name)],
+    ['Total Quantity',  totalQty],
+    ['Dealers',         designs.length],
+    ['Start Date',      dash(camp.start_date)],
+    ['End Date',        dash(camp.end_date)],
+    ['Deadline',        dash(camp.deadline_date)],
+    [],
+    ['SPECIAL INSTRUCTIONS'],
+  ];
+
+  // Flags that change how the job is done — these are the ones that get missed.
+  if (camp.serial_tracking) {
+    scope.push(['Serial Number', 'ON — har unit ka S.No field app me bharna hai']);
+  } else {
+    scope.push(['Serial Number', 'OFF — S.No nahi chahiye']);
+  }
+  if (camp.is_urgent) scope.push(['Priority', 'URGENT']);
+  if (camp.campaign_notes) scope.push(['Notes / Remarks', String(camp.campaign_notes)]);
+  if (camp.client_on_field) {
+    scope.push(['Client on site', 'HAAN — client execution dekhne aayega']);
+    scope.push(['Client contact',
+      (camp.client_field_contact_name || 'Contact') + '  ' + (camp.client_field_contact_phone || '')]);
+  }
+
+  // One line per artwork, so printing knows how many files to run
+  var byArt = {};
+  designs.forEach(function(x){
+    var k = fileOf(x);
+    if (!byArt[k]) byArt[k] = { qty:0, dealers:0 };
+    byArt[k].qty += Number(x.quantity||0);
+    byArt[k].dealers++;
+  });
+  scope.push([]);
+  scope.push(['ARTWORK', 'DEALERS', 'QUANTITY']);
+  Object.keys(byArt).forEach(function(k){
+    scope.push([k, byArt[k].dealers, byArt[k].qty]);
+  });
+
+  var missing = designs.filter(function(x){ return !x.design_url; }).length;
+  if (missing) {
+    scope.push([]);
+    scope.push(['WARNING', missing + ' dealer(s) ka artwork upload nahi hua — printing mat shuru karo']);
+  }
+
+  var ws1 = XLSX.utils.aoa_to_sheet(scope);
+  ws1['!cols'] = [{wch:22},{wch:52},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, ws1, 'Work Order');
+
+  // ── 2. PRINTING — grouped by artwork, because that is how a press runs
+  var pr = [['PRINTING SHEET', '', '', '', ''],
+            ['Order: ' + dash(camp.order_no), '', '', '', ''],
+            [],
+            ['Sr','Dealer','Artwork File','Qty','Printed ✓']];
+  var srn = 1;
+  Object.keys(byArt).forEach(function(art){
+    pr.push(['', '── ' + art + ' ──', '', byArt[art].qty, '']);
+    designs.filter(function(x){ return fileOf(x) === art; })
+           .forEach(function(x){
+      pr.push([srn++, dash(x.dealer_name), art, Number(x.quantity||0), '']);
+    });
+  });
+  pr.push([]);
+  pr.push(['', 'TOTAL', '', totalQty, '']);
+  var ws2 = XLSX.utils.aoa_to_sheet(pr);
+  ws2['!cols'] = [{wch:6},{wch:40},{wch:44},{wch:9},{wch:11}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Printing');
+
+  // ── 3. STITCHING — flat list with room to record what came back
+  var st = [['STITCHING SHEET', '', '', '', '', ''],
+            ['Order: ' + dash(camp.order_no), '', '', '', '', ''],
+            [],
+            ['Sr','Dealer','Zone','Qty','Stitched','Date']];
+  designs.forEach(function(x, i){
+    st.push([i+1, dash(x.dealer_name), dash(x.location_city),
+             Number(x.quantity||0), '', '']);
+  });
+  st.push([]);
+  st.push(['', 'TOTAL', '', totalQty, '', '']);
+  var ws3 = XLSX.utils.aoa_to_sheet(st);
+  ws3['!cols'] = [{wch:6},{wch:40},{wch:13},{wch:9},{wch:11},{wch:13}];
+  XLSX.utils.book_append_sheet(wb, ws3, 'Stitching');
+
+  // ── 4. DELIVERY / FIELD — the only tab that needs phone numbers
+  var dl = [['DELIVERY & FIELD SHEET', '', '', '', '', '', ''],
+            ['Order: ' + dash(camp.order_no), '', '', '', '', '', ''],
+            [],
+            ['Sr','Dealer','Contact','Zone','Qty','Delivered','Field Done']];
+  designs.forEach(function(x, i){
+    dl.push([i+1, dash(x.dealer_name), dash(x.dealer_phone),
+             dash(x.location_city), Number(x.quantity||0), '', '']);
+  });
+  dl.push([]);
+  dl.push(['', 'TOTAL', '', '', totalQty, '', '']);
+  var ws4 = XLSX.utils.aoa_to_sheet(dl);
+  ws4['!cols'] = [{wch:6},{wch:40},{wch:32},{wch:13},{wch:9},{wch:12},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws4, 'Delivery & Field');
+
+  var safe = String(camp.order_no || camp.name || 'work-order').replace(/[^A-Za-z0-9]+/g, '_');
+  XLSX.writeFile(wb, 'WorkOrder_' + safe + '.xlsx');
+  showToast('✓ Work Order download ho gaya', 'success');
+}
+
 function openCampaignDetail(campId, campKey) {
   var modal = $('campaignDetailModal');
   if (!modal) return;
@@ -5970,6 +6112,12 @@ function openCampaignDetail(campId, campKey) {
     apiAll('/rest/v1/prajapati_dispatches?select=*').catch(function(){ return []; })
   ]).then(function(res){
     var photos = res[0]||[], designs = res[1]||[], stitch = res[2]||[], print = res[3]||[], members = res[4]||[], dispatches = res[5]||[];
+
+    // Keep what this modal already loaded. The Work Order is built from exactly
+    // what is on screen, so the sheet can never disagree with what was read here.
+    window.__cdmWorkOrder = { camp: camp, designs: designs, photos: photos };
+    var _woBtn = $('cdmWorkOrderBtn');
+    if (_woBtn) _woBtn.style.display = designs && designs.length ? '' : 'none';
     var idName = {};
     members.forEach(function(m){ if (m.id) idName[String(m.id)] = m.name || m.phone; });
 
@@ -6087,6 +6235,17 @@ function openCampaignDetail(campId, campKey) {
             + '</div>'
             + '<div style="font-size:12px;color:#3A7D74;margin-top:5px;">'
             + 'Field team ko ye number pehle hi de dein</div></div>';
+    }
+
+    // Written by sales at launch. Shown before the plan table because it can
+    // change how the plan is executed.
+    if (camp.campaign_notes) {
+      html += '<div style="margin:12px 0;padding:12px 14px;background:#FFF8E8;'
+            + 'border:1px solid #F0D9A8;border-radius:10px;">'
+            + '<div style="font-size:12px;font-weight:700;color:#8A5B0B;'
+            + 'letter-spacing:.04em;margin-bottom:5px;">\uD83D\uDCDD NOTES / REMARKS</div>'
+            + '<div style="font-size:13.5px;color:#5C3D06;white-space:pre-wrap;line-height:1.55;">'
+            + escapeHtml(camp.campaign_notes) + '</div></div>';
     }
 
     // Location-wise quantity (from launcher designs)
