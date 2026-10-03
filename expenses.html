@@ -936,14 +936,33 @@ function applyApproverLock(){
   // Summary cards + campaign breakdown + export buttons hide
   var hideIds = ['sumCards','campBreakdown'];
   hideIds.forEach(function(id){ var el=$(id); if(el) el.style.display='none'; });
-  // Approval filter ko Pending pe lock
+  // Approval filter Pending pe khulta hai — wahi roz ka kaam hai — par LOCK
+  // nahi. Approver ko ye bhi dekhna padta hai ki team kya bhar rahi hai, aur
+  // pichhle hafte kya approve/reject hua; wo dekhe bina aaj ka faisla adhoora
+  // rehta hai. Filter khula rehne se list dikhti hai, par totals, payments
+  // aur export niche waise hi band rehte hain.
   setTimeout(function(){
-    var fa = $('fltApproval'); if(fa){ fa.value='pending'; fa.disabled=true; }
+    var fa = $('fltApproval');
+    if (fa){
+      fa.value = 'pending';
+      fa.disabled = false;
+      fa.title = 'Badal kar approved / rejected / sab dekh sakte hain';
+    }
     var fs = $('fltStatus'); if(fs){ fs.value=''; }
     loadExpenses();
   }, 100);
   // Header pe approver badge
   var rEl = $('tbRole'); if(rEl) rEl.textContent = 'Expense Approver';
+  // Say the filter is usable, otherwise the greyed-out look of the rest of the
+  // page suggests it is not.
+  var fa2 = $('fltApproval');
+  if (fa2 && fa2.parentNode && !document.getElementById('apprViewHint')) {
+    var hint = document.createElement('div');
+    hint.id = 'apprViewHint';
+    hint.style.cssText = 'font-size:11px;color:#5A6472;margin-top:3px;line-height:1.4';
+    hint.textContent = 'Filter badal kar approved / rejected / sab expenses dekh sakte hain';
+    fa2.parentNode.appendChild(hint);
+  }
   // Export buttons hide (approver ko data export na kare)
   ['exportExpensesExcel','exportExpensesPDF','exportExpensesJPEG'].forEach(function(fn){
     var btns = document.querySelectorAll('[onclick*="'+fn+'"]');
@@ -1278,7 +1297,10 @@ function renderExpenseTable(){
     var voucherBtn = (!IS_APPROVER_ONLY && e.payment_status==='paid') ? '<button class="btn btn-sm btn-secondary" style="margin-left:4px;padding:3px 7px" onclick="payVoucherPDF(\''+e.id+'\')" title="Pay Voucher PDF">🧾</button>' : '';
     // Detail (view) + Edit buttons — approver ko nahi
     var detailBtn = '<button class="btn btn-sm btn-secondary" style="padding:3px 8px" onclick="showExpenseDetail(\''+e.id+'\')" title="Pura detail dekho">👁️</button>';
-    var editBtn = IS_APPROVER_ONLY ? '' : '<button class="btn btn-sm btn-secondary" style="margin-left:4px;padding:3px 8px" onclick="openEditExpense(\''+e.id+'\')" title="Edit">✏️</button>';
+    // Approver edits too: a claim with the wrong date or a 450 typed as 4500
+    // should be corrected, not rejected and re-filed by the field worker.
+    // Edit changes money, so every approver edit is stamped in the remark below.
+    var editBtn = '<button class="btn btn-sm btn-secondary" style="margin-left:4px;padding:3px 8px" onclick="openEditExpense(\''+e.id+'\')" title="Edit">✏️</button>';
     return '<tr><td>'+d+'</td><td>'+typeTag+srcTag+'</td><td>'+forCol+'</td><td style="font-weight:600">'+partyCol+'</td><td style="color:var(--ink-700)">'+esc(detail||'—')+'</td><td style="font-weight:700;font-family:JetBrains Mono,monospace">'+fmt(e.total_amount)+'</td><td>'+apCol+'</td><td>'+statusTag+payBtn+slipBtn+voucherBtn+'</td><td>'+rc+detailBtn+editBtn+'</td></tr>';
   }).join('');
 }
@@ -1848,6 +1870,14 @@ async function saveEditExpense(){
     total_amount: total,
     remark: ($('ed-remark')||{}).value.trim() || null
   };
+  // An edited amount with no trace is indistinguishable from the original
+  // claim. Record who changed it and when, inside the remark the team can see.
+  if (IS_APPROVER_ONLY) {
+    var who = (user && (user.name || user.phone)) || 'approver';
+    var when = todayIST();
+    var stamp = '[edited by ' + who + ' on ' + when + ']';
+    payload.remark = (payload.remark ? payload.remark + ' ' : '') + stamp;
+  }
   var campEl = $('ed-campaign');
   if(campEl) payload.campaign_name = campEl.value || null;
   try{
