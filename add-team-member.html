@@ -384,7 +384,15 @@ function renderTeamList() {
   document.getElementById('teamList').innerHTML = list.map(m => {
     const initial = (m.name || '?').charAt(0).toUpperCase();
     const roleBadge = (m.role || 'no-role').toLowerCase();
-    const isField = (m.role === 'field' || m.role === 'field_worker');
+    // People do more than one job here: Aniket is a printing operator who also
+    // shoots in the field every day. Keying the control off role alone hid it
+    // for him, so there was no way to switch his entry mode at all.
+    // Show it for anyone who can actually open the field app.
+    var _ma = m.module_access || {};
+    if (typeof _ma === 'string') { try { _ma = JSON.parse(_ma); } catch (e) { _ma = {}; } }
+    const isField = (m.role === 'field' || m.role === 'field_worker')
+                 || _ma.field === true
+                 || m.does_field_work === true;
     const curMode = (m.field_entry_mode === 'full_entry') ? 'full_entry' : 'photo_only';
     let modeCtrl = '';
     if (isField){
@@ -393,6 +401,11 @@ function renderTeamList() {
                     <option value="photo_only"${curMode==='photo_only'?' selected':''}>📸 Photo Only</option>
                     <option value="full_entry"${curMode==='full_entry'?' selected':''}>✍️ Full Entry</option>
                   </select>`;
+    } else {
+      // Not a field worker today — but roles change. Offer the switch rather
+      // than leaving the owner with no way to turn it on.
+      modeCtrl = `<button class="btn btn-sm" style="font-size:11px;padding:5px 9px"
+                    onclick="enableFieldWork('${escapeHtml(m.phone)}', this)">+ Field work</button>`;
     }
     return `
       <div class="team-row">
@@ -406,6 +419,35 @@ function renderTeamList() {
       </div>
     `;
   }).join('');
+}
+
+// Turn on field work for someone whose main role is something else. Grants the
+// field module and defaults to photo_only, which is the safe mode — they can be
+// moved to full_entry once they are typing numbers reliably.
+async function enableFieldWork(phone, el){
+  if (el) { el.disabled = true; el.textContent = '…'; }
+  try {
+    var m = state.team.find(function(x){ return x.phone === phone; });
+    var ma = (m && m.module_access) || {};
+    if (typeof ma === 'string') { try { ma = JSON.parse(ma); } catch (e) { ma = {}; } }
+    ma.field = true;
+    await api('/rest/v1/trial_team_members?phone=eq.' + encodeURIComponent(phone), {
+      method: 'PATCH',
+      headers: { 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        module_access: ma,
+        field_entry_mode: (m && m.field_entry_mode) || 'photo_only'
+      })
+    });
+    if (m) { m.module_access = ma; m.field_entry_mode = m.field_entry_mode || 'photo_only'; }
+    var sa = document.getElementById('statusArea');
+    if (sa) sa.innerHTML = '<div class="callout success"><span>✅</span><div>Field work enabled — Photo Only mode. Dropdown se badal sakte hain.</div></div>';
+    renderTeamList();
+  } catch (e){
+    var sa2 = document.getElementById('statusArea');
+    if (sa2) sa2.innerHTML = '<div class="callout error"><span>⚠️</span><div>Fail: ' + escapeHtml(e.message || '?') + '</div></div>';
+    if (el) { el.disabled = false; el.textContent = '+ Field work'; }
+  }
 }
 
 // v2: existing field worker ka entry mode change (inline, instant save)
