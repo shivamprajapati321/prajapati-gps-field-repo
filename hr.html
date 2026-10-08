@@ -1243,7 +1243,7 @@ async function loadMyLeaves(){
 async function renderEmployees(root){
   try {
     const admin = isAdmin();
-    const emps = await api('/trial_team_members?select=id,name,phone,department,designation,emp_code,role,active,city,monthly_salary,basic_pay,petrol_rate_per_km,date_of_birth,joining_date,attendance_mode,hr_role,work_start_time,work_end_time&active=eq.true&order=name');
+    const emps = await api('/trial_team_members?select=id,name,phone,department,designation,emp_code,role,active,city,monthly_salary,basic_pay,petrol_rate_per_km,date_of_birth,joining_date,attendance_mode,hr_role,work_start_time,work_end_time,salary_pay_day,ot_rate_weekday,previous_experience,resignation_date,last_working_day,exit_reason,exit_type,final_settlement_amount&active=eq.true&order=name');
     window.__EMPS = emps;
     let h = '<div class="sechead"><i class="ti ti-users"></i>Team <span class="c-blue pill" style="margin-left:auto">'+emps.length+'</span></div>';
     if (admin) h += '<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Employee pe tap karo — salary, DOB, payroll set karne ke liye</div>';
@@ -1314,6 +1314,13 @@ function openEmp(id){
     ['empShiftStart','Shift start', (e.work_start_time||'09:00:00').slice(0,5), 'time'],
     ['empShiftEnd','Shift end', (e.work_end_time||'19:00:00').slice(0,5), 'time']
   ]);
+  h += eGrid([
+    ['empPayDay','Salary paid on (next month)', e.salary_pay_day, 'number'],
+    ['empOtWeekday','Overtime per hour (weekday)', e.ot_rate_weekday, 'number']
+  ]);
+  h += '<label style="font-size:12px;color:var(--muted)">Previous experience</label>'+
+       '<input id="empPrevExp" value="'+esc(e.previous_experience||'')+'" '+
+       'placeholder="jaise: 2 saal — Shree Ad Media" style="margin-bottom:10px">';
   h += '<div style="font-size:11px;color:var(--muted);margin:-4px 0 12px">Late aur overtime dono isi se nikalte hain. Default 9:00 – 19:00.</div>';
   // HR Access toggle — sirf owner/admin de sakta hai
   if (['owner','admin'].includes(String(USER.role||'').toLowerCase())) {
@@ -1323,6 +1330,37 @@ function openEmp(id){
       '<label class="sw"><input type="checkbox" id="empHrRole"'+(hasHr?' checked':'')+'><span class="sw-slider"></span></label>'+
       '</div>';
   }
+  // Exit lives at the bottom and stays shut unless the person is actually
+  // leaving — it should not greet HR on every profile they open.
+  const leaving = !!(e.resignation_date || e.last_working_day);
+  h += '<div style="border-top:1px solid var(--bd);margin:14px 0 10px"></div>';
+  h += '<div onclick="toggleExit()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:4px 0">'+
+       '<div style="font-size:13px;font-weight:600;color:'+(leaving?'var(--red)':'var(--muted)')+'">'+
+       (leaving ? '\u26A0\uFE0F Exit chal raha hai' : 'Exit process') + '</div>'+
+       '<i class="ti ti-chevron-down" id="exitChev" style="color:var(--muted)"></i></div>';
+  h += '<div id="exitBox" style="display:'+(leaving?'block':'none')+';padding-top:8px">';
+  h += eGrid([
+    ['empResignDate','Resignation date', e.resignation_date, 'date'],
+    ['empLastDay','Last working day', e.last_working_day, 'date']
+  ]);
+  h += '<label style="font-size:12px;color:var(--muted)">Exit type</label>'+
+       '<select id="empExitType" style="margin-bottom:10px">'+
+       '<option value="">\u2014</option>'+
+       ['resigned','terminated','absconded','contract_end','retired']
+         .map(function(x){ return '<option value="'+x+'"'+(e.exit_type===x?' selected':'')+'>'+x.replace('_',' ')+'</option>'; }).join('')+
+       '</select>';
+  h += '<label style="font-size:12px;color:var(--muted)">Reason</label>'+
+       '<input id="empExitReason" value="'+esc(e.exit_reason||'')+'" style="margin-bottom:10px">';
+  if (e.final_settlement_amount != null){
+    h += '<div style="background:var(--s1);border-radius:9px;padding:10px 12px;margin-bottom:10px">'+
+         '<div style="font-size:11px;color:var(--muted)">Final settlement</div>'+
+         '<div style="font-size:18px;font-weight:700">'+inr(e.final_settlement_amount)+'</div></div>';
+  }
+  h += '<div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5">'+
+       'Last working day daalne par is employee ka advance balance settlement me dikhega. '+
+       'Deactivate karne se pehle dues clear kar lein.</div>';
+  h += '</div>';
+
   h += '<button class="btn-primary" style="width:100%;height:44px;font-weight:600;margin-top:6px" onclick="saveEmp(this)">Save Profile</button>';
   h += '<div id="empErr" style="color:var(--red);font-size:12px;text-align:center;margin-top:8px"></div>';
   h += '</div>';
@@ -1340,6 +1378,15 @@ function openEmp(id){
   // set attendance mode select value
   setTimeout(()=>{ const sel=document.getElementById('empMode'); if(sel) sel.value=e.attendance_mode||'office'; },50);
 }
+function toggleExit(){
+  const b = document.getElementById('exitBox');
+  const c = document.getElementById('exitChev');
+  if (!b) return;
+  const open = b.style.display !== 'none';
+  b.style.display = open ? 'none' : 'block';
+  if (c) c.className = 'ti ti-chevron-' + (open ? 'down' : 'up');
+}
+
 function empTab(t){
   document.getElementById('etab_profile').classList.toggle('active', t==='profile');
   document.getElementById('etab_payroll').classList.toggle('active', t==='payroll');
@@ -1379,7 +1426,14 @@ async function saveEmp(btn){
       joining_date: v('empJoin'),
       attendance_mode: document.getElementById('empMode').value,
       work_start_time: v('empShiftStart') || '09:00',
-      work_end_time:   v('empShiftEnd')   || '19:00'
+      work_end_time:   v('empShiftEnd')   || '19:00',
+      salary_pay_day:  v('empPayDay') ? Number(v('empPayDay')) : null,
+      ot_rate_weekday: v('empOtWeekday') ? Number(v('empOtWeekday')) : null,
+      previous_experience: v('empPrevExp'),
+      resignation_date: v('empResignDate'),
+      last_working_day: v('empLastDay'),
+      exit_type:        v('empExitType'),
+      exit_reason:      v('empExitReason')
     };
     // HR access toggle (sirf owner/admin ko dikhta hai)
     const hrToggle = document.getElementById('empHrRole');
@@ -2624,7 +2678,7 @@ async function expPay(btn){
   } catch(e){ toast('Fail: '+e.message); if(btn){btn.disabled=false;btn.textContent='Pay '+inr(amt);} }
 }
 
-// ══════════ SETTINGS — Banking + Aadhaar/PAN ══════════let DOC_URLS = { aadhaar_photo_url:'', pan_photo_url:'', upi_qr_url:'' };
+// ══════════ SETTINGS — Banking + Aadhaar/PAN ══════════let DOC_URLS = { aadhaar_photo_url:'', pan_photo_url:'', voter_photo_url:'', upi_qr_url:'' };
 async function renderSettings(root){
   try {
     const admin = isAdmin();
@@ -2632,7 +2686,7 @@ async function renderSettings(root){
     let targetPhone = USER.phone, targetName = USER.name;
     const rows = await api('/prajapati_team_bank_profile?select=*&member_phone=eq.'+encodeURIComponent(targetPhone));
     const p = (rows && rows[0]) || {};
-    DOC_URLS = { aadhaar_photo_url:p.aadhaar_photo_url||'', pan_photo_url:p.pan_photo_url||'', upi_qr_url:p.upi_qr_url||'' };
+    DOC_URLS = { aadhaar_photo_url:p.aadhaar_photo_url||'', pan_photo_url:p.pan_photo_url||'', voter_photo_url:p.voter_photo_url||'', upi_qr_url:p.upi_qr_url||'' };
 
     let h = '<div class="sechead"><i class="ti ti-settings"></i>Settings — Banking & Documents</div>';
     h += '<div class="card">';
@@ -2651,6 +2705,8 @@ async function renderSettings(root){
     h += docRow('aadhaar','Aadhaar photo', p.aadhaar_photo_url);
     h += fld('setPanNo','PAN number', p.pan_number);
     h += docRow('pan','PAN photo', p.pan_photo_url);
+    h += fld('setVoterNo','Voter ID', p.voter_id);
+    h += docRow('voter','Voter ID photo', p.voter_photo_url);
     h += docRow('upiqr','UPI QR', p.upi_qr_url);
 
     h += '<div style="font-size:13px;font-weight:600;color:var(--navy);margin:14px 0 8px">Preferred payment</div>';
@@ -2693,7 +2749,10 @@ async function onDocUpload(input,prefix){
   lbl.textContent='Uploading...';
   try {
     const url = await uploadFile(f, USER.phone, prefix);
-    const key = prefix==='aadhaar'?'aadhaar_photo_url':prefix==='pan'?'pan_photo_url':'upi_qr_url';
+    const key = prefix==='aadhaar'?'aadhaar_photo_url'
+              : prefix==='pan'    ?'pan_photo_url'
+              : prefix==='voter'  ?'voter_photo_url'
+              : 'upi_qr_url';
     DOC_URLS[key]=url;
     lbl.innerHTML='<span class="pill pill-green" style="cursor:pointer" onclick="viewImg(\''+esc(url)+'\')">View ✓</span>';
   } catch(e){ lbl.innerHTML='<span style="color:var(--red)">fail</span>'; }
@@ -2706,8 +2765,9 @@ async function saveSettings(btn){
       member_phone:USER.phone, member_name:USER.name,
       bank_name:v('setBank'), account_number:v('setAcct'), ifsc_code:v('setIfsc'),
       account_holder:v('setHolder'), upi_id:v('setUpi'),
-      aadhaar_number:v('setAadhaarNo'), pan_number:v('setPanNo'),
+      aadhaar_number:v('setAadhaarNo'), pan_number:v('setPanNo'), voter_id:v('setVoterNo'),
       aadhaar_photo_url:DOC_URLS.aadhaar_photo_url||null, pan_photo_url:DOC_URLS.pan_photo_url||null,
+      voter_photo_url:DOC_URLS.voter_photo_url||null,
       upi_qr_url:DOC_URLS.upi_qr_url||null, preferred_method:v('setPref'),
       updated_at:new Date().toISOString()
     };
