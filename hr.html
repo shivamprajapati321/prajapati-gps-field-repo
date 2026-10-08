@@ -431,13 +431,34 @@ async function renderDashboard(root){
       h += '</div>';
 
       // ── Tracking (admin only) ──
+      // All three tiles pointed at 'tracking', so the Advance tile never
+      // opened advance management. Point each one where its label says.
       h += '<div class="card" style="margin-top:10px"><div class="sechead"><i class="ti ti-radar" style="color:var(--teal)"></i>Tracking</div>'+
         '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px">'+
           quickTile('map-pin','Live aaj','tracking')+
-          quickTile('calendar-stats','Attendance','tracking')+
-          quickTile('cash-banknote','Advance','tracking')+
+          quickTile('calendar-stats','Attendance','attendance')+
+          quickTile('users','Team','employees')+
         '</div>'+
-        '<div style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center">Kaun kahan hai · 30-din report · advance baaki</div>'+
+        '<div style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center">Kaun kahan hai · 30-din report · team list</div>'+
+      '</div>';
+
+      // ── HR tools ──
+      // These views are all built and all render, but nothing on any screen
+      // linked to them — so from the app they did not exist. The bottom nav
+      // only carries five, and the rest had no entry point at all.
+      h += '<div class="card" style="margin-top:10px"><div class="sechead"><i class="ti ti-briefcase" style="color:var(--teal)"></i>HR tools</div>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px">'+
+          quickTile('cash-banknote','Advance','advance')+
+          quickTile('calendar-event','Holidays','holidays')+
+          quickTile('file-text','Documents','documents')+
+          quickTile('gas-station','Petrol','petrol')+
+          quickTile('speakerphone','Notices','announcements')+
+          quickTile('checklist','Tasks','tasks')+
+        '</div>'+
+        '<div style="display:grid;grid-template-columns:1fr;gap:9px;margin-top:9px">'+
+          quickTile('settings','Settings','settings')+
+        '</div>'+
+        '<div style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center">Payroll kisi bhi employee ke andar — Team &rarr; naam &rarr; Payroll tab</div>'+
       '</div>';
 
       h += '<button onclick="logout()" style="width:100%;height:40px;background:var(--s1);color:var(--sec);margin-top:6px">Logout</button>';
@@ -3122,13 +3143,47 @@ async function saveBulkRow(i, btn){
 }
 
 
+// Pull the current row and re-render if the fields that control what the user
+// can see have changed. Failures are ignored on purpose — a flaky network must
+// not log anyone out of an app they are already inside.
+async function refreshUserRow(){
+  if (!USER || !USER.phone) return;
+  try {
+    const rows = await api('/trial_team_members?select=*&phone=eq.'+encodeURIComponent(USER.phone)+'&active=eq.true');
+    if (!rows || !rows.length) return;
+    const fresh = rows[0];
+    const gates = ['role','hr_role','is_expense_approver','active','work_start_time','work_end_time'];
+    let moved = gates.some(function(k){
+      return JSON.stringify(USER[k]) !== JSON.stringify(fresh[k]);
+    });
+    if (JSON.stringify(USER.module_access||{}) !== JSON.stringify(fresh.module_access||{})) moved = true;
+
+    const sess = USER._session, exp = USER._session_exp;
+    USER = fresh; USER._session = sess; USER._session_exp = exp;
+    localStorage.setItem('hr_user', JSON.stringify(USER));
+
+    if (moved) {
+      toast('Access update hua — screen refresh ho rahi hai');
+      enterApp();
+    }
+  } catch(e){ console.warn('[refreshUserRow]', e); }
+}
+
 // ══════════ BOOT ══════════
 (function boot(){
   const saved = localStorage.getItem('hr_user');
   if (saved) {
     try {
       USER = JSON.parse(saved);
-      if (sessionValid()) { enterApp(); return; }
+      if (sessionValid()) {
+        enterApp();
+        // The cached row is a snapshot from login time, and the session lasts
+        // 12 hours. Anyone whose role or access changed in between kept seeing
+        // the old permissions until the session expired. Re-read the row on
+        // every boot and re-render if anything that gates the UI has moved.
+        refreshUserRow();
+        return;
+      }
       localStorage.removeItem('hr_user'); USER = null;  // expired → phir se login
     } catch(e){}
   }
