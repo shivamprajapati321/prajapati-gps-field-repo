@@ -774,10 +774,18 @@ async function savePunch(kind, selfieUrl){
   const now = new Date().toISOString();
   try {
     if (kind === 'in') {
-      // late? office work_start_time se compare (default 10:00)
-      const startT = USER.work_start_time || '10:00:00';
+      // Late is measured against this employee's own shift. The old fallback
+      // here was 10:00 while every stored shift starts at 09:00, so anyone
+      // whose shift failed to load got a free hour. Fall back to 09:00.
+      const startT = (USER.work_start_time || '09:00:00').slice(0,5);
       const nowHM = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'});
-      const isLate = nowHM > startT.slice(0,5);
+      const isLate = nowHM > startT;
+      // Record HOW late, not just that it happened — a cut cannot be worked
+      // out from a yes/no flag.
+      const lateMins = isLate
+        ? Math.max(0, (parseInt(nowHM.slice(0,2),10)*60 + parseInt(nowHM.slice(3,5),10))
+                    - (parseInt(startT.slice(0,2),10)*60 + parseInt(startT.slice(3,5),10)))
+        : 0;
       const body = {
         member_id: USER.id, attendance_date: today(),
         check_in_time: now, check_in_selfie_url: selfieUrl,
@@ -789,6 +797,7 @@ async function savePunch(kind, selfieUrl){
         check_in_within_geofence: g.inside,
         check_in_device: 'pwa',
         is_late: isLate,
+        late_by_minutes: lateMins,
         status: 'present'
       };
       await api('/trial_hr_attendance', { method:'POST', headers:{'Prefer':'return=minimal'}, body: JSON.stringify(body) });
@@ -1206,7 +1215,7 @@ async function loadMyLeaves(){
 async function renderEmployees(root){
   try {
     const admin = isAdmin();
-    const emps = await api('/trial_team_members?select=id,name,phone,department,designation,emp_code,role,active,city,monthly_salary,basic_pay,petrol_rate_per_km,date_of_birth,joining_date,attendance_mode,hr_role&active=eq.true&order=name');
+    const emps = await api('/trial_team_members?select=id,name,phone,department,designation,emp_code,role,active,city,monthly_salary,basic_pay,petrol_rate_per_km,date_of_birth,joining_date,attendance_mode,hr_role,work_start_time,work_end_time&active=eq.true&order=name');
     window.__EMPS = emps;
     let h = '<div class="sechead"><i class="ti ti-users"></i>Team <span class="c-blue pill" style="margin-left:auto">'+emps.length+'</span></div>';
     if (admin) h += '<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Employee pe tap karo — salary, DOB, payroll set karne ke liye</div>';
@@ -1267,6 +1276,13 @@ function openEmp(id){
     ['empJoin','Joining Date', e.joining_date, 'date'],
     ['empMode','Attendance', null, 'mode']
   ]);
+  // Shift decides what counts as late and what counts as overtime, so it is
+  // set per employee rather than assumed. Everyone starts on 9–7.
+  h += eGrid([
+    ['empShiftStart','Shift start', (e.work_start_time||'09:00:00').slice(0,5), 'time'],
+    ['empShiftEnd','Shift end', (e.work_end_time||'19:00:00').slice(0,5), 'time']
+  ]);
+  h += '<div style="font-size:11px;color:var(--muted);margin:-4px 0 12px">Late aur overtime dono isi se nikalte hain. Default 9:00 – 19:00.</div>';
   // HR Access toggle — sirf owner/admin de sakta hai
   if (['owner','admin'].includes(String(USER.role||'').toLowerCase())) {
     const hasHr = (e.hr_role===true);
@@ -1329,7 +1345,9 @@ async function saveEmp(btn){
       petrol_rate_per_km: numOrNull('empPetrol'),
       date_of_birth: v('empDob'),
       joining_date: v('empJoin'),
-      attendance_mode: document.getElementById('empMode').value
+      attendance_mode: document.getElementById('empMode').value,
+      work_start_time: v('empShiftStart') || '09:00',
+      work_end_time:   v('empShiftEnd')   || '19:00'
     };
     // HR access toggle (sirf owner/admin ko dikhta hai)
     const hrToggle = document.getElementById('empHrRole');
@@ -1419,6 +1437,44 @@ function downloadSlip(){
 }
 
 // ── PAYROLL CALCULATION ──
+// ══════════════════════════════════════════════════════════════
+// LATE DEDUCTION
+//
+// Owner's rule: 10 min grace, then Rs 50 per started hour, and in a month the
+// 3rd late adds a half-day cut and the 5th adds a full day. Both day cuts
+// stack — reaching the 5th does not cancel the half already applied.
+//
+// "Per hour" is charged per STARTED hour. Pro-rata would make a five-minute
+// slip cost Rs 4, which is not what a deterrent is for.
+//
+// Days inside the grace are not lates at all: no charge, and they do not count
+// toward the 3rd/5th.
+//
+// Thresholds live in trial_hr_policy so a rule change does not need a deploy.
+function lateDeduction(lateDays, policy, perDay){
+  const grace = Number(policy.grace_minutes || 0);
+  const rate  = Number(policy.late_amount_per_hr || 0);
+  const counted = (lateDays || [])
+    .map(function(d){ return { date:d.date, over: Number(d.mins||0) - grace }; })
+    .filter(function(d){ return d.over > 0; });
+
+  let hourly = 0;
+  counted.forEach(function(d){ hourly += Math.ceil(d.over / 60) * rate; });
+
+  const n = counted.length;
+  let dayCut = 0; const marks = [];
+  if (policy.half_day_at_count && n >= policy.half_day_at_count){
+    dayCut += perDay * 0.5;
+    marks.push(policy.half_day_at_count + ' late — half day');
+  }
+  if (policy.full_day_at_count && n >= policy.full_day_at_count){
+    dayCut += perDay;
+    marks.push(policy.full_day_at_count + ' late — full day');
+  }
+  return { lateCount:n, hourlyCut:Math.round(hourly), dayCut:Math.round(dayCut),
+           total:Math.round(hourly + dayCut), marks:marks, detail:counted };
+}
+
 async function calcPayroll(){
   const e=window.__CUR_EMP;
   const yr=parseInt(v('payYear')||'0'), mo=parseInt(v('payMonth')||'0');
@@ -1431,7 +1487,7 @@ async function calcPayroll(){
     const from = yr+'-'+String(mo).padStart(2,'0')+'-01';
     const toD = new Date(yr, mo, 0).getDate();
     const to = yr+'-'+String(mo).padStart(2,'0')+'-'+String(toD).padStart(2,'0');
-    const att = await api('/trial_hr_attendance?select=status,is_late,attendance_date&member_id=eq.'+e.id+'&attendance_date=gte.'+from+'&attendance_date=lte.'+to);
+    const att = await api('/trial_hr_attendance?select=status,is_late,late_by_minutes,attendance_date&member_id=eq.'+e.id+'&attendance_date=gte.'+from+'&attendance_date=lte.'+to);
     const leaves = await api('/trial_hr_leaves?select=total_days,status&member_id=eq.'+e.id+'&status=eq.approved&from_date=lte.'+to+'&to_date=gte.'+from);
     // Sunday OT reimbursements (helper/stitching — same-day paid, alag se)
     const sundayOT = await api('/trial_hr_reimbursements?select=ot_amount,food_amount,status&member_id=eq.'+e.id+'&is_sunday_ot=eq.true&work_date=gte.'+from+'&work_date=lte.'+to).catch(()=>[]);
@@ -1446,6 +1502,17 @@ async function calcPayroll(){
     const earned = Math.round(perDay * (present + leaveDays));
     const unpaidDeduction = Math.round(perDay * absent);
     const otTotal = (sundayOT||[]).reduce((s,r)=>s+(+r.ot_amount||0)+(+r.food_amount||0),0);
+
+    // ── LATE: policy se cut nikalo ──
+    let latePolicy = { grace_minutes:10, late_amount_per_hr:50, half_day_at_count:3, full_day_at_count:5 };
+    try {
+      const pol = await api('/trial_hr_policy?select=*&id=eq.1');
+      if (pol && pol.length) latePolicy = pol[0];
+    } catch(ex){ console.warn('policy fetch — using defaults', ex); }
+    const lateDays = (att||[])
+      .filter(function(a){ return Number(a.late_by_minutes||0) > 0; })
+      .map(function(a){ return { date:a.attendance_date, mins:Number(a.late_by_minutes) }; });
+    const lateCut = lateDeduction(lateDays, latePolicy, perDay);
 
     // ── ADVANCE: is month ki planned installment nikalo ──
     const smon = yr+'-'+String(mo).padStart(2,'0');
@@ -1466,7 +1533,7 @@ async function calcPayroll(){
       });
     } catch(ex){ console.warn('advance fetch', ex); }
 
-    window.__PAYCALC = { year:yr, month:mo, present, leaveDays, absent, workingDays, earned, unpaidDeduction, gross:e.monthly_salary, sundays, otTotal, advDue, advList, salaryMonth:smon };
+    window.__PAYCALC = { year:yr, month:mo, present, leaveDays, absent, workingDays, earned, unpaidDeduction, gross:e.monthly_salary, sundays, otTotal, advDue, advList, salaryMonth:smon, lateCut:lateCut.total, lateCount:lateCut.lateCount };
 
     let h='<div class="card" style="background:var(--s1);margin-top:6px">';
     h+=payRow('Month', mo+'/'+yr);
@@ -1479,6 +1546,13 @@ async function calcPayroll(){
     h+=payRow('Absent days', absent, absent>0?'var(--red)':null);
     h+='<div style="border-top:1px solid var(--bd);margin:8px 0"></div>';
     h+=payRow('Absent deduction', '- '+inr(unpaidDeduction), 'var(--red)');
+    if(lateCut.total>0){
+      h+=payRow('Late cut ('+lateCut.lateCount+' late)', '- '+inr(lateCut.total), 'var(--red)');
+      h+='<div style="font-size:11px;color:var(--muted);margin:-2px 0 6px;line-height:1.5">'+
+         'Grace '+latePolicy.grace_minutes+' min ke baad ₹'+latePolicy.late_amount_per_hr+'/hr = '+inr(lateCut.hourlyCut)+
+         (lateCut.dayCut>0 ? ' · '+esc(lateCut.marks.join(' + '))+' = '+inr(lateCut.dayCut) : '')+
+         '</div>';
+    }
     if(advDue>0){
       h+=payRow('Advance installment', '- '+inr(advDue), 'var(--red)');
       h+='<div style="display:flex;align-items:center;gap:8px;margin:4px 0 2px">'+
@@ -1487,7 +1561,7 @@ async function calcPayroll(){
          '</div>';
     }
     h+='<div style="border-top:1px solid var(--bd);margin:8px 0"></div>';
-    h+='<div style="display:flex;justify-content:space-between;font-weight:700;font-size:16px"><span>Net Salary</span><span style="color:var(--teal)" id="netSal">'+inr(Math.max(0, earned-advDue))+'</span></div>';
+    h+='<div style="display:flex;justify-content:space-between;font-weight:700;font-size:16px"><span>Net Salary</span><span style="color:var(--teal)" id="netSal">'+inr(Math.max(0, earned-advDue-lateCut.total))+'</span></div>';
     if(otTotal>0){
       h+='<div style="border-top:1px solid var(--bd);margin:10px 0 6px"></div>';
       h+='<div style="font-size:11px;color:var(--muted);margin-bottom:4px">Sunday OT (helper/stitching — same-day cash, alag)</div>';
@@ -1510,7 +1584,9 @@ function reNet(){
   const adv = el ? Math.max(0, Number(el.value)||0) : 0;
   c.advDeduct = adv;
   const n = document.getElementById('netSal');
-  if(n) n.textContent = inr(Math.max(0, c.earned - adv));
+  // Late cut has to stay in here too — leaving it out meant that touching the
+  // advance box silently restored it to the net.
+  if(n) n.textContent = inr(Math.max(0, c.earned - adv - (c.lateCut||0)));
 }
 async function savePayroll(btn){
   const e=window.__CUR_EMP, c=window.__PAYCALC;
@@ -1524,6 +1600,8 @@ async function savePayroll(btn){
       member_id:e.id, year:c.year, month:c.month,
       basic_pay: c.earned,
       unpaid_leave_deduction:c.unpaidDeduction,
+      late_deduction:c.lateCut||0,
+      late_count:c.lateCount||0,
       total_working_days:c.workingDays, present_days:c.present, absent_days:c.absent, leave_days:c.leaveDays,
       status:'draft', updated_at:new Date().toISOString()
     };
