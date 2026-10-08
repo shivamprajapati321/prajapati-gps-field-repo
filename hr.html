@@ -526,6 +526,13 @@ async function renderDashboard(root){
     root.innerHTML = '<div class="card" style="color:var(--red)">Load fail: '+esc(e.message)+'</div>';
   }
 }
+// Onboarding form is a separate page. Carry the phone so that page can keep
+// the session rather than asking HR to log in twice.
+function openAddEmployee(){
+  const ph = (USER && USER.phone) ? encodeURIComponent(USER.phone) : '';
+  window.location.href = '/add-team-member.html' + (ph ? ('?from=hr&phone=' + ph) : '');
+}
+
 function quickTile(icon,label,view){
   return '<div class="card" style="margin:0;text-align:center;padding:14px 10px;cursor:pointer" onclick="nav(\''+view+'\')"><i class="ti ti-'+icon+'" style="font-size:24px;color:var(--acc)"></i><div style="font-size:12px;margin-top:5px">'+label+'</div></div>';
 }
@@ -1240,6 +1247,10 @@ async function renderEmployees(root){
     window.__EMPS = emps;
     let h = '<div class="sechead"><i class="ti ti-users"></i>Team <span class="c-blue pill" style="margin-left:auto">'+emps.length+'</span></div>';
     if (admin) h += '<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Employee pe tap karo — salary, DOB, payroll set karne ke liye</div>';
+    // The HR app could edit people but never create one — onboarding lives in
+    // add-team-member.html, and nothing here linked to it. HR had to be told
+    // the URL to hire anyone.
+    if (admin) h += '<button class="btn-green" style="width:100%;height:44px;margin-bottom:10px;font-weight:600" onclick="openAddEmployee()"><i class="ti ti-user-plus" style="vertical-align:-2px"></i> Naya Employee Add Karein</button>';
     if (admin) h += '<button class="btn-ghost" style="width:100%;height:40px;margin-bottom:12px;font-weight:600" onclick="nav(\'bulkfill\')"><i class="ti ti-table" style="vertical-align:-2px"></i> Bulk Fill — sab ka salary/DOB ek saath</button>';
     h += '<input type="text" placeholder="Search name / phone..." oninput="filterEmp(this.value)" style="margin-bottom:12px">';
     h += '<div class="card" id="empList">';

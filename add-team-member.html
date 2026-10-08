@@ -337,12 +337,25 @@ function escapeHtml(s) {
 }
 
 async function checkAccess() {
+  // Arriving from the HR app: it passes the phone so this page does not send
+  // HR back to a second login just to add one person.
+  try {
+    const qp = new URLSearchParams(location.search);
+    const fromHr = qp.get('phone');
+    if (fromHr) localStorage.setItem('prajapati_admin_phone', fromHr);
+  } catch (e) {}
   const phone = localStorage.getItem('prajapati_admin_phone');
   if (!phone) { location.href = '/hub.html'; return null; }
   const members = await api('/rest/v1/trial_team_members?phone=eq.' + phone + '&active=eq.true&select=*');
   if (!members || !members.length) { location.href = '/hub.html'; return null; }
   const role = (members[0].role || '').toLowerCase();
-  if (!['owner', 'admin'].includes(role)) {
+  // Owner and admin always. Anyone else needs an explicit grant — either the
+  // add-team-member module, or hr_role, since onboarding IS the HR job and the
+  // person doing it is rarely an admin.
+  let ma = members[0].module_access || {};
+  if (typeof ma === 'string') { try { ma = JSON.parse(ma); } catch (e) { ma = {}; } }
+  const granted = ma['add-team-member'] === true || members[0].hr_role === true;
+  if (!['owner', 'admin'].includes(role) && !granted) {
     document.body.innerHTML = '<div style="padding:60px;text-align:center"><h2>🔒 Owner / Admin Only</h2><p>Your role: ' + role + '</p><a href="/hub.html">← Back to Hub</a></div>';
     return null;
   }
