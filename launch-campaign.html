@@ -567,7 +567,7 @@ a{color:inherit;text-decoration:none}
 
 <div class="action-bar">
   <div class="left" id="actionLeft">No designs added yet</div>
-  <button class="btn btn-secondary" onclick="saveDraft()">💾 Save Draft</button>
+  <button class="btn btn-secondary" id="saveDraftBtn" onclick="saveDraft()">💾 Save Draft</button>
   <button class="btn btn-gold" onclick="submitCampaign()" id="submitBtn">Submit for Operations →</button>
 </div>
 
@@ -1343,7 +1343,7 @@ function filterSales(query) {
 async function loadClients() {
   try {
     const { data, error } = await db.from('trial_clients')
-      .select('id, name, phone, city')
+      .select('id, name, phone, city, sales_owner_id, created_by')
       .order('name').limit(500);
     if (!error && data) {
       allClients = data;
@@ -1362,26 +1362,44 @@ async function loadClients() {
   `;
 }
 
-function renderClientOptions(arr) {
-  const el = document.getElementById('clientOptions');
-  let html = `<div class="ss-option" onclick="addNewClient()" style="background:var(--gold-soft);font-weight:700;color:var(--gold-deep)">
-    <div class="ava" style="background:var(--gold);color:var(--navy)">+</div>
-    <div class="info"><div class="name">Add New Client</div><div class="meta">Manual entry</div></div>
-  </div>`;
-  
-  html += arr.map(c => {
-    const initial = (c.name || '?').charAt(0).toUpperCase();
-    return `
+function clientRowHtml(c){
+  const initial = (c.name || '?').charAt(0).toUpperCase();
+  return `
       <div class="ss-option" data-id="${c.id}" onclick='_sel(this,"client")'>
         <div class="ava" style="background:var(--purple-bg);color:var(--purple)">${initial}</div>
         <div class="info">
           <div class="name">${escapeHtml(c.name)}</div>
           <div class="meta">${escapeHtml(c.phone || '')}${c.city ? ' · ' + escapeHtml(c.city) : ''}</div>
         </div>
-      </div>
-    `;
-  }).join('');
-  
+      </div>`;
+}
+
+// Everyone's clients stay reachable — a salesperson who cannot find an
+// existing client just creates a duplicate of it. But their own come first,
+// under a heading, so the list opens on the names they actually work with.
+function renderClientOptions(arr) {
+  const el = document.getElementById('clientOptions');
+  let html = `<div class="ss-option" onclick="addNewClient()" style="background:var(--gold-soft);font-weight:700;color:var(--gold-deep)">
+    <div class="ava" style="background:var(--gold);color:var(--navy)">+</div>
+    <div class="info"><div class="name">Add New Client</div><div class="meta">Manual entry</div></div>
+  </div>`;
+
+  const myId = String((user && user.id) || '');
+  const role = String((user && user.role) || '').toLowerCase();
+  const seesAll = ['owner','admin'].includes(role);
+
+  // A salesperson sees only their own clients. Owner and admin see everything.
+  const list = seesAll ? arr
+    : arr.filter(c => String(c.sales_owner_id||'') === myId
+                   || String(c.created_by||'')     === myId);
+
+  if (list.length){
+    html += list.map(clientRowHtml).join('');
+  } else {
+    html += `<div style="padding:16px 14px;text-align:center;color:#8890a8;font-size:12.5px;line-height:1.6">
+        Aapka koi client nahi hai abhi.<br>Upar se naya add karein.</div>`;
+  }
+
   el.innerHTML = html;
 }
 
@@ -1470,8 +1488,31 @@ async function saveNewClient() {
   btn.disabled = true; btn.textContent = 'Saving…';
   errEl.textContent = '';
 
+  // The dropdown only shows this person's own clients now, so an existing
+  // client belonging to someone else is invisible — and would be typed in
+  // again as a duplicate. Check the whole table, not just the visible list.
+  try {
+    const dupQ = await db.from('trial_clients')
+      .select('id, name, sales_owner_id')
+      .ilike('name', name).limit(1);
+    if (dupQ && dupQ.data && dupQ.data.length) {
+      const owner = dupQ.data[0].sales_owner_id;
+      const mine  = String(owner||'') === String((user && user.id) || '');
+      errEl.innerHTML = mine
+        ? 'Ye client aapke paas pehle se hai — list me dhoondhein.'
+        : 'Ye client pehle se database me hai (kisi aur sales ke paas). '
+          + 'Duplicate mat banayein — admin se transfer karwa lein.';
+      btn.disabled = false; btn.textContent = 'Save Client';
+      return;
+    }
+  } catch(e){ console.warn('[dup check]', e); }
+
   var payload = { name: name, phone: phone, city: city };
-  try { if (user && user.id) payload.created_by = user.id; } catch(e){}
+  // Stamp ownership as well as created_by. The list now filters on owner, so a
+  // client saved without it would disappear the moment the modal closed.
+  try {
+    if (user && user.id) { payload.created_by = user.id; payload.sales_owner_id = user.id; }
+  } catch(e){}
 
   try {
     var res = await db.from('trial_clients').insert(payload).select().single();
@@ -1484,7 +1525,9 @@ async function saveNewClient() {
     toast && toast('Client "' + data.name + '" add ho gaya', 'success');
   } catch(e) {
     try {
-      var res2 = await db.from('trial_clients').insert({ name: name, phone: phone, city: city }).select().single();
+      var retry = { name: name, phone: phone, city: city };
+      try { if (user && user.id) retry.sales_owner_id = user.id; } catch(e2){}
+      var res2 = await db.from('trial_clients').insert(retry).select().single();
       if (res2.error) throw res2.error;
       allClients.unshift(res2.data);
       selectClient(res2.data);
@@ -2001,7 +2044,15 @@ function formatFileSize(b) {
   return (b/(1024*1024)).toFixed(1) + ' MB';
 }
 
-async function saveDraft() { await submitCampaign('draft'); }
+async function saveDraft() {
+  // Submit ke baad draft save karne ka matlab nahi — wahi se do campaign ban
+  // jaati thi. Agar pehle hi submit ho chuka hai to rok do.
+  if (window.__submittedOnce) {
+    alert('Ye campaign submit ho chuki hai. Badlav karne ke liye campaign kholke edit karein.');
+    return;
+  }
+  await submitCampaign('draft');
+}
 
 async function submitCampaign(targetStatus = 'pending_execution_plan') {
   // ⭐ Double-submit guard — agar already submitting hai to ignore (duplicate prevent)
@@ -2197,11 +2248,22 @@ async function _submitCampaignInner(targetStatus = 'pending_execution_plan') {
             '. Isliye save roka (duplicate banne se bachaya). Dobara try karo ya support ko batao.');
         }
       }
+    } else if (window.__createdCampaignId) {
+      // Already created once in this session — update that row instead of
+      // making a second campaign. This is what Submit-then-Save-Draft hit.
+      const { data: again, error: againErr } = await db.from('trial_campaigns')
+        .update(campaignPayload).eq('id', window.__createdCampaignId).select();
+      if (againErr) throw againErr;
+      campaign = (again && again[0]) || null;
+      if (!campaign || !campaign.id) throw new Error('Update save nahi hua (0 rows).');
+      // designs are rebuilt below, so clear the previous set first
+      await db.from('trial_campaign_designs').delete().eq('campaign_id', campaign.id);
     } else {
       const { data: created, error: campErr } = await db.from('trial_campaigns')
         .insert(campaignPayload).select().single();
       if (campErr) throw campErr;
       campaign = created;
+      window.__createdCampaignId = campaign.id;
     }
     
     if (validDesigns.length > 0) {
@@ -2315,6 +2377,11 @@ async function _submitCampaignInner(targetStatus = 'pending_execution_plan') {
     window.__lastOrder = { id: campaign.id, order_no: orderNo, name: campaignName };
 
     const isNewSubmit = !editingCampaign && targetStatus !== 'draft';
+    if (targetStatus !== 'draft') {
+      window.__submittedOnce = true;
+      const _sd = document.getElementById('saveDraftBtn');
+      if (_sd) _sd.style.display = 'none';
+    }
 
     document.getElementById('submitStatus').innerHTML = `
       <div class="callout success">
