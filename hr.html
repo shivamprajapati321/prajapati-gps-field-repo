@@ -276,6 +276,7 @@ async function verifyOtp(){
     USER._session = r.session_token;
     USER._session_exp = Date.now() + (r.expires_in||43200)*1000;
     localStorage.setItem('hr_user', JSON.stringify(USER));
+    loadHrPolicy();
     enterApp();
   } catch(e) {
     errEl.textContent = 'Network issue. Dobara try karo.';
@@ -2295,13 +2296,27 @@ async function renderExpenses(root){
     h += '<label style="font-size:12px;color:var(--muted)">Date</label>';
     h += '<input type="date" id="expDate" value="'+today()+'" style="margin-bottom:10px">';
     h += '<label style="font-size:12px;color:var(--muted)">Category</label>';
-    h += '<select id="expCat" style="margin-bottom:10px">'+
+    h += '<select id="expCat" onchange="onExpCatChange()" style="margin-bottom:10px">'+
          '<option value="Food">Food</option><option value="Hotel">Hotel</option>'+
          '<option value="Transport">Transport</option><option value="Fuel">Fuel</option>'+
          '<option value="Parcel">Parcel</option><option value="Office Expense">Office Expense</option>'+
+         '<option value="Overtime (OT)">Overtime (OT)</option>'+
          '<option value="Other">Other</option></select>';
-    h += '<label style="font-size:12px;color:var(--muted)">Amount (₹)</label>';
-    h += '<input type="number" id="expAmt" inputmode="numeric" placeholder="0" style="margin-bottom:10px">';
+
+    // OT is pay, not a reimbursement of money already spent. It needs hours
+    // rather than an amount, and it has to reach payroll — so choosing it
+    // swaps the amount box for an hours box and routes the save elsewhere.
+    h += '<div id="otBox" style="display:none;background:var(--s1);border-radius:9px;padding:11px 12px;margin-bottom:10px">';
+    h += '<label style="font-size:12px;color:var(--muted)">Kitne ghante OT</label>';
+    h += '<input type="number" id="otHours" inputmode="decimal" step="0.5" placeholder="e.g. 3.5" oninput="calcOtAmt()" style="margin-bottom:8px">';
+    h += '<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:8px;cursor:pointer">'+
+         '<input type="checkbox" id="otNight" onchange="calcOtAmt()" style="width:auto;margin:0">'+
+         'Raat 10 baje ke baad kaam kiya (food allowance)</label>';
+    h += '<div id="otCalc" style="font-size:12px;color:var(--muted);line-height:1.6"></div>';
+    h += '</div>';
+
+    h += '<div id="amtRow"><label style="font-size:12px;color:var(--muted)">Amount (₹)</label>';
+    h += '<input type="number" id="expAmt" inputmode="numeric" placeholder="0" style="margin-bottom:10px"></div>';
     h += '<label style="font-size:12px;color:var(--muted)">Remark (optional)</label>';
     h += '<input type="text" id="expRemark" placeholder="kis kaam ka expense" style="margin-bottom:10px">';
     h += '<label style="font-size:12px;color:var(--muted)">Receipt photo (optional)</label>';
@@ -2614,14 +2629,109 @@ async function onExpReceipt(input){
   }
   if (sub){ sub.disabled = false; sub.textContent = 'Submit Expense'; }
 }
+// Show the OT block only for the OT category, and keep the two inputs from
+// being filled at once — the saved row would then disagree with itself.
+function onExpCatChange(){
+  const cat = document.getElementById('expCat').value;
+  const isOt = cat === 'Overtime (OT)';
+  const ob = document.getElementById('otBox'), ar = document.getElementById('amtRow');
+  if (ob) ob.style.display = isOt ? 'block' : 'none';
+  if (ar) ar.style.display = isOt ? 'none' : 'block';
+  const btn = document.getElementById('expSubmitBtn');
+  if (btn) btn.textContent = isOt ? 'Submit OT' : 'Submit Expense';
+  if (isOt) calcOtAmt();
+}
+
+// Rates come from the member row and the policy table, not from the form —
+// an employee typing their own OT amount defeats the point of a rate.
+function otRates(){
+  const P = window.__HRPOLICY || {};
+  return {
+    rate: Number(USER.ot_rate_weekday || 0),
+    mult: Number(P.ot_multiplier || 1.5),
+    food: Number(P.night_food_amount || 80)
+  };
+}
+
+function calcOtAmt(){
+  const out = document.getElementById('otCalc'); if (!out) return;
+  const hrs = parseFloat((document.getElementById('otHours')||{}).value || '0') || 0;
+  const night = !!(document.getElementById('otNight')||{}).checked;
+  const r = otRates();
+  if (!r.rate){
+    out.innerHTML = '<span style="color:var(--red)">Aapka OT rate set nahi hai — HR se set karwayein.</span>';
+    return;
+  }
+  const otAmt = Math.round(hrs * r.rate * r.mult);
+  const foodAmt = night ? r.food : 0;
+  out.innerHTML = hrs > 0
+    ? hrs + ' hrs × ₹' + r.rate + ' × ' + r.mult + ' = <b>' + inr(otAmt) + '</b>' +
+      (foodAmt ? '<br>Food allowance = <b>' + inr(foodAmt) + '</b>' : '') +
+      '<br>Total = <b style="color:var(--teal)">' + inr(otAmt + foodAmt) + '</b>'
+    : 'Ghante daalein';
+}
+
+// OT goes to trial_hr_reimbursements — the same place Sunday OT goes, and the
+// only one payroll reads. Saving it as an expense would never reach salary.
+async function submitOT(btn, phone, name, date, remark){
+  const err = document.getElementById('expErr');
+  const hrs = parseFloat((document.getElementById('otHours')||{}).value || '0') || 0;
+  const night = !!(document.getElementById('otNight')||{}).checked;
+  const r = otRates();
+  if (!r.rate){ err.textContent = 'Aapka OT rate set nahi hai — HR se set karwayein.'; return false; }
+  if (hrs <= 0){ err.textContent = 'OT ke ghante daalo'; return false; }
+  if (hrs > 16){ err.textContent = 'Ek din me 16 ghante se zyada OT nahi ho sakta'; return false; }
+
+  const otAmt = Math.round(hrs * r.rate * r.mult);
+  const foodAmt = night ? r.food : 0;
+
+  // One OT claim per person per day, like Sunday OT already does.
+  const ex = await api('/trial_hr_reimbursements?select=id&member_id=eq.'+USER.id+
+                       '&reimbursement_type=eq.weekday_ot&work_date=eq.'+date);
+  if (ex && ex.length){ err.textContent = 'Is date ka OT pehle se submit hai'; return false; }
+
+  await api('/trial_hr_reimbursements', { method:'POST', headers:{'Prefer':'return=minimal'},
+    body: JSON.stringify({
+      member_id: USER.id,
+      reimbursement_type: 'weekday_ot',
+      category: 'weekday_ot',
+      amount: otAmt + foodAmt,
+      ot_amount: otAmt,
+      food_amount: foodAmt,
+      ot_hours: hrs,
+      expense_date: date, work_date: date,
+      is_sunday_ot: false,
+      description: hrs + ' hrs OT @ ₹' + r.rate + ' × ' + r.mult +
+                   (foodAmt ? ' + food ₹' + foodAmt : '') + (remark ? ' — ' + remark : ''),
+      status: 'pending'
+    }) });
+  return true;
+}
+
 async function submitExpense(btn){
   const err = document.getElementById('expErr'); err.textContent='';
   const amt = parseFloat(document.getElementById('expAmt').value||'0');
   const cat = document.getElementById('expCat').value;
   const date = document.getElementById('expDate').value;
   const remark = document.getElementById('expRemark').value.trim();
-  if (!amt || amt<=0){ err.textContent='Amount daalo'; return; }
   if (!date){ err.textContent='Date daalo'; return; }
+
+  // OT takes a different path entirely — different table, different approval.
+  if (cat === 'Overtime (OT)'){
+    let ph=USER.phone, nm=USER.name;
+    const ms = document.getElementById('expMember');
+    if (ms){ const pp=ms.value.split('|'); ph=pp[0]; nm=pp[1]||USER.name; }
+    btn=btn||(typeof event!=="undefined"&&event.target);
+    if(btn){btn.disabled=true;btn.textContent='Saving...';}
+    try {
+      const ok = await submitOT(btn, ph, nm, date, remark);
+      if (ok){ toast('OT submit ho gaya ✓ — approval ke baad salary me aayega'); nav('expenses'); return; }
+    } catch(e){ err.textContent='Save fail: '+e.message; }
+    if(btn){btn.disabled=false;btn.textContent='Submit OT';}
+    return;
+  }
+
+  if (!amt || amt<=0){ err.textContent='Amount daalo'; return; }
   // Never let a chosen receipt be silently dropped.
   if (EXP_RECEIPT_STATE === 'uploading'){ err.textContent='Receipt upload ho raha hai, ruko'; return; }
   if (EXP_RECEIPT_STATE === 'failed' &&
@@ -3217,6 +3327,13 @@ async function saveBulkRow(i, btn){
 // Pull the current row and re-render if the fields that control what the user
 // can see have changed. Failures are ignored on purpose — a flaky network must
 // not log anyone out of an app they are already inside.
+async function loadHrPolicy(){
+  try {
+    const p = await api('/trial_hr_policy?select=*&id=eq.1');
+    if (p && p.length) window.__HRPOLICY = p[0];
+  } catch(e){ console.warn('[policy]', e); }
+}
+
 async function refreshUserRow(){
   if (!USER || !USER.phone) return;
   try {
@@ -3248,6 +3365,7 @@ async function refreshUserRow(){
       USER = JSON.parse(saved);
       if (sessionValid()) {
         enterApp();
+        loadHrPolicy();
         // The cached row is a snapshot from login time, and the session lasts
         // 12 hours. Anyone whose role or access changed in between kept seeing
         // the old permissions until the session expired. Re-read the row on
