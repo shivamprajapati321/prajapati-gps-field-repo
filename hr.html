@@ -846,10 +846,17 @@ async function savePunch(kind, selfieUrl){
       }
       stopLivePing();   // punch-out — tracking band
     }
-    // Sunday OT auto-entry
-    if (kind==='in' && isSunday()) await createSundayOT();
-    // Weekday OT: shift ke baad jo bhi ruka, uska OT apne aap ban jaayega
-    if (kind==='out' && !isSunday()) await createWeekdayOT(now);
+    // OT dono din punch-OUT pe banta hai — ghante punch se nikalte hain,
+    // isliye punch-in pe banane ka koi tarika tha hi nahi.
+    if (kind === 'out') {
+      if (isSunday()) {
+        const a = await api('/trial_hr_attendance?select=check_in_time&member_id=eq.'+USER.id+
+                            '&attendance_date=eq.'+today());
+        if (a && a.length && a[0].check_in_time) await createSundayOT(a[0].check_in_time, now);
+      } else {
+        await createWeekdayOT(now);
+      }
+    }
     PUNCH_GPS = null;
     toast(kind==='in' ? 'Punch in ho gaya ✓' : 'Punch out ho gaya ✓');
     nav('attendance');  // refresh
@@ -905,25 +912,46 @@ async function createWeekdayOT(outIso){
   } catch(e){ console.warn('[weekday OT]', e); }
 }
 
-async function createSundayOT(){
+async function createSundayOT(inIso, outIso){
   try {
-    const ot = Number(USER.ot_rate_sunday||0);
-    const food = Number(USER.food_allowance_sunday||0);
-    if (ot<=0 && food<=0) return;   // rate set nahi → skip
-    // duplicate check
-    const ex = await api('/trial_hr_reimbursements?select=id&member_id=eq.'+USER.id+'&is_sunday_ot=eq.true&work_date=eq.'+today());
+    const rate = Number(USER.ot_rate_weekday || USER.ot_rate_sunday || 0);
+    if (!rate) return;   // rate set nahi — chup-chaap chhod do
+
+    const hm = iso => new Date(iso).toLocaleTimeString('en-GB',
+      { hour:'2-digit', minute:'2-digit', timeZone:'Asia/Kolkata' });
+    const toMin = t => parseInt(t.slice(0,2),10)*60 + parseInt(t.slice(3,5),10);
+
+    const inHm = hm(inIso), outHm = hm(outIso);
+    const mins = toMin(outHm) - toMin(inHm);
+    if (mins < 30) return;   // aaya aur chala gaya — OT nahi
+
+    const P = window.__HRPOLICY || {};
+    const mult = Number(P.ot_multiplier || 1.5);
+    const foodAfter = (P.night_food_after || '22:00').slice(0,5);
+    const foodAmt = (outHm >= foodAfter) ? Number(P.night_food_amount || 80) : 0;
+
+    const hrs = Math.round((mins/60) * 100) / 100;
+    const otAmt = Math.round(hrs * rate * mult);
+
+    const ex = await api('/trial_hr_reimbursements?select=id&member_id=eq.'+USER.id+
+                         '&is_sunday_ot=eq.true&work_date=eq.'+today());
     if (ex && ex.length) return;    // already banaya
-    await api('/trial_hr_reimbursements', { method:'POST', headers:{'Prefer':'return=minimal'}, body: JSON.stringify({
-      member_id: USER.id,
-      reimbursement_type: 'sunday_ot',
-      category: 'sunday_ot',
-      amount: ot+food, ot_amount: ot, food_amount: food,
-      expense_date: today(), work_date: today(),
-      is_sunday_ot: true,
-      description: 'Sunday OT ('+inr(ot)+') + Food ('+inr(food)+')',
-      status: 'pending'
-    }) });
-  } catch(e){ /* silent — punch to ho hi gaya */ }
+
+    await api('/trial_hr_reimbursements', { method:'POST', headers:{'Prefer':'return=minimal'},
+      body: JSON.stringify({
+        member_id: USER.id,
+        reimbursement_type: 'sunday_ot',
+        category: 'sunday_ot',
+        amount: otAmt + foodAmt,
+        ot_amount: otAmt, food_amount: foodAmt, ot_hours: hrs,
+        expense_date: today(), work_date: today(),
+        is_sunday_ot: true,
+        description: 'Sunday — poora din OT, ' + inHm + ' se ' + outHm + ', ' +
+                     hrs + ' hrs × ' + mult + 'x' + (foodAmt ? ' + food' : ''),
+        status: 'pending'
+      }) });
+    toast('Sunday OT ' + hrs + ' hrs record ho gaya');
+  } catch(e){ console.warn('[sunday OT]', e); }
 }
 
 async function renderAttCalendar(){
