@@ -1273,7 +1273,8 @@ async function onCampaignsChanged() {
   // Load distinct cities + members across all selected campaigns
   try {
     var inList = '(' + keys.map(function(k){ return '"' + k + '"'; }).join(',') + ')';
-    var photos = await apiAll('/rest/v1/trial_photos?campaign_key=in.' + encodeURIComponent(inList) + '&select=city,member_name,member_phone');
+    var photos = await apiAll('/rest/v1/trial_photos?campaign_key=in.' + encodeURIComponent(inList)
+      + '&select=city,member_name,member_phone&order=campaign_key.asc,id.asc');
     var cities = {}, members = {};
     (photos || []).forEach(function(p){
       if (p.city) cities[p.city] = true;
@@ -1549,7 +1550,7 @@ async function loadVehicles() {
             + '&captured_at=gte.' + range.from
             + '&captured_at=lte.' + range.to
             + '&select=*'
-            + '&order=captured_at.asc&limit=20000';
+            + '&order=campaign_key.asc,captured_at.asc,id.asc&limit=20000';
     // city filter (multi) — server-side via in.()
     if (cityVals.length > 0) {
       const cityIn = '(' + cityVals.map(function(c){ return '"' + String(c).replace(/"/g,'') + '"'; }).join(',') + ')';
