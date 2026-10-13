@@ -848,6 +848,8 @@ async function savePunch(kind, selfieUrl){
     }
     // Sunday OT auto-entry
     if (kind==='in' && isSunday()) await createSundayOT();
+    // Weekday OT: shift ke baad jo bhi ruka, uska OT apne aap ban jaayega
+    if (kind==='out' && !isSunday()) await createWeekdayOT(now);
     PUNCH_GPS = null;
     toast(kind==='in' ? 'Punch in ho gaya ✓' : 'Punch out ho gaya ✓');
     nav('attendance');  // refresh
@@ -858,6 +860,51 @@ async function savePunch(kind, selfieUrl){
 }
 
 // Sunday OT → reimbursement entry (pending approval)
+// Anything worked past the shift end becomes an OT claim, pending approval.
+// Hours come from the punch-out time against this member's own shift, so no
+// one types the figure and no one has to remember to claim it.
+async function createWeekdayOT(outIso){
+  try {
+    const endT = (USER.work_end_time || '19:00:00').slice(0,5);
+    const rate = Number(USER.ot_rate_weekday || 0);
+    if (!rate) return;   // rate set nahi — chup-chaap chhod do, punch to ho gaya
+
+    const outIst = new Date(outIso).toLocaleTimeString('en-GB',
+      { hour:'2-digit', minute:'2-digit', timeZone:'Asia/Kolkata' });
+    const mins = (parseInt(outIst.slice(0,2),10)*60 + parseInt(outIst.slice(3,5),10))
+               - (parseInt(endT.slice(0,2),10)*60 + parseInt(endT.slice(3,5),10));
+    // A few minutes over is packing up, not overtime.
+    if (mins < 30) return;
+
+    const P = window.__HRPOLICY || {};
+    const mult = Number(P.ot_multiplier || 1.5);
+    const foodAfter = (P.night_food_after || '22:00').slice(0,5);
+    const foodAmt = (outIst >= foodAfter) ? Number(P.night_food_amount || 80) : 0;
+
+    const hrs = Math.round((mins/60) * 100) / 100;
+    const otAmt = Math.round(hrs * rate * mult);
+
+    const ex = await api('/trial_hr_reimbursements?select=id&member_id=eq.'+USER.id+
+                         '&reimbursement_type=eq.weekday_ot&work_date=eq.'+today());
+    if (ex && ex.length) return;   // already banaya
+
+    await api('/trial_hr_reimbursements', { method:'POST', headers:{'Prefer':'return=minimal'},
+      body: JSON.stringify({
+        member_id: USER.id,
+        reimbursement_type: 'weekday_ot',
+        category: 'weekday_ot',
+        amount: otAmt + foodAmt,
+        ot_amount: otAmt, food_amount: foodAmt, ot_hours: hrs,
+        expense_date: today(), work_date: today(),
+        is_sunday_ot: false,
+        description: 'Auto — shift ' + endT + ' ke baad ' + outIst + ' tak, ' +
+                     hrs + ' hrs × ' + mult + 'x' + (foodAmt ? ' + food' : ''),
+        status: 'pending'
+      }) });
+    toast('OT ' + hrs + ' hrs record ho gaya — approval ke baad salary me');
+  } catch(e){ console.warn('[weekday OT]', e); }
+}
+
 async function createSundayOT(){
   try {
     const ot = Number(USER.ot_rate_sunday||0);
