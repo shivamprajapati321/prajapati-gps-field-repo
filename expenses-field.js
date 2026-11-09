@@ -161,11 +161,16 @@ function switchTab(tab){
 }
 
 // ════════ ASSIGNED CAMPAIGNS ════════
-// Worker ke recent assignments (last 7 din) ke distinct campaigns — sirf yahi dikhe.
-// Privacy: completed campaigns hide; 7-day window (purane auto-hide).
+// Worker ke assignments se distinct campaigns.
+// Window: last 7 din YA selected expense date tak (jo purana ho) — back-dated expense ka campaign bhi aaye.
+// Completed campaigns bhi dikhte hain (purane din ka kharcha daalne ke liye zaroori).
 function loadAssignedCampaigns(){
   var sel = $('expCampaign');
-  var fromDate = new Date(Date.now() - 7*86400000).toISOString().slice(0,10);
+  var prev = sel ? sel.value : '';
+  var selDate = ($('expDate') && $('expDate').value) || todayIST();
+  var sevenAgo = new Date(Date.now() - 7*86400000).toISOString().slice(0,10);
+  // jo date purani ho wahi se window shuru — taaki selected date hamesha cover ho
+  var fromDate = (selDate < sevenAgo) ? selDate : sevenAgo;
   api('/trial_daily_assignments?member_phone=eq.'+encodeURIComponent(state.member.phone)+'&assignment_date=gte.'+fromDate+'&select=campaign_key&order=assignment_date.desc')
     .then(function(rows){
       var keys = [];
@@ -175,18 +180,19 @@ function loadAssignedCampaigns(){
         renderCampaignOptions([]);
         return;
       }
-      // Fetch campaign names + completed flag (completed = hide)
       var inList = keys.map(function(k){ return encodeURIComponent(k); }).join(',');
       return api('/trial_campaigns?key=in.('+inList+')&select=key,name,client_name,completed').then(function(camps){
         var byKey = {}; (camps||[]).forEach(function(c){ byKey[c.key]=c; });
-        // Keep assignment order; SKIP completed campaigns (privacy)
+        // Assignment order rakho; completed bhi include karo (back-dated kharche ke liye)
         var list = [];
         keys.forEach(function(k){
           var c = byKey[k];
-          if (c && c.completed !== true) list.push(c);
+          if (c) list.push(c);
         });
         state.campaigns = list;
         renderCampaignOptions(list);
+        // pehle se selected campaign agar list mein hai to wapas select karo
+        if (prev && list.some(function(c){ return c.key===prev; })) sel.value = prev;
       });
     })
     .catch(function(e){ sel.innerHTML='<option value="">Load error</option>'; console.warn(e); });
